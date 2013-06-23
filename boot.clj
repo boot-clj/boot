@@ -7,8 +7,6 @@
 
 (require '[alandipert.interpol8 :refer [interpolating]])
 
-(println boot/*args*)
-
 (interpolating
  (let [x (+ 1 1)]
    "1+1=#{x}"))

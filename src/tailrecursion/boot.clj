@@ -22,12 +22,8 @@
   [depmap]
   `(install '~depmap))
 
-(def ^:dynamic *args*)
-
 (defn -main [& args]
   (binding [*data-readers* {'dependencies #'read-dependencies}
-            *ns* (create-ns 'user)
-            *args* args]
+            *ns* (create-ns 'user)]
     (alias 'boot 'tailrecursion.boot)
     (load-file "boot.clj")))
-
