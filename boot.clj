@@ -1,7 +1,14 @@
-(require '[tailrecursion.boot :as boot :refer [install]])
-(println "args: " boot/*args*)
-(install '[alandipert/interpol8 "0.0.3"])
+#dependencies
+{:coordinates
+ #{[alandipert/interpol8 "0.0.3"]}
+ :repositories
+ #{"http://repo1.maven.org/maven2/"
+   "http://clojars.org/repo"}}
+
 (require '[alandipert.interpol8 :refer [interpolating]])
+
+(println boot/*args*)
+
 (interpolating
  (let [x (+ 1 1)]
    "1+1=#{x}"))

@@ -1,36 +1,33 @@
 (ns tailrecursion.boot
   (:require [cemerick.pomegranate :as pom]
-            [cemerick.pomegranate.aether :refer [maven-central]])
-  (:import java.io.File))
+            [cemerick.pomegranate.aether :refer [maven-central]]))
 
-(def installed-artifacts (atom #{}))
+(defn find-idx [v val]
+  (ffirst (filter (comp #{val} second) (map vector (range) v))))
 
-(defprotocol Artifact
-  (install! [this]))
+(defn exclude-clojure [coordinate]
+  (if-let [idx (find-idx coordinate :exclusions)]
+    (let [exclusions (get coordinate (inc idx))]
+      (assoc coordinate (inc idx) (conj exclusions 'org.clojure/clojure)))
+    (into coordinate [:exclusions ['org.clojure/clojure]])))
 
-(def default-maven-repos
-  (into (set (vals maven-central))
-        ["http://clojars.org/repo"]))
+(defn install
+  [{:keys [coordinates repositories]}]
+  (pom/add-dependencies :coordinates (mapv exclude-clojure coordinates)
+                        :repositories (->> repositories
+                                           (mapcat (partial repeat 2))
+                                           (apply hash-map))))
 
-(defn repo-map
-  [repo-set]
-  (apply hash-map (mapcat (partial repeat 2) repo-set)))
-
-(defrecord MavenArtifact [coord repo-url]
-  Artifact
-  (install! [this]
-    (pom/add-dependencies
-     :coordinates [coord]
-     :repositories (merge (repo-map default-maven-repos)
-                          (when repo-url {repo-url repo-url})))
-    (swap! installed-artifacts conj this)))
-
-(defn install [coord & [repo-url]]
-  (-> (MavenArtifact. coord repo-url) install!))
+(defn read-dependencies
+  [depmap]
+  `(install '~depmap))
 
 (def ^:dynamic *args*)
 
 (defn -main [& args]
-  (binding [*args* args]
+  (binding [*data-readers* {'dependencies #'read-dependencies}
+            *ns* (create-ns 'user)
+            *args* args]
+    (alias 'boot 'tailrecursion.boot)
     (load-file "boot.clj")))
 
