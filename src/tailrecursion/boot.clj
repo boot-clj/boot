@@ -13,17 +13,14 @@
 
 (defn install
   [{:keys [coordinates repositories]}]
-  (pom/add-dependencies :coordinates (mapv exclude-clojure coordinates)
-                        :repositories (->> repositories
-                                           (mapcat (partial repeat 2))
-                                           (apply hash-map))))
-
-(defn read-dependencies
-  [depmap]
-  `(install '~depmap))
+  (pom/add-dependencies
+   :coordinates (mapv exclude-clojure coordinates)
+   :repositories (->> repositories
+                      (mapcat (partial repeat 2))
+                      (apply hash-map))))
 
 (defn -main [& args]
-  (binding [*data-readers* {'dependencies #'read-dependencies}
+  (binding [*command-line-args* args
             *ns* (create-ns 'user)]
     (alias 'boot 'tailrecursion.boot)
     (load-file "boot.clj")))
