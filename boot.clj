@@ -1,3 +1,5 @@
+#boot/version "1.5.1-SNAPSHOT"
+
 (boot/install
  '{:coordinates #{[alandipert/interpol8 "0.0.3"]}})
 
