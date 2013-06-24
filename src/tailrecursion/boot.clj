@@ -24,15 +24,13 @@
   {"maven" "http://repo1.maven.org/maven2/"
    "clojars" "http://clojars.org/repo"})
 
-(defn install
-  [{:keys [coordinates repositories]}]
+(defn install [{:keys [coordinates repositories]}]
   (let [deps (pom/add-dependencies
               :coordinates (mapv exclude-clojure coordinates)
               :repositories (merge *default-repositories* repositories))]
     (swap! env update-in [:dependencies] merge deps)))
 
-(defn add
-  [dirs]
+(defn add [dirs]
   (let [meth (doto (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL]))
                (.setAccessible true))]
     (.invoke meth (ClassLoader/getSystemClassLoader)
