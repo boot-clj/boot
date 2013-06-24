@@ -21,8 +21,12 @@ There is an example `boot.clj` in this project.  It loads a Maven
 dependency, requires a namespace from the dependency, and evaluates
 some code.
 
-  script/install
-  script/boot 1 2 3
+    script/install
+    script/boot 1 2 3
+
+You can test boot by running it via `lein run` in this directory, e.g.:
+
+    lein run 1 2 3
 
 ## License
 

@@ -1,8 +1,9 @@
 (ns tailrecursion.boot
   (:require [cemerick.pomegranate :as pom]
-            [cemerick.pomegranate.aether :refer [maven-central]])
+            [cemerick.pomegranate.aether :refer [maven-central]]
+            [clojure.java.io :as io])
   (:import java.lang.management.ManagementFactory
-           java.io.File)
+           [java.net URLClassLoader URL])
   (:gen-class))
 
 (defn find-idx [v val]
@@ -14,7 +15,8 @@
       (assoc coordinate (inc idx) (conj exclusions 'org.clojure/clojure)))
     (into coordinate [:exclusions ['org.clojure/clojure]])))
 
-(def installed (atom {}))
+(def classpath
+  (atom {:dependencies {} :directories #{}}))
 
 (def ^:dynamic *default-repositories*
   {"maven" "http://repo1.maven.org/maven2/"
@@ -22,13 +24,21 @@
 
 (defn install
   [{:keys [coordinates repositories]}]
-  (swap! installed merge
-   (pom/add-dependencies
-    :coordinates (mapv exclude-clojure coordinates)
-    :repositories (merge *default-repositories* repositories))))
+  (let [deps (pom/add-dependencies
+              :coordinates (mapv exclude-clojure coordinates)
+              :repositories (merge *default-repositories* repositories))]
+    (swap! classpath update-in [:dependencies] merge deps)))
+
+(defn add
+  [dirs]
+  (let [meth (doto (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL]))
+               (.setAccessible true))]
+    (.invoke meth (ClassLoader/getSystemClassLoader)
+             (into-array Object (map #(.. (io/file %) toURI toURL) dirs)))
+    (swap! classpath update-in [:directories] into dirs)))
 
 (defn make-request []
-  {:installed @installed
+  {:classpath @classpath
    :cli-args *command-line-args*
    :jvm-opts (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
    :cwd (System/getProperty "user.dir")})
