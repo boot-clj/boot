@@ -9,6 +9,7 @@
 
 (require '[alandipert.interpol8 :refer [interpolating]])
 
-(interpolating
- (let [x (+ 1 1)]
-   "1+1=#{x}"))
+(println
+ (interpolating
+  (let [x (+ 1 1)]
+    "1+1=#{x}")))
