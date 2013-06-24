@@ -1,6 +1,7 @@
 (ns tailrecursion.boot
   (:require [cemerick.pomegranate :as pom]
-            [cemerick.pomegranate.aether :refer [maven-central]]))
+            [cemerick.pomegranate.aether :refer [maven-central]])
+  (:gen-class))
 
 (defn find-idx [v val]
   (ffirst (filter (comp #{val} second) (map vector (range) v))))
