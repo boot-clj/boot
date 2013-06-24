@@ -16,14 +16,16 @@
 
 (def installed (atom {}))
 
+(def ^:dynamic *default-repositories*
+  {"maven" "http://repo1.maven.org/maven2/"
+   "clojars" "http://clojars.org/repo"})
+
 (defn install
   [{:keys [coordinates repositories]}]
   (swap! installed merge
    (pom/add-dependencies
     :coordinates (mapv exclude-clojure coordinates)
-    :repositories (->> repositories
-                       (mapcat (partial repeat 2))
-                       (apply hash-map)))))
+    :repositories (merge *default-repositories* repositories))))
 
 (defn make-request []
   {:installed @installed
