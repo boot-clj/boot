@@ -1,6 +1,8 @@
 (ns tailrecursion.boot
   (:require [cemerick.pomegranate :as pom]
             [cemerick.pomegranate.aether :refer [maven-central]])
+  (:import java.lang.management.ManagementFactory
+           java.io.File)
   (:gen-class))
 
 (defn find-idx [v val]
@@ -12,13 +14,22 @@
       (assoc coordinate (inc idx) (conj exclusions 'org.clojure/clojure)))
     (into coordinate [:exclusions ['org.clojure/clojure]])))
 
+(def installed (atom {}))
+
 (defn install
   [{:keys [coordinates repositories]}]
-  (pom/add-dependencies
-   :coordinates (mapv exclude-clojure coordinates)
-   :repositories (->> repositories
-                      (mapcat (partial repeat 2))
-                      (apply hash-map))))
+  (swap! installed merge
+   (pom/add-dependencies
+    :coordinates (mapv exclude-clojure coordinates)
+    :repositories (->> repositories
+                       (mapcat (partial repeat 2))
+                       (apply hash-map)))))
+
+(defn make-request []
+  {:installed @installed
+   :cli-args *command-line-args*
+   :jvm-opts (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
+   :cwd (System/getProperty "user.dir")})
 
 (defn -main [& args]
   (binding [*command-line-args* args
