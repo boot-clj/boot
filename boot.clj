@@ -13,3 +13,5 @@
  (interpolating
   (let [x (+ 1 1)]
     "1+1=#{x}")))
+
+(println (boot/make-request))
