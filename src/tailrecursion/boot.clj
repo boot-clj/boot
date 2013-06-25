@@ -1,7 +1,10 @@
 (ns tailrecursion.boot
   (:require [cemerick.pomegranate :as pom]
             [cemerick.pomegranate.aether :refer [maven-central]]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [tailrecursion.boot.tmpregistry :as tmp]
+            [clojure.core :as core])
+  (:refer-clojure :exclude [get])
   (:import java.lang.management.ManagementFactory
            [java.net URLClassLoader URL])
   (:gen-class))
@@ -13,7 +16,7 @@
 
 (defn exclude-clojure [coordinate]
   (if-let [idx (find-idx coordinate :exclusions)]
-    (let [exclusions (get coordinate (inc idx))]
+    (let [exclusions (core/get coordinate (inc idx))]
       (assoc coordinate (inc idx) (conj exclusions 'org.clojure/clojure)))
     (into coordinate [:exclusions ['org.clojure/clojure]])))
 
@@ -54,8 +57,10 @@
      :cwd (System/getProperty "user.dir")}))
 
 (defn -main [& args]
+  (tmp/create-registry!)
   (binding [*command-line-args* args
             *ns* (create-ns 'user)
             *data-readers* {'boot/version #'version}]
+    (alias 'tmp 'tailrecursion.boot.tmpregistry)
     (alias 'boot 'tailrecursion.boot)
     (load-file "boot.clj")))
