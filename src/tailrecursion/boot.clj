@@ -14,11 +14,11 @@
 (defn find-idx [v val]
   (ffirst (filter (comp #{val} second) (map vector (range) v))))
 
-(defn exclude-clojure [coordinate]
+(defn exclude [syms coordinate]
   (if-let [idx (find-idx coordinate :exclusions)]
     (let [exclusions (core/get coordinate (inc idx))]
-      (assoc coordinate (inc idx) (conj exclusions 'org.clojure/clojure)))
-    (into coordinate [:exclusions ['org.clojure/clojure]])))
+      (assoc coordinate (inc idx) (into exclusions syms)))
+    (into coordinate [:exclusions syms])))
 
 (def env
   (atom {:dependencies {} :directories #{}, :boot-version nil}))
@@ -29,7 +29,7 @@
 
 (defn install [{:keys [coordinates repositories]}]
   (let [deps (pom/add-dependencies
-              :coordinates (mapv exclude-clojure coordinates)
+              :coordinates (mapv (partial exclude ['org.clojure/clojure]) coordinates)
               :repositories (merge *default-repositories* repositories))]
     (swap! env update-in [:dependencies] merge deps)))
 
@@ -37,7 +37,7 @@
   (let [meth (doto (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL]))
                (.setAccessible true))]
     (.invoke meth (ClassLoader/getSystemClassLoader)
-             (into-array Object (map #(.. (io/file %) toURI toURL) dirs)))
+             (object-array (map #(.. (io/file %) toURI toURL) dirs)))
     (swap! env update-in [:directories] into dirs)))
 
 (defn version [string]
