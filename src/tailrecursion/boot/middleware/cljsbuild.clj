@@ -1,5 +1,6 @@
 (ns tailrecursion.boot.middleware.cljsbuild
   (:require
+    [tailrecursion.boot.tmpregistry :refer [mk mkdir exists? unmk]]
     [cljs.closure :as cljs]))
 
 (defrecord SourcePaths [paths]
@@ -21,12 +22,13 @@
   (doto (java.io.File/createTempFile prefix postfix) .deleteOnExit))
 
 (defn cljsbuild [handler]
-  (fn [spec]
-    (let [cspec (merge dfl-opts (:cljsbuild spec)) 
-          srcs  (SourcePaths. (:source-paths cspec)) 
-          outf  (tmpfile "cljsbuild_" "_main.js")
-          opts  (-> cspec
-                  (assoc :output-to (.getPath outf))
-                  (dissoc :source-paths))]
-      (cljs/build srcs opts)
-      (handler (assoc-in spec [:cljsbuild :output] outf)))))
+  (let [outf (mk ::js "_main.js")]
+    (fn [spec]
+      (let [cspec (merge dfl-opts (:cljsbuild spec)) 
+            outd  (or (:output-dir spec) (mkdir ::out))
+            srcs  (SourcePaths. (:source-paths cspec)) 
+            opts  (-> cspec
+                    (assoc :output-to (.getPath outf))
+                    (dissoc :source-paths))]
+        (cljs/build srcs opts)
+        (handler (assoc-in spec [:cljsbuild :output] outf))))))
