@@ -14,3 +14,10 @@
 (println "foo/x = " foo/x)
 
 (prn (boot/make-request))
+
+(def t (tmp/mk ::tempfile "stuff.txt"))
+(spit t "some stuff")
+(println t)
+(println (slurp t))
+
+(println (tmp/get ::tempfile))
