@@ -5,9 +5,9 @@
   (:refer-clojure :exclude [get])
   (:import java.io.File))
 
-;;; file stuff
-
 (def ^:dynamic *basedir* (File. "."))
+
+;;; file stuff
 
 (defn delete! [f]
   (let [delete (io/file f)]
@@ -55,25 +55,14 @@
     (delete! (io/file reg (munge k)))))
 
 (defn mk [k & [name]]
-  (when (exists? k) (unmk k)) 
+  (when (exists? k) (unmk k))
   (doto (make-file k (or name (str (gensym "file") ".tmp")))
     io/make-parents
     (.createNewFile)
     (.setLastModified (System/currentTimeMillis))))
 
 (defn mkdir [k & [name]]
-  (when (exists? k) (unmk k)) 
+  (when (exists? k) (unmk k))
   (doto (make-file k (or name (str (gensym "dir"))))
     delete!
     (.mkdirs)))
-
-(comment
-  ;; by default, the registry goes in (File. "."). can be set with *basedir*.
-  (create-registry!);=> recursively deletes and creates: #<File /home/alan/./.boot/tmp>
-  (mk ::foo)        ;=> #<File /home/alan/./.boot/tmp/_COLON_tmpregistry_SLASH_foo/file745.tmp>
-  (mk ::file "a.b") ;=> #<File /home/alan/./.boot/tmp/_COLON_tmpregistry_SLASH_file/a.b>
-  (mkdir ::out)     ;=> #<File /home/alan/./.boot/tmp/_COLON_tmpregistry_SLASH_out/dir750>
-  (get ::out)       ;=> #<File /home/alan/./.boot/tmp/_COLON_tmpregistry_SLASH_out/dir750>
-  (unmk ::out)
-  (destroy-registry!)   ;=> true (~/.boot/tmp was recursively deleted, optional)
-)
