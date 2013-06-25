@@ -6,5 +6,7 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [com.cemerick/pomegranate "0.2.0" :exclusions [org.clojure/clojure]]
                  ; for cljsbuild middleware 
-                 [org.clojure/clojurescript "0.0-1820"]]
+                 [org.clojure/clojurescript "0.0-1820"]
+                 ; for mtime middleware
+                 [digest "1.3.0"]]
   :main tailrecursion.boot)

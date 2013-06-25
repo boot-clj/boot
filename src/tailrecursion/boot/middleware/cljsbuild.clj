@@ -1,8 +1,6 @@
 (ns tailrecursion.boot.middleware.cljsbuild
   (:require
-    [cljs.closure :as cljs]
-    )
-  )
+    [cljs.closure :as cljs]))
 
 (defrecord SourcePaths [paths]
   cljs/Compilable
@@ -31,4 +29,4 @@
                   (assoc :output-to (.getPath outf))
                   (dissoc :source-paths))]
       (cljs/build srcs opts)
-      (handler (assoc-in spec [:cljsbuild :output] (slurp outf))))))
+      (handler (assoc-in spec [:cljsbuild :output] outf)))))
