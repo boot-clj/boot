@@ -21,17 +21,19 @@
 
 (def env
   (atom {:boot {:dependencies {}
-                :directories #{}}}))
+                :directories #{}
+                :repositories #{}}}))
 
 (def ^:dynamic *default-repositories*
-  {"maven" "http://repo1.maven.org/maven2/"
-   "clojars" "http://clojars.org/repo"})
+  #{"http://repo1.maven.org/maven2/"
+    "http://clojars.org/repo/"})
 
 (defn install [{:keys [coordinates repositories]}]
-  (let [deps (pom/add-dependencies
+  (let [repos (into *default-repositories* repositories)
+        deps (pom/add-dependencies
               :coordinates (mapv (partial exclude ['org.clojure/clojure]) coordinates)
-              :repositories (merge *default-repositories* repositories))]
-    (swap! env update-in [:boot :dependencies] merge deps)))
+              :repositories (apply hash-map (mapcat (partial repeat 2) repos)))]
+    (swap! env merge-with into {:boot {:dependencies deps :repositories repos}})))
 
 (defn add [dirs]
   (when (seq dirs)
