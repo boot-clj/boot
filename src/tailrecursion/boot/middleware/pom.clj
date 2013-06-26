@@ -25,14 +25,14 @@
 
 (defn ^Model set-dependencies! [^Model model dependencies]
   (dotoseq model
-    [[project version & {:keys [exclusions]}] (keys dependencies)
+    [[project version & {:keys [exclusions]}] dependencies
      :let [[group artifact] (extract-ids project)]]
     (.addDependency (doto (Dependency.)
                       (.setGroupId group)
                       (.setArtifactId artifact)
                       (.setVersion version)
                       (.setExclusions
-                       (for [e exclusions :let [[group artifact] (extract-ids (first e))]]
+                       (for [e exclusions :let [[group artifact] (extract-ids e)]]
                          (doto (Exclusion.) (.setGroupId group) (.setArtifactId artifact))))))))
 
 (defn ^Model build-model [boot pom]

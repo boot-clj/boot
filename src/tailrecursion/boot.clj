@@ -19,22 +19,26 @@
     (into coordinate [:exclusions syms])))
 
 (def env
-  (atom {:boot {:dependencies {}
+  (atom {:boot {:dependencies #{}
                 :directories #{}
-                :repositories #{}}}))
+                :repositories #{}
+                ;; stores Pomegranate output (full deps listing)
+                :installed #{}}}))
 
 (def ^:dynamic *default-repositories*
   #{"http://repo1.maven.org/maven2/"
     "http://clojars.org/repo/"})
 
 (defn install [{:keys [coordinates repositories]}]
-  (let [repos (into *default-repositories* repositories)
-        deps (pom/add-dependencies
-              :coordinates (mapv (partial exclude ['org.clojure/clojure]) coordinates)
-              :repositories (apply hash-map (mapcat (partial repeat 2) repos)))]
+  (let [deps (mapv (partial exclude ['org.clojure/clojure]) coordinates)
+        repos (into *default-repositories* repositories)
+        installed (pom/add-dependencies
+                   :coordinates deps
+                   :repositories (apply hash-map (mapcat (partial repeat 2) repos)))]
     (swap! env (partial merge-with into)
            {:boot {:dependencies deps
-                   :repositories repos}})))
+                   :repositories repos
+                   :installed installed}})))
 
 (defn add [dirs]
   (when (seq dirs)
