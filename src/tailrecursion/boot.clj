@@ -10,6 +10,20 @@
            [java.net URLClassLoader URL])
   (:gen-class))
 
+(def base-env
+  {:boot {:dependencies #{}
+          :directories #{}
+          :repositories #{}
+          :system {:jvm-opts (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
+                   :cwd (System/getProperty "user.dir")}
+          :pomegranate {:installed #{}}}})
+
+(def env (atom base-env))
+
+(def ^:dynamic *default-repositories*
+  #{"http://repo1.maven.org/maven2/"
+    "http://clojars.org/repo/"})
+
 (defn find-idx [v val]
   (ffirst (filter (comp #{val} second) (map vector (range) v))))
 
@@ -19,19 +33,16 @@
       (assoc coordinate (inc idx) (into exclusions syms)))
     (into coordinate [:exclusions syms])))
 
-(def env
-  (atom {:boot {:dependencies {}
-                :directories #{}}}))
-
-(def ^:dynamic *default-repositories*
-  {"maven" "http://repo1.maven.org/maven2/"
-   "clojars" "http://clojars.org/repo"})
-
 (defn install [{:keys [coordinates repositories]}]
-  (let [deps (pom/add-dependencies
-              :coordinates (mapv (partial exclude ['org.clojure/clojure]) coordinates)
-              :repositories (merge *default-repositories* repositories))]
-    (swap! env update-in [:boot :dependencies] merge deps)))
+  (let [deps (mapv (partial exclude ['org.clojure/clojure]) coordinates)
+        repos (into *default-repositories* repositories)
+        installed (pom/add-dependencies
+                   :coordinates deps
+                   :repositories (apply hash-map (mapcat (partial repeat 2) repos)))]
+    (swap! env (partial merge-with into)
+           {:boot {:dependencies deps
+                   :repositories repos
+                   :pomegranate {:installed installed}}})))
 
 (defn add [dirs]
   (when (seq dirs)
@@ -47,6 +58,9 @@
   (swap! env merge (dissoc cfg :boot))
   (swap! env merge (dissoc cfg :boot))
   `(quote ~cfg))
+
+(defn dispatch-cli []
+  (dispatch/dispatch-cli @env *command-line-args*))
 
 (defn -main [& args]
   (tmp/create-registry!)

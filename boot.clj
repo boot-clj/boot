@@ -1,17 +1,12 @@
 #boot/configuration
 {:boot {:coordinates #{[reply "0.2.0"]}
         :directories #{"test"}}
- :pom {:project tailrecursion/boot
-       :version "1.0.0-SNAPSHOT"
-       :description "Boot rules"}}
+ :pom {:project tailrecursion/boot-test
+       :version "1.0.0-SNAPSHOT"}}
 
-(ns user
-  (:use [clojure.main :only [main] :rename {main repl}]))
+(require 'tailrecursion.boot.middleware.pom)
 
-(def one 1)
+(boot/dispatch-cli)
 
-(defn add [x y] (+ x y))
-
-;;; boot pom -> "POM!"
-;;; boot add one 1 -> 2
-;;; boot repl -> launch reply
+;;; boot pom -> "Wrote /home/alan/projects/boot/pom.xml"
+;;; boot pom out.xml -> "Wrote /home/alan/projects/boot/out.xml"
