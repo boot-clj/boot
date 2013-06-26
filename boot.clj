@@ -1,9 +1,8 @@
 #boot/configuration
 {:boot {:coordinates #{[reply "0.2.0"]}
         :directories #{"test"}}
- :pom {:project tailrecursion/boot
-       :version "1.0.0-SNAPSHOT"
-       :description "Boot rules"}}
+ :pom {:project tailrecursion/boot-test
+       :version "1.0.0-SNAPSHOT"}}
 
 (ns user
   (:require [tailrecursion.boot.middleware.pom :refer [wrap-pom]]))
