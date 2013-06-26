@@ -7,6 +7,7 @@
 
 (def one 1)
 
-(def two 2)
-
 (defn add [x y] (+ x y))
+
+;;; boot pom -> "POM!"
+;;; boot add one 1 -> 2

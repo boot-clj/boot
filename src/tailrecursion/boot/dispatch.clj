@@ -1,23 +1,26 @@
 (ns tailrecursion.boot.dispatch)
 
 (defn maybe-resolve [x]
-  (if (symbol? x)
-    (if-let [var (ns-resolve 'user x)]
-      (deref var)
-      (throw (IllegalArgumentException.
-              (format "'%s' is not a public var in the user namespace." x))))))
+  (or (and (symbol? x)
+           (or (binding [*ns* 'user] (resolve x))
+               (throw (RuntimeException. (str "unable to resolve symbol: " x)))))
+      x))
 
-(defmulti dispatch first)
+(def maybe-deref #(if (var? %) @% %))
 
-(defmethod dispatch "pom" [args]
-  (println "POM!"))
+(def parse-args (partial map (comp maybe-deref maybe-resolve read-string)))
 
-(defmethod dispatch "jar" [args]
+(defmulti dispatch (fn [env args] (first args)))
+
+(defmethod dispatch "pom" [{:keys [boot pom] :as env} [_ & args]]
+  (println pom))
+
+(defmethod dispatch "jar" [env [_ & args]]
   (println "JAR!"))
 
-(defmethod dispatch :default [args]
-  (let [[f & args] (map (comp maybe-resolve read-string) args)]
-    (if (fn? f) (apply f args))))
+(defmethod dispatch :default [env args]
+  (let [[f & args] (parse-args args)]
+    (apply f args)))
 
-(defn try-dispatch []
-  (dispatch *command-line-args*))
+(defn try-dispatch [env]
+  (dispatch env *command-line-args*))
