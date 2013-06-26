@@ -7,9 +7,6 @@
    [org.apache.maven.model Model Repository Dependency Exclusion]
    org.apache.maven.model.io.xpp3.MavenXpp3Writer))
 
-(defn contains-every? [coll ks]
-  (every? identity (map contains? (repeat coll) ks)))
-
 (defmacro dotoseq [obj seq-exprs & body]
   `(let [o# ~obj]
      (doseq ~seq-exprs
@@ -37,7 +34,6 @@
                          (doto (Exclusion.) (.setGroupId group) (.setArtifactId artifact))))))))
 
 (defn ^Model build-model [boot pom]
-  {:pre [(contains-every? pom [:project :version])]}
   (let [{:keys [repositories dependencies directories]} boot
         {:keys [project version description]} pom
         [group artifact] (extract-ids project)]
@@ -48,12 +44,14 @@
       (set-repositories! repositories)
       (set-dependencies! dependencies))))
 
-(defn make-pom [env]
-  (let [{:keys [boot pom]} env]
-    (if pom
-      (let [model (build-model boot pom)]
-        {:model model
-         :xml (with-out-str (.write (MavenXpp3Writer.) *out* model))}))))
+(defn contains-every? [coll ks]
+  (every? identity (map contains? (repeat coll) ks)))
+
+(defn make-pom [{:keys [boot pom]}]
+  {:pre [(contains-every? pom [:project :version])]}
+  (let [model (build-model boot pom)]
+    {:model model
+     :xml (with-out-str (.write (MavenXpp3Writer.) *out* model))}))
 
 (defn wrap-pom [handler & options]
   #(handler (merge-with merge % (if (:pom %) {:pom (make-pom %)}))))
