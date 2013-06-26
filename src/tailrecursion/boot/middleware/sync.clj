@@ -4,7 +4,7 @@
 
 (defn sync-dirs [algo handler dst & srcs]
   (fn [spec]
-    (apply f/sync type dst srcs)
+    (apply f/sync algo dst srcs)
     (handler spec)))
 
 (def sync-time (partial sync-dirs :time))
