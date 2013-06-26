@@ -55,5 +55,4 @@
             *data-readers* {'boot/configuration #'configure}]
     (alias 'tmp 'tailrecursion.boot.tmpregistry)
     (alias 'boot 'tailrecursion.boot)
-    (load-file "boot.clj")
-    (dispatch/try-dispatch @env *command-line-args*)))
+    (load-file "boot.clj")))
