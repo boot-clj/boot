@@ -22,8 +22,7 @@
   (atom {:boot {:dependencies #{}
                 :directories #{}
                 :repositories #{}
-                ;; stores Pomegranate output (full deps listing)
-                :installed #{}}}))
+                {:pomegranate {:installed #{}}}}}))
 
 (def ^:dynamic *default-repositories*
   #{"http://repo1.maven.org/maven2/"
@@ -38,7 +37,7 @@
     (swap! env (partial merge-with into)
            {:boot {:dependencies deps
                    :repositories repos
-                   :installed installed}})))
+                   {:pomegranate {:installed installed}}}})))
 
 (defn add [dirs]
   (when (seq dirs)
