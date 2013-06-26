@@ -51,7 +51,7 @@
   (tmp/create-registry!)
   (binding [*command-line-args* args
             *ns* (create-ns 'user)
-            *data-readers* {'boot/project #'configure}]
+            *data-readers* {'boot/configuration #'configure}]
     (alias 'tmp 'tailrecursion.boot.tmpregistry)
     (alias 'boot 'tailrecursion.boot)
     (load-file "boot.clj")

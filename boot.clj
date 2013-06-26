@@ -1,4 +1,4 @@
-#boot/project
+#boot/configuration
 {:boot {:coordinates #{[reply "0.2.0"]}
         :directories #{"src"}}
  :pom {:project tailrecursion/boot
@@ -6,4 +6,4 @@
        :description "Boot rules"}}
 
 (defn show []
-  (println @boot/project))
+  (prn @boot/project))
