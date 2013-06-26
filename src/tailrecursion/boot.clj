@@ -3,11 +3,26 @@
             [cemerick.pomegranate.aether :refer [maven-central]]
             [clojure.java.io :as io]
             [tailrecursion.boot.tmpregistry :as tmp]
+            [tailrecursion.boot.dispatch :as dispatch]
             [clojure.core :as core])
   (:refer-clojure :exclude [get])
   (:import java.lang.management.ManagementFactory
            [java.net URLClassLoader URL])
   (:gen-class))
+
+(def base-env
+  {:boot {:dependencies #{}
+          :directories #{}
+          :repositories #{}
+          :system {:jvm-opts (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
+                   :cwd (System/getProperty "user.dir")}
+          :pomegranate {:installed #{}}}})
+
+(def env (atom base-env))
+
+(def ^:dynamic *default-repositories*
+  #{"http://repo1.maven.org/maven2/"
+    "http://clojars.org/repo/"})
 
 (defn find-idx [v val]
   (ffirst (filter (comp #{val} second) (map vector (range) v))))
@@ -17,16 +32,6 @@
     (let [exclusions (core/get coordinate (inc idx))]
       (assoc coordinate (inc idx) (into exclusions syms)))
     (into coordinate [:exclusions syms])))
-
-(def env
-  (atom {:boot {:dependencies #{}
-                :directories #{}
-                :repositories #{}
-                :pomegranate {:installed #{}}}}))
-
-(def ^:dynamic *default-repositories*
-  #{"http://repo1.maven.org/maven2/"
-    "http://clojars.org/repo/"})
 
 (defn install [{:keys [coordinates repositories]}]
   (let [deps (mapv (partial exclude ['org.clojure/clojure]) coordinates)
@@ -53,6 +58,9 @@
   (swap! env merge (dissoc cfg :boot))
   (swap! env merge (dissoc cfg :boot))
   `(quote ~cfg))
+
+(defn dispatch-cli []
+  (dispatch/dispatch-cli @env *command-line-args*))
 
 (defn -main [& args]
   (tmp/create-registry!)

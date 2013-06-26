@@ -1,6 +1,7 @@
 (ns tailrecursion.boot.middleware.pom
   (:require
    [tailrecursion.boot.tmpregistry :refer [mk mkdir exists? unmk]]
+   [tailrecursion.boot.dispatch :as dispatch]
    [clojure.java.io :as io])
   (:import
    [org.apache.maven.model Model Repository Dependency Exclusion]
@@ -47,22 +48,17 @@
       (set-repositories! repositories)
       (set-dependencies! dependencies))))
 
-(defn wrap-pom [handler & pom-opts]
-  (fn [request]
-    (let [{:keys [boot pom]} (update-in request [:pom] merge (apply hash-map pom-opts))]
-      (handler (if pom
-                 (let [model (build-model boot pom)]
-                   (update-in request [:pom] merge
-                              {:model model
-                               :pom.xml (with-out-str (.write (MavenXpp3Writer.) *out* model))}))
-                 request)))))
+(defn make-pom [env]
+  (let [{:keys [boot pom]} env]
+    (if pom
+      (let [model (build-model boot pom)]
+        {:model model
+         :xml (with-out-str (.write (MavenXpp3Writer.) *out* model))}))))
 
-(comment
-  (def req
-    {:boot {:repositories #{"http://foo.com/repo/"}
-            :dependencies '{[alandipert/interpol8 "0.0.3" :exclusions [[org.clojure/clojure]]] nil}}
-     :pom {:project 'foo/bar
-           :version "1.0.0"}})
+(defn wrap-pom [handler & options]
+  #(handler (merge-with merge % (if (:pom %) {:pom (make-pom %)}))))
 
-  (println (get-in ((pom identity) req) [:pom :pom.xml]))
-  )
+(defmethod dispatch/dispatch-cli "pom" [env [_ name & _]]
+  (let [pom-file (io/file (get-in env [:boot :system :cwd]) (or name "pom.xml"))]
+    (spit pom-file (:xml (make-pom env)))
+    (println "Wrote" (.getAbsolutePath pom-file))))

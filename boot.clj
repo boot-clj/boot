@@ -4,11 +4,9 @@
  :pom {:project tailrecursion/boot-test
        :version "1.0.0-SNAPSHOT"}}
 
-(ns user
-  (:require [tailrecursion.boot.middleware.pom :refer [wrap-pom]]))
+(require 'tailrecursion.boot.middleware.pom)
 
-(def pom
-  (-> #(get-in % [:pom :pom.xml])
-      (wrap-pom)))
+(boot/dispatch-cli)
 
-(-> @boot/env pom print)
+;;; boot pom -> "Wrote /home/alan/projects/boot/pom.xml"
+;;; boot pom out.xml -> "Wrote /home/alan/projects/boot/out.xml"
