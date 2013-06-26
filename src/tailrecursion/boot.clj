@@ -3,7 +3,6 @@
             [cemerick.pomegranate.aether :refer [maven-central]]
             [clojure.java.io :as io]
             [tailrecursion.boot.tmpregistry :as tmp]
-            [tailrecursion.boot.dispatch :as dispatch]
             [clojure.core :as core])
   (:refer-clojure :exclude [get])
   (:import java.lang.management.ManagementFactory
@@ -33,7 +32,9 @@
         deps (pom/add-dependencies
               :coordinates (mapv (partial exclude ['org.clojure/clojure]) coordinates)
               :repositories (apply hash-map (mapcat (partial repeat 2) repos)))]
-    (swap! env merge-with into {:boot {:dependencies deps :repositories repos}})))
+    (swap! env (partial merge-with into)
+           {:boot {:dependencies deps
+                   :repositories repos}})))
 
 (defn add [dirs]
   (when (seq dirs)
@@ -57,5 +58,4 @@
             *data-readers* {'boot/configuration #'configure}]
     (alias 'tmp 'tailrecursion.boot.tmpregistry)
     (alias 'boot 'tailrecursion.boot)
-    (load-file "boot.clj")
-    (dispatch/try-dispatch @env *command-line-args*)))
+    (load-file "boot.clj")))

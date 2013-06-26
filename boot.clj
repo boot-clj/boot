@@ -6,12 +6,10 @@
        :description "Boot rules"}}
 
 (ns user
-  (:use [clojure.main :only [main] :rename {main repl}]))
+  (:require [tailrecursion.boot.middleware.pom :refer [wrap-pom]]))
 
-(def one 1)
+(def pom
+  (-> #(get-in % [:pom :pom.xml])
+      (wrap-pom)))
 
-(defn add [x y] (+ x y))
-
-;;; boot pom -> "POM!"
-;;; boot add one 1 -> 2
-;;; boot repl -> launch reply
+(-> @boot/env pom print)

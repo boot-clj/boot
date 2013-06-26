@@ -9,14 +9,14 @@
 (defn contains-every? [coll ks]
   (every? identity (map contains? (repeat coll) ks)))
 
-(defmacro with-doseq [obj seq-exprs & body]
+(defmacro dotoseq [obj seq-exprs & body]
   `(let [o# ~obj]
      (doseq ~seq-exprs
        (doto o# ~@body))
      o#))
 
 (defn ^Model set-repositories! [^Model model repositories]
-  (with-doseq model [repo repositories]
+  (dotoseq model [repo repositories]
     (.addRepository (doto (Repository.) (.setUrl repo)))))
 
 (defn extract-ids [sym]
@@ -24,7 +24,7 @@
     [(or group artifact) artifact]))
 
 (defn ^Model set-dependencies! [^Model model dependencies]
-  (with-doseq model
+  (dotoseq model
     [[project version & {:keys [exclusions]}] (keys dependencies)
      :let [[group artifact] (extract-ids project)]]
     (.addDependency (doto (Dependency.)
@@ -47,14 +47,14 @@
       (set-repositories! repositories)
       (set-dependencies! dependencies))))
 
-(defn pom [handler & pom-opts]
+(defn wrap-pom [handler & pom-opts]
   (fn [request]
     (let [{:keys [boot pom]} (update-in request [:pom] merge (apply hash-map pom-opts))]
       (handler (if pom
                  (let [model (build-model boot pom)]
                    (update-in request [:pom] merge
-                     {:model model
-                      :pom.xml (with-out-str (.write (MavenXpp3Writer.) *out* model))}))
+                              {:model model
+                               :pom.xml (with-out-str (.write (MavenXpp3Writer.) *out* model))}))
                  request)))))
 
 (comment
