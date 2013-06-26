@@ -19,7 +19,7 @@
       (assoc coordinate (inc idx) (into exclusions syms)))
     (into coordinate [:exclusions syms])))
 
-(def project
+(def env
   (atom {:boot {:dependencies {}
                 :directories #{}}}))
 
@@ -31,7 +31,7 @@
   (let [deps (pom/add-dependencies
               :coordinates (mapv (partial exclude ['org.clojure/clojure]) coordinates)
               :repositories (merge *default-repositories* repositories))]
-    (swap! project update-in [:boot :dependencies] merge deps)))
+    (swap! env update-in [:boot :dependencies] merge deps)))
 
 (defn add [dirs]
   (when (seq dirs)
@@ -39,12 +39,13 @@
                  (.setAccessible true))]
       (.invoke meth (ClassLoader/getSystemClassLoader)
                (object-array (map #(.. (io/file %) toURI toURL) dirs)))
-      (swap! project update-in [:boot :directories] into dirs))))
+      (swap! env update-in [:boot :directories] into dirs))))
 
 (defn configure [{:keys [boot] :as cfg}]
   (install boot)
   (add (core/get boot :directories))
-  (swap! project merge (dissoc cfg :boot))
+  (swap! env merge (dissoc cfg :boot))
+  (swap! env merge (dissoc cfg :boot))
   `(quote ~cfg))
 
 (defn -main [& args]
@@ -55,4 +56,4 @@
     (alias 'tmp 'tailrecursion.boot.tmpregistry)
     (alias 'boot 'tailrecursion.boot)
     (load-file "boot.clj")
-    (dispatch/try-dispatch)))
+    (dispatch/try-dispatch @env *command-line-args*)))
