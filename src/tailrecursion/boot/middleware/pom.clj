@@ -35,7 +35,7 @@
 
 (defn ^Model build-model [boot pom]
   (let [{:keys [repositories dependencies directories]} boot
-        {:keys [project version description]} pom
+        {:keys [project version]} pom
         [group artifact] (extract-ids project)]
     (doto (Model.)
       (.setGroupId group)
