@@ -1,23 +1,9 @@
-#boot/version "1.5.1-SNAPSHOT"
+#boot/project
+{:boot {:coordinates #{[reply "0.2.0"]}
+        :directories #{"src"}}
+ :pom {:project tailrecursion/boot
+       :version "1.0.0-SNAPSHOT"
+       :description "Boot rules"}}
 
-(boot/install
- '{:coordinates #{[alandipert/interpol8 "0.0.3"]}})
-
-(boot/add #{"test"})
-
-(println "arguments: " *command-line-args*)
-
-(require '[alandipert.interpol8 :refer [interpolating]])
-(require 'foo)
-
-(println (interpolating (let [x (+ 1 1)] "1+1=#{x}")))
-(println "foo/x = " foo/x)
-
-(prn (boot/make-request))
-
-(def t (tmp/mk ::tempfile "stuff.txt"))
-(spit t "some stuff")
-(println t)
-(println (slurp t))
-
-(println (tmp/get ::tempfile))
+(defn show []
+  (println @boot/project))

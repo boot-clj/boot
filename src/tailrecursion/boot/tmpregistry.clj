@@ -5,7 +5,7 @@
   (:refer-clojure :exclude [get])
   (:import java.io.File))
 
-(def ^:dynamic *basedir* (File. "."))
+(def ^:dynamic *basedir* (io/file (System/getProperty "user.dir")))
 
 ;;; file stuff
 
