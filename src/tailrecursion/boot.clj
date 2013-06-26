@@ -56,4 +56,4 @@
     (alias 'tmp 'tailrecursion.boot.tmpregistry)
     (alias 'boot 'tailrecursion.boot)
     (load-file "boot.clj")
-    (dispatch/try-dispatch @env)))
+    (dispatch/try-dispatch @env *command-line-args*)))

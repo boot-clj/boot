@@ -1,14 +1,17 @@
-(ns tailrecursion.boot.dispatch)
+(ns tailrecursion.boot.dispatch
+  (:require [clojure.core :as core])
+  (:refer-clojure :exclude [resolve deref]))
 
-(defn maybe-resolve [x]
+(defn resolve [x]
   (or (and (symbol? x)
-           (or (binding [*ns* 'user] (resolve x))
+           (or (binding [*ns* 'user] (core/resolve x))
                (throw (RuntimeException. (str "unable to resolve symbol: " x)))))
       x))
 
-(def maybe-deref #(if (var? %) @% %))
+(defn deref [x]
+  (if (var? x) (core/deref x) x))
 
-(def parse-args (partial map (comp maybe-deref maybe-resolve read-string)))
+(def read-args (partial map (comp deref resolve read-string)))
 
 (defmulti dispatch (fn [env args] (first args)))
 
@@ -18,9 +21,15 @@
 (defmethod dispatch "jar" [env [_ & args]]
   (println "JAR!"))
 
-(defmethod dispatch :default [env args]
-  (let [[f & args] (parse-args args)]
-    (apply f args)))
+(defn main? [var]
+  (and (or (= (:name (meta var)) '-main)
+           (= (:name (meta var)) 'main))
+       (not= (:ns (meta var)) (the-ns 'user))))
 
-(defn try-dispatch [env]
-  (dispatch env *command-line-args*))
+(defmethod dispatch :default [env [f & args]]
+  (when f
+    (if-let [v (resolve (read-string f))]
+      (apply v (if (main? v) args (read-args args))))))
+
+(defn try-dispatch [env args]
+  (dispatch env args))
