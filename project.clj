@@ -12,5 +12,5 @@
                  ; for cljsbuild middleware 
                  [org.clojure/clojurescript "0.0-1820"]
                  ; for mtime middleware
-                 [digest "1.3.0"]]
+                 [digest "1.4.3"]]
   :main tailrecursion.boot)

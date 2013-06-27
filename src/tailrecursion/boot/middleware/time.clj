@@ -1,7 +1,7 @@
 (ns tailrecursion.boot.middleware.time
   (:refer-clojure :exclude [time]))
 
-(defn return [handler retval]
+(defn return [handler & [retval]]
   (fn [spec]
     (handler spec)
     retval))
