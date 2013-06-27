@@ -12,7 +12,9 @@
 
 (defn ^Model set-repositories! [^Model model repositories]
   (dotoseq model [repo repositories]
-    (.addRepository (doto (Repository.) (.setUrl repo)))))
+    (.addRepository
+     (doto (Repository.)
+       (.setUrl repo)))))
 
 (defn extract-ids [sym]
   (let [[group artifact] ((juxt namespace name) sym)]
@@ -22,13 +24,16 @@
   (dotoseq model
     [[project version & {:keys [exclusions]}] dependencies
      :let [[group artifact] (extract-ids project)]]
-    (.addDependency (doto (Dependency.)
-                      (.setGroupId group)
-                      (.setArtifactId artifact)
-                      (.setVersion version)
-                      (.setExclusions
-                       (for [e exclusions :let [[group artifact] (extract-ids e)]]
-                         (doto (Exclusion.) (.setGroupId group) (.setArtifactId artifact))))))))
+    (.addDependency
+     (doto (Dependency.)
+       (.setGroupId group)
+       (.setArtifactId artifact)
+       (.setVersion version)
+       (.setExclusions
+        (for [e exclusions :let [[group artifact] (extract-ids e)]]
+          (doto (Exclusion.)
+            (.setGroupId group)
+            (.setArtifactId artifact))))))))
 
 (defn ^Model build-model [boot pom]
   (let [{:keys [repositories dependencies directories]} boot
