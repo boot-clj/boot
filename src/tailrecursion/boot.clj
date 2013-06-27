@@ -12,7 +12,8 @@
           :directories #{}
           :repositories #{}
           :system {:jvm-opts (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
-                   :cwd (System/getProperty "user.dir")}
+                   :bootfile (io/file (System/getProperty "user.dir") "boot.clj")
+                   :cwd      (io/file (System/getProperty "user.dir"))}
           :pomegranate {:installed #{}}}})
 
 (def env (atom base-env))
@@ -58,11 +59,18 @@
 (defn dispatch-cli []
   (dispatch/dispatch-cli @env *command-line-args*))
 
+(defn chroot?! []
+  (when-let [boot (io/file (System/getenv "BOOT"))]
+    (let [bootfile (if (.isDirectory boot) (io/file boot "boot.clj") boot)
+          cwd (if (.isDirectory boot) boot (.getParentFile boot))]
+      (swap! env update-in [:boot :system] merge {:bootfile bootfile :cwd cwd}))))
+
 (defn -main [& args]
+  (chroot?!)
   (tmp/create-registry!)
   (binding [*command-line-args* args
             *ns* (create-ns 'user)
             *data-readers* {'boot/configuration #'configure}]
     (alias 'tmp 'tailrecursion.boot.tmpregistry)
     (alias 'boot 'tailrecursion.boot)
-    (load-file (or (System/getenv "BOOT") "boot.clj"))))
+    (-> @env (get-in [:boot :system :bootfile]) .getAbsolutePath load-file)))
