@@ -2,7 +2,7 @@
   (:require
     [digest           :as d]
     [clojure.data     :as data]
-    [clojure.java.io  :refer [copy file make-parents reader resource]]
+    [clojure.java.io  :refer [copy file make-parents]]
     [clojure.set      :refer [union intersection difference]])
   (:import
     java.lang.management.ManagementFactory)
