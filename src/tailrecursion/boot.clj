@@ -10,17 +10,16 @@
 (def base-env
   {:boot {:dependencies #{}
           :directories #{}
-          :repositories #{}
+          :repositories {}
           :system {:jvm-opts (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
                    :bootfile (io/file (System/getProperty "user.dir") "boot.clj")
                    :cwd      (io/file (System/getProperty "user.dir"))}
-          :pomegranate {:installed #{}}}})
+          :installed #{}}})
 
 (def env (atom base-env))
 
 (def ^:dynamic *default-repositories*
-  #{"http://repo1.maven.org/maven2/"
-    "http://clojars.org/repo/"})
+  {"http://repo1.maven.org/maven2/" "http://clojars.org/repo/"})
 
 (defn find-idx [v val]
   (ffirst (filter (comp #{val} second) (map vector (range) v))))
@@ -32,15 +31,11 @@
     (into coordinate [:exclusions syms])))
 
 (defn install [{:keys [coordinates repositories]}]
-  (let [deps (mapv (partial exclude ['org.clojure/clojure]) coordinates)
-        repos (into *default-repositories* repositories)
-        installed (pom/add-dependencies
-                   :coordinates deps
-                   :repositories (apply hash-map (mapcat (partial repeat 2) repos)))]
-    (swap! env (partial merge-with into)
-           {:boot {:dependencies deps
-                   :repositories repos
-                   :pomegranate {:installed installed}}})))
+  (let [deps      (mapv (partial exclude ['org.clojure/clojure]) coordinates)
+        repos     (into *default-repositories* repositories)
+        installed (pom/add-dependencies :coordinates deps :repositories repos)
+        new-deps  {:dependencies deps :repositories repos :installed installed}]
+    (swap! env #(update-in %1 [:boot] (partial merge-with into) new-deps))))
 
 (defn add [dirs]
   (when (seq dirs)
