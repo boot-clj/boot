@@ -1,11 +1,8 @@
 (ns tailrecursion.boot
   (:require [cemerick.pomegranate :as pom]
-            [cemerick.pomegranate.aether :refer [maven-central]]
             [clojure.java.io :as io]
             [tailrecursion.boot.tmpregistry :as tmp]
-            [tailrecursion.boot.dispatch :as dispatch]
-            [clojure.core :as core])
-  (:refer-clojure :exclude [get])
+            [tailrecursion.boot.dispatch :as dispatch])
   (:import java.lang.management.ManagementFactory
            [java.net URLClassLoader URL])
   (:gen-class))
@@ -29,7 +26,7 @@
 
 (defn exclude [syms coordinate]
   (if-let [idx (find-idx coordinate :exclusions)]
-    (let [exclusions (core/get coordinate (inc idx))]
+    (let [exclusions (get coordinate (inc idx))]
       (assoc coordinate (inc idx) (into exclusions syms)))
     (into coordinate [:exclusions syms])))
 
@@ -54,7 +51,7 @@
 
 (defn configure [{:keys [boot] :as cfg}]
   (install boot)
-  (add (core/get boot :directories))
+  (add (get boot :directories))
   (swap! env merge (dissoc cfg :boot))
   `(quote ~cfg))
 
