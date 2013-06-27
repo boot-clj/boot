@@ -8,10 +8,7 @@
    org.apache.maven.model.io.xpp3.MavenXpp3Writer))
 
 (defmacro dotoseq [obj seq-exprs & body]
-  `(let [o# ~obj]
-     (doseq ~seq-exprs
-       (doto o# ~@body))
-     o#))
+  `(let [o# ~obj] (doseq ~seq-exprs (doto o# ~@body)) o#))
 
 (defn ^Model set-repositories! [^Model model repositories]
   (dotoseq model [repo repositories]
@@ -53,10 +50,10 @@
     {:model model
      :xml (with-out-str (.write (MavenXpp3Writer.) *out* model))}))
 
-(defn wrap-pom [handler & options]
-  #(handler (merge-with merge % (if (:pom %) {:pom (make-pom %)}))))
+(defn wrap-pom [handler]
+  #(handler (if (:pom %) (update-in % [:pom] merge (make-pom %)) %)))
 
-(defmethod dispatch/dispatch-cli "pom" [env [_ name & _]]
-  (let [pom-file (io/file (get-in env [:boot :system :cwd]) (or name "pom.xml"))]
+(defmethod dispatch/dispatch-cli "pom" [env [_ path]]
+  (let [pom-file (io/file (get-in env [:boot :system :cwd]) (or path "pom.xml"))]
     (spit pom-file (:xml (make-pom env)))
     (println "Wrote" (.getAbsolutePath pom-file))))
