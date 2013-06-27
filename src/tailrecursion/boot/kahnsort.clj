@@ -1,16 +1,12 @@
 (ns tailrecursion.boot.kahnsort
-  (:use
-    [clojure.set :only [difference union intersection]]))
+  (:require
+   [clojure.set :refer [difference union intersection]]))
 
-(defn without
-  "Returns set s with x removed."
-  [s x] (difference s #{x}))
-
-(defn take-1
+(defn choose
   "Returns the pair [element, s'] where s' is set s with element removed."
   [s] {:pre [(not (empty? s))]}
   (let [item (first s)]
-    [item (without s item)]))
+    [item (disj s item)]))
 
 (defn no-incoming
   "Returns the set of nodes in graph g for which there are no incoming
@@ -25,7 +21,7 @@
   edges only.  Example: {:a #{:b}} => {:a #{:b}, :b #{}}"
   [g]
   (let [have-incoming (apply union (vals g))]
-    (reduce #(if (get % %2) % (assoc % %2 #{})) g have-incoming)))
+    (reduce #(if (% %2) % (assoc % %2 #{})) g have-incoming)))
 
 (defn topo-sort
   "Proposes a topological sort for directed graph g using Kahn's
@@ -35,9 +31,8 @@
      (topo-sort (normalize g) [] (no-incoming g)))
   ([g l s]
      (if (empty? s)
-       (when (every? empty? (vals g)) l)
-       (let [[n s'] (take-1 s)
+       (if (every? empty? (vals g)) l)
+       (let [[n s'] (choose s)
              m (g n)
-             g' (reduce #(update-in % [n] without %2) g m)]
+             g' (reduce #(update-in % [n] disj %2) g m)]
          (recur g' (conj l n) (union s' (intersection (no-incoming g') m)))))))
-
