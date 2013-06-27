@@ -69,4 +69,4 @@
             *data-readers* {'boot/configuration #'configure}]
     (alias 'tmp 'tailrecursion.boot.tmpregistry)
     (alias 'boot 'tailrecursion.boot)
-    (load-file "boot.clj")))
+    (load-file (or (System/getenv "BOOT") "boot.clj"))))
