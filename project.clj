@@ -11,6 +11,8 @@
                   [org.codehaus.plexus/plexus-utils]]
                  ; for cljsbuild middleware 
                  [org.clojure/clojurescript "0.0-1820"]
-                 ; for mtime middleware
-                 [digest "1.4.3"]]
+                 ; for watch middleware
+                 [digest "1.4.3"]
+                 ; for hoplon middleware
+                 [tailrecursion/hoplon "0.1.0-SNAPSHOT"]]
   :main tailrecursion.boot)
