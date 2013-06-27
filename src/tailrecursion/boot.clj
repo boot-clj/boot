@@ -56,7 +56,6 @@
   (install boot)
   (add (core/get boot :directories))
   (swap! env merge (dissoc cfg :boot))
-  (swap! env merge (dissoc cfg :boot))
   `(quote ~cfg))
 
 (defn dispatch-cli []
