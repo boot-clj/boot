@@ -33,13 +33,11 @@
 
 (defn- add! [^JarOutputStream target ^File base ^File src]
   (printf "Adding '%s' to jar.\n" (.getPath src))
-  (let [target (doto target (.putNextEntry (make-entry base src)))]
-    (if (.isDirectory src)
-      (doall (map (partial add! (doto target (.closeEntry)) base) (.listFiles src)))
-      (do (write! target src) (.closeEntry target)))))
-
-(defn- add-dir! [^JarOutputStream target ^File base ^File dir]
-  (doall (map (partial add! target base) (.listFiles dir))))
+  (if (.isDirectory src)
+    (doall (map (partial add! target base) (.listFiles src)))
+    (let [target (doto target (.putNextEntry (make-entry base src)))]
+      (write! target src)
+      (.closeEntry target))))
 
 (defn jar [handler]
   (fn [spec]
@@ -55,5 +53,5 @@
           jar-file    (file (:output-dir jspec) jar-name)
           directories (map file (:directories jspec))] 
       (with-open [j (JarOutputStream. (output-stream jar-file) (make-manifest))]
-        (doall (map (partial add-dir! j) directories directories)))
+        (doall (map (partial add! j) directories directories)))
       (handler (assoc spec :jar jspec)))))
