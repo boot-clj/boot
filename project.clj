@@ -14,5 +14,5 @@
                  ; for watch middleware
                  [digest "1.4.3"]
                  ; for hoplon middleware
-                 [tailrecursion/hoplon "0.1.0-SNAPSHOT"]]
+                 [tailrecursion/hoplon "1.1.0-SNAPSHOT"]]
   :main tailrecursion.boot)
