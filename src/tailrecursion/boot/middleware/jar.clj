@@ -35,9 +35,7 @@
   (printf "Adding '%s' to jar.\n" (.getPath src))
   (if (.isDirectory src)
     (doall (map (partial add! target base) (.listFiles src)))
-    (let [target (doto target (.putNextEntry (make-entry base src)))]
-      (write! target src)
-      (.closeEntry target))))
+    (doto target (.putNextEntry (make-entry base src)) (write! src) (.closeEntry))))
 
 (defn jar [handler]
   (fn [spec]
