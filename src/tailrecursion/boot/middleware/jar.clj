@@ -50,9 +50,7 @@
             (comp (partial some identity) vector)
             (-> dfl-opts (merge (:jar spec)) (update-in [:output-to] file)) 
             {:output-dir (mkdir ::jar)})
-          jar-file    (file (:output-dir jspec) jar-name)
-          manifest    (make-manifest)
-          target      (JarOutputStream. (output-stream jar-file) manifest)]
-      (doall (map (comp (partial add! target) file) (:directories jspec)))
-      (.close target)
+          jar-file    (file (:output-dir jspec) jar-name)] 
+      (with-open [j (JarOutputStream. (output-stream jar-file) (make-manifest))]
+        (doall (map (comp (partial add! j) file) (:directories jspec)))) 
       (handler (assoc spec :jar jspec)))))
