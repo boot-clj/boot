@@ -3,12 +3,9 @@
     [clojure.java.io                          :refer [file make-parents]]
     [tailrecursion.boot.deps                  :refer [deps]]
     [tailrecursion.boot.tmpregistry           :refer [mk mkdir exists? unmk]]
-    [tailrecursion.boot.middleware.cljsbuild  :refer [cljsbuild]]
     [tailrecursion.hoplon.compiler.compiler   :refer [install-deps compile-dir]]))
 
 (def dfl-opts     {:source-dir "src/html"})
-(def cljs         (-> identity cljsbuild))
-(def update-keys  #(into {} (map (fn [[k v]] [(apply %2 k %&) v]) %1)))
 (def update-vals  #(into {} (map (fn [[k v]] [k (apply %2 v %&)]) %1)))
 
 (defn hoplon [handler]
