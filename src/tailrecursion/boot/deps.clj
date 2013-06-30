@@ -15,7 +15,7 @@
 
 (defn deps []
   (let [{repos :repositories coords :dependencies} (:boot @boot/env)]
-    (->> (resolve-dependencies :repositories repos :coordinates coords)
+    (->> (resolve-dependencies :repositories (zipmap repos repos) :coordinates coords)
       (topo-sort)
       (map #(:file (meta %)))
       (filter #(.endsWith (.getPath %) ".jar"))
