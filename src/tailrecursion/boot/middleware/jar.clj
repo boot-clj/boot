@@ -43,11 +43,17 @@
       (doseq [f (.listFiles src)] (add! target base f))
       (doto target (.putNextEntry (ent base src)) (write! src) (.closeEntry)))))
 
+(defn- artifact-info [pom]
+  (when (and (:project pom) (:version pom))
+    (let [p (cycle (split (str (:project pom)) #"/"))]
+      {:group-id    (first p)
+       :artifact-id (second p)
+       :version     (:version pom)
+       :pom-xml     (:xml pom)})))
+
 (defn jar [handler]
   (fn [spec]
-    (let [artifact-id (when-let [p (name (get-in spec [:pom :project]))]
-                        (clojure.string/replace p #"^[^/]*/" ""))
-          version     (get-in spec [:pom :version])
+    (let [{:keys [artifact-id group-id version pom-xml]} (artifact-info (:pom spec))
           jar-name    (str (if artifact-id (str artifact-id "-" version) "out") ".jar") 
           jspec       (merge-with
                         (comp (partial some identity) vector)
@@ -57,9 +63,13 @@
           directories (->> (get-in spec [:boot :directories])
                         (union (:resources jspec))
                         (map file))
+          pom-dir     (mkdir ::pom)
           manifest    (make-manifest (:main jspec) (:manifest jspec))]
       (with-open [j (JarOutputStream. (output-stream jar-file) manifest)]
+        (when pom-xml
+          (let [pom-path ["META-INF" "maven" group-id artifact-id "pom.xml"]
+                pom-file (doto (apply file pom-dir pom-path) make-parents)]
+            (spit pom-file pom-xml)
+            (add! j pom-dir pom-dir)))
         (doseq [d directories] (add! j d d)))
-      (when-let [pom (get-in spec [:pom :xml])]
-        (spit (file (:output-dir jspec) "pom.xml") pom))
       (handler (assoc spec :jar jspec)))))
