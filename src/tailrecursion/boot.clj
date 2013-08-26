@@ -8,13 +8,15 @@
   (:gen-class))
 
 (def base-env
-  {:boot {:dependencies #{}
-          :directories  #{}
-          :repositories #{}
-          :system       {:jvm-opts (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
-                         :bootfile (io/file (System/getProperty "user.dir") "boot.clj")
-                         :cwd      (io/file (System/getProperty "user.dir"))}
-          :installed    #{}}})
+  {:project      nil
+   :version      nil
+   :dependencies #{}
+   :directories  #{}
+   :repositories #{}
+   :system       {:jvm-opts (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
+                  :bootfile (io/file (System/getProperty "user.dir") "boot.clj")
+                  :cwd      (io/file (System/getProperty "user.dir"))}
+   :installed    #{}})
 
 (def env (atom base-env))
 
@@ -30,12 +32,12 @@
       (assoc coordinate (inc idx) (into exclusions syms)))
     (into coordinate [:exclusions syms])))
 
-(defn install [{:keys [coordinates repositories]}]
-  (let [deps      (mapv (partial exclude ['org.clojure/clojure]) coordinates)
+(defn install [{:keys [dependencies repositories]}]
+  (let [deps      (mapv (partial exclude ['org.clojure/clojure]) dependencies)
         repos     (into *default-repositories* repositories)
         installed (pom/add-dependencies :coordinates deps :repositories (zipmap repos repos))
         new-deps  {:dependencies deps :repositories repos :installed installed}]
-    (swap! env #(update-in %1 [:boot] (partial merge-with into) new-deps))))
+    (swap! env (partial merge-with into) new-deps)))
 
 (defn add [dirs]
   (when (seq dirs)
@@ -43,29 +45,19 @@
                  (.setAccessible true))]
       (.invoke meth (ClassLoader/getSystemClassLoader)
                (object-array (map #(.. (io/file %) toURI toURL) dirs)))
-      (swap! env update-in [:boot :directories] into dirs))))
+      (swap! env update-in [:directories] into dirs))))
 
-(defn configure [{:keys [boot] :as cfg}]
-  (install boot)
-  (add (get boot :directories))
-  (swap! env merge (dissoc cfg :boot))
+(defn configure [cfg]
+  (install cfg)
+  (add (get cfg :directories))
+  (swap! env merge cfg)
   `(quote ~cfg))
 
-(defn dispatch-cli []
-  (dispatch/dispatch-cli @env *command-line-args*))
-
-(defn chroot?! []
-  (when-let [boot (io/file (System/getenv "BOOT"))]
-    (let [bootfile (if (.isDirectory boot) (io/file boot "boot.clj") boot)
-          cwd (if (.isDirectory boot) boot (.getParentFile boot))]
-      (swap! env update-in [:boot :system] merge {:bootfile bootfile :cwd cwd}))))
-
 (defn -main [& args]
-  (chroot?!)
   (tmp/create-registry!)
   (binding [*command-line-args* args
             *ns* (create-ns 'user)
             *data-readers* {'boot/configuration #'configure}]
     (alias 'tmp 'tailrecursion.boot.tmpregistry)
     (alias 'boot 'tailrecursion.boot)
-    (-> @env (get-in [:boot :system :bootfile]) .getAbsolutePath load-file)))
+    (-> @env (get-in [:system :bootfile]) .getAbsolutePath load-file)))
