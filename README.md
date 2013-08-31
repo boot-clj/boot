@@ -17,8 +17,8 @@ being performed by the IO handler) are TBD.
 
 ## Build
 
-		$ make boot
-		$ cp ./boot /somewhere/in/your/path/
+    $ make boot
+    $ cp ./boot /somewhere/in/your/path/
 
 ## Usage
 
@@ -26,7 +26,7 @@ There is an example `boot.clj` in this project.  It loads a Maven
 dependency, adds a directory to the classpath, and specifies a
 function to evaluate when the JVM is all set up.
 
-		$ boot 1 2 3
+    $ boot 1 2 3
 
 You can test boot without installing it by running it via `lein run`
 in this directory, e.g.:
