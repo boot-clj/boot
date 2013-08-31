@@ -21,7 +21,7 @@ Clojure functions, so it's easy to customize the build process
 for individual projects and to package these build processes as
 clojure namespaces for distribution.
 
-## Building Boot
+## Building and Installing Boot
 
 You'll need a recent version of [Leiningen](https://github.com/technomancy/leiningen)
 if you want to build boot yourself. Pre-made binaries will be
