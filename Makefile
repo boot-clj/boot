@@ -5,8 +5,7 @@ help:
 	@echo
 	@echo 'Targets:'
 	@echo '  boot         Create executable boot jar file.'
-	@echo '  boot-faster  Create executable boot jar file with class data sharing'
-	@echo '               for faster JVM startup times.'
+	@echo '  boot-faster  Create executable boot jar file with class data sharing.'
 	@echo
 
 clean:
