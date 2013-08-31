@@ -5,6 +5,8 @@ specification map from a file `boot.clj` in the current directory
 and sets up a JVM with Clojure, dependencies, and directories
 on the classpath and runs a function as specified in this map.
 
+This is experimental software and subject to frequent change.
+
 ## Boot-based Build Tools
 
 While boot is useful for just running some Clojure function in
