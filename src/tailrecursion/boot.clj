@@ -1,8 +1,7 @@
 (ns tailrecursion.boot
-  (:require [cemerick.pomegranate :as pom]
-            [clojure.java.io :as io]
-            [tailrecursion.boot.tmpregistry :as tmp]
-            [tailrecursion.boot.dispatch :as dispatch])
+  (:require [cemerick.pomegranate           :as pom]
+            [clojure.java.io                :as io]
+            [tailrecursion.boot.tmpregistry :as tmp])
   (:import java.lang.management.ManagementFactory
            [java.net URLClassLoader URL])
   (:gen-class))
@@ -12,52 +11,46 @@
    :version      nil
    :dependencies #{}
    :directories  #{}
-   :repositories #{}
+   :repositories #{"http://repo1.maven.org/maven2/" "http://clojars.org/repo/"}
    :system       {:jvm-opts (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
                   :bootfile (io/file (System/getProperty "user.dir") "boot.clj")
                   :cwd      (io/file (System/getProperty "user.dir"))}
-   :installed    #{}})
+   :installed    #{}
+   :main         nil})
 
 (def env (atom base-env))
 
-(def ^:dynamic *default-repositories*
-  #{"http://repo1.maven.org/maven2/" "http://clojars.org/repo/"})
-
-(defn find-idx [v val]
+(defn index-of [v val]
   (ffirst (filter (comp #{val} second) (map vector (range) v))))
 
 (defn exclude [syms coordinate]
-  (if-let [idx (find-idx coordinate :exclusions)]
+  (if-let [idx (index-of coordinate :exclusions)]
     (let [exclusions (get coordinate (inc idx))]
       (assoc coordinate (inc idx) (into exclusions syms)))
     (into coordinate [:exclusions syms])))
 
-(defn install [{:keys [dependencies repositories]}]
-  (let [deps      (mapv (partial exclude ['org.clojure/clojure]) dependencies)
-        repos     (into *default-repositories* repositories)
-        installed (pom/add-dependencies :coordinates deps :repositories (zipmap repos repos))
-        new-deps  {:dependencies deps :repositories repos :installed installed}]
-    (swap! env (partial merge-with into) new-deps)))
+(defn add-artifacts! []
+  (let [{deps :dependencies, repos :repositories} @env
+        deps (mapv (partial exclude ['org.clojure/clojure]) deps)]
+    (pom/add-dependencies :coordinates deps :repositories (zipmap repos repos))))
 
-(defn add [dirs]
-  (when (seq dirs)
-    (let [meth (doto (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL]))
-                 (.setAccessible true))]
-      (.invoke meth (ClassLoader/getSystemClassLoader)
-               (object-array (map #(.. (io/file %) toURI toURL) dirs)))
-      (swap! env update-in [:directories] into dirs))))
-
-(defn configure [cfg]
-  (install cfg)
-  (add (get cfg :directories))
-  (swap! env merge cfg)
-  `(quote ~cfg))
+(defn add-directories! []
+  (when-let [dirs (seq (:directories @env))] 
+    (let [meth (doto (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL])) (.setAccessible true))]
+      (.invoke meth (ClassLoader/getSystemClassLoader) (object-array (map #(.. (io/file %) toURI toURL) dirs))))))
 
 (defn -main [& args]
-  (tmp/create-registry!)
-  (binding [*command-line-args* args
-            *ns* (create-ns 'user)
-            *data-readers* {'boot/configuration #'configure}]
-    (alias 'tmp 'tailrecursion.boot.tmpregistry)
-    (alias 'boot 'tailrecursion.boot)
-    (-> @env (get-in [:system :bootfile]) .getAbsolutePath load-file)))
+  (swap! env assoc-in [:system :argv] args)
+  (let [f (io/file (get-in @env [:system :bootfile]))]
+    (assert (.exists f) (format "File '%s' not found." f))
+    (let [cfg (read-string (slurp f))]
+      (swap! env merge cfg)
+      (add-artifacts!)
+      (add-directories!)
+      (let [m (:main @env)]
+        (assert (and (symbol? m) (namespace m)) "The :main value must be a namespaced symbol.")
+        (require (symbol (namespace m))) 
+        (let [g (resolve m)]
+          (assert g (format "Can't resolve #'%s." m)) 
+          (swap! env merge (tmp/create-registry!)) 
+          (g env))))))

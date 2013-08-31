@@ -5,6 +5,8 @@
   (:refer-clojure :exclude [get])
   (:import java.io.File))
 
+(declare unmk! mk! mkdir! exists?)
+
 (def ^:dynamic *basedir* (io/file (System/getProperty "user.dir")))
 
 ;;; file stuff
@@ -30,13 +32,19 @@
   (destroy-registry!)
   (let [dir (registry-dir)]
     (swap! registries assoc-in [dir] {})
-    (doto dir (.mkdirs))))
+    (doto dir (.mkdirs))
+    {:mk! mk!, :mkdir! mkdir!}))
 
-(defn ^File make-file [k name]
+(defn ^File make-file! [k name]
   {:pre [(or (symbol? k) (keyword? k) (string? k))]}
   (let [reg (registry-dir)
         tmp (io/file reg (munge k) name)]
     (get-in (swap! registries assoc-in [reg k] tmp) [reg k])))
+
+(defn make-key! [k]
+  (let [k (or k (keyword (str *ns*) (str (gensym))))]
+    (when (exists? k) (unmk! k))
+    k))
 
 ;;; obtaining, deleting tmp files from a registry
 
@@ -49,20 +57,20 @@
 (defn exists? [k]
   (get-in @registries [(registry-dir) k]))
 
-(defn unmk [k]
+(defn unmk! [k]
   (let [reg (registry-dir)]
     (swap! registries update-in [reg] dissoc k)
     (delete! (io/file reg (munge k)))))
 
-(defn mk [k & [name]]
-  (when (exists? k) (unmk k))
-  (doto (make-file k (or name (str (gensym "file") ".tmp")))
-    io/make-parents
-    (.createNewFile)
-    (.setLastModified (System/currentTimeMillis))))
+(defn mk! [& [k]]
+  (let [k (make-key! k)]
+    (doto (make-file! k (str (gensym "file") ".tmp"))
+      io/make-parents
+      (.createNewFile)
+      (.setLastModified (System/currentTimeMillis)))))
 
-(defn mkdir [k & [name]]
-  (when (exists? k) (unmk k))
-  (doto (make-file k (or name (str (gensym "dir"))))
-    delete!
-    (.mkdirs)))
+(defn mkdir! [& [k]]
+  (let [k (make-key! k)]
+    (doto (make-file! k (str (gensym "dir")))
+      delete!
+      (.mkdirs))))
