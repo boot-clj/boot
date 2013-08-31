@@ -31,7 +31,7 @@ function to evaluate when the JVM is all set up.
 You can test boot without installing it by running it via `lein run`
 in this directory, e.g.:
 
-    lein run 1 2 3
+    $ lein run 1 2 3
 
 ## License
 
