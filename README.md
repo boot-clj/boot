@@ -23,6 +23,10 @@ Clojure functions, so it's easy to customize the build process
 for individual projects and to package these build processes as
 clojure namespaces for distribution.
 
+There are a number of boot middlewares included in the [boot-middleware](#)
+repository to do useful things like watch directories for
+changed files, syncing/copying files between directories, etc.
+
 ### Tempfiles
 
 Since most build processes generate files at some point, boot
