@@ -13,7 +13,7 @@ tooling. The idea is: instead of a pseudo-declarative project.clj
 file in your Clojure project, multiple JVMs, plugins, etc., you
 simply use boot to run a Clojure function which builds your project.
 
-### Middleware
+### Middlewares
 
 Individual tasks within the build process can be composed as
 middlewares (like [ring](https://github.com/mmcgrana/ring) does),
@@ -23,7 +23,7 @@ Clojure functions, so it's easy to customize the build process
 for individual projects and to package these build processes as
 clojure namespaces for distribution.
 
-### Tempfile Management
+### Tempfiles
 
 Since most build processes generate files at some point, boot
 includes facilities for creating and managing temporary files
