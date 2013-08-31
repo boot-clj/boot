@@ -25,7 +25,7 @@ clojure namespaces for distribution.
 
 There are a number of boot middlewares included in the [boot-middleware](#)
 repository to do useful things like watch directories for
-changed files, syncing/copying files between directories, etc.
+changed files, sync/copy files between directories, etc.
 
 ### Tempfiles
 
