@@ -1,18 +1,27 @@
 # boot
 
-`boot` is a minimal Clojure program 'bootloader'.  It provides a
-Clojure environment with Clojure and Pomegranate on the classpath.
+Boot is a minimal Clojure program 'bootloader'.  It reads a
+specification map from a file `boot.clj` in the current directory
+and sets up a JVM with Clojure, dependencies, and directories
+on the classpath and runs a function as specified in this map.
 
-The idea is: instead of a pseudo-declarative project.clj in your
-Clojure project, you run a function in the Clojure/Pomegranate
-environment boot provides. This function then builds the project.
+# Boot-based Build Tools
+
+While boot is useful for just running some Clojure function in
+a JVM, it can also be used as the foundation for project build
+tooling. The idea is: instead of a pseudo-declarative project.clj
+file in your Clojure project, multiple JVMs, plugins, etc., you
+simply use boot to run a Clojure function which builds your project.
 
 Individual tasks within the build process can be composed as
 middlewares (like [ring](https://github.com/mmcgrana/ring) does),
 for example. This is much more powerful and straightforward than
-the Leiningen plugin architecture.
+the Leiningen plugin architecture. Everything is implemented as
+Clojure functions, so it's easy to customize the build process
+for individual projects and to package these build processes as
+clojure namespaces for distribution.
 
-## Build
+## Building Boot
 
 You'll need a recent version of [Leiningen](https://github.com/technomancy/leiningen)
 if you want to build boot yourself. Pre-made binaries will be
@@ -21,11 +30,12 @@ made available someday.
     $ make boot
     $ cp ./boot /somewhere/in/your/path/
 
-## Use
+## Using Boot
 
-There is an example `boot.clj` in this project.  It loads a Maven
-dependency, adds a directory to the classpath, and specifies a
-function to evaluate when the JVM is all set up.
+Check out the [example boot.clj](https://github.com/tailrecursion/boot/blob/master/boot.clj)
+in this project.  It loads a Maven dependency, adds a directory
+to the classpath, and specifies a function to evaluate when the
+JVM is all set up.
 
     $ boot 1 2 3
 
