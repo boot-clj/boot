@@ -15,7 +15,6 @@
    :system       {:jvm-opts (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
                   :bootfile (io/file (System/getProperty "user.dir") "boot.clj")
                   :cwd      (io/file (System/getProperty "user.dir"))}
-   :installed    #{}
    :main         nil})
 
 (def env (atom base-env))

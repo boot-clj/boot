@@ -1,5 +1,0 @@
-#!/bin/bash
-
-set -e
-
-java -jar $HOME/.boot/boot*-standalone.jar $@

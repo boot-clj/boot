@@ -1,9 +1,0 @@
-#!/bin/bash
-
-set -e
-echo "building boot"
-lein uberjar
-mkdir -p $HOME/.boot
-echo "copying uberjar to ~/.boot"
-cp target/boot*-standalone.jar $HOME/.boot
-echo "done. copy script/boot and copy to your path somewhere"

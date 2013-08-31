@@ -15,16 +15,21 @@ build/compilation steps like AOT, ClojureScript, jar/war, etc.
 The structure of the boot map (and which special keys result in IO
 being performed by the IO handler) are TBD.
 
+## Build
+
+		$ make boot
+		$ cp ./boot /somewhere/in/your/path/
+
 ## Usage
 
 There is an example `boot.clj` in this project.  It loads a Maven
-dependency, requires a namespace from the dependency, and evaluates
-some code.
+dependency, adds a directory to the classpath, and specifies a
+function to evaluate when the JVM is all set up.
 
-    script/install
-    script/boot 1 2 3
+		$ boot 1 2 3
 
-You can test boot by running it via `lein run` in this directory, e.g.:
+You can test boot without installing it by running it via `lein run`
+in this directory, e.g.:
 
     lein run 1 2 3
 

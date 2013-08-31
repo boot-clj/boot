@@ -14,3 +14,4 @@ pom.xml.asc
 *.swo
 *.swp
 .boot/tmp
+boot
