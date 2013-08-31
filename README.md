@@ -28,7 +28,7 @@ clojure namespaces for distribution.
 Since most build processes generate files at some point, boot
 includes facilities for creating and managing temporary files
 and directories. This temporary filesystem facility can be used
-to have "auto-cleaning" builds---builds that don't need to have
+to have "auto-cleaning" builds&mdash;builds that don't need to have
 a "clean" target because they simply don't create stale garbage.
 
 ## Building and Installing Boot
