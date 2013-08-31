@@ -4,23 +4,24 @@
 Clojure environment with Clojure and Pomegranate on the classpath.
 
 The idea is: instead of a pseudo-declarative project.clj in your
-Clojure project, you have a boot.clj - an actual Clojure program -
-that comes up in the Clojure/Pomegranate environment boot provides.
+Clojure project, you run a function in the Clojure/Pomegranate
+environment boot provides. This function then builds the project.
 
-Capabilities can be added to boot-based projects with middlewares.
-Instead of plugins, boot specifies a 'boot map' similar to Ring's
-'request map', that is threaded through middlewares implementing
-build/compilation steps like AOT, ClojureScript, jar/war, etc.
-
-The structure of the boot map (and which special keys result in IO
-being performed by the IO handler) are TBD.
+Individual tasks within the build process can be composed as
+middlewares (like [ring](https://github.com/mmcgrana/ring) does),
+for example. This is much more powerful and straightforward than
+the Leiningen plugin architecture.
 
 ## Build
+
+You'll need a recent version of [Leiningen](https://github.com/technomancy/leiningen)
+if you want to build boot yourself. Pre-made binaries will be
+made available someday.
 
     $ make boot
     $ cp ./boot /somewhere/in/your/path/
 
-## Usage
+## Use
 
 There is an example `boot.clj` in this project.  It loads a Maven
 dependency, adds a directory to the classpath, and specifies a
