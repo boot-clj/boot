@@ -21,6 +21,12 @@ Clojure functions, so it's easy to customize the build process
 for individual projects and to package these build processes as
 clojure namespaces for distribution.
 
+Since most build processes generate files at some point, boot
+includes facilities for creating and managing temporary files
+and directories. This temporary filesystem facility can be used
+to have "auto-cleaning" builds---builds that don't need to have
+a "clean" target because they simply don't create stale garbage.
+
 ## Building and Installing Boot
 
 You'll need a recent version of [Leiningen](https://github.com/technomancy/leiningen)
