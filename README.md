@@ -60,6 +60,19 @@ in this directory, e.g.:
 
     $ lein run 1 2 3
 
+## Boot Tasks
+
+In the example boot.clj file the `:tasks` value is a map of
+task names to boot configurations. This works like
+[Leiningen profiles](https://github.com/technomancy/leiningen/blob/master/doc/PROFILES.md)
+&mdash;when invoked the task's config map is merged into the
+current boot environment. Tasks are invoked by providing the
+task name as the first command line argument. Subsequent
+arguments are added to the environment.
+
+    # invoke the :foo task with arguments 1, 2, and 3
+    $ boot foo 1 2 3
+
 ## License
 
 Copyright © 2013 Alan Dipert and Micha Niskin
