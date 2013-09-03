@@ -38,7 +38,7 @@
 (defn init! [base-env]
   (doto (atom base-env) (add-watch (gensym) (fn [_ _ o n] (configure! o n)))))
 
-(defn prep-next! [env & [spec]]
+(defn prep-next-task! [env & [spec]]
   (let [spec (or spec env)
         args (get-in env [:system :argv])]
     (if-let [task-key (keyword (first args))]
@@ -49,7 +49,11 @@
         (assoc-in (merge env spec task deps) [:system :argv] argv))
       (merge env spec))))
 
-(defn run-next! [env & spec]
-  (apply swap! env prep-next! spec)
+(defn run-next-task! [env]
   (when-let [m (:main @env)]
-    (cond (symbol? m) ((load-sym m) env) (seq? m) ((eval m) env))))
+    (cond (symbol? m) ((load-sym m) env) (seq? m) ((eval m) env)))
+  env)
+
+(defn next-task! [env & [spec]]
+  (swap! env prep-next-task! spec)
+  (run-next-task! env))
