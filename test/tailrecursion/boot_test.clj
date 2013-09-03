@@ -5,7 +5,7 @@
     [tailrecursion.boot :refer :all]))
 
 (defn main [env]
-  (pprint @env))
+  (pprint env))
 
 (deftest a-test
   (testing "FIXME, I fail."

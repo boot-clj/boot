@@ -12,4 +12,6 @@
   {:main
    (do
      (require '[clojure.pprint :refer [pprint]])
-     (fn [env] (println "bar!") (pprint env)))}}}
+     (fn [env] (println "bar!") (pprint env)))}
+  :baz
+  {:main tailrecursion.boot-test/main}}}

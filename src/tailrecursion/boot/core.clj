@@ -53,8 +53,9 @@
 
 (defn run-current-task! [boot]
   (when-let [m (:main @boot)]
-    (cond (symbol? m) ((load-sym m) boot) (seq? m) ((eval m) boot)))
-  boot)
+    (cond (symbol? m) ((load-sym m) boot) (seq? m) ((eval m) boot))
+    (swap! boot dissoc :main)
+    :ok))
 
 (defn run-next-task! [boot & [spec]]
   (prep-next-task! boot spec)

@@ -16,7 +16,6 @@
                    :bootfile    (io/file (System/getProperty "user.dir") "boot.clj")
                    :tmpregistry (io/file ".boot" "tmp")}
    :tmp           nil
-   :main          nil
    :tasks         nil})
 
 (defn -main [& args]
@@ -24,5 +23,6 @@
         tmp   #(tmp/init! (tmp/registry (get-in @boot [:system :tmpregistry])))
         f     (io/file (get-in @boot [:system :bootfile]))]
     (assert (.exists f) (format "File '%s' not found." f))
-    (core/run-next-task! boot (assoc (read-string (slurp f)) :tmp (tmp)))
+    (core/run-next-task! boot (assoc (read-string (slurp f)) :tmp (tmp))) 
+    (while (core/run-next-task! boot))
     nil))
