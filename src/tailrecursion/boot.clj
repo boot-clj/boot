@@ -16,7 +16,7 @@
                    :bootfile    (io/file (System/getProperty "user.dir") "boot.clj")
                    :tmpregistry (io/file ".boot" "tmp")}
    :tmp           nil
-   :main          'tailrecursion.boot.core/dummy-task
+   :main          'tailrecursion.boot.core/usage-task
    :tasks         nil})
 
 (defn -main [& args]

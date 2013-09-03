@@ -35,10 +35,12 @@
 
 ;; PUBLIC ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn dummy-task [boot]
-  (printf "Usage: boot [task ...]\n")
-  (printf "Available tasks: %s.\n"
-          (apply str (interpose ", " (map name (keys (:tasks @boot)))))))
+(defn usage-task [boot]
+  (let [tasks (map name (keys (:tasks @boot)))]
+    (printf "Usage: boot [task ...]\n") 
+    (if (seq tasks)
+      (printf "Available tasks: %s.\n" (apply str (interpose ", " tasks)))
+      (printf "There are no available tasks.\n"))))
 
 (defn init! [base-env]
   (doto (atom base-env) (add-watch (gensym) (fn [_ _ o n] (configure! o n)))))
