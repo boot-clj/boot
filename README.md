@@ -15,6 +15,16 @@ tooling. The idea is: instead of a pseudo-declarative project.clj
 file in your Clojure project, multiple JVMs, plugins, etc., you
 simply use boot to run a Clojure function which builds your project.
 
+### Boot env
+
+Boot maintains its state in the `env` atom. This atom is
+initialized with a default env merged with the map provided in
+the `boot.clj` file. The atom is passed as an argument to the
+Clojure function specified in its `:main` key. The application
+state is also tied to the atom, so adding dependencies to the
+`:dependencies` key, for example, will cause those artifacts
+to be fetched, installed, and added to the JVM classpath.
+
 ### Middlewares
 
 Individual tasks within the build process can be composed as
@@ -28,6 +38,14 @@ clojure namespaces for distribution.
 There are a number of boot middlewares included in the [boot-middleware](#)
 repository to do useful things like watch directories for
 changed files, sync/copy files between directories, etc.
+
+### Tasks
+
+Boot tasks are similar to Leiningen's
+[profiles](https://github.com/technomancy/leiningen/blob/master/doc/PROFILES.md).
+Multiple subconfigurations may be sepcified under the `:tasks`
+key. When invoked from the command line the selected subconfiguration
+is merged into the current env atom.
 
 ### Tempfiles
 
@@ -55,23 +73,18 @@ JVM is all set up.
 
     $ boot 1 2 3
 
+Tasks are invoked by passing the name of the task key as the
+first command line argument.
+
+    # invoke the :foo task with arguments 1, 2, and 3
+    $ boot foo 1 2 3
+
+### Hacking on Boot
+
 You can test boot without installing it by running it via `lein run`
 in this directory, e.g.:
 
     $ lein run 1 2 3
-
-## Boot Tasks
-
-In the example boot.clj file the `:tasks` value is a map of
-task names to boot configurations. This works like
-[Leiningen profiles](https://github.com/technomancy/leiningen/blob/master/doc/PROFILES.md)
-&mdash;when invoked the task's config map is merged into the
-current boot environment. Tasks are invoked by providing the
-task name as the first command line argument. Subsequent
-arguments are added to the environment.
-
-    # invoke the :foo task with arguments 1, 2, and 3
-    $ boot foo 1 2 3
 
 ## License
 
