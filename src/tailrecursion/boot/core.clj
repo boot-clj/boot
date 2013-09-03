@@ -63,7 +63,7 @@
     (cond (symbol? m) ((load-sym m) boot) (seq? m) ((eval m) boot))
     (swap! boot dissoc :main)
     (flush)
-    :ok))
+    ::okay))
 
 (defn run-next-task! [boot & [spec]]
   (prep-next-task! boot spec)
