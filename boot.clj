@@ -1,6 +1,5 @@
 {:dependencies [[tailrecursion/javelin "1.0.0-SNAPSHOT"]]
  :directories #{"test"}
- :main tailrecursion.boot-test/main
  :tasks
  {:foo
   {:dependencies [[alandipert/enduro "1.1.2"]]

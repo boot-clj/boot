@@ -60,3 +60,6 @@
 (defn run-next-task! [boot & [spec]]
   (prep-next-task! boot spec)
   (run-current-task! boot))
+
+(defn dummy-task [boot]
+  (println "Nothing to do."))
