@@ -35,6 +35,9 @@
 
 ;; PUBLIC ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn dummy-task [boot]
+  (println "Nothing to do."))
+
 (defn init! [base-env]
   (doto (atom base-env) (add-watch (gensym) (fn [_ _ o n] (configure! o n)))))
 
@@ -60,6 +63,3 @@
 (defn run-next-task! [boot & [spec]]
   (prep-next-task! boot spec)
   (run-current-task! boot))
-
-(defn dummy-task [boot]
-  (println "Nothing to do."))
