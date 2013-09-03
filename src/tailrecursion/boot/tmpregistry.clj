@@ -1,76 +1,59 @@
 (ns tailrecursion.boot.tmpregistry
   (:require [clojure.java.io :as io]
+            [clojure.set :refer [union intersection difference]]
             [clojure.string :as str]
             [clojure.core :as core])
   (:refer-clojure :exclude [get])
   (:import java.io.File))
-
-(declare unmk! mk! mkdir! exists?)
-
-(def ^:dynamic *basedir* (io/file (System/getProperty "user.dir")))
-
-;;; file stuff
 
 (defn delete! [f]
   (let [delete (io/file f)]
     (doseq [child (.listFiles delete)] (delete! child))
     (.delete delete)))
 
-;;; registry setup/teardown
+(defmulti  make-file! (fn [type f] type))
+(defmethod make-file! ::file [type f] (doto f (.createNewFile)))
+(defmethod make-file! ::dir  [type f] (doto f (.mkdirs)))
 
-(def registries (atom {}))
+;;; tmpregistry interface
 
-(defn ^File registry-dir []
-  (io/file *basedir* ".boot" "tmp"))
+(defprotocol ITmpRegistry
+  (-init!     [this]                "Initialize temp registry.")
+  (-get       [this k]              "Retrieve a temp file or directory.")
+  (-unmk!     [this k]              "Remove a temp file or directory.")
+  (-mk!       [this type key name]  "Create a temp file or directory."))
 
-(defn destroy-registry! []
-  (let [dir (registry-dir)]
-    (swap! registries dissoc dir)
-    (delete! dir)))
+(defn init!   [this]              (-init! this))
+(defn get     [this key]          (-get this key))
+(defn unmk!   [this key]          (-unmk! this key))
+(defn mk!     [this key & [name]] (-mk! this ::file key (or name "file.tmp")))
+(defn mkdir!  [this key & [name]] (-mk! this ::dir key (or name "dir.tmp")))
 
-(defn create-registry! []
-  (destroy-registry!)
-  (let [dir (registry-dir)]
-    (swap! registries assoc-in [dir] {})
-    (doto dir (.mkdirs))
-    {:mk! mk!, :mkdir! mkdir!}))
+;;; tmpregistry implementation
 
-(defn ^File make-file! [k name]
-  {:pre [(or (symbol? k) (keyword? k) (string? k))]}
-  (let [reg (registry-dir)
-        tmp (io/file reg (munge k) name)]
-    (get-in (swap! registries assoc-in [reg k] tmp) [reg k])))
+(defn- persist! [dir oldreg newreg]
+  (let [[o n] (map set [oldreg newreg])
+        rmv (difference o n)
+        add (difference n o)]
+    (doseq [[k v] rmv]
+      (delete! (io/file dir (munge k))))
+    (doseq [[k [t _ n]] add]
+      (make-file! t (doto (io/file dir (munge k) n) io/make-parents)))))
 
-(defn make-key! [k]
-  (let [k (or k (keyword (str *ns*) (str (gensym))))]
-    (when (exists? k) (unmk! k))
-    k))
+(defrecord TmpRegistry [dir reg]
+  ITmpRegistry
+  (-init! [this]
+    (delete! dir)
+    (add-watch reg (gensym) (fn [_ _ old new] (persist! dir old new)))
+    this)
+  (-get [this k]
+    (io/file dir (munge k) (nth (@reg k) 2)))
+  (-unmk! [this k]
+    (swap! reg dissoc k)
+    this)
+  (-mk! [this t k n]
+    (swap! reg assoc k [t (gensym) n])
+    (-get this k)))
 
-;;; obtaining, deleting tmp files from a registry
-
-(defn get [k]
-  (let [reg (registry-dir)]
-    (or (get-in @registries [reg k])
-        (throw (IllegalArgumentException.
-                (format "No temp file for key %s in registry at %s." k reg))))))
-
-(defn exists? [k]
-  (get-in @registries [(registry-dir) k]))
-
-(defn unmk! [k]
-  (let [reg (registry-dir)]
-    (swap! registries update-in [reg] dissoc k)
-    (delete! (io/file reg (munge k)))))
-
-(defn mk! [& [k]]
-  (let [k (make-key! k)]
-    (doto (make-file! k (str (gensym "file") ".tmp"))
-      io/make-parents
-      (.createNewFile)
-      (.setLastModified (System/currentTimeMillis)))))
-
-(defn mkdir! [& [k]]
-  (let [k (make-key! k)]
-    (doto (make-file! k (str (gensym "dir")))
-      delete!
-      (.mkdirs))))
+(defn registry [dir]
+  (TmpRegistry. (io/file dir) (atom {})))

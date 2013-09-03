@@ -6,18 +6,20 @@
            [java.net URLClassLoader URL])
   (:gen-class))
 
-(def base-env
-  {:project      nil
-   :version      nil
-   :dependencies #{}
-   :directories  #{}
-   :repositories #{"http://repo1.maven.org/maven2/" "http://clojars.org/repo/"}
-   :system       {:jvm-opts (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
-                  :bootfile (io/file (System/getProperty "user.dir") "boot.clj")
-                  :cwd      (io/file (System/getProperty "user.dir"))}
-   :main         nil})
+(declare configure!)
 
-(def env (atom base-env))
+(def base-env
+  {:project       nil
+   :version       nil
+   :dependencies  #{}
+   :directories   #{}
+   :repositories  #{"http://repo1.maven.org/maven2/" "http://clojars.org/repo/"}
+   :system        {:jvm-opts (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
+                   :bootfile (io/file (System/getProperty "user.dir") "boot.clj")
+                   :cwd      (io/file (System/getProperty "user.dir"))}
+   :tmp           nil
+   :main          nil
+   :tasks         nil})
 
 (defn index-of [v val]
   (ffirst (filter (comp #{val} second) (map vector (range) v))))
@@ -28,28 +30,38 @@
       (assoc coordinate (inc idx) (into exclusions syms)))
     (into coordinate [:exclusions syms])))
 
-(defn add-artifacts! []
-  (let [{deps :dependencies, repos :repositories} @env
+(defn add-dependencies! [env]
+  (let [{deps :dependencies, repos :repositories} env
         deps (mapv (partial exclude ['org.clojure/clojure]) deps)]
     (pom/add-dependencies :coordinates deps :repositories (zipmap repos repos))))
 
-(defn add-directories! []
-  (when-let [dirs (seq (:directories @env))] 
+(defn add-directories! [env]
+  (when-let [dirs (seq (:directories env))] 
     (let [meth (doto (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL])) (.setAccessible true))]
       (.invoke meth (ClassLoader/getSystemClassLoader) (object-array (map #(.. (io/file %) toURI toURL) dirs))))))
 
+(defn configure! [old new]
+  (when-not (= (:dependencies old) (:dependencies new)) (add-dependencies! new))
+  (when-not (= (:directories old) (:directories new)) (add-directories! new)))
+
+(defn make-env [base-env]
+  (doto (atom base-env) (add-watch (gensym) (fn [_ _ o n] (configure! o n)))))
+
+(defn load-fn [sym]
+  (when-let [ns (namespace sym)] (require (symbol ns))) 
+  (or (resolve sym) (assert false (format "Can't resolve #'%s." sym))))
+
 (defn -main [& args]
-  (swap! env assoc-in [:system :argv] args)
-  (let [f (io/file (get-in @env [:system :bootfile]))]
+  (let [env (make-env base-env)
+        f   (io/file (get-in @env [:system :bootfile]))]
     (assert (.exists f) (format "File '%s' not found." f))
-    (let [cfg (read-string (slurp f))]
-      (swap! env merge cfg)
-      (add-artifacts!)
-      (add-directories!)
-      (let [m (:main @env)]
-        (assert (and (symbol? m) (namespace m)) "The :main value must be a namespaced symbol.")
-        (require (symbol (namespace m))) 
-        (let [g (resolve m)]
-          (assert g (format "Can't resolve #'%s." m)) 
-          (swap! env merge (tmp/create-registry!)) 
-          (g env))))))
+    (let [spec  (read-string (slurp f))
+          task  (when-let [t (first args)] (get-in spec [:tasks (keyword t)])) 
+          argv  (if task (rest args) args)
+          sel   #(select-keys % [:directories :dependencies :repositories])
+          deps  (merge-with into (sel spec) (sel task))]
+      (swap! env #(assoc-in (merge % spec task deps) [:system :argv] argv))
+      (when-let [m (:main @env)]
+        (swap! env assoc :tmp (tmp/init! (tmp/registry (io/file ".boot" "tmp")))) 
+        (cond (symbol? m)   ((load-fn m) env)
+              (seq? m)      ((eval m) env))))))

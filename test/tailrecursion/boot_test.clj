@@ -5,7 +5,6 @@
     [tailrecursion.boot :refer :all]))
 
 (defn main [env]
-  (println "Hello, boot! Env dump follows:")
   (pprint @env))
 
 (deftest a-test
