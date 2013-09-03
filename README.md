@@ -15,15 +15,12 @@ tooling. The idea is: instead of a pseudo-declarative project.clj
 file in your Clojure project, multiple JVMs, plugins, etc., you
 simply use boot to run a Clojure function which builds your project.
 
-### Boot env
+### Boot Configuration
 
-Boot maintains its state in the `env` atom. This atom is
-initialized with a default env merged with the map provided in
-the `boot.clj` file. The atom is passed as an argument to the
-Clojure function specified in its `:main` key. The application
-state is also tied to the atom, so adding dependencies to the
-`:dependencies` key, for example, will cause those artifacts
-to be fetched, installed, and added to the JVM classpath.
+Boot maintains its state in a configuration atom initially
+derived from the data in the `boot.clj` file. The configuration
+can be modified at runtime to manipulate the application state,
+i.e. add dependencies to the classpath, etc.
 
 ### Middlewares
 
@@ -43,9 +40,11 @@ changed files, sync/copy files between directories, etc.
 
 Boot tasks are similar to Leiningen's
 [profiles](https://github.com/technomancy/leiningen/blob/master/doc/PROFILES.md).
-Multiple subconfigurations may be sepcified under the `:tasks`
-key. When invoked from the command line the selected subconfiguration
-is merged into the current env atom.
+Multiple subconfigurations may be sepcified. When invoked
+from the command line the selected subconfiguration is merged
+into the current configuration. Tasks can be used to call
+pre-packaged middleware stacks, like a lightweight Leiningen
+plugin.
 
 ### Tempfiles
 
@@ -53,13 +52,13 @@ Since most build processes generate files at some point, boot
 includes facilities for creating and managing temporary files
 and directories. This temporary filesystem facility can be used
 to have "auto-cleaning" builds&mdash;builds that don't need to have
-a "clean" target because they simply don't create stale garbage.
+a "clean" target because they don't create stale garbage.
 
 ## Building and Installing Boot
 
 You'll need a recent version of [Leiningen](https://github.com/technomancy/leiningen)
-if you want to build boot yourself. Pre-made binaries will be
-made available someday.
+and the `make` tool to build boot from source. Pre-made binaries
+will be made available someday.
 
     $ make boot
     $ cp ./boot /somewhere/in/your/path/
