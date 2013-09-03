@@ -49,11 +49,11 @@
         (assoc-in (merge env spec task deps) [:system :argv] argv))
       (merge env spec))))
 
-(defn run-next-task! [env]
+(defn run-current-task! [env]
   (when-let [m (:main @env)]
     (cond (symbol? m) ((load-sym m) env) (seq? m) ((eval m) env)))
   env)
 
-(defn next-task! [env & [spec]]
+(defn run-next-task! [env & [spec]]
   (swap! env prep-next-task! spec)
-  (run-next-task! env))
+  (run-current-task! env))

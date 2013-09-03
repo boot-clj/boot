@@ -24,5 +24,5 @@
         tmp   #(tmp/init! (tmp/registry (get-in @boot [:system :tmpregistry])))
         f     (io/file (get-in @boot [:system :bootfile]))]
     (assert (.exists f) (format "File '%s' not found." f))
-    (core/next-task! boot (assoc (read-string (slurp f)) :tmp (tmp)))
+    (core/run-next-task! boot (assoc (read-string (slurp f)) :tmp (tmp)))
     nil))
