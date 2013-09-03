@@ -36,7 +36,9 @@
 ;; PUBLIC ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn dummy-task [boot]
-  (println "Nothing to do."))
+  (printf "Usage: boot [task1 [task1 ...]]\n")
+  (printf "Available tasks: %s.\n"
+          (apply str (interpose ", " (map name (keys (:tasks @boot)))))))
 
 (defn init! [base-env]
   (doto (atom base-env) (add-watch (gensym) (fn [_ _ o n] (configure! o n)))))
