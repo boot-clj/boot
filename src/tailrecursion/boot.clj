@@ -51,17 +51,25 @@
   (when-let [ns (namespace sym)] (require (symbol ns))) 
   (or (resolve sym) (assert false (format "Can't resolve #'%s." sym))))
 
+(defn prep-task! [env & [spec]]
+  (let [spec (or spec env)
+        args (get-in env [:system :argv])]
+    (if-let [task-key (keyword (first args))]
+      (let [task (get-in spec [:tasks task-key])
+            argv (if task (rest args) args)
+            sel  #(select-keys % [:directories :dependencies :repositories])
+            deps (merge-with into (sel spec) (sel task))]
+        (assoc-in (merge env spec task deps) [:system :argv] argv))
+      env)))
+
+(defn run-task! [env & spec]
+  (apply swap! env prep-task! spec)
+  (when-let [m (:main @env)]
+    (cond (symbol? m) ((load-fn m) env) (seq? m) ((eval m) env))))
+
 (defn -main [& args]
-  (let [env (make-env base-env)
+  (let [env (make-env (assoc-in base-env [:system :argv] args))
+        tmp #(tmp/init! (tmp/registry (io/file ".boot" "tmp")))
         f   (io/file (get-in @env [:system :bootfile]))]
     (assert (.exists f) (format "File '%s' not found." f))
-    (let [spec  (read-string (slurp f))
-          task  (when-let [t (first args)] (get-in spec [:tasks (keyword t)])) 
-          argv  (if task (rest args) args)
-          sel   #(select-keys % [:directories :dependencies :repositories])
-          deps  (merge-with into (sel spec) (sel task))]
-      (swap! env #(assoc-in (merge % spec task deps) [:system :argv] argv))
-      (when-let [m (:main @env)]
-        (swap! env assoc :tmp (tmp/init! (tmp/registry (io/file ".boot" "tmp")))) 
-        (cond (symbol? m)   ((load-fn m) env)
-              (seq? m)      ((eval m) env))))))
+    (run-task! env (assoc (read-string (slurp f)) :tmp (tmp)))))
