@@ -36,7 +36,7 @@
 ;; PUBLIC ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn dummy-task [boot]
-  (printf "Usage: boot [task1 [task1 ...]]\n")
+  (printf "Usage: boot [task ...]\n")
   (printf "Available tasks: %s.\n"
           (apply str (interpose ", " (map name (keys (:tasks @boot)))))))
 
@@ -60,6 +60,7 @@
   (when-let [m (:main @boot)]
     (cond (symbol? m) ((load-sym m) boot) (seq? m) ((eval m) boot))
     (swap! boot dissoc :main)
+    (flush)
     :ok))
 
 (defn run-next-task! [boot & [spec]]
