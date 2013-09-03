@@ -38,22 +38,24 @@
 (defn init! [base-env]
   (doto (atom base-env) (add-watch (gensym) (fn [_ _ o n] (configure! o n)))))
 
-(defn prep-next-task! [env & [spec]]
-  (let [spec (or spec env)
-        args (get-in env [:system :argv])]
-    (if-let [task-key (keyword (first args))]
-      (let [task (get-in spec [:tasks task-key])
-            argv (if task (rest args) args)
-            sel  #(select-keys % [:directories :dependencies :repositories])
-            deps (merge-with into (sel spec) (sel task))]
-        (assoc-in (merge env spec task deps) [:system :argv] argv))
-      (merge env spec))))
+(defn prep-next-task! [boot & [spec]]
+  (swap! boot
+    (fn [env] 
+      (let [spec (or spec env)
+            args (get-in env [:system :argv])]
+        (if-let [task-key (keyword (first args))]
+          (let [task (get-in spec [:tasks task-key])
+                argv (if task (rest args) args)
+                sel  #(select-keys % [:directories :dependencies :repositories])
+                deps (merge-with into (sel spec) (sel task))]
+            (assoc-in (merge env spec task deps) [:system :argv] argv))
+          (merge env spec))))))
 
-(defn run-current-task! [env]
-  (when-let [m (:main @env)]
-    (cond (symbol? m) ((load-sym m) env) (seq? m) ((eval m) env)))
-  env)
+(defn run-current-task! [boot]
+  (when-let [m (:main @boot)]
+    (cond (symbol? m) ((load-sym m) boot) (seq? m) ((eval m) boot)))
+  boot)
 
-(defn run-next-task! [env & [spec]]
-  (swap! env prep-next-task! spec)
-  (run-current-task! env))
+(defn run-next-task! [boot & [spec]]
+  (prep-next-task! boot spec)
+  (run-current-task! boot))
