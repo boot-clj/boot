@@ -43,6 +43,7 @@
         form  (read-config (io/file (get-in base-env [:system :bootfile])))
         tasks (merge-with into (:tasks base-env) (:tasks form))
         sys   (merge-with into (:system base-env) {:argv argv :tmpregistry (mktmp)})
-        boot  (core/init! (merge base-env {:tasks tasks} {:system sys}))]
+        boot  (core/init! base-env)]
+    (swap! boot merge form {:tasks tasks} {:system sys})
     (while (core/run-next-task! boot)) 
     nil))

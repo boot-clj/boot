@@ -44,7 +44,7 @@
   ITmpRegistry
   (-init! [this]
     (delete! dir)
-    (add-watch reg (gensym) (fn [_ _ old new] (persist! dir old new)))
+    (add-watch reg ::_ #(persist! dir %3 %4))
     this)
   (-get [this k]
     (io/file dir (munge k) (nth (@reg k) 2)))

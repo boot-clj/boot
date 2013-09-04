@@ -45,8 +45,8 @@
       (printf "Available tasks: %s.\n" (apply str (interpose ", " tasks)))
       (printf "There are no available tasks.\n"))))
 
-(defn init! [base-env]
-  (doto (atom base-env) (add-watch (gensym) (fn [_ _ o n] (configure! o n)))))
+(defn init! [env]
+  (doto (atom env) (add-watch ::_ #(configure! %3 %4))))
 
 (defn prep-next-task! [boot]
   (swap! boot
