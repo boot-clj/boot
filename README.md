@@ -78,8 +78,6 @@ first command line argument.
     # invoke the :foo task with arguments 1, 2, and 3
     $ boot foo 1 2 3
 
-### Hacking on Boot
-
 You can test boot without installing it by running it via `lein run`
 in this directory, e.g.:
 
