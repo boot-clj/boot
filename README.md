@@ -25,9 +25,9 @@ i.e. add dependencies to the classpath, etc.
 
 ### Middleware
 
-Individual tasks within the build process can be composed as
-middlewares (like [ring](https://github.com/mmcgrana/ring) does),
-for example. This is much more powerful and straightforward than
+Individual tasks within the build process can be composed of
+middleware (like [ring](https://github.com/mmcgrana/ring) does,
+for example). This is more powerful and straightforward than
 the Leiningen plugin architecture. Everything is implemented as
 Clojure functions, so it's easy to customize the build process
 for individual projects and to package these build processes as
