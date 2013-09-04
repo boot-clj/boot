@@ -78,6 +78,8 @@ first command line argument.
     # invoke the (built-in) :help task
     $ boot help
 
+Multiple tasks can be invoked in a single build process, too.
+
     # invoke the :foo task and then the :bar task
     $ boot foo bar
 
