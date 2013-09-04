@@ -41,7 +41,26 @@
         sel  #(select-keys % [:directories :dependencies :repositories])]
     (merge env task main (merge-with into (sel env) (sel task)))))
 
-;; PUBLIC ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TASKS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn pre-task
+  [boot & {:keys [process configure] :or {process identity configure identity}}]
+  (swap! boot configure)
+  (fn [continue]
+    (fn [event]
+      (continue (process event)))))
+
+(defn post-task
+  [boot & {:keys [process configure] :or {process identity configure identity}}]
+  (swap! boot configure)
+  (fn [continue]
+    (fn [event]
+      (process (continue event)))))
+
+(def identity-task pre-task)
+
+(defn config-task [boot configure]
+  (pre-task boot :configure configure))
 
 (defn help-task [boot]
   (let [tasks (map name (remove nil? (sort (keys (:tasks @boot)))))]
@@ -52,6 +71,8 @@
           (printf "Available tasks: %s.\n" (apply str (interpose ", " tasks)))
           (printf "There are no available tasks.\n"))
         (continue event)))))
+
+;; BOOT API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn init! [env]
   (doto (atom env) (add-watch ::_ #(configure! %3 %4))))

@@ -4,8 +4,11 @@
     [clojure.test :refer :all]
     [tailrecursion.boot :refer :all]))
 
-(defn main [env]
-  (pprint env))
+(defn main [boot]
+  (pprint boot)
+  (fn [continue]
+    (fn [event]
+      (continue event))))
 
 (deftest a-test
   (testing "FIXME, I fail."

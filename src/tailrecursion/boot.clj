@@ -43,9 +43,10 @@
         form  (read-config (io/file (get-in base-env [:system :bootfile])))
         tasks (merge-with into (:tasks base-env) (:tasks form))
         sys   (merge-with into (:system base-env) {:argv argv :tmpregistry (mktmp)})
-        boot  (core/init! base-env)]
+        boot  (core/init! base-env)
+        dummy (fn [event] (flush) event)]
     (swap! boot merge form {:tasks tasks} {:system sys})
-    ((loop [task (core/run-next-task! boot), stack identity]
+    ((loop [task (core/run-next-task! boot), stack dummy]
        (if-not task stack (recur (core/run-next-task! boot) (task stack))))
        {:time (System/currentTimeMillis)})
     nil))
