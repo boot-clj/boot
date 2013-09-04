@@ -4,17 +4,17 @@ Boot is a minimal Clojure program 'bootloader'.  It reads a
 configuration map from a `boot.clj` file in the current directory
 and starts a JVM with Clojure, dependencies, and directories
 on the classpath. After the JVM is set up it runs a function
-or evals an expression as specified in the configuration.
+or evaluates an expression as specified in the configuration.
 
 *This is experimental software and subject to frequent change.*
 
 ## Boot-based Build Tools
 
-While boot is useful for just running some Clojure function in
-a JVM, it can also be used as the foundation for project build
-tooling. The idea is: instead of a pseudo-declarative project.clj
-file in your Clojure project, multiple JVMs, plugins, etc., you
-simply use boot to run a Clojure function which builds your project.
+While boot can be used for just running some Clojure function in a
+JVM, it can also be the foundation for better project build tooling.
+The idea is: instead of a pseudo-declarative project.clj file in
+your Clojure project, multiple JVMs, plugins, etc., you simply use
+boot to run a Clojure function which builds your project.
 
 ### Boot Configuration
 
@@ -33,7 +33,8 @@ Clojure functions, so it's easy to customize the build process
 for individual projects and to package these build processes as
 clojure namespaces for distribution.
 
-There are a number of boot middlewares included in the [boot-middleware](#)
+There are a number of boot middlewares included in the
+[boot.task](https://github.com/tailrecursion/boot.task)
 repository to do useful things like watch directories for
 changed files, sync/copy files between directories, etc.
 
