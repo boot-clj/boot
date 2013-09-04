@@ -81,8 +81,11 @@ first command line argument.
     # invoke the :foo task and then the :bar task
     $ boot foo bar
 
-    # invoke the :foo task with arguments "bar" and "baz" and then the :baf task
-    $ boot [foo bar baz] baf
+If the task takes arguments it can be invoked by enclosing the
+task name and arguments in square brackets.
+
+    # invoke the :foo task with arguments "bar" and "baz"
+    $ boot [foo bar baz]
 
 You can test boot without installing it by running it via `lein run`
 in this directory, e.g.:
