@@ -27,11 +27,9 @@ i.e. add dependencies to the classpath, etc.
 
 Individual tasks within the build process can be composed of
 middleware (like [ring](https://github.com/mmcgrana/ring) does,
-for example). This is more powerful and straightforward than
-the Leiningen plugin architecture. Everything is implemented as
-Clojure functions, so it's easy to customize the build process
-for individual projects and to package these build processes as
-clojure namespaces for distribution.
+for example). Everything is implemented as Clojure functions, so
+it's easy to customize the build process for individual projects
+and to package these build processes for distribution.
 
 There is a selection of generally applicable middleware included
 in the [boot.task](https://github.com/tailrecursion/boot.task)
