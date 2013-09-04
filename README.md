@@ -70,18 +70,21 @@ in this project.  It loads a Maven dependency, adds a directory
 to the classpath, and specifies a function to evaluate when the
 JVM is all set up.
 
-    $ boot 1 2 3
+    $ boot
 
 Tasks are invoked by passing the name of the task key as the
 first command line argument.
 
-    # invoke the :foo task with arguments 1, 2, and 3
-    $ boot foo 1 2 3
+    # invoke the (built-in) :help task
+    $ boot help
+
+    #invoke the :foo task and then the :bar task
+    $ boot foo bar
 
 You can test boot without installing it by running it via `lein run`
 in this directory, e.g.:
 
-    $ lein run 1 2 3
+    $ lein run foo
 
 ## License
 
