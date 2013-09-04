@@ -1,6 +1,7 @@
 (ns tailrecursion.boot
   (:require [clojure.string                 :as string]
             [clojure.java.io                :as io]
+            [clojure.pprint                 :refer [pprint]]
             [tailrecursion.boot.core        :as core]
             [tailrecursion.boot.tmpregistry :as tmp])
   (:import java.lang.management.ManagementFactory)
@@ -16,7 +17,7 @@
                    :home        (io/file (System/getProperty "user.home")) 
                    :jvm-opts    (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
                    :bootfile    (io/file (System/getProperty "user.dir") "boot.clj")
-                   :user-cfg    (io/file (System/getProperty "user.home") ".boot.clj")
+                   :userfile    (io/file (System/getProperty "user.home") ".boot.clj")
                    :tmpregistry nil}
    :tmp           nil
    :tasks         {:help {:main 'tailrecursion.boot.core/help-task}}})
@@ -45,15 +46,23 @@
               (throw (Exception. "Can't read command line forms" e))))]
     (map #(if (vector? %) % [%]) s)))
 
+(defn merge-in-with [f ks & maps]
+  (->> maps (map #(assoc-in {} ks (get-in % ks))) (apply merge-with f)))
+
 (defn -main [& args]
   (let [sys   (:system base-env)
         argv  (or (seq (read-cli-args args)) (list ["help"]))
         mktmp #(tmp/init! (tmp/registry (io/file ".boot" "tmp")))
-        cfg   (-> (when-let [f (exists? (:user-cfg sys))] (read-config f))
-                (merge (read-config (:bootfile sys))))
-        tasks (merge-with into (:tasks base-env) (:tasks cfg))
-        sys   (merge-with into (:system base-env) {:argv argv :tmpregistry (mktmp)})
+        usr   (when-let [f (exists? (:userfile sys))] (read-config f))
+        cfg   (read-config (:bootfile sys))
+        deps  (merge-in-with into [:dependencies] base-env usr cfg)
+        dirs  (merge-in-with into [:directories] base-env usr cfg)
+        repo  (merge-with #(some identity %&)
+                (merge-in-with into [:repositories] {:repositories #{}} usr cfg)
+                (select-keys base-env [:repositories])) 
+        tasks (merge-in-with into [:tasks] base-env usr cfg)
+        sys   (merge-with into sys {:argv argv :tmpregistry (mktmp)})
         boot  (core/init! base-env)]
-    (swap! boot merge cfg {:tasks tasks} {:system sys})
+    (swap! boot merge usr cfg deps dirs repo tasks {:system sys})
     ((core/compose-tasks! boot) (core/make-event))
     nil))

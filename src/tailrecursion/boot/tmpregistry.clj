@@ -31,20 +31,20 @@
 
 ;;; tmpregistry implementation
 
-(defn- persist! [dir oldreg newreg]
+(defn- persist! [dir initialized? oldreg newreg]
   (let [[o n] (map set [oldreg newreg])
         rmv (difference o n)
         add (difference n o)]
+    (swap! initialized? #(when-not % (delete! dir) true))
     (doseq [[k v] rmv]
       (delete! (io/file dir (munge k))))
     (doseq [[k [t _ n]] add]
       (make-file! t (doto (io/file dir (munge k) n) io/make-parents)))))
 
-(defrecord TmpRegistry [dir reg]
+(defrecord TmpRegistry [dir initialized? reg]
   ITmpRegistry
   (-init! [this]
-    (delete! dir)
-    (add-watch reg ::_ #(persist! dir %3 %4))
+    (add-watch reg ::_ #(persist! dir initialized? %3 %4))
     this)
   (-get [this k]
     (io/file dir (munge k) (nth (@reg k) 2)))
@@ -56,4 +56,4 @@
     (-get this k)))
 
 (defn registry [dir]
-  (TmpRegistry. (io/file dir) (atom {})))
+  (TmpRegistry. (io/file dir) (atom false) (atom {})))
