@@ -78,7 +78,7 @@ first command line argument.
     # invoke the (built-in) :help task
     $ boot help
 
-    #invoke the :foo task and then the :bar task
+    # invoke the :foo task and then the :bar task
     $ boot foo bar
 
 You can test boot without installing it by running it via `lein run`
