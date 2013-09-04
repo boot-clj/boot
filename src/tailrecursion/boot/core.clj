@@ -36,20 +36,6 @@
   (when-not (= (:dependencies old) (:dependencies new)) (add-dependencies! new))
   (when-not (= (:directories old) (:directories new)) (add-directories! new)))
 
-(defn next-main [env]
-  (when-let [args   (seq (get-in env [:system :argv]))]
-    (let [start?    (comp (partial = lb) first)
-          end?      (comp (partial = rb) last)
-          arg1      (first args)
-          next-main (if-not (start? arg1)
-                      [(str "[" arg1 "]")] 
-                      (loop [x args, y []]
-                        (let [z (first x), q (conj y z)]
-                          (if (end? z) q (recur (rest x) q)))))]
-      (-> env
-        (update-in [:system :argv] (partial drop (count next-main)))
-        (assoc-in [:system :next-main] (read-string (join " " next-main)))))))
-
 ;; PUBLIC ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn usage-task [boot]
@@ -65,8 +51,8 @@
 (defn prep-next-task! [boot]
   (swap! boot
     (fn [env] 
-      (when-let [env (next-main env)]
-        (let [nxt  (get-in env [:system :next-main])
+      (when-let [nxt (first (get-in env [:system :argv]))]
+        (let [env  (update-in env [:system :argv] rest)
               tkey (keyword (first nxt))
               task (get-in env [:tasks tkey])
               main {:main (into [(:main task)] (rest nxt))}

@@ -1,5 +1,6 @@
 (ns tailrecursion.boot
-  (:require [clojure.java.io                :as io]
+  (:require [clojure.string                 :as string]
+            [clojure.java.io                :as io]
             [tailrecursion.boot.core        :as core]
             [tailrecursion.boot.tmpregistry :as tmp])
   (:import java.lang.management.ManagementFactory)
@@ -30,8 +31,14 @@
             (format "%s (Boot configuration must be a map)" (.getPath f)))
     config))
 
+(defn read-cli-args [args]
+  (let [s (try (read-string (str "(" (string/join " " args) ")"))
+            (catch Throwable e
+              (throw (Exception. "Can't read command line forms" e))))]
+    (map #(if (vector? %) % [%]) s)))
+
 (defn -main [& args]
-  (let [argv  (or (seq args) (list "help"))
+  (let [argv  (or (seq (read-cli-args args)) (list "help"))
         mktmp #(tmp/init! (tmp/registry (io/file ".boot" "tmp")))
         form  (read-config (io/file (get-in base-env [:system :bootfile])))
         tasks (merge-with into (:tasks base-env) (:tasks form))
