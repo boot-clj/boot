@@ -17,7 +17,7 @@
                    :bootfile    (io/file (System/getProperty "user.dir") "boot.clj")
                    :tmpregistry nil}
    :tmp           nil
-   :tasks         {:help {:main 'tailrecursion.boot.core/usage-task}}})
+   :tasks         {:help {:main 'tailrecursion.boot.core/help-task}}})
 
 (defn read-file [f]
   (try (read-string (str "(" (try (slurp f) (catch Throwable x)) ")"))
@@ -38,7 +38,7 @@
     (map #(if (vector? %) % [%]) s)))
 
 (defn -main [& args]
-  (let [argv  (or (seq (read-cli-args args)) (list "help"))
+  (let [argv  (or (seq (read-cli-args args)) (list ["help"]))
         mktmp #(tmp/init! (tmp/registry (io/file ".boot" "tmp")))
         form  (read-config (io/file (get-in base-env [:system :bootfile])))
         tasks (merge-with into (:tasks base-env) (:tasks form))

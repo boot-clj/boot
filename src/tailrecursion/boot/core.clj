@@ -38,7 +38,7 @@
 
 ;; PUBLIC ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn usage-task [boot]
+(defn help-task [boot]
   (let [tasks (map name (remove nil? (sort (keys (:tasks @boot)))))]
     (printf "Usage: boot [task ...]\n") 
     (if (seq tasks)
