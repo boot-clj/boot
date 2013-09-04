@@ -45,5 +45,7 @@
         sys   (merge-with into (:system base-env) {:argv argv :tmpregistry (mktmp)})
         boot  (core/init! base-env)]
     (swap! boot merge form {:tasks tasks} {:system sys})
-    (while (core/run-next-task! boot)) 
+    ((loop [task (core/run-next-task! boot), stack identity]
+       (if-not task stack (recur (core/run-next-task! boot) (task stack))))
+       {:time (System/currentTimeMillis)})
     nil))

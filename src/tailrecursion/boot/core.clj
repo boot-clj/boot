@@ -36,14 +36,22 @@
   (when-not (= (:dependencies old) (:dependencies new)) (add-dependencies! new))
   (when-not (= (:directories old) (:directories new)) (add-directories! new)))
 
+(defn prep-task [env task args]
+  (let [main {:main (into [(:main task)] args)}
+        sel  #(select-keys % [:directories :dependencies :repositories])]
+    (merge env task main (merge-with into (sel env) (sel task)))))
+
 ;; PUBLIC ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn help-task [boot]
   (let [tasks (map name (remove nil? (sort (keys (:tasks @boot)))))]
-    (printf "Usage: boot [task ...]\n") 
-    (if (seq tasks)
-      (printf "Available tasks: %s.\n" (apply str (interpose ", " tasks)))
-      (printf "There are no available tasks.\n"))))
+    (fn [continue]
+      (fn [event]
+        (printf "Usage: boot [task ...]\n") 
+        (if (seq tasks)
+          (printf "Available tasks: %s.\n" (apply str (interpose ", " tasks)))
+          (printf "There are no available tasks.\n"))
+        (continue event)))))
 
 (defn init! [env]
   (doto (atom env) (add-watch ::_ #(configure! %3 %4))))
@@ -51,27 +59,22 @@
 (defn prep-next-task! [boot]
   (swap! boot
     (fn [env] 
-      (when-let [nxt (first (get-in env [:system :argv]))]
-        (let [env  (update-in env [:system :argv] rest)
-              tkey (keyword (first nxt))
-              task (get-in env [:tasks tkey])
-              main {:main (into [(:main task)] (rest nxt))}
-              sel  #(select-keys % [:directories :dependencies :repositories])]
-          (when tkey (assert task (format "No such task: '%s'" (name tkey))))
-          (merge env task main (merge-with into (sel env) (sel task))))))))
+      (when-let [[tfn & args] (first (get-in env [:system :argv]))]
+        (if-let [task (get-in env [:tasks (keyword tfn)])]
+          (prep-task (update-in env [:system :argv] rest) task args)
+          (assert false (format "No such task: '%s'" tfn)))))))
 
 (defn run-current-task! [boot]
-  (swap! boot
-    (fn [env]
-      (when-let [[task & args] (:main env)]
-        (apply ((if (symbol? task) load-sym eval) task) boot args) 
-        (flush) 
-        (dissoc env :main)))))
+  (let [handler (atom nil)]
+    (swap! boot
+      (fn [env]
+        (when-let [[task & args] (:main env)]
+          (->> (apply ((if (symbol? task) load-sym eval) task) boot args)
+            (reset! handler))
+          (flush)
+          (dissoc env :main))))
+    @handler))
 
 (defn run-next-task! [boot]
   (prep-next-task! boot)
   (run-current-task! boot))
-
-;; because vim paredit gets confused by \[ and \]
-(def lb \[)
-(def rb \])
