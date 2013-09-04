@@ -8,7 +8,7 @@ or evaluates an expression as specified in the configuration.
 
 *This is experimental software and subject to frequent change.*
 
-## Boot-based Build Tools
+## Overview
 
 While boot can be used for just running some Clojure function in a
 JVM, it can also be the foundation for better project build tooling.
@@ -16,14 +16,14 @@ The idea is: instead of a pseudo-declarative project.clj file in
 your Clojure project, multiple JVMs, plugins, etc., you simply use
 boot to run a Clojure function which builds your project.
 
-### Boot Configuration
+### Configuration
 
 Boot maintains its state in a configuration atom initially
 derived from the data in the `boot.clj` file. The configuration
 can be modified at runtime to manipulate the application state,
 i.e. add dependencies to the classpath, etc.
 
-### Middlewares
+### Middleware
 
 Individual tasks within the build process can be composed as
 middlewares (like [ring](https://github.com/mmcgrana/ring) does),
