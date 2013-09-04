@@ -2,9 +2,9 @@
 
 Boot is a minimal Clojure program 'bootloader'.  It reads a
 configuration map from a `boot.clj` file in the current directory
-and sets up a JVM with Clojure, dependencies, and directories
+and starts a JVM with Clojure, dependencies, and directories
 on the classpath. After the JVM is set up it runs a function
-specified in the configuration.
+or evals an expression as specified in the configuration.
 
 *This is experimental software and subject to frequent change.*
 
