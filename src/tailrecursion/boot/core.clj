@@ -43,6 +43,10 @@
 
 ;; TASKS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn make-event
+  ([]       {:id (gensym), :time (System/currentTimeMillis)})
+  ([event]  (merge event (make-event))))
+
 (defn pre-task
   [boot & {:keys [process configure] :or {process identity configure identity}}]
   (swap! boot configure)
@@ -99,3 +103,7 @@
 (defn run-next-task! [boot]
   (prep-next-task! boot)
   (run-current-task! boot))
+
+(defn compose-tasks! [boot]
+  (loop [task (run-next-task! boot), stack #(do (flush) %)]
+    (if-not task stack (recur (run-next-task! boot) (task stack)))))

@@ -13,11 +13,19 @@
    :directories   #{}
    :repositories  #{"http://repo1.maven.org/maven2/" "http://clojars.org/repo/"}
    :system        {:cwd         (io/file (System/getProperty "user.dir"))
+                   :home        (io/file (System/getProperty "user.home")) 
                    :jvm-opts    (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
                    :bootfile    (io/file (System/getProperty "user.dir") "boot.clj")
+                   :user-cfg    (io/file (System/getProperty "user.home") ".boot.clj")
                    :tmpregistry nil}
    :tmp           nil
    :tasks         {:help {:main 'tailrecursion.boot.core/help-task}}})
+
+(defmacro try* [expr & [default]]
+  `(try ~expr (catch Throwable _# ~default)))
+
+(defn exists? [f]
+  (when (try* (.exists f)) f))
 
 (defn read-file [f]
   (try (read-string (str "(" (try (slurp f) (catch Throwable x)) ")"))
@@ -38,15 +46,14 @@
     (map #(if (vector? %) % [%]) s)))
 
 (defn -main [& args]
-  (let [argv  (or (seq (read-cli-args args)) (list ["help"]))
+  (let [sys   (:system base-env)
+        argv  (or (seq (read-cli-args args)) (list ["help"]))
         mktmp #(tmp/init! (tmp/registry (io/file ".boot" "tmp")))
-        form  (read-config (io/file (get-in base-env [:system :bootfile])))
-        tasks (merge-with into (:tasks base-env) (:tasks form))
+        cfg   (-> (when-let [f (exists? (:user-cfg sys))] (read-config f))
+                (merge (read-config (:bootfile sys))))
+        tasks (merge-with into (:tasks base-env) (:tasks cfg))
         sys   (merge-with into (:system base-env) {:argv argv :tmpregistry (mktmp)})
-        boot  (core/init! base-env)
-        dummy (fn [event] (flush) event)]
-    (swap! boot merge form {:tasks tasks} {:system sys})
-    ((loop [task (core/run-next-task! boot), stack dummy]
-       (if-not task stack (recur (core/run-next-task! boot) (task stack))))
-       {:time (System/currentTimeMillis)})
+        boot  (core/init! base-env)]
+    (swap! boot merge cfg {:tasks tasks} {:system sys})
+    ((core/compose-tasks! boot) (core/make-event))
     nil))
