@@ -54,7 +54,7 @@ and directories. This temporary filesystem facility can be used
 to have "auto-cleaning" builds&mdash;builds that don't need to have
 a "clean" target because they don't create stale garbage.
 
-## Building and Installing Boot
+## Install
 
 You'll need a recent version of [Leiningen](https://github.com/technomancy/leiningen)
 and the `make` tool to build boot from source. Pre-made binaries
@@ -63,7 +63,7 @@ will be made available someday.
     $ make boot
     $ cp ./boot /somewhere/in/your/path/
 
-## Using Boot
+## Usage
 
 Check out the [example boot.clj](https://github.com/tailrecursion/boot/blob/master/boot.clj)
 in this project.  It loads a Maven dependency, adds a directory
