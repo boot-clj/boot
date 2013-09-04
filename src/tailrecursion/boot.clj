@@ -20,7 +20,7 @@
                    :userfile    (io/file (System/getProperty "user.home") ".boot.clj")
                    :tmpregistry nil}
    :tmp           nil
-   :tasks         {:help {:main 'tailrecursion.boot.core/help-task}}})
+   :tasks         {:help {:main '[tailrecursion.boot.core/help-task]}}})
 
 (defmacro try* [expr & [default]]
   `(try ~expr (catch Throwable _# ~default)))

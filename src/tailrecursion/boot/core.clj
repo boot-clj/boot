@@ -37,8 +37,9 @@
   (when-not (= (:directories old) (:directories new)) (add-directories! new)))
 
 (defn prep-task [env task args]
-  (let [main {:main (into [(:main task)] args)}
-        sel  #(select-keys % [:directories :dependencies :repositories])]
+  (let [m     (:main task)
+        main  {:main (if (seq args) (into [(first m)] args) m)}
+        sel   #(select-keys % [:directories :dependencies :repositories])]
     (merge env task main (merge-with into (sel env) (sel task)))))
 
 ;; TASKS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

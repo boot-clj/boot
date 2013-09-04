@@ -4,4 +4,4 @@
  :tasks
  {:test
   {:dependencies [[alandipert/enduro "1.1.2"]]
-   :main tailrecursion.boot-test/main}}}
+   :main [tailrecursion.boot-test/main]}}}
