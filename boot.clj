@@ -6,11 +6,16 @@
    :main
    (do
      (require '[clojure.pprint :refer [pprint]])
-     (fn [env] (println "foo!") (pprint env)))}
+     (fn [env & args]
+       (println "foo!")
+       (printf "args: %s\n" (pr-str args))
+       (pprint env)))}
   :bar
   {:main
    (do
      (require '[clojure.pprint :refer [pprint]])
-     (fn [env] (println "bar!") (pprint env)))}
+     (fn [env]
+       (println "bar!")
+       (pprint env)))}
   :baz
   {:main tailrecursion.boot-test/main}}}
