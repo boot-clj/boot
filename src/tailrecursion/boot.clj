@@ -50,7 +50,7 @@
 
 (defn -main [& args]
   (let [sys   (:system base-env)
-        argv  (or (seq (read-cli-args args)) (list ["help"]))
+        argv  (reverse (or (seq (read-cli-args args)) (list ["help"]))) 
         mktmp #(tmp/init! (tmp/registry (io/file ".boot" "tmp")))
         usr   (when-let [f (exists? (:userfile sys))] (read-config f))
         cfg   (read-config (:bootfile sys))

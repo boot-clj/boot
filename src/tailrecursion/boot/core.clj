@@ -50,17 +50,19 @@
 
 (defn pre-task
   [boot & {:keys [process configure] :or {process identity configure identity}}]
-  (swap! boot configure)
-  (fn [continue]
-    (fn [event]
-      (continue (process event)))))
+  (locking boot
+    (swap! boot configure) 
+    (fn [continue]
+      (fn [event]
+        (continue (process event))))))
 
 (defn post-task
   [boot & {:keys [process configure] :or {process identity configure identity}}]
-  (swap! boot configure)
-  (fn [continue]
-    (fn [event]
-      (process (continue event)))))
+  (locking boot
+    (swap! boot configure) 
+    (fn [continue]
+      (fn [event]
+        (process (continue event))))))
 
 (def identity-task pre-task)
 
@@ -75,6 +77,7 @@
         (if (seq tasks)
           (printf "Available tasks: %s.\n" (apply str (interpose ", " tasks)))
           (printf "There are no available tasks.\n"))
+        (flush)
         (continue event)))))
 
 ;; BOOT API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -91,19 +94,15 @@
           (assert false (format "No such task: '%s'" tfn)))))))
 
 (defn run-current-task! [boot]
-  (let [handler (atom nil)]
-    (swap! boot
-      (fn [env]
-        (when-let [[task & args] (:main env)]
-          (->> (apply ((if (symbol? task) load-sym eval) task) boot args)
-            (reset! handler))
-          (flush)
-          (dissoc env :main))))
-    @handler))
+  (locking boot
+    (when-let [[task & args] (:main @boot)]
+      (swap! boot dissoc :main)
+      (apply ((if (symbol? task) load-sym eval) task) boot args))))
 
 (defn run-next-task! [boot]
-  (prep-next-task! boot)
-  (run-current-task! boot))
+  (locking boot
+    (prep-next-task! boot) 
+    (run-current-task! boot)))
 
 (defn compose-tasks! [boot]
   (loop [task (run-next-task! boot), stack #(do (flush) %)]
