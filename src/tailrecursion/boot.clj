@@ -35,10 +35,9 @@
                (format "%s (Can't read forms from file)" (.getPath f)) e)))))
 
 (defn read-config [f]
-  (let [config (first (read-file f))]
-    (assert (map? config)
-            (format "%s (Boot configuration must be a map)" (.getPath f)))
-    config))
+  (let [config (first (read-file f))
+        asrt-m #(do (assert (map? %1) %2) %1)]
+    (asrt-m config (format "%s (Configuration must be a map)" (.getPath f)))))
 
 (defn read-cli-args [args]
   (let [s (try (read-string (str "(" (string/join " " args) ")"))
