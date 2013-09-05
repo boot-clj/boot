@@ -42,32 +42,7 @@
         sel   #(select-keys % [:directories :dependencies :repositories])]
     (merge env task main (merge-with into (sel env) (sel task)))))
 
-;; TASKS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn make-event
-  ([]       {:id (gensym), :time (System/currentTimeMillis)})
-  ([event]  (merge event (make-event))))
-
-(defn pre-task
-  [boot & {:keys [process configure] :or {process identity configure identity}}]
-  (locking boot
-    (swap! boot configure) 
-    (fn [continue]
-      (fn [event]
-        (continue (process event))))))
-
-(defn post-task
-  [boot & {:keys [process configure] :or {process identity configure identity}}]
-  (locking boot
-    (swap! boot configure) 
-    (fn [continue]
-      (fn [event]
-        (process (continue event))))))
-
-(def identity-task pre-task)
-
-(defn config-task [boot configure]
-  (pre-task boot :configure configure))
+;; CORE TASKS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn help-task [boot]
   (let [tasks (map name (remove nil? (sort (keys (:tasks @boot)))))]
@@ -81,6 +56,10 @@
         (continue event)))))
 
 ;; BOOT API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn make-event
+  ([]       {:id (gensym), :time (System/currentTimeMillis)})
+  ([event]  (merge event (make-event))))
 
 (defn init! [env]
   (doto (atom env) (add-watch ::_ #(configure! %3 %4))))
