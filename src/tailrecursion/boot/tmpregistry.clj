@@ -35,7 +35,9 @@
   (let [[o n] (map set [oldreg newreg])
         rmv (difference o n)
         add (difference n o)]
-    (swap! initialized? #(when-not % (delete! dir) true))
+    (locking initialized?
+      (when-not @initialized? (delete! dir))
+      (reset! initialized? true))
     (doseq [[k v] rmv]
       (delete! (io/file dir (munge k))))
     (doseq [[k [t _ n]] add]

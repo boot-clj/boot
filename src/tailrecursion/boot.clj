@@ -18,8 +18,7 @@
                    :jvm-opts    (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
                    :bootfile    (io/file (System/getProperty "user.dir") "boot.clj")
                    :userfile    (io/file (System/getProperty "user.home") ".boot.clj")
-                   :tmpregistry nil}
-   :tmp           nil
+                   :tmpregistry (tmp/init! (tmp/registry (io/file ".boot" "tmp")))} 
    :tasks         {:help {:main '[tailrecursion.boot.core/help-task]}}})
 
 (defmacro try* [expr & [default]]
@@ -51,7 +50,6 @@
 (defn -main [& args]
   (let [sys   (:system base-env)
         argv  (reverse (or (seq (read-cli-args args)) (list ["help"]))) 
-        mktmp #(tmp/init! (tmp/registry (io/file ".boot" "tmp")))
         usr   (when-let [f (exists? (:userfile sys))] (read-config f))
         cfg   (read-config (:bootfile sys))
         deps  (merge-in-with into [:dependencies] base-env usr cfg)
@@ -60,8 +58,8 @@
                 (merge-in-with into [:repositories] {:repositories #{}} usr cfg)
                 (select-keys base-env [:repositories])) 
         tasks (merge-in-with into [:tasks] base-env usr cfg)
-        sys   (merge-with into sys {:argv argv :tmpregistry (mktmp)})
+        sys   (merge-with into sys {:argv argv})
         boot  (core/init! base-env)]
     (swap! boot merge usr cfg deps dirs repo tasks {:system sys})
     ((core/compose-tasks! boot) (core/make-event))
-    nil))
+    (System/exit 0)))

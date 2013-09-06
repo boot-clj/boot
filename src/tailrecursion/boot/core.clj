@@ -7,8 +7,6 @@
 
 ;; INTERNAL ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(declare lb rb)
-
 (defn load-sym [sym]
   (when-let [ns (namespace sym)] (require (symbol ns))) 
   (or (resolve sym) (assert false (format "Can't resolve #'%s." sym))))
@@ -43,6 +41,12 @@
     (merge env task main (merge-with into (sel env) (sel task)))))
 
 ;; CORE TASKS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn print-task [boot msg]
+  (fn [continue]
+    (fn [event]
+      (println msg)
+      (continue event))))
 
 (defn help-task [boot]
   (let [tasks (map name (remove nil? (sort (keys (:tasks @boot)))))]
