@@ -1,4 +1,5 @@
-{:dependencies [[tailrecursion/javelin "1.0.0-SNAPSHOT"]]
+{:dependencies [[tailrecursion/boot.task "0.1.0-SNAPSHOT"]]
+ :require-tasks #{[tailrecursion.boot.task :as t]} 
  :directories #{"test"}
  :tasks
  {:test

@@ -1,7 +1,8 @@
 (ns tailrecursion.boot.core
   (:require [cemerick.pomegranate           :as pom]
             [clojure.java.io                :as io]
-            [clojure.string                 :as string :refer [join]]
+            [clojure.string                 :refer [join]]
+            [clojure.pprint                 :refer [pprint]]
             [tailrecursion.boot.tmpregistry :as tmp])
   (:import [java.net URLClassLoader URL]))
 
@@ -34,32 +35,39 @@
   (when-not (= (:dependencies old) (:dependencies new)) (add-dependencies! new))
   (when-not (= (:directories old) (:directories new)) (add-directories! new)))
 
+(defn require-task [tasks [ns & {:keys [refer as]}]]
+  {:pre [(symbol? ns)
+         (or as refer)
+         (or (nil? as) (symbol? as))
+         (or (nil? refer) (= :all refer) (vector? refer))]}
+  (require ns)
+  (let [pub (-> (->> (ns-publics ns) (map (fn [[k v]] [k (meta v)]))) 
+                (->> (filter (comp ::task second)) (map first))) 
+        mk  (fn [sym] {:main [(symbol (str ns) (str sym))]})
+        r   (when refer
+              (->> pub
+                (filter #(or (= :all refer) (contains? (set refer) %)))
+                (map #((juxt keyword mk) %)))) 
+        a   (when as
+              (map #((juxt (comp (partial keyword (str as)) str) mk) %) pub))] 
+    (merge (reduce into {} [r a]) tasks)))
+
+(defn require-tasks [env]
+  (assoc env :tasks (reduce require-task (:tasks env) (:require-tasks env))))
+
 (defn prep-task [env task args]
   (let [m     (:main task)
         main  {:main (if (seq args) (into [(first m)] args) m)}
-        sel   #(select-keys % [:directories :dependencies :repositories])]
-    (merge env task main (merge-with into (sel env) (sel task)))))
-
-;; CORE TASKS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn print-task [boot msg]
-  (fn [continue]
-    (fn [event]
-      (println msg)
-      (continue event))))
-
-(defn help-task [boot]
-  (let [tasks (map name (remove nil? (sort (keys (:tasks @boot)))))]
-    (fn [continue]
-      (fn [event]
-        (printf "Usage: boot [task ...]\n") 
-        (if (seq tasks)
-          (printf "Available tasks: %s.\n" (apply str (interpose ", " tasks)))
-          (printf "There are no available tasks.\n"))
-        (flush)
-        (continue event)))))
+        sel   #(select-keys % [:directories :dependencies :repositories])
+        sel2  #(select-keys % [:require-tasks])
+        mvn   (merge-with into (sel env) (sel task))
+        req   (merge-with into (sel2 env) (sel2 task))]
+    (merge env task main mvn req)))
 
 ;; BOOT API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro deftask [name & args]
+  `(defn ~(with-meta name {::task true}) ~@args))
 
 (defn make-event
   ([]       {:id (gensym), :time (System/currentTimeMillis)})
@@ -69,12 +77,14 @@
   (doto (atom env) (add-watch ::_ #(configure! %3 %4))))
 
 (defn prep-next-task! [boot]
-  (swap! boot
-    (fn [env] 
-      (when-let [[tfn & args] (first (get-in env [:system :argv]))]
-        (if-let [task (get-in env [:tasks (keyword tfn)])]
-          (prep-task (update-in env [:system :argv] rest) task args)
-          (assert false (format "No such task: '%s'" tfn)))))))
+  (locking boot
+    (swap! boot
+      (fn [env] 
+        (when-let [[tfn & args] (first (get-in env [:system :argv]))]
+          (if-let [task (get-in env [:tasks (keyword tfn)])]
+            (prep-task (update-in env [:system :argv] rest) task args)
+            (assert false (format "No such task: '%s'" tfn)))))) 
+    (swap! boot require-tasks)))
 
 (defn run-current-task! [boot]
   (locking boot

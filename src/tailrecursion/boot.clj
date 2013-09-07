@@ -13,13 +13,18 @@
    :dependencies  #{}
    :directories   #{}
    :repositories  #{"http://repo1.maven.org/maven2/" "http://clojars.org/repo/"}
+   :require-tasks '#{[tailrecursion.boot.core.task :refer [help]]}
+   :test          "test"
+   :target        "target"
+   :resources     "resources"
+   :public        "resources/public"
    :system        {:cwd         (io/file (System/getProperty "user.dir"))
                    :home        (io/file (System/getProperty "user.home")) 
                    :jvm-opts    (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
                    :bootfile    (io/file (System/getProperty "user.dir") "boot.clj")
                    :userfile    (io/file (System/getProperty "user.home") ".boot.clj")
                    :tmpregistry (tmp/init! (tmp/registry (io/file ".boot" "tmp")))} 
-   :tasks         {:help {:main '[tailrecursion.boot.core/help-task]}}})
+   :tasks         {}})
 
 (defmacro try* [expr & [default]]
   `(try ~expr (catch Throwable _# ~default)))
@@ -54,12 +59,15 @@
         cfg   (read-config (:bootfile sys))
         deps  (merge-in-with into [:dependencies] base-env usr cfg)
         dirs  (merge-in-with into [:directories] base-env usr cfg)
+        reqs  (merge-in-with into [:require-tasks] base-env usr cfg)
         repo  (merge-with #(some identity %&)
                 (merge-in-with into [:repositories] {:repositories #{}} usr cfg)
                 (select-keys base-env [:repositories])) 
         tasks (merge-in-with into [:tasks] base-env usr cfg)
         sys   (merge-with into sys {:argv argv})
         boot  (core/init! base-env)]
-    (swap! boot merge usr cfg deps dirs repo tasks {:system sys})
+    (locking boot
+      (swap! boot merge usr cfg deps dirs reqs repo tasks {:system sys})
+      (swap! boot core/require-tasks)) 
     ((core/compose-tasks! boot) (core/make-event))
     (System/exit 0)))
