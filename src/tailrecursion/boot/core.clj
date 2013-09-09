@@ -31,8 +31,11 @@
 
 (defn add-directories! [dirs]
   (when (seq dirs)
-    (let [meth (doto (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL])) (.setAccessible true))]
-      (.invoke meth (ClassLoader/getSystemClassLoader) (object-array (map #(..  (io/file %) toURI toURL) dirs))))))
+    (let [meth  (doto (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL]))
+                  (.setAccessible true))
+          cldr  (ClassLoader/getSystemClassLoader)
+          urls  (->> dirs (map io/file) (filter #(.exists %)) (map #(.. % toURI toURL)))]
+      (doseq [url urls] (.invoke meth cldr (object-array [url]))))))
 
 (defn configure! [old new]
   (let [[nd od] [(:dependencies new) (:dependencies old)] 
