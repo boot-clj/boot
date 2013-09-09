@@ -1,6 +1,7 @@
 (ns tailrecursion.boot.core
   (:require [cemerick.pomegranate           :as pom]
             [clojure.java.io                :as io]
+            [clojure.set                    :refer [difference]]
             [clojure.string                 :refer [join]]
             [clojure.pprint                 :refer [pprint]]
             [tailrecursion.boot.tmpregistry :as tmp])
@@ -24,19 +25,20 @@
       (assoc coordinate (inc idx) (into exclusions syms)))
     (into coordinate [:exclusions syms])))
 
-(defn add-dependencies! [env]
-  (let [{deps :dependencies, repos :repositories} env
-        deps (mapv (partial exclude ['org.clojure/clojure]) deps)]
+(defn add-dependencies! [deps repos]
+  (let [deps (mapv (partial exclude ['org.clojure/clojure]) deps)]
     (pom/add-dependencies :coordinates deps :repositories (zipmap repos repos))))
 
 (defn add-directories! [env]
   (when-let [dirs (seq (:src-paths env))] 
     (let [meth (doto (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL])) (.setAccessible true))]
-      (.invoke meth (ClassLoader/getSystemClassLoader) (object-array (map #(.. (io/file %) toURI toURL) dirs))))))
+      (.invoke meth (ClassLoader/getSystemClassLoader) (object-array (map #(..  (io/file %) toURI toURL) dirs))))))
 
 (defn configure! [old new]
-  (when-not (= (:dependencies old) (:dependencies new)) (add-dependencies! new))
-  (when-not (= (:src-paths old) (:src-paths new)) (add-directories! new)))
+  (let [[nd od] [(:dependencies new) (:dependencies old)] 
+        [ns os] [(:src-paths new) (:src-paths old)]]
+    (when-not (= nd od) (add-dependencies! nd (:repositories new)))
+    (when-not (= ns os) (add-directories! (difference ns os)))))
 
 (defn require-task [tasks [ns & {:keys [refer as]}]]
   {:pre [(symbol? ns)

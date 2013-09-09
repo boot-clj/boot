@@ -10,7 +10,7 @@
 (def base-env
   {:project       nil
    :version       nil
-   :dependencies  #{}
+   :dependencies  []
    :src-paths     #{}
    :repositories  #{"http://repo1.maven.org/maven2/" "http://clojars.org/repo/"}
    :require-tasks '#{[tailrecursion.boot.core.task :refer [help]]}
@@ -57,7 +57,7 @@
         deps  (merge-in-with into [:dependencies] base-env usr cfg)
         dirs  (merge-in-with into [:src-paths] base-env usr cfg)
         reqs  (merge-in-with into [:require-tasks] base-env usr cfg)
-        repo  (merge-with #(some identity %&)
+        repo  (merge-with #(->> %& (filter seq) first) 
                 (merge-in-with into [:repositories] {:repositories #{}} usr cfg)
                 (select-keys base-env [:repositories])) 
         tasks (merge-in-with into [:tasks] base-env usr cfg)
