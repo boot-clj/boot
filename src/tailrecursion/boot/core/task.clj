@@ -7,15 +7,17 @@
     [tailrecursion.boot.table.core  :refer [table]]
     [tailrecursion.boot.core        :refer [deftask]]))
 
-(defn first-line [s] (first (split s #"\n")))
+(defn first-line [s] (when s (first (split s #"\n"))))
 
 (defn get-doc [sym]
-  (require (symbol (namespace sym)))
-  (join "\n" (-> sym find-var meta :doc str (split #" *\n *"))))
+  (when sym
+    (when-let [ns (namespace sym)] (require (symbol ns))) 
+    (join "\n" (-> sym find-var meta :doc str (split #" *\n *")))))
 
 (defn print-tasks [tasks]
   (let [get-task  #(-> % str (subs 1))
-        get-desc  #(-> % :main first get-doc first-line)
+        get-desc  #(or (-> % :main first get-doc first-line)
+                       (-> % :doc first-line))
         get-row   (fn [[k v]] [(get-task k) (get-desc v)])]
     (with-out-str (table (into [["" ""]] (map get-row tasks)) :style :none))))
 
@@ -37,6 +39,11 @@
     (str (format "%s %s: %s\n" (name proj) vers desc))))
 
 ;; CORE TASKS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftask nop
+  "Does nothing."
+  [boot]
+  (fn [continue] (fn [event] (continue event))))
 
 (deftask help
   "Print this help info.

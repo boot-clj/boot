@@ -8,8 +8,11 @@
 
 ;; INTERNAL ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmacro guard [expr & [default]]
+  `(try ~expr (catch Throwable _# ~default)))
+
 (defn load-sym [sym]
-  (when-let [ns (namespace sym)] (require (symbol ns))) 
+  (when-let [ns (and sym (namespace sym))] (require (symbol ns)))
   (or (resolve sym) (assert false (format "Can't resolve #'%s." sym))))
 
 (defn index-of [v val]
@@ -27,13 +30,13 @@
     (pom/add-dependencies :coordinates deps :repositories (zipmap repos repos))))
 
 (defn add-directories! [env]
-  (when-let [dirs (seq (:directories env))] 
+  (when-let [dirs (seq (:src-paths env))] 
     (let [meth (doto (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL])) (.setAccessible true))]
       (.invoke meth (ClassLoader/getSystemClassLoader) (object-array (map #(.. (io/file %) toURI toURL) dirs))))))
 
 (defn configure! [old new]
   (when-not (= (:dependencies old) (:dependencies new)) (add-dependencies! new))
-  (when-not (= (:directories old) (:directories new)) (add-directories! new)))
+  (when-not (= (:src-paths old) (:src-paths new)) (add-directories! new)))
 
 (defn require-task [tasks [ns & {:keys [refer as]}]]
   {:pre [(symbol? ns)
@@ -56,9 +59,9 @@
   (assoc env :tasks (reduce require-task (:tasks env) (:require-tasks env))))
 
 (defn prep-task [env task args]
-  (let [m     (:main task)
+  (let [m     (or (:main task) '[tailrecursion.boot.core.task/nop]) 
         main  {:main (if (seq args) (into [(first m)] args) m)}
-        sel   #(select-keys % [:directories :dependencies :repositories])
+        sel   #(select-keys % [:src-paths :dependencies :repositories])
         sel2  #(select-keys % [:require-tasks])
         mvn   (merge-with into (sel env) (sel task))
         req   (merge-with into (sel2 env) (sel2 task))]
@@ -78,13 +81,14 @@
 
 (defn prep-next-task! [boot]
   (locking boot
-    (swap! boot
-      (fn [env] 
-        (when-let [[tfn & args] (first (get-in env [:system :argv]))]
-          (if-let [task (get-in env [:tasks (keyword tfn)])]
-            (prep-task (update-in env [:system :argv] rest) task args)
-            (assert false (format "No such task: '%s'" tfn)))))) 
-    (swap! boot require-tasks)))
+    (when-let [[tfd & args] (first (get-in @boot [:system :argv]))]
+      (swap! boot
+        (fn [env] 
+          (when-let [[tfn & args] (first (get-in env [:system :argv]))]
+            (if-let [task (get-in env [:tasks (keyword tfn)])]
+              (prep-task (update-in env [:system :argv] rest) task args)
+              (assert false (format "No such task: '%s'" tfn)))))) 
+      (swap! boot require-tasks))))
 
 (defn run-current-task! [boot]
   (locking boot
@@ -94,8 +98,7 @@
 
 (defn run-next-task! [boot]
   (locking boot
-    (prep-next-task! boot) 
-    (run-current-task! boot)))
+    (when (prep-next-task! boot) (run-current-task! boot))))
 
 (defn compose-tasks! [boot]
   (loop [task (run-next-task! boot), stack #(do (flush) %)]

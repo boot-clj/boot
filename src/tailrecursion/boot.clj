@@ -11,7 +11,7 @@
   {:project       nil
    :version       nil
    :dependencies  #{}
-   :directories   #{}
+   :src-paths     #{}
    :repositories  #{"http://repo1.maven.org/maven2/" "http://clojars.org/repo/"}
    :require-tasks '#{[tailrecursion.boot.core.task :refer [help]]}
    :test          "test"
@@ -26,11 +26,8 @@
                    :tmpregistry (tmp/init! (tmp/registry (io/file ".boot" "tmp")))} 
    :tasks         {}})
 
-(defmacro try* [expr & [default]]
-  `(try ~expr (catch Throwable _# ~default)))
-
 (defn exists? [f]
-  (when (try* (.exists f)) f))
+  (when (core/guard (.exists f)) f))
 
 (defn read-file [f]
   (try (read-string (str "(" (try (slurp f) (catch Throwable x)) ")"))
@@ -58,7 +55,7 @@
         usr   (when-let [f (exists? (:userfile sys))] (read-config f))
         cfg   (read-config (:bootfile sys))
         deps  (merge-in-with into [:dependencies] base-env usr cfg)
-        dirs  (merge-in-with into [:directories] base-env usr cfg)
+        dirs  (merge-in-with into [:src-paths] base-env usr cfg)
         reqs  (merge-in-with into [:require-tasks] base-env usr cfg)
         repo  (merge-with #(some identity %&)
                 (merge-in-with into [:repositories] {:repositories #{}} usr cfg)
