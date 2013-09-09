@@ -29,8 +29,8 @@
   (let [deps (mapv (partial exclude ['org.clojure/clojure]) deps)]
     (pom/add-dependencies :coordinates deps :repositories (zipmap repos repos))))
 
-(defn add-directories! [env]
-  (when-let [dirs (seq (:src-paths env))] 
+(defn add-directories! [dirs]
+  (when (seq dirs)
     (let [meth (doto (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL])) (.setAccessible true))]
       (.invoke meth (ClassLoader/getSystemClassLoader) (object-array (map #(..  (io/file %) toURI toURL) dirs))))))
 

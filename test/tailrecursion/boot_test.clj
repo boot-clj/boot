@@ -1,8 +1,7 @@
 (ns tailrecursion.boot-test
   (:require 
     [clojure.pprint :refer [pprint]]
-    [clojure.test :refer :all]
-    [tailrecursion.boot :refer :all]))
+    [clojure.test :refer :all]))
 
 (defn main [boot]
   (pprint boot)
