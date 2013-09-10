@@ -76,12 +76,12 @@
 
 ;; BOOT API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn tmpfile?  [this f]            (dotmp this (tmp/tmpfile? f)) this)
-(defn mk!       [this key & [name]] (dotmp this (tmp/mk! key name)))
-(defn mkdir!    [this key & [name]] (dotmp this (tmp/mkdir! key name)))
-(defn unmk!     [this key]          (dotmp this (tmp/unmk! key)) this)
-(defn add-sync! [this dst & [srcs]] (dotmp this (tmp/add-sync! dst srcs)) this)
-(defn sync!     [this]              (dotmp this (tmp/sync!)) this)
+(defn tmpfile?  [this f]            (dotmp @this (tmp/tmpfile? f)))
+(defn mk!       [this key & [name]] (dotmp @this (tmp/mk! key name)))
+(defn mkdir!    [this key & [name]] (dotmp @this (tmp/mkdir! key name)))
+(defn unmk!     [this key]          (dotmp @this (tmp/unmk! key)) this)
+(defn add-sync! [this dst & [srcs]] (dotmp @this (tmp/add-sync! dst srcs)) this)
+(defn sync!     [this]              (dotmp @this (tmp/sync!)) this)
 
 (defmacro deftask [name & args]
   `(defn ~(with-meta name {::task true}) ~@args))
