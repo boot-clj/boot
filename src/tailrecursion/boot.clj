@@ -51,7 +51,7 @@
 
 (defn -main [& args]
   (let [sys   (:system base-env)
-        argv  (reverse (or (seq (read-cli-args args)) (list ["help"]))) 
+        argv  (or (seq (read-cli-args args)) (list ["help"])) 
         usr   (when-let [f (exists? (:userfile sys))] (read-config f))
         cfg   (read-config (:bootfile sys))
         deps  (merge-in-with into [:dependencies] base-env usr cfg)
@@ -66,5 +66,5 @@
     (locking boot
       (swap! boot merge usr cfg deps dirs reqs repo tasks {:system sys})
       (swap! boot core/require-tasks)) 
-    ((core/compose-tasks! boot) (core/make-event))
+    ((core/create-app! boot) (core/make-event))
     (System/exit 0)))

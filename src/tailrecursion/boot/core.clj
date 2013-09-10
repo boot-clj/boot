@@ -95,16 +95,18 @@
               (assert false (format "No such task: '%s'" tfn)))))) 
       (swap! boot require-tasks))))
 
-(defn run-current-task! [boot]
+(defn get-current-middleware! [boot]
   (locking boot
     (when-let [[task & args] (:main @boot)]
       (swap! boot dissoc :main)
       (apply ((if (symbol? task) load-sym eval) task) boot args))))
 
-(defn run-next-task! [boot]
+(defn get-next-middleware! [boot]
   (locking boot
-    (when (prep-next-task! boot) (run-current-task! boot))))
+    (when (prep-next-task! boot) (get-current-middleware! boot))))
 
-(defn compose-tasks! [boot]
-  (loop [task (run-next-task! boot), stack #(do (flush) %)]
-    (if-not task stack (recur (run-next-task! boot) (task stack)))))
+(defn create-app! [boot]
+  (let [run!  #(get-next-middleware! boot)
+        tasks (loop [task (run!), tasks []]
+                (if task (recur (run!) (conj tasks task)) tasks))]
+    ((apply comp tasks) #(do (flush) %))))
