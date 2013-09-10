@@ -10,7 +10,7 @@
 (defn first-line [s] (when s (first (split s #"\n"))))
 
 (defn get-doc [sym]
-  (when sym
+  (when (symbol? sym)
     (when-let [ns (namespace sym)] (require (symbol ns))) 
     (join "\n" (-> sym find-var meta :doc str (split #" *\n *")))))
 
