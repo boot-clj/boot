@@ -106,7 +106,8 @@
     (when (prep-next-task! boot) (get-current-middleware! boot))))
 
 (defn create-app! [boot]
-  (let [run!  #(get-next-middleware! boot)
+  (let [tmp   (get-in @boot [:system :tmpregistry])
+        run!  #(get-next-middleware! boot)
         tasks (loop [task (run!), tasks []]
                 (if task (recur (run!) (conj tasks task)) tasks))]
-    ((apply comp tasks) #(do (flush) %))))
+    ((apply comp tasks) #(do (tmp/sync! tmp) (flush) %))))
