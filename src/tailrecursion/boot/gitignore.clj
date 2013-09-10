@@ -29,23 +29,24 @@
     (Matcher. negated? (fn [f] (.matches m (.toPath (.getCanonicalFile f)))))))
 
 (defn parse-gitignore1 [pattern base]
-  (let [base  (if (.endsWith base "/") base (str base "/"))
-        strip #(replace % #"^/*" "")
-        pat   (atom pattern)
-        mat   (atom [])
+  (let [base    (if (.endsWith base "/") base (str base "/"))
+        strip   #(replace % #"^/*" "")
+        pat     (atom pattern)
+        mat     (atom [])
         [negated? end-slash? has-slash? lead-slash? lead-asts? end-ast?] 
         (map #(fn [] (re-find % @pat)) [#"^!" #"/$" #"/" #"^/" #"^\*\*/" #"/\*$"])
-        neg?  (negated?)
-        dir?  (end-slash?)]
+        neg?    (negated?)
+        dir?    (end-slash?)
+        matcher #(path-matcher (apply str base %&))]
     (when (negated?) (swap! pat replace #"^!" ""))
     (when (end-slash?) (swap! pat replace #"/*$" ""))
     (if-not (has-slash?) 
-      (swap! mat into (map path-matcher [(str base @pat) (str base "**/" @pat)]))
-      (swap! mat conj (path-matcher (str base (strip @pat)))))
+      (swap! mat into (map matcher [@pat (str "**/" @pat)]))
+      (swap! mat conj (matcher (strip @pat))))
     (when (lead-asts?)
-      (swap! mat conj (path-matcher (str base (strip (subs @pat 3))))))
+      (swap! mat conj (matcher (strip (subs @pat 3)))))
     (when (end-ast?)
-      (swap! mat conj (path-matcher (str base (strip @pat) "*"))))
+      (swap! mat conj (matcher (strip @pat) "*")))
     (Matcher. neg?  (fn [f] (and (or (not dir?) (.isDirectory f))
                                  (some #(-matches? % f) @mat))))))
 
