@@ -3,28 +3,32 @@
             [clojure.java.io                :as io]
             [clojure.pprint                 :refer [pprint]]
             [tailrecursion.boot.core        :as core]
-            [tailrecursion.boot.tmpregistry :as tmp])
+            [tailrecursion.boot.tmpregistry :as tmp]
+            [tailrecursion.boot.gitignore   :as git])
   (:import java.lang.management.ManagementFactory)
   (:gen-class))
 
 (def base-env
-  {:project       nil
-   :version       nil
-   :dependencies  []
-   :src-paths     #{}
-   :repositories  #{"http://repo1.maven.org/maven2/" "http://clojars.org/repo/"}
-   :require-tasks '#{[tailrecursion.boot.core.task :refer [help]]}
-   :test          "test"
-   :target        "target"
-   :resources     "resources"
-   :public        "resources/public"
-   :system        {:cwd         (io/file (System/getProperty "user.dir"))
-                   :home        (io/file (System/getProperty "user.home")) 
-                   :jvm-opts    (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
-                   :bootfile    (io/file (System/getProperty "user.dir") "boot.clj")
-                   :userfile    (io/file (System/getProperty "user.home") ".boot.clj")
-                   :tmpregistry (tmp/init! (tmp/registry (io/file ".boot" "tmp")))} 
-   :tasks         {}})
+  (fn []
+    {:project       nil
+     :version       nil
+     :dependencies  []
+     :src-paths     #{}
+     :src-static    #{}
+     :repositories  #{"http://repo1.maven.org/maven2/" "http://clojars.org/repo/"}
+     :require-tasks '#{[tailrecursion.boot.core.task :refer [help]]}
+     :test          "test"
+     :target        "target"
+     :resources     "resources"
+     :public        "resources/public"
+     :system        {:cwd         (io/file (System/getProperty "user.dir"))
+                     :home        (io/file (System/getProperty "user.home"))
+                     :jvm-opts    (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
+                     :bootfile    (io/file (System/getProperty "user.dir") "boot.clj")
+                     :userfile    (io/file (System/getProperty "user.home") ".boot.clj")
+                     :tmpregistry (tmp/init! (tmp/registry (io/file ".boot" "tmp")))
+                     :gitignore   (git/make-gitignore-matcher)}
+     :tasks         {}}))
 
 (defn exists? [f]
   (when (core/guard (.exists f)) f))
@@ -50,21 +54,22 @@
   (->> maps (map #(assoc-in {} ks (get-in % ks))) (apply merge-with f)))
 
 (defn -main [& args]
-  (let [sys   (:system base-env)
-        argv  (or (seq (read-cli-args args)) (list ["help"])) 
+  (let [base  (base-env)
+        sys   (:system base)
+        argv  (or (seq (read-cli-args args)) (list ["help"]))
         usr   (when-let [f (exists? (:userfile sys))] (read-config f))
         cfg   (read-config (:bootfile sys))
-        deps  (merge-in-with into [:dependencies] base-env usr cfg)
-        dirs  (merge-in-with into [:src-paths] base-env usr cfg)
-        reqs  (merge-in-with into [:require-tasks] base-env usr cfg)
-        repo  (merge-with #(->> %& (filter seq) first) 
+        deps  (merge-in-with into [:dependencies] base usr cfg)
+        dirs  (merge-in-with into [:src-paths] base usr cfg)
+        reqs  (merge-in-with into [:require-tasks] base usr cfg)
+        repo  (merge-with #(->> %& (filter seq) first)
                 (merge-in-with into [:repositories] {:repositories #{}} usr cfg)
-                (select-keys base-env [:repositories])) 
-        tasks (merge-in-with into [:tasks] base-env usr cfg)
+                (select-keys base [:repositories]))
+        tasks (merge-in-with into [:tasks] base usr cfg)
         sys   (merge-with into sys {:argv argv})
-        boot  (core/init! base-env)]
+        boot  (core/init! base)]
     (locking boot
       (swap! boot merge usr cfg deps dirs reqs repo tasks {:system sys})
-      (swap! boot core/require-tasks)) 
+      (swap! boot core/require-tasks))
     ((core/create-app! boot) (core/make-event))
     (System/exit 0)))

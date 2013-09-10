@@ -76,6 +76,7 @@
 
 ;; BOOT API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn ignored?  [this f]            ((get-in @this [:system :gitignore]) f))
 (defn tmpfile?  [this f]            (dotmp @this (tmp/tmpfile? f)))
 (defn mk!       [this key & [name]] (dotmp @this (tmp/mk! key name)))
 (defn mkdir!    [this key & [name]] (dotmp @this (tmp/mkdir! key name)))
