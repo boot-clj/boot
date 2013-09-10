@@ -55,15 +55,15 @@
         lines (->> f slurp (#(split % #"\n")) (remove skip?) (map trim))]
     (map parse-gitignore1 lines (repeat base))))
 
-(defn excludesfile []
+(defn core-excludes []
   (let [git #(sh "git" "config" "core.excludesfile")
         cwd (System/getProperty "user.dir")]
     (try (-> (git) :out trim file (parse-gitignore cwd)) (catch Throwable _))))
 
-(defn make-gitignore-matcher []
-  (let [cwd         (System/getProperty "user.dir")
+(defn make-gitignore-matcher [& [$GIT_DIR]]
+  (let [cwd         (or $GIT_DIR (System/getProperty "user.dir")) 
         gi-file?    #(= ".gitignore" (.getName %))
         gitignores  (->> (file cwd) file-seq (filter gi-file?))
-        core-excl   (vec (or (excludesfile) []))
+        core-excl   (vec (or (core-excludes) []))
         matchers    (into core-excl (mapcat parse-gitignore gitignores))]
     (partial matches? matchers)))
