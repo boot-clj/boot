@@ -6,7 +6,7 @@
     [clojure.set      :refer [union intersection difference]])
   (:import
     java.lang.management.ManagementFactory)
-  (:refer-clojure :exclude [sync name]))
+  (:refer-clojure :exclude [sync name file-seq]))
 
 (defn file? [f] (when (try (.isFile (file f)) (catch Throwable _)) f))
 (defn dir? [f] (when (try (.isDirectory (file f)) (catch Throwable _)) f))
@@ -14,6 +14,7 @@
 (defn path [f] (.getPath (file f)))
 (defn name [f] (.getName (file f)))
 (defn relative-to [base f] (.relativize (.toURI base) (.toURI f)))
+(defn file-seq [dir] (when dir (clojure.core/file-seq dir)))
 
 (defn clean! [& files]
   (doseq [f files]

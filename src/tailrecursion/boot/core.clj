@@ -72,7 +72,16 @@
         req   (merge-with into (sel2 env) (sel2 task))]
     (merge env task main mvn req)))
 
+(defmacro dotmp [this & body] `(-> ~this (get-in [:system :tmpregistry]) ~@body))
+
 ;; BOOT API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn tmpfile?  [this f]            (dotmp this (tmp/tmpfile? f)) this)
+(defn mk!       [this key & [name]] (dotmp this (tmp/mk! key name)))
+(defn mkdir!    [this key & [name]] (dotmp this (tmp/mkdir! key name)))
+(defn unmk!     [this key]          (dotmp this (tmp/unmk! key)) this)
+(defn add-sync! [this dst & [srcs]] (dotmp this (tmp/add-sync! dst srcs)) this)
+(defn sync!     [this]              (dotmp this (tmp/sync!)) this)
 
 (defmacro deftask [name & args]
   `(defn ~(with-meta name {::task true}) ~@args))
