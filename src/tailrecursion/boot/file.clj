@@ -63,8 +63,10 @@
 (defn copy-with-lastmod
   [src-file dst-file]
   (make-parents dst-file)
-  (copy src-file dst-file)
-  (.setLastModified dst-file (.lastModified src-file)))
+  (try
+    (copy src-file dst-file) 
+    (.setLastModified dst-file (.lastModified src-file))
+    (catch Throwable _)))
 
 (defn copy-files
   [src dest]
