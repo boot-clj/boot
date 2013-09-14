@@ -16,6 +16,9 @@
 (defn relative-to [base f] (.relativize (.toURI base) (.toURI f)))
 (defn file-seq [dir] (when dir (clojure.core/file-seq dir)))
 
+(defmacro guard [& exprs]
+  `(try (do ~@exprs) (catch Throwable _#)))
+
 (defn clean! [& files]
   (doseq [f files]
     (doall (->> f file file-seq (keep file?) (map #(delete-file % true))))))
@@ -129,8 +132,8 @@
   (let [prev (atom nil)]
     (fn []
       (let [only-file #(filter file? %)
-            make-info #(vector [% (.lastModified %)] [% (d/md5 %)])
-            file-info #(mapcat make-info %)
+            make-info #(guard (vector [% (.lastModified %)] [% (d/md5 %)])) 
+            file-info #(remove nil? (mapcat make-info %)) 
             info      (->> dir file file-seq only-file file-info set)
             mods      (difference (union info @prev) (intersection info @prev))
             by        #(->> %2 (filter (comp %1 second)) (map first) set)]
