@@ -45,7 +45,8 @@ place to look for examples when building custom tasks.
 
 ### Tasks
 
-Boot tasks are similar to Leiningen's
+Boot tasks may also be specified as subconfigurations inside the
+`boot.clj` file, and are similar to Leiningen's
 [profiles](https://github.com/technomancy/leiningen/blob/master/doc/PROFILES.md).
 Multiple subconfigurations may be sepcified. When invoked
 from the command line the selected subconfiguration is merged
@@ -53,13 +54,18 @@ into the current configuration. Tasks can be used to call
 pre-packaged middleware stacks, like a lightweight Leiningen
 plugin.
 
-### Tempfiles
+### Files
 
 Since most build processes generate files at some point, boot
 includes facilities for creating and managing temporary files
 and directories. This temporary filesystem facility can be used
 to have "auto-cleaning" builds&mdash;builds that don't need to have
 a "clean" target because they don't create stale garbage.
+
+There is also facility for collecting output files at the end of
+the boot process and overlaying and syncing them to the final
+project output directories, eliminating the possibility of
+stale output files.
 
 ## Install
 
