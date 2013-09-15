@@ -64,7 +64,7 @@ a "clean" target because they don't create stale garbage.
 
 There is also facility for collecting output files at the end of
 the boot process and overlaying and syncing them to the final
-project output directories, eliminating the possibility of
+project output directories. This eliminates the possibility of
 stale output files while preserving the ability of individual
 tasks to produce or delete output files without clobbering each
 other.
