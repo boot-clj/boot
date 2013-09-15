@@ -56,9 +56,15 @@ a "clean" target because they don't create stale garbage.
 
 ## Install
 
-You'll need a recent version of [Leiningen](https://github.com/technomancy/leiningen)
-and the `make` tool to build boot from source. Pre-made binaries
-will be made available someday.
+To build and run boot your system must have:
+
+* Java version 7+
+* [Leiningen](https://github.com/technomancy/leiningen) version 2+
+* GNU `make`
+
+To build boot from source run the following commands in a terminal
+in the boot repo directory (pre-made binaries will be made available
+someday):
 
     $ make boot
     $ cp ./boot /somewhere/in/your/path/
