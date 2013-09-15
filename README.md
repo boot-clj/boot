@@ -21,20 +21,27 @@ boot to run a Clojure function which builds your project.
 Boot maintains its state in a configuration atom initially
 derived from the data in the `boot.clj` file. The configuration
 can be modified at runtime to manipulate the application state,
-i.e. add dependencies to the classpath, etc.
+i.e. add dependencies to the classpath, etc. An additional global
+configuration file `~/.boot.clj` in the user's home directory may
+contain configuration data which is to be included in all builds.
 
 ### Middleware
 
-Individual tasks within the build process can be composed of
-middleware (like [ring](https://github.com/mmcgrana/ring) does,
-for example). Everything is implemented as Clojure functions, so
-it's easy to customize the build process for individual projects
-and to package these build processes for distribution.
+Individual tasks within the build process are composed of middleware
+(like [ring](https://github.com/mmcgrana/ring) does, for example).
+Everything is implemented as Clojure functions, so it's easy to
+customize the build process for individual projects and to package
+these build processes for distribution.
+
+The task middleware is composed into an application at runtime
+according to the command line options passed to boot. Individual
+tasks may be passed arguments at this time, as well.
 
 There is a selection of generally applicable middleware included
 in the [boot.task](https://github.com/tailrecursion/boot.task)
-repository to do useful things like watch directories for
-changed files, sync/copy files between directories, etc.
+repository to do useful things like watch directories for changed
+files, sync/copy files between directories, etc. This is a good
+place to look for examples when building custom tasks.
 
 ### Tasks
 
