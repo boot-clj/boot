@@ -56,15 +56,15 @@ plugin.
 
 ### Files
 
-Since most build processes generate files at some point, boot
-includes facilities for creating and managing temporary files
-and directories. This temporary filesystem facility can be used
-to have "auto-cleaning" builds&mdash;builds that don't need to have
-a "clean" target because they don't create stale garbage.
+**Temporary files:** Since most build processes generate files at
+some point, boot includes facilities for creating and managing
+temporary files and directories. This temporary filesystem facility
+can be used to have "auto-cleaning" builds&mdash;builds that don't
+need to have a "clean" target because they don't create stale garbage.
 
-There is also facility for collecting output files at the end of
-the boot process and overlaying and syncing them to the final
-project output directories, eliminating the possibility of
+**Output files:** There is also facility for collecting output files
+at the end of the boot process and overlaying and syncing them to
+the final project output directories, eliminating the possibility of
 stale output files.
 
 ## Install
