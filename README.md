@@ -57,7 +57,6 @@ a "clean" target because they don't create stale garbage.
 ## Install
 
 To build and run boot your system must have:
-
 * Java version 7+
 * [Leiningen](https://github.com/technomancy/leiningen) version 2+
 * GNU `make`
