@@ -6,12 +6,28 @@
     [clojure.string           :as str]
     [clojure.core             :as core]
     [clojure.set              :refer [union intersection difference]])
-  (:import java.io.File))
+  (:import
+    java.io.File
+    java.lang.management.ManagementFactory))
 
 (defn delete! [f]
   (let [delete (io/file f)]
     (doseq [child (.listFiles delete)] (delete! child))
     (.delete delete)))
+
+(defn pid! []
+  (->> (.. ManagementFactory getRuntimeMXBean getName) 
+    (take-while (partial not= \@))
+    (apply str)))
+
+(defn add-shutdown-hook! [f]
+  (.addShutdownHook (Runtime/getRuntime) (Thread. f)))
+
+(defn clean-delete-me! [dir]
+  (doseq [f (->> (.listFiles (io/file dir))
+              (mapcat #(seq (.listFiles %)))
+              (filter #(= ".delete-me" (.getName %))))]
+    (delete! (.getParentFile f))))
 
 (defmulti  make-file! (fn [type f] type))
 (defmethod make-file! ::file [type f] (doto f delete! (.createNewFile)))
@@ -54,6 +70,8 @@
 (defrecord TmpRegistry [dir initialized? reg syncs]
   ITmpRegistry
   (-init! [this]
+    (clean-delete-me! (.getParentFile (io/file dir)))
+    (add-shutdown-hook! #(.createNewFile (io/file dir ".delete-me")))
     (add-watch reg ::_ #(persist! dir initialized? %3 %4)))
   (-get [this k]
     (io/file dir (munge k) (nth (@reg k) 2)))
@@ -71,4 +89,4 @@
     (when (f/parent? dir f) f)))
 
 (defn registry [dir]
-  (TmpRegistry. (io/file dir) (atom false) (atom {}) (atom {})))
+  (TmpRegistry. (io/file dir (pid!)) (atom false) (atom {}) (atom {})))

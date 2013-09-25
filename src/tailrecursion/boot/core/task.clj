@@ -8,6 +8,7 @@
     [tailrecursion.boot.core        :refer [deftask]]))
 
 (defn first-line [s] (when s (first (split s #"\n"))))
+(defn not-blank? [s] (when-not (blank? s) s))
 
 (defn get-doc [sym]
   (when (symbol? sym)
@@ -16,8 +17,8 @@
 
 (defn print-tasks [tasks]
   (let [get-task  #(-> % str (subs 1))
-        get-desc  #(or (-> % :main first get-doc first-line)
-                       (-> % :doc first-line))
+        get-desc  #(or (-> % :doc first-line not-blank?)
+                       (-> % :main first get-doc first-line))
         get-row   (fn [[k v]] [(get-task k) (get-desc v)])]
     (with-out-str (table (into [["" ""]] (map get-row tasks)) :style :none))))
 
@@ -53,10 +54,12 @@
   (let [tasks (:tasks @boot)]
     (fn [continue]
       (fn [event]
+        (println)
         (println (version-str))
         (-> ["boot task ..." "boot [task arg arg] ..." "boot [help task]"]
             (->> (pad-left "Usage: ") println))
         (println)
         (println (pad-left "Tasks: " (split (print-tasks tasks) #"\n"))) 
+        (println)
         (flush)
         (continue event)))))

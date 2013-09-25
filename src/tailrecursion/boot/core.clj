@@ -25,9 +25,20 @@
       (assoc coordinate (inc idx) (into exclusions syms)))
     (into coordinate [:exclusions syms])))
 
+(defn transfer-listener
+  [{type :type meth :method {name :name repo :repository} :resource err :error}]
+  (when (.endsWith name ".jar")
+    (case type
+      :started              (printf "Retrieving %s from %s\n" name repo) 
+      (:corrupted :failed)  (when err (printf "Error: %s\n" (.getMessage err)))
+      nil)
+    (flush)))
+
 (defn add-dependencies! [deps repos]
   (let [deps (mapv (partial exclude ['org.clojure/clojure]) deps)]
-    (pom/add-dependencies :coordinates deps :repositories (zipmap repos repos))))
+    (pom/add-dependencies :coordinates        deps
+                          :repositories       (zipmap repos repos)
+                          :transfer-listener  transfer-listener)))
 
 (defn add-directories! [dirs]
   (when (seq dirs)
