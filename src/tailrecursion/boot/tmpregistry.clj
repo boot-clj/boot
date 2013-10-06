@@ -23,6 +23,9 @@
 (defn add-shutdown-hook! [f]
   (.addShutdownHook (Runtime/getRuntime) (Thread. f)))
 
+(defn mark-delete-me! [dir]
+  #(when (.exists dir) (.createNewFile (io/file dir ".delete-me"))))
+
 (defn clean-delete-me! [dir]
   (doseq [f (->> (.listFiles (io/file dir))
               (mapcat #(seq (.listFiles %)))
@@ -71,7 +74,7 @@
   ITmpRegistry
   (-init! [this]
     (clean-delete-me! (.getParentFile (io/file dir)))
-    (add-shutdown-hook! #(.createNewFile (io/file dir ".delete-me")))
+    (add-shutdown-hook! (mark-delete-me! (io/file dir)))
     (add-watch reg ::_ #(persist! dir initialized? %3 %4)))
   (-get [this k]
     (io/file dir (munge k) (nth (@reg k) 2)))
