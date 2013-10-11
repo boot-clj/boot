@@ -1,7 +1,7 @@
 # boot
 
 Boot is a minimal Clojure program 'bootloader'.  It reads a
-configuration map from a `boot.clj` file in the current directory
+configuration map from a `boot.edn` file in the current directory
 and starts a JVM with Clojure, dependencies, and directories
 on the classpath. After the JVM is set up it runs a function
 or evaluates an expression as specified in the configuration.
@@ -19,40 +19,38 @@ boot to run a Clojure function which builds your project.
 ### Configuration
 
 Boot maintains its state in a configuration atom initially
-derived from the data in the `boot.clj` file. The configuration
+derived from the data in the `boot.edn` file. The configuration
 can be modified at runtime to manipulate the application state,
 i.e. add dependencies to the classpath, etc. An additional global
-configuration file `~/.boot.clj` in the user's home directory may
+configuration file `~/.boot.edn` in the user's home directory may
 contain configuration data which is to be included in all builds.
 
 ### Middleware
 
 Individual tasks within the build process are composed of middleware
-(like [ring](https://github.com/mmcgrana/ring) does, for example).
-Everything is implemented as Clojure functions, so it's easy to
-customize the build process for individual projects and to package
-these build processes for distribution.
+(like [ring][1] does, for example).  Everything is implemented as
+Clojure functions, so it's easy to customize the build process for
+individual projects and to package these build processes for
+distribution.
 
 The task middleware is composed into an application at runtime
 according to the command line options passed to boot. Individual
 tasks may be passed arguments at this time, as well.
 
-There is a selection of generally applicable middleware included
-in the [boot.task](https://github.com/tailrecursion/boot.task)
-repository to do useful things like watch directories for changed
-files, sync/copy files between directories, etc. This is a good
-place to look for examples when building custom tasks.
+There is a selection of generally applicable middleware included in
+the [boot.task][2] repository to do useful things like watch
+directories for changed files, sync/copy files between directories,
+etc. This is a good place to look for examples when building custom
+tasks.
 
 ### Tasks
 
 Boot tasks may also be specified as subconfigurations inside the
-`boot.clj` file, and are similar to Leiningen's
-[profiles](https://github.com/technomancy/leiningen/blob/master/doc/PROFILES.md).
-Multiple subconfigurations may be sepcified. When invoked
-from the command line the selected subconfiguration is merged
-into the current configuration. Tasks can be used to call
-pre-packaged middleware stacks, like a lightweight Leiningen
-plugin.
+`boot.edn` file, and are similar to Leiningen's [profiles][3] Multiple
+subconfigurations may be sepcified. When invoked from the command line
+the selected subconfiguration is merged into the current
+configuration. Tasks can be used to call pre-packaged middleware
+stacks, like a lightweight Leiningen plugin.
 
 ### Files
 
@@ -73,7 +71,7 @@ other.
 
 To build and run boot your system must have:
 * Java version 7+
-* [Leiningen](https://github.com/technomancy/leiningen) version 2+
+* [Leiningen][4] version 2+
 * GNU `make`
 
 To build boot from source run the following commands in a terminal
@@ -85,10 +83,9 @@ someday):
 
 ## Usage
 
-Check out the [example boot.clj](https://github.com/tailrecursion/boot/blob/master/boot.clj)
-in this project.  It loads a Maven dependency, adds a directory
-to the classpath, and specifies a function to evaluate when the
-JVM is all set up.
+Check out the [example boot.edn][5] in this project.  It loads a Maven
+dependency, adds a directory to the classpath, and specifies a
+function to evaluate when the JVM is all set up.
 
     $ boot
 
@@ -119,3 +116,9 @@ in this directory, e.g.:
 Copyright © 2013 Alan Dipert and Micha Niskin
 
 Distributed under the Eclipse Public License, the same as Clojure.
+
+[1]: https://github.com/mmcgrana/ring
+[2]: https://github.com/tailrecursion/boot.task
+[3]: https://github.com/technomancy/leiningen/blob/master/doc/PROFILES.md
+[4]: https://github.com/technomancy/leiningen
+[5]: https://github.com/tailrecursion/boot/blob/master/boot.edn

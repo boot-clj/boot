@@ -24,8 +24,8 @@
      :system        {:cwd         (io/file (System/getProperty "user.dir"))
                      :home        (io/file (System/getProperty "user.home"))
                      :jvm-opts    (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
-                     :bootfile    (io/file (System/getProperty "user.dir") "boot.clj")
-                     :userfile    (io/file (System/getProperty "user.home") ".boot.clj")
+                     :bootfile    (io/file (System/getProperty "user.dir") "boot.edn")
+                     :userfile    (io/file (System/getProperty "user.home") ".boot.edn")
                      :tmpregistry (tmp/init! (tmp/registry (io/file ".boot" "tmp")))
                      :gitignore   (git/make-gitignore-matcher)}
      :tasks         {}}))
