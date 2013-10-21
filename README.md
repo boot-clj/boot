@@ -25,6 +25,9 @@ i.e. add dependencies to the classpath, etc. An additional global
 configuration file `~/.boot.edn` in the user's home directory may
 contain configuration data which is to be included in all builds.
 
+Options may be passed to the `java` command via the `JVM_OPTS`
+environment variable.
+
 ### Middleware
 
 Individual tasks within the build process are composed of middleware
@@ -105,6 +108,10 @@ task name and arguments in square brackets.
 
     # invoke the :foo task with arguments "bar" and "baz"
     $ boot [foo bar baz]
+
+Increase JVM heap space to 1G:
+
+    $ JVM_OPTS="-Xmx1g -server" boot [foo bar baz] baf [quux foop]
 
 You can test boot without installing it by running it via `lein run`
 in this directory, e.g.:
