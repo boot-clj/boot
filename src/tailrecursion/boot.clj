@@ -71,5 +71,12 @@
     (locking boot
       (swap! boot merge usr cfg deps dirs reqs repo tasks {:system sys})
       (swap! boot core/require-tasks))
-    ((core/create-app! boot) (core/make-event))
+    (let [app (core/create-app! boot)]
+      (app (->> (:src-paths @boot)
+                (map io/file)
+                (mapcat file-seq)
+                (filter #(.isFile %))
+                (remove (partial core/ignored? boot))
+                set
+                (assoc (core/make-event) :src-files))))
     (System/exit 0)))
