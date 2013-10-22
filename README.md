@@ -106,8 +106,8 @@ Multiple tasks can be invoked in a single build process, too.
 If the task takes arguments it can be invoked by enclosing the
 task name and arguments in square brackets.
 
-    # invoke the :foo task with arguments "bar" and "baz"
-    $ boot [foo bar baz]
+    # invoke the (built-in) :help task with an argument
+    $ boot [help foo]
 
 Increase JVM heap space to 1G:
 

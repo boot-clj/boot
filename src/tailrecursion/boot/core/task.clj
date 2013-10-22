@@ -1,5 +1,4 @@
 (ns tailrecursion.boot.core.task
-  (:refer-clojure :exclude [print])
   (:require
     [clojure.java.io                :refer [resource]]
     [clojure.pprint                 :refer [pprint print-table]]
@@ -37,7 +36,7 @@
 
 (defn version-str []
   (let [{:keys [proj vers desc url lic]} (version-info)]
-    (str (format "%s %s: %s\n" (name proj) vers desc))))
+    (str (format "%s %s: %s\n" (name proj) vers url))))
 
 ;; CORE TASKS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -50,16 +49,25 @@
   "Print this help info.
   
   Some things more..."
-  [boot]
-  (let [tasks (:tasks @boot)]
-    (fn [continue]
-      (fn [event]
-        (println)
-        (println (version-str))
-        (-> ["boot task ..." "boot [task arg arg] ..." "boot [help task]"]
-            (->> (pad-left "Usage: ") println))
-        (println)
-        (println (pad-left "Tasks: " (split (print-tasks tasks) #"\n"))) 
-        (println)
-        (flush)
-        (continue event)))))
+  ([boot] 
+   (let [tasks (:tasks @boot)]
+     (fn [continue]
+       (fn [event]
+         (printf "%s\n" (version-str))
+         (-> ["boot task ..." "boot [task arg arg] ..." "boot [help task]"]
+           (->> (pad-left "Usage: ") println))
+         (printf "\n%s\n\n" (pad-left "Tasks: " (split (print-tasks tasks) #"\n")))
+         (flush)
+         (continue event)))))
+  ([boot task]
+   (let [main (get-in @boot [:tasks (keyword task) :main])]
+     (fn [continue]
+       (fn [event]
+         (assert (and (seq main) (symbol? (first main)))) 
+         (let [sym (first main)]
+           (when [(symbol? sym)]
+             (when-let [ns (namespace sym)] (require (symbol ns))) 
+             (let [{args :arglists doc :doc} (meta (find-var sym))]
+               (printf "%s\n%s\n%s\n  %s\n\n" (version-str) sym args doc)
+               (flush)))) 
+         (continue event))))))
