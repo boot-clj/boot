@@ -139,4 +139,6 @@
         run!  #(get-next-middleware! boot)
         tasks (loop [task (run!), tasks []]
                 (if task (recur (run!) (conj tasks task)) tasks))]
+    (when (and (:public @boot) (seq (:src-static @boot)))
+      (add-sync! boot (:public @boot) (map io/file (:src-static @boot))))
     ((apply comp tasks) #(do (tmp/sync! tmp) (flush) %))))
