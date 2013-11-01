@@ -8,7 +8,7 @@ or evaluates an expression as specified in the configuration.
 
 *This is experimental software and subject to frequent change.*
 
-* Current version: 0.2.0
+**Current version: 0.2.0**
 
 ## Overview
 
