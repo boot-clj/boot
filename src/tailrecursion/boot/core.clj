@@ -12,6 +12,7 @@
             [clojure.set                    :refer [difference]]
             [clojure.string                 :refer [join]]
             [clojure.pprint                 :refer [pprint]]
+            [tailrecursion.boot.deps        :as d]
             [tailrecursion.boot.tmpregistry :as tmp])
   (:import [java.net URLClassLoader URL]))
 
@@ -107,8 +108,14 @@
   `(defn ~(with-meta name {::task true}) ~@args))
 
 (defn make-event
-  ([]       {:id (gensym), :time (System/currentTimeMillis)})
-  ([event]  (merge event (make-event))))
+  ([boot] 
+   (let [srcs (->> @boot :src-paths (map io/file) (mapcat file-seq)
+                   (filter #(.isFile %)) (remove (partial ignored? boot)) set)]
+     {:id        (gensym)
+      :time      (System/currentTimeMillis)
+      :watch     {:time srcs, :hash srcs}}))
+  ([boot event]
+   (merge event {:id (gensym) :time (System/currentTimeMillis)})))
 
 (defn init! [env]
   (doto (atom env) (add-watch ::_ #(configure! %3 %4))))
@@ -124,11 +131,21 @@
               (assert false (format "No such task: '%s'" tfn)))))) 
       (swap! boot require-tasks))))
 
+(defn get-mw-fn [boot main]
+  (let [get-mw-fn (partial get-mw-fn boot)]
+    (cond (fn? main)      main
+          (nil? main)     main
+          (symbol? main)  (load-sym main)
+          (keyword? main) (-> @boot (get-in [:tasks main :main]) first get-mw-fn)
+          :else           (-> main eval get-mw-fn))))
+
 (defn get-current-middleware! [boot]
   (locking boot
     (when-let [[task & args] (:main @boot)]
       (swap! boot dissoc :main)
-      (apply ((if (symbol? task) load-sym eval) task) boot args))))
+      (let [doit (get-mw-fn boot task)]
+        (assert doit (str "no such task: " task))
+        (apply doit boot args)))))
 
 (defn get-next-middleware! [boot]
   (locking boot

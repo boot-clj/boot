@@ -8,6 +8,8 @@ or evaluates an expression as specified in the configuration.
 
 *This is experimental software and subject to frequent change.*
 
+* Current version: 0.2.0
+
 ## Overview
 
 While boot can be used for just running some Clojure function in a

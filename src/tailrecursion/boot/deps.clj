@@ -11,7 +11,6 @@
     [java.util.jar JarFile]
     [java.util.zip ZipFile])
   (:require
-    [tailrecursion.boot          :as boot]
     [tailrecursion.boot.kahnsort :refer [topo-sort]]
     [cemerick.pomegranate.aether :refer [resolve-dependencies]]))
 

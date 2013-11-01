@@ -80,11 +80,5 @@
       (swap! boot merge usr cfg deps dirs reqs repo tasks {:system sys})
       (swap! boot core/require-tasks))
     (let [app (core/create-app! boot)]
-      (app (->> (:src-paths @boot)
-                (map io/file)
-                (mapcat file-seq)
-                (filter #(.isFile %))
-                (remove (partial core/ignored? boot))
-                set
-                (assoc (core/make-event) :src-files))))
+      (app (core/make-event boot)))
     (System/exit 0)))

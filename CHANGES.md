@@ -1,6 +1,13 @@
 # boot
 
-## 0.1.0-SNAPSHOT
+## 0.2.0
+
+*Fri Nov  1 02:12:23 EDT 2013*
+
+* prepopulate :watch event key with source files
+* add recursive task :main key&mdash;keywords refer to other tasks
+
+## 0.1.1
 
 *Thu Oct 31 02:57:21 EDT 2013*
 
