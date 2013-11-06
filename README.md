@@ -8,7 +8,21 @@ or evaluates an expression as specified in the configuration.
 
 *This is experimental software and subject to frequent change.*
 
-**Current version: 0.2.0**
+### Dependency
+
+Artifacts are published on [Clojars][6]. 
+
+```clojure
+[tailrecursion/hoplon "0.2.1"]
+```
+
+```xml
+<dependency>
+  <groupId>tailrecursion</groupId>
+  <artifactId>hoplon</artifactId>
+  <version>0.2.1</version>
+</dependency>
+```
 
 ## Overview
 
@@ -131,3 +145,4 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [3]: https://github.com/technomancy/leiningen/blob/master/doc/PROFILES.md
 [4]: https://github.com/technomancy/leiningen
 [5]: https://github.com/tailrecursion/boot/blob/master/boot.edn
+[6]: https://clojars.org/tailrecursion/boot

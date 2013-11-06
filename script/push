@@ -10,6 +10,7 @@ v=$(cat project.clj |head -1 |awk '{print $3}' |sed 's/"//g')
 if [ "$VERSION" == "$v" ]; then
   git tag -a -m "$MESSAGE" "$VERSION"
   git push --tags
+  lein push
 else
   echo "$0: version doesn't match project.clj" 1>&2
   exit 1

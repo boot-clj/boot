@@ -108,14 +108,16 @@
   `(defn ~(with-meta name {::task true}) ~@args))
 
 (defn make-event
-  ([boot] 
-   (let [srcs (->> @boot :src-paths (map io/file) (mapcat file-seq)
-                   (filter #(.isFile %)) (remove (partial ignored? boot)) set)]
-     {:id        (gensym)
-      :time      (System/currentTimeMillis)
-      :watch     {:time srcs, :hash srcs}}))
+  ([boot]
+   (make-event boot {}))
   ([boot event]
-   (merge event {:id (gensym) :time (System/currentTimeMillis)})))
+   (let [srcs    (->> @boot :src-paths (map io/file)
+                      (mapcat file-seq) (filter #(.isFile %)))
+         watched (->> srcs (remove (partial ignored? boot)) set)]
+     (merge event {:id        (gensym)
+                   :time      (System/currentTimeMillis)
+                   :watch     {:time watched, :hash watched}
+                   :src-files (set srcs)}))))
 
 (defn init! [env]
   (doto (atom env) (add-watch ::_ #(configure! %3 %4))))
