@@ -16,22 +16,6 @@ The idea is: instead of a pseudo-declarative project.clj file in
 your Clojure project, multiple JVMs, plugins, etc., you simply use
 boot to run a Clojure function which builds your project.
 
-### Dependency
-
-Artifacts are published on [Clojars][6]. 
-
-```clojure
-[tailrecursion/hoplon "0.2.1"]
-```
-
-```xml
-<dependency>
-  <groupId>tailrecursion</groupId>
-  <artifactId>hoplon</artifactId>
-  <version>0.2.1</version>
-</dependency>
-```
-
 ### Configuration
 
 Boot maintains its state in a configuration atom initially
@@ -133,6 +117,22 @@ You can test boot without installing it by running it via `lein run`
 in this directory, e.g.:
 
     $ lein run foo
+
+## Dependency
+
+Artifacts are published on [Clojars][6]. 
+
+```clojure
+[tailrecursion/hoplon "0.2.1"]
+```
+
+```xml
+<dependency>
+  <groupId>tailrecursion</groupId>
+  <artifactId>hoplon</artifactId>
+  <version>0.2.1</version>
+</dependency>
+```
 
 ## License
 
