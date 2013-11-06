@@ -8,6 +8,14 @@ or evaluates an expression as specified in the configuration.
 
 *This is experimental software and subject to frequent change.*
 
+## Overview
+
+While boot can be used for just running some Clojure function in a
+JVM, it can also be the foundation for better project build tooling.
+The idea is: instead of a pseudo-declarative project.clj file in
+your Clojure project, multiple JVMs, plugins, etc., you simply use
+boot to run a Clojure function which builds your project.
+
 ### Dependency
 
 Artifacts are published on [Clojars][6]. 
@@ -23,14 +31,6 @@ Artifacts are published on [Clojars][6].
   <version>0.2.1</version>
 </dependency>
 ```
-
-## Overview
-
-While boot can be used for just running some Clojure function in a
-JVM, it can also be the foundation for better project build tooling.
-The idea is: instead of a pseudo-declarative project.clj file in
-your Clojure project, multiple JVMs, plugins, etc., you simply use
-boot to run a Clojure function which builds your project.
 
 ### Configuration
 
