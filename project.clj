@@ -7,4 +7,4 @@
                  [com.cemerick/pomegranate  "0.2.0" :exclusions [org.clojure/clojure]]
                  [digest                    "1.4.3" :exclusions [org.clojure/clojure]]]
   :aot          :all
-  :main         tailrecursion.boot)
+  :main         tailrecursion.boot.loader)
