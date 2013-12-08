@@ -111,28 +111,10 @@ task name and arguments in square brackets.
 
 Increase JVM heap space to 1G:
 
-    $ JVM_OPTS="-Xmx1g -server" boot [foo bar baz] baf [quux foop]
+    $ JVM_OPTS="-Xmx1g -server" boot [foo {:bar 42}] baf [quux foop]
 
-You can test boot without installing it by running it via `lein run`
-in this directory, e.g.:
-
-    $ lein run foo
-
-## Dependency
-
-Artifacts are published on [Clojars][6]. 
-
-```clojure
-[tailrecursion/hoplon "0.2.1"]
-```
-
-```xml
-<dependency>
-  <groupId>tailrecursion</groupId>
-  <artifactId>hoplon</artifactId>
-  <version>0.2.1</version>
-</dependency>
-```
+Note that the command line options are read in as Clojure forms, so you can
+pass a map as an argument to a task, for example, as can be seen above.
 
 ## License
 
