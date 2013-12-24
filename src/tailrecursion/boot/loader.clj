@@ -51,16 +51,16 @@
 (defn ^:from-leiningen build-url
   "Creates java.net.URL from string"
   [url]
-  (try (URL. url)
+  (try (java.net.URL. url)
        (catch java.net.MalformedURLException _
-         (URL. (str "http://" url)))))
+         (java.net.URL. (str "http://" url)))))
 
 (defn ^:from-leiningen get-non-proxy-hosts []
   (let [system-no-proxy (System/getenv "no_proxy")]
     (if (not-empty system-no-proxy)
-      (->> (str/split system-no-proxy #",")
+      (->> (string/split system-no-proxy #",")
            (map #(str "*" %))
-           (str/join "|")))))
+           (string/join "|")))))
 
 (defn ^:from-leiningen get-proxy-settings
   "Returns a map of the JVM proxy settings"
