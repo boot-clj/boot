@@ -43,16 +43,45 @@
   [{type :type meth :method {name :name repo :repository} :resource err :error}]
   (when (.endsWith name ".jar")
     (case type
-      :started              (printf "Retrieving %s from %s\n" name repo) 
+      :started              (printf "Retrieving %s from %s\n" name repo)
       (:corrupted :failed)  (when err (printf "Error: %s\n" (.getMessage err)))
       nil)
     (flush)))
+
+(defn ^:from-leiningen build-url
+  "Creates java.net.URL from string"
+  [url]
+  (try (URL. url)
+       (catch java.net.MalformedURLException _
+         (URL. (str "http://" url)))))
+
+(defn ^:from-leiningen get-non-proxy-hosts []
+  (let [system-no-proxy (System/getenv "no_proxy")]
+    (if (not-empty system-no-proxy)
+      (->> (str/split system-no-proxy #",")
+           (map #(str "*" %))
+           (str/join "|")))))
+
+(defn ^:from-leiningen get-proxy-settings
+  "Returns a map of the JVM proxy settings"
+  ([] (get-proxy-settings "http_proxy"))
+  ([key]
+     (if-let [proxy (System/getenv key)]
+       (let [url (build-url proxy)
+             user-info (.getUserInfo url)
+             [username password] (and user-info (.split user-info ":"))]
+         {:host            (.getHost url)
+          :port            (.getPort url)
+          :username        username
+          :password        password
+          :non-proxy-hosts (get-non-proxy-hosts)}))))
 
 (defn add-dependencies! [deps repos]
   (let [deps (mapv (partial exclude ['org.clojure/clojure]) deps)]
     (pom/add-dependencies :coordinates        deps
                           :repositories       (zipmap repos repos)
-                          :transfer-listener  transfer-listener)))
+                          :transfer-listener  transfer-listener
+                          :proxy              (get-proxy-settings))))
 
 (defn -main [& args]
   (let [cfg   (read-config (io/file "boot.edn"))
