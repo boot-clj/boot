@@ -49,8 +49,8 @@ tasks.
 ### Tasks
 
 Boot tasks may also be specified as subconfigurations inside the
-`boot.edn` file, and are similar to Leiningen's [profiles][3] Multiple
-subconfigurations may be sepcified. When invoked from the command line
+`boot.edn` file, and are similar to Leiningen's [profiles][3]. Multiple
+subconfigurations may be specified. When invoked from the command line
 the selected subconfiguration is merged into the current
 configuration. Tasks can be used to call pre-packaged middleware
 stacks, like a lightweight Leiningen plugin.
