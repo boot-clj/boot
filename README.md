@@ -8,6 +8,8 @@ or evaluates an expression as specified in the configuration.
 
 *This is experimental software and subject to frequent change.*
 
+![latest version][7]
+
 ## Overview
 
 While boot can be used for just running some Clojure function in a
@@ -128,3 +130,4 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [4]: https://github.com/technomancy/leiningen
 [5]: https://github.com/tailrecursion/boot/blob/master/boot.edn
 [6]: https://clojars.org/tailrecursion/boot
+[7]: https://clojars.org/tailrecursion/boot/latest-version.svg
