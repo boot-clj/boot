@@ -10,12 +10,24 @@
   (:require [clojure.string                    :as string]
             [clojure.java.io                   :as io]
             [cemerick.pomegranate              :as pom]
-            [clojure.pprint                    :refer [pprint]]
-            [tailrecursion.boot.loader.version :as version])
+            [tailrecursion.boot.semver         :as semver])
   (:gen-class))
 
 (defmacro guard [expr & [default]]
   `(try ~expr (catch Throwable _# ~default)))
+
+(defn info
+  "Returns a map of version information for tailrecursion.boot.loader"
+  []
+  (let [[_ proj vers & kvs] (guard (read-string (slurp (io/resource "project.clj"))))
+        {:keys [description url license]} (->> (partition 2 kvs)
+                                               (map (partial apply vector))
+                                               (into {}))]
+    {:proj        proj,
+     :vers        vers,
+     :description description,
+     :url         url,
+     :license     license}))
 
 (defn exists? [f]
   (when (guard (.exists f)) f))
@@ -93,9 +105,11 @@
     (assert (seq deps) "No boot.core dependency specified.")
     (add-dependencies! deps repos)
     (require 'tailrecursion.boot)
-    (let [main (find-var (symbol "tailrecursion.boot" "-main"))
-          loader-info {:boot-version (version/info)}]
-      (try (apply (partial main loader-info) args)
+    (let [core-ver    (second (first deps))
+          use-info?   (semver/newer? core-ver "1.2.1")
+          main        (find-var (symbol "tailrecursion.boot" "-main"))
+          loader-info {:boot-version (info)}]
+      (try (apply (if-not use-info? main (partial main loader-info)) args)
         (catch Throwable e
           (.printStackTrace e)
           (System/exit 1))))
