@@ -19,8 +19,11 @@
 (defn info
   "Returns a map of version information for tailrecursion.boot.loader"
   []
-  (let [[_ & kvs] (guard (read-string (slurp (io/resource "project.clj"))))]
-    (->> kvs (partition 2) (map (partial apply vector)) (into {}))))
+  (let [[_ proj vers & kvs] (guard (read-string (slurp (io/resource "project.clj"))))
+        {:keys [description url license]} (->> (partition 2 kvs)
+                                               (map (partial apply vector))
+                                               (into {}))]
+    {:proj proj :vers vers :description description :url url :license license}))
 
 (defn index-of [v val]
   (ffirst (filter (comp #{val} second) (map vector (range) v))))
