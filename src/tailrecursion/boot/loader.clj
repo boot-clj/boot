@@ -8,13 +8,21 @@
 
 (ns tailrecursion.boot.loader
   (:require
-   [clojure.java.io      :as io]
-   [clojure.string       :as string]
-   [cemerick.pomegranate :as pom])
+   [clojure.java.io          :as io]
+   [clojure.string           :as string]
+   [clojure.pprint           :as pprint]
+   [cemerick.pomegranate     :as pom]
+   [clojure.stacktrace       :as trace]
+   [tailrecursion.boot.strap :as strap])
   (:gen-class))
 
 (defmacro guard [expr & [default]]
   `(try ~expr (catch Throwable _# ~default)))
+
+(defn auto-flush
+  [writer]
+  (proxy [java.io.PrintWriter] [writer]
+    (write [s] (.write writer s) (flush))))
 
 (defn info
   "Returns a map of version information for tailrecursion.boot.loader"
@@ -31,14 +39,15 @@
       (assoc coordinate (inc idx) (into exclusions syms)))
     (into coordinate [:exclusions syms])))
 
+(def exclude-clj (partial exclude ['org.clojure/clojure]))
+
 (defn transfer-listener
   [{type :type meth :method {name :name repo :repository} :resource err :error}]
   (when (.endsWith name ".jar")
     (case type
       :started              (printf "Retrieving %s from %s\n" name repo)
       (:corrupted :failed)  (when err (printf "Error: %s\n" (.getMessage err)))
-      nil)
-    (flush)))
+      nil)))
 
 (defn ^:from-leiningen build-url
   "Creates java.net.URL from string"
@@ -68,19 +77,92 @@
           :password        password
           :non-proxy-hosts (get-non-proxy-hosts)}))))
 
-(defn add-dependencies! [deps repos]
-  (let [deps (mapv (partial exclude ['org.clojure/clojure]) deps)]
-    (pom/add-dependencies :coordinates        deps
-                          :repositories       (zipmap repos repos)
-                          :transfer-listener  transfer-listener
-                          :proxy              (get-proxy-settings))))
+(def core-dep    (atom nil))
+(def dfl-repos   #{"http://clojars.org/repo/" "http://repo1.maven.org/maven2/"})
 
-(defn -main [core-version arg0 & args]
-  (add-dependencies!
-    [['tailrecursion/boot.core core-version]]
-    #{"http://repo1.maven.org/maven2/" "http://clojars.org/repo/"})
-  (require 'tailrecursion.boot)
-  (let [main (find-var (symbol "tailrecursion.boot" "-main"))]
-    (try (apply main (info) arg0 args)
-      (catch Throwable e (.printStackTrace e) (System/exit 1)))
-    (System/exit 0)))
+(defn add-dependencies!
+  ([deps] (add-dependencies! deps dfl-repos))
+  ([deps repos]
+     (let [deps (mapv exclude-clj deps)]
+       (pom/add-dependencies :coordinates        deps
+         :repositories       (zipmap repos repos)
+         :transfer-listener  transfer-listener
+         :proxy              (get-proxy-settings)))))
+
+(defrecord CoreVersion [depspec])
+
+(defn print-core-version
+  ([this]
+     (let [[[_ version & _]] (:depspec this)]
+       (printf "#tailrecursion.boot.core/version %s" (pr-str version))))
+  ([this w]
+     (let [[[_ version & _]] (:depspec this)]
+       (.write w "#tailrecursion.boot.core/version ")
+       (.write w (pr-str version)))))
+
+(defmethod print-method CoreVersion [this w]
+  (print-core-version this w))
+
+(. clojure.pprint/simple-dispatch addMethod CoreVersion print-core-version)
+(. clojure.pprint/code-dispatch addMethod CoreVersion print-core-version)
+
+(defn install-core [version]
+  (locking core-dep
+    (let [core (->CoreVersion [(exclude-clj ['tailrecursion/boot.core version])])]
+      (if @core-dep core (doto core ((partial reset! core-dep)))))))
+
+(defmacro with-rethrow [expr msg]
+  `(try ~expr (catch Throwable e# (throw (Exception. ~msg e#)))))
+
+(defmacro with-err [& body]
+  `(binding [*out* *err*] ~@body (System/exit 1)))
+
+(defmacro with-terminate [expr]
+  `(try
+     ~expr
+     (System/exit 0)
+     (catch Throwable e#
+       (with-err (trace/print-cause-trace e#)))))
+
+(defn usage []
+  (print
+    (str
+      "Usage: boot :strap\n"
+      "       boot [arg ...]\n"
+      "       boot <scriptfile.boot> [arg ...]\n\n"
+      "Create a minimal boot script: `boot :strap > build.boot`\n\n")))
+
+(defn wrong-ext [arg0]
+  (printf "boot: script file doesn't have .boot extension: %s\n\n" arg0))
+
+(defn script-not-found [arg0 badext]
+  (print
+    (str
+      (format "boot: script file not found: %s\n" arg0)
+      (if-not badext
+        "\n"
+        (format "Perhaps %s should have the .boot extension?\n\n" badext)))))
+
+(defn no-core-dep [arg0]
+  (printf "boot: no boot.core dependency specified in %s\n\n" arg0))
+
+(defn -main [& [arg0 & args :as args*]]
+  (binding [*out* (auto-flush *out*)
+            *err* (auto-flush *err*)]
+    (with-terminate
+      (case arg0
+        ":strap" (strap/emit add-dependencies!)
+        (let [file?       #(and % (.isFile (io/file %)))
+              dotboot?    #(and % (.endsWith (.getName (io/file %)) ".boot"))
+              script?     #(and % (dotboot? %))
+              badext      (and (file? arg0) (not (script? arg0)) arg0)
+              [arg0 args] (if (script? arg0) [arg0 args] ["build.boot" args*])]
+          (when-not (file? arg0) (with-err (script-not-found arg0 badext) (usage)))
+          (let [script (->> arg0 slurp (format "(%s)") read-string)]
+            (if-let [core-dep* (:depspec @core-dep)]
+              (do (add-dependencies! core-dep*)
+                  (require 'tailrecursion.boot)
+                  (let [main (find-var (symbol "tailrecursion.boot" "-main"))
+                        info (update-in (info) [:dependencies] into core-dep*)]
+                    (apply main info arg0 script args)))
+              (with-err (no-core-dep arg0) (usage)))))))))

@@ -15,3 +15,5 @@ pom.xml.asc
 *.swp
 .boot/tmp
 /boot
+.nrepl-port
+/build.boot
