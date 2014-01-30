@@ -509,9 +509,10 @@ $ boot load-hoplon h/hoplon
 
 Boot provides filesystem access that is managed by the boot build process.
 
-* Tasks emit files and artifacts into managed staging directories.
-* These directories are automatically added to the list of source paths so that
-  other tasks may further process the files in them.
+* Tasks create managed staging directories with the `mkoutdir!` function.
+* Tasks emit files and artifacts into these staging directories.
+* Staging directories are automatically added to the list of source paths when
+  they're created so that other tasks may further process the files in them.
 * Boot empties all staging directories before each build iteration to ensure
   that no stale files remain.
 
