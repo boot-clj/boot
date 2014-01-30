@@ -27,8 +27,29 @@
 (defn info
   "Returns a map of version information for tailrecursion.boot.loader"
   []
-  (let [[_ & kvs] (guard (read-string (slurp (io/resource "project.clj"))))]
-    (->> kvs (partition 2) (map (partial apply vector)) (into {}))))
+  (let [[_ proj vers & kvs] (guard (read-string (slurp (io/resource "project.clj"))))
+        {:keys [description url license]} (->> (partition 2 kvs)
+                                               (map (partial apply vector))
+                                               (into {}))]
+    {:proj        proj,
+     :vers        vers,
+     :description description,
+     :url         url,
+     :license     license}))
+
+(defn exists? [f]
+  (when (guard (.exists f)) f))
+
+(defn read-file [f]
+  (try (read-string (str "(" (try (slurp f) (catch Throwable x)) ")"))
+    (catch Throwable e
+      (throw (Exception.
+               (format "%s (Can't read forms from file)" (.getPath f)) e)))))
+
+(defn read-config [f]
+  (let [config (first (read-file f))
+        asrt-m #(do (assert (map? %1) %2) %1)]
+    (asrt-m config (format "%s (Configuration must be a map)" (.getPath f)))))
 
 (defn index-of [v val]
   (ffirst (filter (comp #{val} second) (map vector (range) v))))
