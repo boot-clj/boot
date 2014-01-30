@@ -156,7 +156,6 @@ Tasks: debug      Print the value of a boot environment key.
        lein       Run a leiningen task with a generated `project.clj`.
        repl       Launch nrepl in the project.
        syncdir    Copy/sync files between directories.
-       uberboot   Build AOT compiled boot loader with all project deps included.
        watch      Watch `:src-paths` and call its continuation when files change.
 
 Create a minimal boot script: `boot :strap > build.boot`
@@ -212,7 +211,6 @@ Tasks: debug      Print the value of a boot environment key.
        lein       Run a leiningen task with a generated `project.clj`.
        repl       Launch nrepl in the project.
        syncdir    Copy/sync files between directories.
-       uberboot   Build AOT compiled boot loader with all project deps included.
        watch      Watch `:src-paths` and call its continuation when files change.
                                           
 Create a minimal boot script: `boot :strap > build.boot`
@@ -466,7 +464,6 @@ Tasks: debug         Print the value of a boot environment key.
        load-hoplon   Example profile-type task.
        repl          Launch nrepl in the project.
        syncdir       Copy/sync files between directories.
-       uberboot      Build AOT compiled boot loader with all project deps included.
        watch         Watch `:src-paths` and call its continuation when files change.
 
 Create a minimal boot script: `boot :strap > build.boot`
@@ -492,7 +489,6 @@ Tasks: debug         Print the value of a boot environment key.
        load-hoplon   Example profile-type task.
        repl          Launch nrepl in the project.
        syncdir       Copy/sync files between directories.
-       uberboot      Build AOT compiled boot loader with all project deps included.
        watch         Watch `:src-paths` and call its continuation when files change.
        h/hoplon      Build Hoplon web application.
        h/html2cljs   Convert file from html syntax to cljs syntax.
@@ -511,9 +507,13 @@ $ boot load-hoplon h/hoplon
 
 ### Staging Directories And Temporary Files
 
-FIXME: content here
+Boot provides filesystem access that is managed by the boot build process.
+Tasks emit files and artifacts into managed staging directories. These
+directories are automatically added to the list of source paths so that other
+tasks may further process the files in them. Boot empties all staging
+directories before each build iteration to ensure that no stale files remain.
 
-## Artifacts
+## Dependency
 
 Artifacts are published on Clojars.
 
