@@ -508,10 +508,12 @@ $ boot load-hoplon h/hoplon
 ### Staging Directories And Temporary Files
 
 Boot provides filesystem access that is managed by the boot build process.
-Tasks emit files and artifacts into managed staging directories. These
-directories are automatically added to the list of source paths so that other
-tasks may further process the files in them. Boot empties all staging
-directories before each build iteration to ensure that no stale files remain.
+
+* Tasks emit files and artifacts into managed staging directories.
+* These directories are automatically added to the list of source paths so that
+  other tasks may further process the files in them.
+* Boot empties all staging directories before each build iteration to ensure
+  that no stale files remain.
 
 ## Dependency
 
