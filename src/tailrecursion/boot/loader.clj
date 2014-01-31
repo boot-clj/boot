@@ -16,8 +16,23 @@
    [tailrecursion.boot.strap :as strap])
   (:gen-class))
 
+(def min-core-version "2.0.0")
+
 (defmacro guard [expr & [default]]
   `(try ~expr (catch Throwable _# ~default)))
+
+(defmacro with-rethrow [expr msg]
+  `(try ~expr (catch Throwable e# (throw (Exception. ~msg e#)))))
+
+(defmacro with-err [& body]
+  `(binding [*out* *err*] ~@body (System/exit 1)))
+
+(defmacro with-terminate [expr]
+  `(try
+     ~expr
+     (System/exit 0)
+     (catch Throwable e#
+       (with-err (trace/print-cause-trace e#)))))
 
 (defn auto-flush
   [writer]
@@ -107,22 +122,12 @@
 (. clojure.pprint/code-dispatch addMethod CoreVersion print-core-version)
 
 (defn install-core [version]
+  (when (pos? (compare min-core-version version))
+    (with-err
+      (printf "boot: can't use boot.core version %s: need at least %s\n" version min-core-version)))
   (locking core-dep
     (let [core (->CoreVersion [(exclude-clj ['tailrecursion/boot.core version])])]
       (if @core-dep core (doto core ((partial reset! core-dep)))))))
-
-(defmacro with-rethrow [expr msg]
-  `(try ~expr (catch Throwable e# (throw (Exception. ~msg e#)))))
-
-(defmacro with-err [& body]
-  `(binding [*out* *err*] ~@body (System/exit 1)))
-
-(defmacro with-terminate [expr]
-  `(try
-     ~expr
-     (System/exit 0)
-     (catch Throwable e#
-       (with-err (trace/print-cause-trace e#)))))
 
 (defn usage []
   (print
@@ -140,7 +145,9 @@
     (str
       (format "boot: script file not found: %s\n" arg0)
       (if-not badext
-        "\n"
+        (if-not (.exists (io/file "boot.edn"))
+          "\n"
+          "\n** Found old-style boot.edn file. Run `boot :fixup > build.boot` to upgrade. **\n\n")
         (format "Perhaps %s should have the .boot extension?\n\n" badext)))))
 
 (defn no-core-dep [arg0]
@@ -152,6 +159,7 @@
     (with-terminate
       (case arg0
         ":strap" (strap/emit add-dependencies!)
+        ":fixup" (strap/doit add-dependencies!)
         (let [file?       #(and % (.isFile (io/file %)))
               dotboot?    #(and % (.endsWith (.getName (io/file %)) ".boot"))
               script?     #(and % (dotboot? %))
