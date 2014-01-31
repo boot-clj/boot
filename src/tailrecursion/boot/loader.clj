@@ -158,8 +158,8 @@
             *err* (auto-flush *err*)]
     (with-terminate
       (case arg0
-        ":strap" (strap/emit add-dependencies!)
-        ":fixup" (strap/doit add-dependencies!)
+        ":strap" (strap/strap add-dependencies!)
+        ":fixup" (strap/fixup add-dependencies!)
         (let [file?       #(and % (.isFile (io/file %)))
               dotboot?    #(and % (.endsWith (.getName (io/file %)) ".boot"))
               script?     #(and % (dotboot? %))
