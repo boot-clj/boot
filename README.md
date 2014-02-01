@@ -529,7 +529,7 @@ Copyright © 2013 Alan Dipert and Micha Niskin
 Distributed under the Eclipse Public License, the same as Clojure.
 
 [1]: https://raw.github.com/tailrecursion/boot/master/img/archimedes-lever.gif
-[2]: https://clojars.org/tailrecursion/boot/latest-version.svg
+[2]: https://clojars.org/tailrecursion/boot/latest-version.svg?foo=bar
 [3]: https://clojars.org/tailrecursion/boot
 [4]: https://github.com/technomancy/leiningen
 [5]: https://github.com/tailrecursion/boot.core/blob/master/src/tailrecursion/boot/core/task.clj
