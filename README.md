@@ -520,7 +520,7 @@ Boot provides filesystem access that is managed by the boot build process.
 
 Artifacts are published on Clojars.
 
-[![latest version][3]][3]
+[![latest version][2]][3]
 
 ## License
 
