@@ -13,7 +13,8 @@
     (swap! ancient-loaded? not))
   (require 'ancient-clj.core)
   (let [latest-version-string! (resolve 'ancient-clj.core/latest-version-string!)]
-    (latest-version-string! {:snapshots? false} dep)))
+    (binding [*out* *err*]
+      (latest-version-string! {:snapshots? false} dep))))
 
 (defn strap [add-deps!]
   (printf

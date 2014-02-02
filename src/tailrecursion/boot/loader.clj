@@ -39,6 +39,10 @@
   (proxy [java.io.PrintWriter] [writer]
     (write [s] (.write writer s) (flush))))
 
+(defn warn
+  [& more]
+  (binding [*out* *err*] (apply printf more) (flush)))
+
 (defn info
   "Returns a map of version information for tailrecursion.boot.loader"
   []
@@ -60,8 +64,8 @@
   [{type :type meth :method {name :name repo :repository} :resource err :error}]
   (when (.endsWith name ".jar")
     (case type
-      :started              (printf "Retrieving %s from %s\n" name repo)
-      (:corrupted :failed)  (when err (printf "Error: %s\n" (.getMessage err)))
+      :started              (warn "Retrieving %s from %s\n" name repo)
+      (:corrupted :failed)  (when err (warn "Error: %s\n" (.getMessage err)))
       nil)))
 
 (defn ^:from-leiningen build-url
