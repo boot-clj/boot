@@ -507,14 +507,68 @@ $ boot load-hoplon h/hoplon
 
 ### Staging Directories And Temporary Files
 
-Boot provides filesystem access that is managed by the boot build process.
+The Java/Clojure build process is pretty much wedded to files in the filesystem.
+This adds incidental complexity to the build process and causes undesired
+coupling between tasks and between tasks and the project environment. Boot
+provides facilities to mitigate the issues with managing the files created
+during the build process. This allows tasks to be more general and easily
+composed, and eliminates configuration boilerplate in the project environment. 
 
-* Tasks create managed staging directories with the `mkoutdir!` function.
-* Tasks emit files and artifacts into these staging directories.
-* Staging directories are automatically added to the list of source paths when
-  they're created so that other tasks may further process the files in them.
-* Boot empties all staging directories before each build iteration to ensure
-  that no stale files remain.
+* Tasks produce files which may be further processed by other tasks or emitted
+  into the final output directory as artifacts. Using Boot's file management
+  facilities eliminates the need for the task itself to know which is the case
+  during a particular build.
+
+* Boot's file management facilities eliminate the coupling between tasks and the
+  filesystem, improving the ability to compose these tasks.
+
+* Boot manages these files in such a way as to never accumulate stale or garbage
+  files, so there is no need for a "clean" task. This greatly simplifies the
+  state model for the build process, making it easier to understand what's going
+  on during the build and the interactions between tasks.
+
+The Boot build process deals with six types of directories–three that are
+specified in the project's Boot environment (in the `build.boot` file) and three
+types that are created by tasks during the build process and managed by Boot:
+
+* **Project output directory.** This is specified in the `:out-path` key of
+  the project Boot environment. This is where the final artifacts produced by
+  the entire build process are placed. This directory is kept organized and
+  free of stale artifacts by Boot, automatically.
+ 
+* **Project source directories.** These are specified in the `:src-paths` key
+  of the Boot environment for the project. Files in these directories are
+  strictly input files that will be processed by tasks to produce artifacts
+  but are not emitted into the output directory themselves.
+ 
+* **Resource directories.** These are specified using the `add-sync!` function
+  in the `build.boot` file. The contents of these directories are overlayed on
+  some other directory (usually the `:out-path` dir, but it could be any
+  directory) after each build cycle.
+ 
+* **Temporary directories.** Temp directories are created by tasks via the
+  `mktmp!` function. These directories are automatically deleted by Boot the
+  next time it's run. Tasks can use these directories for storing intermediate
+  files that will not be used as input for other tasks (intermediate JavaScript
+  namespaces created by the Google Closure compiler, for instance).
+ 
+* **Staging directories.** These directories are created by tasks via the
+  `mkoutdir!` function. Tasks emit artifacts exclusively into these staging
+  directories. These directories are deleted automatically by boot the same as
+  the temporary directories described above. They are cleaned automatically by
+  Boot at the start of each build cycle. Staging directories are also in the
+  build classpath so they can be used as input for other tasks (or not) as
+  required. Files in staging directories at the end of the build cycle which
+  have not been consumed by another task (see below) will be synced to the
+  output directory after all tasks in the cycle have been run.
+  
+* **Intermediate source directories.** These directories are created by tasks
+  via the `mksrcdir!` function. These directories are like staging directories
+  except that they are not automatically cleaned by Boot at the start of each
+  build cycle and files in them are not synced to the output directory after
+  the build.
+
+![boot filesystem flow][7]
 
 ## Dependency
 
@@ -534,6 +588,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [4]: https://github.com/technomancy/leiningen
 [5]: https://github.com/tailrecursion/boot.core/blob/master/src/tailrecursion/boot/core/task.clj
 [6]: https://github.com/tailrecursion/hoplon/blob/master/src/tailrecursion/hoplon/boot.clj
+[7]: https://raw.github.com/tailrecursion/boot/master/img/files.gif
 
 [10]: https://github.com/mmcgrana/ring
 [20]: https://github.com/tailrecursion/boot.task
