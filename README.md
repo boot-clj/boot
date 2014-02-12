@@ -586,6 +586,23 @@ each time it starts.
   
 <img height="600px" src="https://raw.github.com/tailrecursion/boot/master/img/files.gif">
 
+The image above illustrates the flow of files through the boot build process.
+This flow is managed by boot in the following ways:
+
+* Boot adds directories to the project class path, making them available to the
+  build tasks.
+
+* Boot removes directories that are stale or contain garbage, ensuring that the
+  build environment is maintained in a sanitary state for each run.
+
+* Boot manages the collection of artifacts that are present in the project
+  output directory, copying artifacts from all task staging directories and
+  removing stale artifacts as necessary.
+
+### Source Files Consumed By Tasks
+
+FIXME
+
 ## Dependency
 
 Artifacts are published on Clojars.
