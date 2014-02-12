@@ -566,7 +566,8 @@ types that are created by tasks during the build process and managed by Boot:
     `mktmp!` function. These directories are automatically deleted by Boot the
     next time it's run. Tasks can use these directories for storing intermediate
     files that will not be used as input for other tasks (intermediate JavaScript
-    namespaces created by the Google Closure compiler, for instance).
+    namespaces created by the Google Closure compiler, for instance). These
+    directories are not automatically added to the project's class path.
    
   * **Staging directories.** These directories are created by tasks via the
     `mkoutdir!` function. Tasks emit artifacts exclusively into these staging
