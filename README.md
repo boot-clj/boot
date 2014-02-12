@@ -554,7 +554,8 @@ These directories contain files that are part of the project itself.
  
 #### Boot Managed Directories
 
-These directories contain files that are part of the project itself. 
+These directories contain intermediate files created by Boot tasks and are
+managed by Boot.
 
 * **Generated source directories.** These directories are created by tasks
   via the `mksrcdir!` function. Generated source dirs are similar to the project
