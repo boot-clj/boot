@@ -592,7 +592,7 @@ in the build process. The build process depicted consists of two tasks, "Task 1"
 and "Task 2", colored orange and red, respectively, displayed in the center of
 the image.
 
-The participate in the three phases of the build cycle: init, build, and
+Tasks participate in the three phases of the build cycle: init, build, and
 filter. The initialization phase occurs once per boot invocation for each task,
 when the tasks are constructed. Tasks return middleware functions which handle
 the build phase of the process. Tasks may "consume" source files (see the next
