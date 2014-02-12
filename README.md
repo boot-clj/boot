@@ -527,23 +527,18 @@ composed, and eliminates configuration boilerplate in the project environment.
   state model for the build process, making it easier to understand what's going
   on during the build and the interactions between tasks.
 
-The boot build process deals with six types of directories–three that are
-specified in the project's boot environment (in the `build.boot` file) and three
-types that are created by tasks during the build process and managed by boot:
+The boot build process deals with six types of directories–two of which are
+specified in the project's boot environment (in the `build.boot` file) and the
+other four are created by tasks during the build process and managed by boot.
 
 #### Project Directories
 
-These directories contain files that are part of the project itself. 
+These directories contain files that are part of the project itself and are
+read-only as far as boot tasks are concerned.
 
-* **Project output directory.** This is specified in the `:out-path` key of
-  the project boot environment. This is where the final artifacts produced by
-  the entire build process are placed. This directory is kept organized and
-  free of stale artifacts by boot, automatically.
- 
 * **Project source directories.** These are specified in the `:src-paths` key
-  of the boot environment for the project. These directories are read-only as
-  far as boot tasks are concerned, and boot adds them to the project's class
-  path.
+  of the boot environment for the project, and boot adds them to the project's
+  class path automatically.
  
 * **Resource directories.** These are specified using the `add-sync!` function
   in the `build.boot` file. The contents of these directories are overlayed on
@@ -558,6 +553,13 @@ These directories contain intermediate files created by boot tasks and are
 managed by boot. Boot deletes managed directories created by previous builds
 each time it starts.
 
+* **Project output directory.** This is specified in the `:out-path` key of
+  the project boot environment. This is where the final artifacts produced by
+  the entire build process are placed. This directory is kept organized and
+  free of stale artifacts by boot, automatically. This means that files may be
+  removed from it by boot when they no longer correspond to artifacts created
+  during the build process.
+ 
 * **Generated source directories.** These directories are created by tasks
   via the `mksrcdir!` function. Generated source dirs are similar to the project
   source dirs, except that tasks can write to them and they're managed by boot.
