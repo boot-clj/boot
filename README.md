@@ -596,10 +596,11 @@ This flow is managed by boot in the following ways:
   build environment is maintained in a sanitary state for each run.
 
 * Boot removes intermediate source files from the task staging directories as
-  required at the end of each build cycle. (See the next section.) That is to
-  say, boot removes files that were emitted into staging directories by tasks
-  that were then used as source files for subsequent tasks and are not intended
-  to be included among the final artifacts in the project output directory.
+  required at the end of each build cycle. That is to say, boot removes files
+  that were emitted into staging directories by tasks that were then used as
+  source files for subsequent tasks and are not intended to be included among
+  the final artifacts in the project output directory. See the next section for
+  a more detailed description of how tasks negotiate this with boot.
   
 * Boot manages the collection of artifacts that are presented in the project
   output directory, copying artifacts from all task staging directories and
