@@ -531,53 +531,55 @@ The Boot build process deals with six types of directories–three that are
 specified in the project's Boot environment (in the `build.boot` file) and three
 types that are created by tasks during the build process and managed by Boot:
 
-* **Project Directories** These directories contain files that are part of the
-  project itself. 
+#### Project Directories
 
-  * **Project output directory.** This is specified in the `:out-path` key of
-    the project Boot environment. This is where the final artifacts produced by
-    the entire build process are placed. This directory is kept organized and
-    free of stale artifacts by Boot, automatically.
-   
-  * **Project source directories.** These are specified in the `:src-paths` key
-    of the Boot environment for the project. These directories are read-only as
-    far as Boot tasks are concerned, and Boot adds them to the project's class
-    path.
-   
-  * **Resource directories.** These are specified using the `add-sync!` function
-    in the `build.boot` file. The contents of these directories are overlayed on
-    some other directory (usually the `:out-path` dir, but it could be any
-    directory) after each build cycle. These directories contain things like CSS
-    stylesheets, image files, etc. Boot does not automatically add resource
-    directories to the project's class path.
-   
-* **Boot Managed Directories** These directories contain files that are part of
-  the project itself. 
+These directories contain files that are part of the project itself. 
 
-  * **Generated source directories.** These directories are created by tasks
-    via the `mksrcdir!` function. Generated source dirs are similar to the project
-    source dirs, except that Boot manages them and removes them when they're no
-    longer needed. They are added by Boot to the project's class path when they're
-    created. Tasks can use these directories as a place to put intermediate source
-    files that are generated from sources in JAR dependencies (i.e. once created
-    these files won't change from one build cycle to the next).
-  
-  * **Temporary directories.** Temp directories are created by tasks via the
-    `mktmp!` function. These directories are automatically deleted by Boot the
-    next time it's run. Tasks can use these directories for storing intermediate
-    files that will not be used as input for other tasks (intermediate JavaScript
-    namespaces created by the Google Closure compiler, for instance). These
-    directories are not automatically added to the project's class path.
-   
-  * **Staging directories.** These directories are created by tasks via the
-    `mkoutdir!` function. Tasks emit artifacts exclusively into these staging
-    directories. These directories are deleted automatically by boot the same as
-    the temporary directories described above. They are cleaned automatically by
-    Boot at the start of each build cycle. Staging directories are also in the
-    build class path so they can be used as input for other tasks (or not) as
-    required. Files in staging directories at the end of the build cycle which
-    have not been consumed by another task (see below) will be synced to the
-    output directory after all tasks in the cycle have been run.
+* **Project output directory.** This is specified in the `:out-path` key of
+  the project Boot environment. This is where the final artifacts produced by
+  the entire build process are placed. This directory is kept organized and
+  free of stale artifacts by Boot, automatically.
+ 
+* **Project source directories.** These are specified in the `:src-paths` key
+  of the Boot environment for the project. These directories are read-only as
+  far as Boot tasks are concerned, and Boot adds them to the project's class
+  path.
+ 
+* **Resource directories.** These are specified using the `add-sync!` function
+  in the `build.boot` file. The contents of these directories are overlayed on
+  some other directory (usually the `:out-path` dir, but it could be any
+  directory) after each build cycle. These directories contain things like CSS
+  stylesheets, image files, etc. Boot does not automatically add resource
+  directories to the project's class path.
+ 
+#### Boot Managed Directories
+
+These directories contain files that are part of the project itself. 
+
+* **Generated source directories.** These directories are created by tasks
+  via the `mksrcdir!` function. Generated source dirs are similar to the project
+  source dirs, except that Boot manages them and removes them when they're no
+  longer needed. They are added by Boot to the project's class path when they're
+  created. Tasks can use these directories as a place to put intermediate source
+  files that are generated from sources in JAR dependencies (i.e. once created
+  these files won't change from one build cycle to the next).
+
+* **Temporary directories.** Temp directories are created by tasks via the
+  `mktmp!` function. These directories are automatically deleted by Boot the
+  next time it's run. Tasks can use these directories for storing intermediate
+  files that will not be used as input for other tasks (intermediate JavaScript
+  namespaces created by the Google Closure compiler, for instance). These
+  directories are not automatically added to the project's class path.
+ 
+* **Staging directories.** These directories are created by tasks via the
+  `mkoutdir!` function. Tasks emit artifacts exclusively into these staging
+  directories. These directories are deleted automatically by boot the same as
+  the temporary directories described above. They are cleaned automatically by
+  Boot at the start of each build cycle. Staging directories are also in the
+  build class path so they can be used as input for other tasks (or not) as
+  required. Files in staging directories at the end of the build cycle which
+  have not been consumed by another task (see below) will be synced to the
+  output directory after all tasks in the cycle have been run.
   
 <img height="600px" src="https://raw.github.com/tailrecursion/boot/master/img/files.gif">
 
