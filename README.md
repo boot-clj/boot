@@ -562,7 +562,7 @@ types that are created by tasks during the build process and managed by Boot:
   have not been consumed by another task (see below) will be synced to the
   output directory after all tasks in the cycle have been run.
   
-* **Intermediate source directories.** These directories are created by tasks
+* **Generated source directories.** These directories are created by tasks
   via the `mksrcdir!` function. These directories are like staging directories
   except that they are not automatically cleaned by Boot at the start of each
   build cycle and files in them are not synced to the output directory after
