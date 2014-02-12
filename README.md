@@ -555,29 +555,27 @@ These directories contain files that are part of the project itself.
 #### Boot Managed Directories
 
 These directories contain intermediate files created by boot tasks and are
-managed by boot.
+managed by boot. Boot deletes managed directories created by previous builds
+each time it starts.
 
 * **Generated source directories.** These directories are created by tasks
   via the `mksrcdir!` function. Generated source dirs are similar to the project
-  source dirs, except that boot manages them and removes them when they're no
-  longer needed. They are added by boot to the project's class path when they're
-  created. Tasks can use these directories as a place to put intermediate source
-  files that are generated from sources in JAR dependencies (i.e. once created
-  these files won't change from one build cycle to the next).
+  source dirs, except that tasks can write to them and they're managed by boot.
+  Tasks can use these directories as a place to put intermediate source files
+  that are generated from sources in JAR dependencies (i.e. once created these
+  files won't change from one build cycle to the next).
 
 * **Temporary directories.** Temp directories are created by tasks via the
-  `mktmp!` function. These directories are automatically deleted by boot the
-  next time it's run. Tasks can use these directories for storing intermediate
+  `mktmp!` function. Tasks can use these directories for storing intermediate
   files that will not be used as input for other tasks (intermediate JavaScript
   namespaces created by the Google Closure compiler, for instance). These
   directories are not automatically added to the project's class path.
  
 * **Staging directories.** These directories are created by tasks via the
-  `mkoutdir!` function. Tasks emit artifacts exclusively into these staging
-  directories. These directories are deleted automatically by boot the same as
-  the temporary directories described above. They are cleaned automatically by
-  boot at the start of each build cycle. Staging directories are also in the
-  build class path so they can be used as input for other tasks (or not) as
+  `mkoutdir!` function. Tasks emit artifacts into these staging directories
+  which are cleaned automatically by boot at the start of each build cycle.
+  Staging directories are automatically added to the project's class path so
+  the files emitted there can be used as input for other tasks (or not) as
   required. Files in staging directories at the end of the build cycle which
   have not been consumed by another task (see below) will be synced to the
   output directory after all tasks in the cycle have been run.
