@@ -570,9 +570,10 @@ each time it starts.
 
 * **Temporary directories.** Temp directories are created by tasks via the
   `mktmp!` function. Tasks can use these directories for storing intermediate
-  files that will not be used as input for other tasks (intermediate JavaScript
-  namespaces created by the Google Closure compiler, for instance). These
-  directories are not automatically added to the project's class path.
+  files that will not be used as input for other tasks or as final compiled
+  artifacts (intermediate JavaScript namespaces created by the Google Closure
+  compiler, for instance). These directories are not automatically added to the
+  project's class path.
  
 * **Staging directories.** These directories are created by tasks via the
   `mkoutdir!` function. Tasks emit artifacts into these staging directories
