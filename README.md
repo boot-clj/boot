@@ -587,24 +587,21 @@ each time it starts.
 <img height="600px" src="https://raw.github.com/tailrecursion/boot/master/img/files.gif">
 
 The image above illustrates the flow of files through the boot build process.
-This flow is managed by boot in the following ways:
+On the left and right sides of the image are the various directories involved
+in the build process. The build process depicted consists of two tasks, "Task 1"
+and "Task 2", colored orange and red, respectively, displayed in the center of
+the image.
 
-* Boot adds directories to the project class path, making them available to the
-  build tasks.
+The participate in the three phases of the build cycle: init, build, and
+filter. The initialization phase occurs once per boot invocation for each task,
+when the tasks are constructed. Tasks return middleware functions which handle
+the build phase of the process. Tasks may "consume" source files (see the next
+section). These files are removed from the staging directories of all tasks by
+boot during the filter phase of the build cycle.
 
-* Boot removes directories that are stale or contain garbage, ensuring that the
-  build environment is maintained in a sanitary state for each run.
-
-* Boot removes intermediate source files from the task staging directories as
-  required at the end of each build cycle. That is to say, boot removes files
-  that were emitted into staging directories by tasks that were then used as
-  source files for subsequent tasks and are not intended to be included among
-  the final artifacts in the project output directory. See the next section for
-  a more detailed description of how tasks negotiate this with boot.
-  
-* Boot manages the collection of artifacts that are presented in the project
-  output directory, copying artifacts from all task staging directories and
-  removing stale artifacts as necessary.
+After the final phase of the build cycle stale artifacts are removed from the
+project output directory and any artifacts that remain in staging directories
+are synced over to it.
 
 ### Source Files Consumed By Tasks
 
