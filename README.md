@@ -568,7 +568,7 @@ types that are created by tasks during the build process and managed by Boot:
   build cycle and files in them are not synced to the output directory after
   the build.
 
-![boot filesystem flow][7]
+<img height="600px" src="https://raw.github.com/tailrecursion/boot/master/img/files.gif">
 
 ## Dependency
 
