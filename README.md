@@ -555,10 +555,11 @@ each time it starts.
 
 * **Project output directory.** This is specified in the `:out-path` key of
   the project boot environment. This is where the final artifacts produced by
-  the entire build process are placed. This directory is kept organized and
-  free of stale artifacts by boot, automatically. This means that files may be
-  removed from it by boot when they no longer correspond to artifacts created
-  during the build process.
+  the entire build process are placed. This directory is kept up to date and
+  free of stale artifacts by boot, automatically. Tasks should not add files
+  directly to this directory or manipulate the files it contains. Instead,
+  tasks emit artifacts to staging directories (see below) and boot takes care
+  of syncing them to the output directory at the end of each build cycle.
  
 * **Generated source directories.** These directories are created by tasks
   via the `mksrcdir!` function. Generated source dirs are similar to the project
