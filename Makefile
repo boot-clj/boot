@@ -9,9 +9,14 @@ help:
 
 clean:
 	rm -f boot
+	rm -rf resources/*
+	(cd boot-classloader; lein clean)
 	lein clean
 
 build: clean
+	mkdir -p resources
+	(cd boot-classloader; lein uberjar)
+	cp boot-classloader/target/boot-classloader*-standalone.jar resources/boot-classloader.jar
 	lein uberjar
 
 boot: build

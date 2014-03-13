@@ -8,15 +8,18 @@
 
 (ns tailrecursion.boot.loader
   (:require
-   [clojure.java.io          :as io]
-   [clojure.string           :as string]
-   [clojure.pprint           :as pprint]
-   [cemerick.pomegranate     :as pom]
-   [clojure.stacktrace       :as trace]
-   [tailrecursion.boot.strap :as strap])
+   [clojure.java.io                     :as io]
+   [clojure.string                      :as string]
+   [clojure.pprint                      :as pprint]
+   [clojure.stacktrace                  :as trace]
+   [tailrecursion.boot.strap            :as strap]
+   [tailrecursion.boot.classlojure.core :as cl])
+  (:import
+   [java.net URLClassLoader URL]
+   java.lang.management.ManagementFactory)
   (:gen-class))
 
-(def min-core-version "2.0.0")
+;; utility ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro guard [expr & [default]]
   `(try ~expr (catch Throwable _# ~default)))
@@ -27,9 +30,9 @@
 (defmacro with-err [& body]
   `(binding [*out* *err*] ~@body (System/exit 1)))
 
-(defmacro with-terminate [expr]
+(defmacro with-terminate [& body]
   `(try
-     ~expr
+     ~@body
      (System/exit 0)
      (catch Throwable e#
        (with-err (trace/print-cause-trace e#)))))
@@ -43,11 +46,38 @@
   [& more]
   (binding [*out* *err*] (apply printf more) (flush)))
 
-(defn info
-  "Returns a map of version information for tailrecursion.boot.loader"
+(defn get-project [sym]
+  (when-let [pform (->> (.. Thread currentThread getContextClassLoader
+                          (getResources "project.clj"))
+                     enumeration-seq
+                     (map (comp read-string slurp))
+                     (filter (comp (partial = sym) second))
+                     first)]
+    (->> pform (drop 1) (partition 2) (map vec) (into {}))))
+
+;; loader ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def min-core-version "2.0.0")
+(def dfl-repos #{"http://clojars.org/repo/" "http://repo1.maven.org/maven2/"})
+
+(def ^:private core-dep     (atom nil))
+(def ^:private cl2          (atom nil))
+(def ^:private dependencies (atom nil))
+
+(defn get-classloader
+  "Returns classloader with only boot-classloader.jar in its class path. This
+  classloader is used to segregate the pomegranate dependencies to keep them
+  from interfering with project dependencies."
   []
-  (let [[_ & kvs] (guard (read-string (slurp (io/resource "project.clj"))))]
-    (->> kvs (partition 2) (map (partial apply vector)) (into {}))))
+  (when (compare-and-set! cl2 nil true)
+    (let [tmp (doto (io/file ".boot") .mkdirs)
+          in  (io/resource "boot-classloader.jar")
+          out (io/file tmp "boot-classloader.jar")]
+      (with-open [in  (io/input-stream in)
+                  out (io/output-stream out)]
+        (io/copy in out))
+      (reset! cl2 (cl/classlojure (str "file:" (.getPath out))))))
+  @cl2)
 
 (defn index-of [v val]
   (ffirst (filter (comp #{val} second) (map vector (range) v))))
@@ -58,55 +88,34 @@
       (assoc coordinate (inc idx) (into exclusions syms)))
     (into coordinate [:exclusions syms])))
 
-(def exclude-clj (partial exclude ['org.clojure/clojure]))
+(defn add-urls!
+  "Add URLs (directories or JAR files) to the classpath."
+  [urls]
+  (when (seq urls)
+    (let [meth  (doto (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL]))
+                  (.setAccessible true))
+          cldr  (ClassLoader/getSystemClassLoader)
+          urls  (->> urls (map io/file) (filter #(.exists %)) (map #(.. % toURI toURL)))]
+      (doseq [url urls] (.invoke meth cldr (object-array [url]))))))
 
-(defn transfer-listener
-  [{type :type meth :method {name :name repo :repository} :resource err :error}]
-  (when (.endsWith name ".jar")
-    (case type
-      :started              (warn "Retrieving %s from %s\n" name repo)
-      (:corrupted :failed)  (when err (warn "Error: %s\n" (.getMessage err)))
-      nil)))
+(defn resolve-dependencies! [deps repos]
+  (cl/eval-in (get-classloader)
+    `(do (require 'tailrecursion.boot-classloader)
+         (tailrecursion.boot-classloader/resolve-dependencies! '~deps '~repos))))
 
-(defn ^:from-leiningen build-url
-  "Creates java.net.URL from string"
-  [url]
-  (try (java.net.URL. url)
-       (catch java.net.MalformedURLException _
-         (java.net.URL. (str "http://" url)))))
+(defn glob-match? [pattern path]
+  (cl/eval-in (get-classloader)
+    `(do (require 'tailrecursion.boot-classloader)
+         (tailrecursion.boot-classloader/glob-match? ~pattern ~path))))
 
-(defn ^:from-leiningen get-non-proxy-hosts []
-  (let [system-no-proxy (System/getenv "no_proxy")]
-    (if (not-empty system-no-proxy)
-      (->> (string/split system-no-proxy #",")
-           (map #(str "*" %))
-           (string/join "|")))))
-
-(defn ^:from-leiningen get-proxy-settings
-  "Returns a map of the JVM proxy settings"
-  ([] (get-proxy-settings "http_proxy"))
-  ([key]
-     (if-let [proxy (System/getenv key)]
-       (let [url (build-url proxy)
-             user-info (.getUserInfo url)
-             [username password] (and user-info (.split user-info ":"))]
-         {:host            (.getHost url)
-          :port            (.getPort url)
-          :username        username
-          :password        password
-          :non-proxy-hosts (get-non-proxy-hosts)}))))
-
-(def core-dep    (atom nil))
-(def dfl-repos   #{"http://clojars.org/repo/" "http://repo1.maven.org/maven2/"})
-
-(defn add-dependencies!
-  ([deps] (add-dependencies! deps dfl-repos))
-  ([deps repos]
-     (let [deps (mapv exclude-clj deps)]
-       (pom/add-dependencies :coordinates        deps
-         :repositories       (zipmap repos repos)
-         :transfer-listener  transfer-listener
-         :proxy              (get-proxy-settings)))))
+(defn add-dependencies! [deps & [repos]]
+  (let [loaded (->> @dependencies (map first) set)
+        specs  (->> deps
+                 (remove (comp (partial contains? loaded) first))
+                 (mapv (partial exclude (vec loaded)))
+                 (#(resolve-dependencies! % (or repos dfl-repos))))]
+    (swap! dependencies into (mapv :dep specs))
+    (add-urls! (map #(URL. (str "file://" (:jar %))) specs))))
 
 (defrecord CoreVersion [depspec])
 
@@ -130,7 +139,7 @@
     (with-err
       (printf "boot: can't use boot.core version %s: need at least %s\n" version min-core-version)))
   (locking core-dep
-    (let [core (->CoreVersion [(exclude-clj ['tailrecursion/boot.core version])])]
+    (let [core (->CoreVersion [['tailrecursion/boot.core version]])]
       (if @core-dep core (doto core ((partial reset! core-dep)))))))
 
 (defn usage []
@@ -161,6 +170,7 @@
   (binding [*out* (auto-flush *out*)
             *err* (auto-flush *err*)]
     (with-terminate
+      (reset! dependencies (:dependencies (get-project 'tailrecursion/boot)))
       (case arg0
         ":strap" (strap/strap add-dependencies!)
         ":fixup" (strap/fixup add-dependencies!)
@@ -175,6 +185,7 @@
               (do (add-dependencies! core-dep*)
                   (require 'tailrecursion.boot)
                   (let [main (find-var (symbol "tailrecursion.boot" "-main"))
-                        info (update-in (info) [:dependencies] into core-dep*)]
+                        info (-> (get-project 'tailrecursion/boot)
+                               (assoc :dependencies @dependencies))]
                     (apply main info arg0 script args)))
               (with-err (no-core-dep arg0) (usage)))))))))
