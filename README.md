@@ -60,16 +60,27 @@ Any remaining forms in the script file are evaluated in the boot environment:
 
 ## Getting Started
 
-Download Jar file:
+The easiest way to get started is to download the prebuilt Jar file. It's built
+to be executable in a Unix environment. In Windows you'll have to use it via
+`java -jar ...` unless you have Cygwin installed (I think).
+
+### Windows
+
+* [Download the boot Jar file.][8]
+* Use boot by doing `java -jar boot-X.Y.Z.jar ...`.
+
+### Unix
 
 ```
 $ wget https://clojars.org/repo/tailrecursion/boot/1.0.3/boot-1.0.3.jar
-$ mv boot-1.0.3.jar boot
+$ mv boot-1.0.3.jar boot 
 $ chmod a+x boot
 $ mv boot ~/bin/boot # or anywhere else in your $PATH
 ```
 
-To build boot you will need:
+### Build From Source
+
+To build boot from source you will need:
 
 * Java 1.6+
 * [Leiningen][4] 2
