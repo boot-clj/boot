@@ -78,7 +78,7 @@ To build boot you will need:
 Build and install boot:
 
 ```
-$ git clone git@github.com:tailrecursion/boot
+$ git clone https://github.com/tailrecursion/boot.git
 $ cd boot
 $ make boot
 $ mv ./boot ~/bin/boot # or anywhere else in your $PATH
