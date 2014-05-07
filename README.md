@@ -60,6 +60,15 @@ Any remaining forms in the script file are evaluated in the boot environment:
 
 ## Getting Started
 
+Download Jar file:
+
+```
+$ wget https://clojars.org/repo/tailrecursion/boot/1.0.3/boot-1.0.3.jar
+$ mv boot-1.0.3.jar boot
+$ chmod a+x boot
+$ mv boot ~/bin/boot # or anywhere else in your $PATH
+```
+
 To build boot you will need:
 
 * Java 1.6+
@@ -626,6 +635,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [5]: https://github.com/tailrecursion/boot.core/blob/master/src/tailrecursion/boot/core/task.clj
 [6]: https://github.com/tailrecursion/hoplon/blob/master/src/tailrecursion/hoplon/boot.clj
 [7]: https://raw.github.com/tailrecursion/boot/master/img/files.gif
+[8]: https://clojars.org/repo/tailrecursion/boot/1.0.3/boot-1.0.3.jar
 
 [10]: https://github.com/mmcgrana/ring
 [20]: https://github.com/tailrecursion/boot.task
