@@ -44,7 +44,7 @@ The core version declaration tells the boot loader which version of the boot
 core to use:
 
 ```clojure
-#tailrecursion.boot.core/version "2.0.0"
+#tailrecursion.boot.core/version "2.3.1"
 ```
 
 Any remaining forms in the script file are evaluated in the boot environment:
