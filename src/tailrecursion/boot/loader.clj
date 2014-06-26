@@ -115,7 +115,7 @@
                  (mapv (partial exclude (vec loaded)))
                  (#(resolve-dependencies! % (or repos dfl-repos))))]
     (swap! dependencies into (mapv :dep specs))
-    (add-urls! (map #(->> % :jar (str "file:///") URI. .toURL) specs))))
+    (add-urls! (map #(->> % :jar (str "file:///") URL.) specs))))
 
 (defrecord CoreVersion [depspec])
 
