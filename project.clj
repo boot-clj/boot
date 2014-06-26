@@ -1,4 +1,4 @@
-(defproject tailrecursion/boot "1.0.3"
+(defproject tailrecursion/boot "1.0.4"
   :description  "A dependency setup/build tool for Clojure."
   :url          "https://github.com/tailrecursion/boot"
   :license      {:name  "Eclipse Public License"

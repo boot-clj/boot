@@ -15,7 +15,7 @@
    [tailrecursion.boot.strap            :as strap]
    [tailrecursion.boot.classlojure.core :as cl])
   (:import
-   [java.net URLClassLoader URL]
+   [java.net URLClassLoader URL URI]
    java.lang.management.ManagementFactory)
   (:gen-class))
 
@@ -115,7 +115,7 @@
                  (mapv (partial exclude (vec loaded)))
                  (#(resolve-dependencies! % (or repos dfl-repos))))]
     (swap! dependencies into (mapv :dep specs))
-    (add-urls! (map #(URL. (str "file://" (:jar %))) specs))))
+    (add-urls! (map #(->> % :jar (str "file:///") URI. .toURL) specs))))
 
 (defrecord CoreVersion [depspec])
 
