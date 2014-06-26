@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/tailrecursion/boot.png?label=ready&title=Ready)](https://waffle.io/tailrecursion/boot)
 ![arhimedes lever][1]
 
 # Boot
