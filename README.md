@@ -8,6 +8,12 @@ single file, self-contained scripts in Clojure that can include dependencies and
 so forth but don't need to be part of a project or uberjar. Also, boot is a
 Clojure build tool.
 
+## Dependency
+
+Artifacts are published on Clojars.
+
+[![latest version][2]][3]
+
 ## Overview
 
 Boot consists of two parts: the boot **loader** (this project), and the boot
@@ -627,12 +633,6 @@ are synced over to it.
 
 FIXME
 
-## Dependency
-
-Artifacts are published on Clojars.
-
-[![latest version][2]][3]
-
 ## License
 
 Copyright © 2013 Alan Dipert and Micha Niskin
@@ -646,7 +646,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [5]: https://github.com/tailrecursion/boot.core/blob/master/src/tailrecursion/boot/core/task.clj
 [6]: https://github.com/tailrecursion/hoplon/blob/master/src/tailrecursion/hoplon/boot.clj
 [7]: https://raw.github.com/tailrecursion/boot/master/img/files.gif
-[8]: https://clojars.org/repo/tailrecursion/boot/1.0.3/boot-1.0.3.jar
+[8]: https://clojars.org/repo/tailrecursion/boot/1.0.4/boot-1.0.4.jar
 
 [10]: https://github.com/mmcgrana/ring
 [20]: https://github.com/tailrecursion/boot.task
