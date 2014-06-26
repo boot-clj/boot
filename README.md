@@ -78,8 +78,8 @@ to be executable in a Unix environment. In Windows you'll have to use it via
 ### Unix
 
 ```
-$ wget https://clojars.org/repo/tailrecursion/boot/1.0.3/boot-1.0.3.jar
-$ mv boot-1.0.3.jar boot 
+$ wget https://clojars.org/repo/tailrecursion/boot/1.0.5/boot-1.0.5.jar
+$ mv boot-1.0.5.jar boot
 $ chmod a+x boot
 $ mv boot ~/bin/boot # or anywhere else in your $PATH
 ```
@@ -185,7 +185,7 @@ Tasks: debug      Print the value of a boot environment key.
        watch      Watch `:src-paths` and call its continuation when files change.
 
 Create a minimal boot script: `boot :strap > build.boot`
-                                          
+
 ```
 
 The tasks listed in the output are defined in the [core tasks namespace][5],
@@ -238,9 +238,9 @@ Tasks: debug      Print the value of a boot environment key.
        repl       Launch nrepl in the project.
        syncdir    Copy/sync files between directories.
        watch      Watch `:src-paths` and call its continuation when files change.
-                                          
+
 Create a minimal boot script: `boot :strap > build.boot`
-                                          
+
 ```
 
 Now we can run the `hello` task:
@@ -456,7 +456,7 @@ For example:
                  :url   "http://www.eclipse.org/legal/epl-v10.html"}
   :src-paths    #{"src"})
 
-(deftask load-hoplon 
+(deftask load-hoplon
   "Example profile-type task."
   []
   (set-env!
@@ -493,7 +493,7 @@ Tasks: debug         Print the value of a boot environment key.
        watch         Watch `:src-paths` and call its continuation when files change.
 
 Create a minimal boot script: `boot :strap > build.boot`
-                                          
+
 ```
 
 Then with the `load-hoplon` profile:
@@ -520,7 +520,7 @@ Tasks: debug         Print the value of a boot environment key.
        h/html2cljs   Convert file from html syntax to cljs syntax.
 
 Create a minimal boot script: `boot :strap > build.boot`
-                                          
+
 ```
 
 Notice how the second list includes `h/hoplon` and `h/html2cljs`, the two tasks
@@ -538,7 +538,7 @@ This adds incidental complexity to the build process and causes undesired
 coupling between tasks and between tasks and the project environment. Boot
 provides facilities to mitigate the issues with managing the files created
 during the build process. This allows tasks to be more general and easily
-composed, and eliminates configuration boilerplate in the project environment. 
+composed, and eliminates configuration boilerplate in the project environment.
 
 * Tasks produce files which may be further processed by other tasks or emitted
   into the final output directory as artifacts. Using boot's file management
@@ -565,14 +565,14 @@ read-only as far as boot tasks are concerned.
 * **Project source directories.** These are specified in the `:src-paths` key
   of the boot environment for the project, and boot adds them to the project's
   class path automatically.
- 
+
 * **Resource directories.** These are specified using the `add-sync!` function
   in the `build.boot` file. The contents of these directories are overlayed on
   some other directory (usually the `:out-path` dir, but it could be any
   directory) after each build cycle. These directories contain things like CSS
   stylesheets, image files, etc. Boot does not automatically add resource
   directories to the project's class path.
- 
+
 #### Boot Managed Directories
 
 These directories contain intermediate files created by boot tasks and are
@@ -586,7 +586,7 @@ each time it starts.
   directly to this directory or manipulate the files it contains. Instead,
   tasks emit artifacts to staging directories (see below) and boot takes care
   of syncing them to the output directory at the end of each build cycle.
- 
+
 * **Generated source directories.** These directories are created by tasks
   via the `mksrcdir!` function. Generated source dirs are similar to the project
   source dirs, except that tasks can write to them and they're managed by boot.
@@ -600,7 +600,7 @@ each time it starts.
   artifacts (intermediate JavaScript namespaces created by the Google Closure
   compiler, for instance). These directories are not automatically added to the
   project's class path.
- 
+
 * **Staging directories.** These directories are created by tasks via the
   `mkoutdir!` function. Tasks emit artifacts into these staging directories
   which are cleaned automatically by boot at the start of each build cycle.
@@ -609,7 +609,7 @@ each time it starts.
   required. Files in staging directories at the end of the build cycle which
   have not been consumed by another task (see below) will be synced to the
   output directory after all tasks in the cycle have been run.
-  
+
 <img height="600px" src="https://raw.github.com/tailrecursion/boot/master/img/files.gif">
 
 The image above illustrates the flow of files through the boot build process.
