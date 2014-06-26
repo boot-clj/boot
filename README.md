@@ -646,7 +646,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [5]: https://github.com/tailrecursion/boot.core/blob/master/src/tailrecursion/boot/core/task.clj
 [6]: https://github.com/tailrecursion/hoplon/blob/master/src/tailrecursion/hoplon/boot.clj
 [7]: https://raw.github.com/tailrecursion/boot/master/img/files.gif
-[8]: https://clojars.org/repo/tailrecursion/boot/1.0.4/boot-1.0.4.jar
+[8]: https://clojars.org/repo/tailrecursion/boot/1.0.5/boot-1.0.5.jar
 
 [10]: https://github.com/mmcgrana/ring
 [20]: https://github.com/tailrecursion/boot.task
