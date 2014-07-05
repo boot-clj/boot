@@ -51,7 +51,7 @@ The core version declaration tells the boot loader which version of the boot
 core to use:
 
 ```clojure
-#tailrecursion.boot.core/version "2.3.1"
+#tailrecursion.boot.core/version "2.5.0"
 ```
 
 Any remaining forms in the script file are evaluated in the boot environment:
@@ -109,7 +109,7 @@ A simple example to get started:
 ```clojure
 #!/usr/bin/env boot
 
-#tailrecursion.boot.core/version "2.0.0"
+#tailrecursion.boot.core/version "2.5.0"
 
 (defn -main [& args]
   (println "hello, world!")
@@ -129,7 +129,7 @@ Scripts can add Maven repositories and/or dependencies at runtime using
 ```clojure
 #!/usr/bin/env boot
 
-#tailrecursion.boot.core/version "2.0.0"
+#tailrecursion.boot.core/version "2.5.0"
 
 (set-env!
   :repositories #{"http://me.com/maven-repo"}
@@ -161,7 +161,7 @@ The resulting file should contain something like this:
 ```clojure
 #!/usr/bin/env boot
 
-#tailrecursion.boot.core/version "2.0.0"
+#tailrecursion.boot.core/version "2.5.0"
 ```
 
 Then run it. You should see version and usage info and a list of available
@@ -208,7 +208,7 @@ Let's create a task to print a friendly greeting to the terminal. Modify the
 ```clojure
 #!/usr/bin/env boot
 
-#tailrecursion.boot.core/version "2.0.0"
+#tailrecursion.boot.core/version "2.5.0"
 
 (deftask hello
   "Print a friendly greeting."
@@ -315,7 +315,7 @@ Modify the `build.boot` file such that it contains the following:
 ```clojure
 #!/usr/bin/env boot
 
-#tailrecursion.boot.core/version "2.0.0"
+#tailrecursion.boot.core/version "2.5.0"
 
 (deftask hello
   "Print a friendly greeting."
@@ -352,7 +352,7 @@ For example:
 ```clojure
 #!/usr/bin/env boot
 
-#tailrecursion.boot.core/version "2.0.0"
+#tailrecursion.boot.core/version "2.5.0"
 
 (set-env!
   :project      'com.me/my-project
@@ -399,7 +399,7 @@ For example:
 ```clojure
 #!/usr/bin/env boot
 
-#tailrecursion.boot.core/version "2.0.0"
+#tailrecursion.boot.core/version "2.5.0"
 
 (set-env!
   :project      'com.me/my-project
@@ -446,7 +446,7 @@ For example:
 ```clojure
 #!/usr/bin/env boot
 
-#tailrecursion.boot.core/version "2.0.0"
+#tailrecursion.boot.core/version "2.5.0"
 
 (set-env!
   :project      'com.me/my-project
