@@ -7,5 +7,5 @@
                  [org.springframework/spring-core "1.2.2"]
                  [com.cemerick/pomegranate        "0.2.0" :exclusions [org.clojure/clojure]]]
   :main ^:skip-aot tailrecursion.boot-classloader
-  :target-path "target/%s"
+  :target-path "target" ; force target-path to maintain 2.3 compatibility
   :profiles {:uberjar {:aot :all}})
