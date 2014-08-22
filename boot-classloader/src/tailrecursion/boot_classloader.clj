@@ -24,11 +24,8 @@
 
 (defn transfer-listener
   [{type :type meth :method {name :name repo :repository} :resource err :error}]
-  (when (.endsWith name ".jar")
-    (case type
-      :started              (warn "Retrieving %s from %s\n" name repo)
-      (:corrupted :failed)  (when err (warn "Error: %s\n" (.getMessage err)))
-      nil)))
+  (when (and (.endsWith name ".jar") (= type :started))
+    (warn "Retrieving %s from %s\n" name repo)))
 
 (defn ^:from-leiningen build-url
   "Creates java.net.URL from string"
