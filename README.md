@@ -74,13 +74,13 @@ to be executable in a Unix environment. In Windows you'll have to use it via
 ### Windows
 
 * [Download the boot Jar file.][8]
-* Use boot by doing `java -jar boot-X.Y.Z.jar ...`.
+* Use boot by doing `java -jar boot-1.1.1.jar ...`.
 
 ### Unix
 
 ```
-$ wget https://clojars.org/repo/tailrecursion/boot/1.0.5/boot-1.0.5.jar
-$ mv boot-1.0.5.jar boot
+$ wget https://clojars.org/repo/tailrecursion/boot/1.1.1/boot-1.1.1.jar
+$ mv boot-1.1.1.jar boot
 $ chmod a+x boot
 $ mv boot ~/bin/boot # or anywhere else in your $PATH
 ```
@@ -647,7 +647,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [5]: https://github.com/tailrecursion/boot.core/blob/master/src/tailrecursion/boot/core/task.clj
 [6]: https://github.com/tailrecursion/hoplon/blob/master/src/tailrecursion/hoplon/boot.clj
 [7]: https://raw.github.com/tailrecursion/boot/master/img/files.gif
-[8]: https://clojars.org/repo/tailrecursion/boot/1.0.5/boot-1.0.5.jar
+[8]: https://clojars.org/repo/tailrecursion/boot/1.1.1/boot-1.1.1.jar
 
 [10]: https://github.com/mmcgrana/ring
 [20]: https://github.com/tailrecursion/boot.task
