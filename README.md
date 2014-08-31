@@ -1,638 +1,368 @@
-[![Stories in Ready](https://badge.waffle.io/tailrecursion/boot.png?label=ready&title=Ready)](https://waffle.io/tailrecursion/boot)
-![arhimedes lever][1]
+# Boot [![Build Status][5]][6]
 
-# Boot
+Boot is a Clojure build framework and ad-hoc Clojure script evaluator. Boot
+provides a runtime environment that includes all of the tools needed to build
+Clojure projects from scripts written in Clojure that run in the context of
+the project.
 
-Boot is a shell interpreter for scripts written in Clojure. It is designed to be
-used with the “shebang” style of shell scripts to provide a simple means to have
-single file, self-contained scripts in Clojure that can include dependencies and
-so forth but don't need to be part of a project or uberjar. Also, boot is a
-Clojure build tool.
+### Another Build Tool?
 
-## Dependency
+Build processes for applications always end up being complex things. A
+simple web application, for instance, may require many
+integrations–asset pipelines, deployment to different environments,
+the compilation of multiple artifacts with different compilers,
+packaging, etc.
 
-Artifacts are published on Clojars.
+The more complex the build process becomes, the more flexible the build tool
+needs to be. Static build specifications become less and less useful as the
+project moves toward completion. Being Lispers we know what to do: Lambda is
+the ultimate declarative.
 
-[![latest version][2]][3]
+Instead of building the project based on a global configuration map,
+boot provides a runtime environment in which a build script written in
+Clojure can be evaluated. It is this script which builds the project–a
+Turing-complete build specification.
 
-## Overview
+### Features
 
-Boot consists of two parts: the boot **loader** (this project), and the boot
-**core**.
+* Write executable, self-contained scripts in Clojure and run them with or
+  without a project context.
+* Dynamically add dependencies from Maven repositories to the running script's
+  class path.
+* Managed filesystem tree provides a scoped, immutable, append-only interface.
+* Fine-grained control of classloader isolation–run code in separate Clojure
+  runtimes.
+* Tasks are functions that return middleware which compose to form build
+  pipelines.
+* Tasks are not coupled via hardcoded file paths or magical keys in a global
+  configuration map.
+* Create new, ad-hoc tasks easily in the project, in the build script, or in
+  the REPL.
+* Compose build pipelines in the project, in the build script, in the REPL, or
+  on the command line.
+* Artifacts can never be stale–there is no need for a `clean` task.
+* Boot itself is "evergreen" (auto-updating) so it will never be out of date.
 
-* **The boot loader is a Clojure program in executable uberjar format.** The
-  purpose of the loader is to add the boot core dependency to the classpath
-  (fetching it from Clojars if necessary) and then hand off execution to the
-  `-main` function defined there. The loader is designed to be as small, simple,
-  and stable as possible, because updating to a new version is relatively
-  awkward and it's important that scripts be runnable even if they were written
-  for an older version of the API.
+## Download
 
-* **The boot core is a Maven dependency containing all of the actual boot
-  logic.** Since it's loaded into the loader dynamically it can be updated
-  easily, without requiring changes to the loader. The core version is specified
-  in the script file to provide repeatability–scripts pull in everything they
-  need to run, including the boot core itself. In addition to the machinery for
-  interpreting Clojure scripts, the core also contains a number of features
-  specific to boot's other role as a build tool for Clojure projects.
+Binaries in executable format are available:
 
-### Clojure Scripts
+* [boot][2] (Unix/Linux/OSX)
+* [boot.exe][3] (Windows)
 
-Boot scripts have three parts: the **shebang**, the **core version declaration**,
-and a number of (optional) **top level forms**.
+Boot requires the Java Runtime Environment (JRE) version 1.7 or greater.
 
-The shebang tells your shell to use the boot loader to interpret the script:
+## Documentation
 
-```clojure
-#!/usr/bin/env boot
-```
-
-The core version declaration tells the boot loader which version of the boot
-core to use:
-
-```clojure
-#tailrecursion.boot.core/version "2.5.0"
-```
-
-Any remaining forms in the script file are evaluated in the boot environment:
-
-```clojure
-(set-env! :dependencies '[[riddley "0.3.4"]])
-(require '[clojure.string :refer [join]])
-
-(defn -main [& args]
-  (println (join " " ["hello," "world!"]))
-  (System/exit 0))
-```
+* ~~[Clojure Scripting With Boot][20]~~
+* ~~[Overview of the Boot Workflow][21]~~
+* ~~[The Boot Task Writer's Guide][22]~~
+* ~~[Boot API Documentation][23]~~
 
 ## Getting Started
 
-The easiest way to get started is to download the prebuilt Jar file. It's built
-to be executable in a Unix environment. In Windows you'll have to use it via
-`java -jar ...` unless you have Cygwin installed (I think).
-
-### Windows
-
-* [Download the boot Jar file.][8]
-* Use boot by doing `java -jar boot-1.1.1.jar ...`.
-
-### Unix
+Once boot is installed (see [Download][4] above) do this in a terminal:
 
 ```
-$ wget https://clojars.org/repo/tailrecursion/boot/1.1.1/boot-1.1.1.jar
-$ mv boot-1.1.1.jar boot
-$ chmod a+x boot
-$ mv boot ~/bin/boot # or anywhere else in your $PATH
+$ boot -h
 ```
 
-### Build From Source
+You should see some usage info and a list of available tasks; something like
+the following:
+
+```
+Boot Version:  2.0.0-r1
+Documentation: http://github.com/tailrecursion/boot
+
+Usage:   boot OPTS <task> TASK_OPTS <task> TASK_OPTS ...
+
+OPTS:    -b --boot-script           Print generated boot script for debugging.
+         -d --dependencies ID:VER   Add dependency to project (eg. -d riddley:0.1.7).
+         -e --set-env KEY=VAL       Add KEY => VAL to project env map.
+         -h --help                  Print basic usage and help info.
+         -P --no-profile            Skip loading of profile.boot script.
+         -s --src-paths PATH        Add PATH to set of source directories.
+         -t --tgt-path PATH         Set the target directory to PATH.
+         -V --version               Print boot version info.
+
+Tasks:   debug                      Print the boot environment map.
+         dep-tree                   Print the project's dependency graph.
+         install                    Install project jar to local Maven repository.
+         jar                        Build a jar file for the project.
+         pom                        Write the project's pom.xml file.
+         push                       Push project jar to Clojars.
+         repl                       Start a REPL session for the current project.
+         syncdir                    Copy/sync files between directories.
+         uberjar                    Build project jar with dependencies included.
+         wait                       Wait before calling the next handler.
+         watch                      Call the next handler when source files change.
+
+Do `boot <task> -h` to see usage info and TASK_OPTS for <task>.
+```
+
+You can also get help for a specific task:
+
+```
+$ boot pom -h
+```
+
+You should see usage info and command line options for the `pom` task:
+
+```
+-------------------------
+boot.task.built-in/pom
+([& {:keys [help project version description url license scm], :as *opts*}])
+  Write the project's pom.xml file.
+
+  Options:
+    -h, --help              Print usage info for this task.
+    -p, --project PROJECT   The project groupId/artifactId.
+    -v, --version VERSION   The project version.
+    -d, --description DESC  A description of the project.
+    -u, --url URL           The URL for the project homepage.
+    -l, --license KEY=VAL   Add KEY => VAL to license map (KEY one of name, url).
+    -s, --scm KEY=VAL       Add KEY => VAL to scm map (KEY one of url, tag).
+```
+
+### Build a Simple Project
+
+Let's build a simple project to get our feet wet. We'll create a new directory,
+say `boot-project`, and a source directory in there named `src` with a source
+file, `hello.txt`:
+
+```
+$ mkdir -p boot-project/src
+$ cd boot-project
+$ echo "hi there" > src/greet.txt
+```
+
+The directory should now have the following structure:
+
+```
+boot-project
+└── src
+    └── hello.txt
+```
+
+Suppose we want to build a jar file now, and install it to our local Maven
+repository. We'll use the `pom`, `jar`, and `install` tasks to accomplish this
+from the command line:
+
+```
+# The -- args below are optional. We use them here to visually separate the tasks.
+$ boot -s src -- pom -p boot-project -v 0.1.0 -- jar -M Foo=bar -- install
+```
+
+What we did here was we built a pipeline on the command line and ran it to
+build our project. We specified the source directory via boot's `-s` option
+first. Then we added the `pom` task with options to set the project ID and
+version string, the `jar` task with options to add a `Foo` key to the jar
+manifest with value `bar`, and finally the `install` task with no options.
+
+### Build From the REPL
+
+Anything done on the command line can be done in the REPL or in a build script.
+Fire up a REPL in the project directory:
+
+```
+$ boot repl
+```
+
+The default namespace is `boot.user`, which is the namespace given to the build
+script. Building the project in the REPL is almost identical to what we did on
+the command line.
+
+First we'll set some global boot options–the source directories, for instance:
+
+```clojure
+boot.user=> (set-env! :src-paths #{"src"})
+```
+
+This was given on the command line as the `-s` or `--src-paths` argument to
+boot itself. In general arguments to boot correspond to calls to `set-env!` in
+the REPL or in a script. Note that the keyword always corresponds to the long
+option from the command line.
+
+Now that boot environment is set up we can build the project:
+
+```clojure
+boot.user=> (boot (pom :project 'boot-project :version "0.1.0")
+       #_=>       (jar :manifest {:Foo "bar"})
+       #_=>       (install))
+```
+
+Again, note that the keyword arguments correspond to long options from the
+command line.
+
+### Configure Task Options
+
+It gets tedious to specify all of those options on the command line or in the
+REPL every time you build your project. Boot provides facilities for setting
+task options globally, with the ability to override them by providing options
+on the command line or in the REPL later.
+
+The `task-options!` macro does this. Continuing in the REPL:
+
+```clojure
+boot.user=> (task-options!
+       #_=>   pom [:project 'boot-project
+       #_=>        :version "0.1.0"]
+       #_=>   jar [:manifest {:Foo "bar"}])
+```
+
+Now we can build the project without specifying these options, because the
+task functions have been "curried":
+
+```clojure
+boot.user=> (boot (pom) (jar) (install))
+```
+
+These built-in tasks actually call the tasks they depend on when they don't
+find the inputs they need. The `install` task, for instance, needs a jar file
+to install, so it calls the `jar` task when it can't find one. The jar task
+needs the `pom.xml` and `pom.properties` files in order to create the jar, so
+it calls the `pom` task when necessary, and so on.
+
+Since these tasks now have their options set via `task-options!` we don't need
+to call them all anymore. All we need to do now is call the `install` task, and
+the others will be called as necessary automatically.
+
+```clojure
+boot.user=> (boot (install))
+```
+
+Individual options can still be set by providing arguments to the tasks such
+that they override those set with `task-options!`. Let's build our project with
+a different version number, for example:
+
+```clojure
+boot.user=> (boot (pom :version "0.1.1") (install))
+```
+
+We'll see later exactly how all of this works, but for now just notice that we
+didn't need to specify the `jar` task this time, because it was called by the
+`install` task. We did, however, want to specify the `pom` task so that we
+could override the `:version` argument.
+
+### Write a Build Script
+
+More sophisticated builds will require one, but even a build as simple as this
+one can be made a little simpler by creating a build script containing the
+options for the tasks you're using.
+
+Create a file named `build.boot` in the project directory with the following
+contents:
+
+```clojure
+(set-env!
+  :src-paths #{"src"})
+
+(task-options!
+  pom [:project 'boot-project
+       :version "0.1.0"]
+  jar [:manifest {:Foo "bar"}])
+```
+
+Now we can build the project without specifying the options for each task on
+the command line–we only need to specify the tasks to create the pipeline.
+
+```
+$ boot install
+```
+
+And we can override these options on the command line as we did in the REPL:
+
+```
+$ boot -- pom -v 0.1.1 -- install
+```
+
+Notice how we did not need a `(boot ...)` expression in the `build.boot` script.
+Boot constructs that at runtime from the command line arguments.
+
+You can start a REPL in the context of the boot script (compiled as the
+`boot.user` namespace), and build interactively too:
+
+```clojure
+boot.user=> (boot (install))
+```
+
+When boot is run from the command line it actually generates a `boot` expression
+according to the command line options provided.
+
+### Define a Task
+
+Custom tasks can be defined in the project or in `build.boot`. As an example
+let's make a task that performs the last example above, and name it `build`.
+We'll modify `build.boot` such that it contains the following:
+
+```clojure
+(set-env!
+  :src-paths #{"src"})
+
+(task-options!
+  pom [:project 'boot-project
+       :version "0.1.0"]
+  jar [:manifest {:Foo "bar"}])
+
+(deftask build
+  "Build project version 0.1.1"
+  []
+  (comp
+    (pom :version "0.1.1")
+    (install)))
+```
+
+Now we should be able to see the `build` task listed among the available tasks
+in the output of `boot -h`, and we can run the task from the command line as we
+would run any other task:
+
+```
+$ boot build
+```
+Tasks are functions that return pipelines. Pipelines compose functionally to
+produce new pipelines. The `pom` and `install` functions we used in the
+definition of `build` are, in fact, the same functions that were called when we
+used them on the command line before. Boot's command line parsing implicitly
+composes them; in our task we compose them using Clojure's `comp` function.
+
+## Hacking Boot
 
 To build boot from source you will need:
 
-* Java 1.6+
-* [Leiningen][4] 2
-* GNU Make
+* Java 7+
+* GNU make
+* maven 3
+* launch4j
+* bash shell, wget
 
-Build and install boot:
-
-```
-$ git clone https://github.com/tailrecursion/boot.git
-$ cd boot
-$ make boot
-$ mv ./boot ~/bin/boot # or anywhere else in your $PATH
-```
-
-### Hello World
-
-A simple example to get started:
-
-```clojure
-#!/usr/bin/env boot
-
-#tailrecursion.boot.core/version "2.5.0"
-
-(defn -main [& args]
-  (println "hello, world!")
-  (System/exit 0))
-```
-
-Write that to a file, say `build.boot`, set execute permissions on the file, and
-run it in the terminal to enjoy a friendly greeting.
-
-> Note: scripts interpreted by boot must have the `.boot` file extension.
-
-### Script Dependencies
-
-Scripts can add Maven repositories and/or dependencies at runtime using
-`set-env!`:
-
-```clojure
-#!/usr/bin/env boot
-
-#tailrecursion.boot.core/version "2.5.0"
-
-(set-env!
-  :repositories #{"http://me.com/maven-repo"}
-  :dependencies '[[com.hello/foo "0.1.0"]])
-
-(require '[com.hello.foo :as foo])
-
-(defn -main [& args]
-  (println (foo/do-stuff args))
-  (System/exit 0))
-```
-
-## Boot Build Tool
-
-In addition to interpreting scripts, boot also provides some facilities to help
-build Clojure projects. Omitting the `-main` function definition puts boot into
-build tool mode.
-
-### A Minimal Build Script
-
-Create a minimal `build.boot` file containing only the shebang and core version:
+In a terminal in the project directory do:
 
 ```
-$ boot :strap > build.boot
+$ make install
 ```
 
-The resulting file should contain something like this:
-
-```clojure
-#!/usr/bin/env boot
-
-#tailrecursion.boot.core/version "2.5.0"
-```
-
-Then run it. You should see version and usage info and a list of available
-tasks:
-
-```
-$ boot
-tailrecursion/boot 1.0.0: http://github.com/tailrecursion/boot
-
-Usage: boot OPTS task ...
-       boot OPTS [task arg arg] ...
-       boot OPTS [help task]
-
-OPTS:  :v       Verbose exceptions (full cause trace).
-       [:v n]   Cause trace limited to `n` elements each.
-
-Tasks: debug      Print the value of a boot environment key.
-       help       Print help and usage info for a task.
-       lein       Run a leiningen task with a generated `project.clj`.
-       repl       Launch nrepl in the project.
-       syncdir    Copy/sync files between directories.
-       watch      Watch `:src-paths` and call its continuation when files change.
-
-Create a minimal boot script: `boot :strap > build.boot`
-
-```
-
-The tasks listed in the output are defined in the [core tasks namespace][5],
-which is referred into the script namespace automatically. Any tasks defined or
-referred into the script namespace will be displayed in the list of available
-tasks printed by the default `help` task.
-
-> Notice that when the boot script file is named `build.boot` and located is in
-> the current directory you can call `boot` directly instead of executing the
-> boot script file itself. This is more familiar to users of Leiningen or GNU
-> Make, for example, and reinforces build repeatability by standardizing the
-> build script filename and location in the project directory.
-
-### A Simple Task
-
-Let's create a task to print a friendly greeting to the terminal. Modify the
-`build.boot` file to contain the following:
-
-```clojure
-#!/usr/bin/env boot
-
-#tailrecursion.boot.core/version "2.5.0"
-
-(deftask hello
-  "Print a friendly greeting."
-  [& [name]]
-  (fn [continue]
-    (fn [event]
-      (printf "hello, %s!\n" (or name "world"))
-      (continue event))))
-```
-
-Run it again to see the new task listed among the other available tasks:
-
-```
-$ boot
-tailrecursion/boot 1.0.0: http://github.com/tailrecursion/boot
-
-Usage: boot OPTS task ...
-       boot OPTS [task arg arg] ...
-       boot OPTS [help task]
-
-OPTS:  :v       Verbose exceptions (full cause trace).
-       [:v n]   Cause trace limited to `n` elements each.
-
-Tasks: debug      Print the value of a boot environment key.
-       hello      Print a friendly greeting.
-       help       Print help and usage info for a task.
-       lein       Run a leiningen task with a generated `project.clj`.
-       repl       Launch nrepl in the project.
-       syncdir    Copy/sync files between directories.
-       watch      Watch `:src-paths` and call its continuation when files change.
-
-Create a minimal boot script: `boot :strap > build.boot`
-
-```
-
-Now we can run the `hello` task:
-
-```
-$ boot hello
-hello, world!
-```
-
-### Command Line Arguments To Tasks
-
-An argument can be passed to the `hello` task like this:
-
-```
-$ boot \(hello :foo\)
-hello, :foo!
-```
-
-The command line is read as Clojure forms, but task expressions can be enclosed
-in square brackets (optionally) to avoid having to escape parens in the shell,
-like this:
-
-```
-$ boot [hello :foo]
-hello, :foo!
-```
-
-### Command Line Composition Of Tasks
-
-Tasks can be composed on the command line by specifying them one after the other,
-like this:
-
-```
-$ boot [hello :foo] [hello :bar]
-hello, :foo!
-hello, :bar!
-```
-
-Because tasks return middleware functions they can be composed uniformly, and
-the product of the composition of two task middleware functions is itself a
-task middleware function. The two instances of the `hello` task above are being
-combined by boot something like this:
-
-```clojure
-;; [& args] command line argument list
-("[hello" ":foo]" "[hello" ":bar]")
-  ;; string/join with " " and read-string
-  => ([hello :foo] [hello :bar])
-  ;; convert top-level vectors to lists
-  => ((hello :foo) (hello :bar))
-  ;; compose with comp when more than one
-  => (comp (hello :foo) (hello :bar))
-```
-
-This yields a middleware function that is called by boot to actually perform
-the build process. The composition of middleware sets up the pipeline of tasks
-that will participate in the build. The actual handler at the bottom of the
-middleware stack is provided by boot–it syncs artifacts between temporary
-staging directories (more on these later) and output/target directories.
-
-### Create New Task By Composition
-
-Here we create a new named task in the project boot script by composing other
-tasks. This is a quick way to fix options and simplify documenting the build
-procedures. Tasks are functions that return middleware, and middleware are
-functions that can be composed uniformly, so a task can compose other tasks the
-same way as on the command line: with the `comp` function.
-
-Modify the `build.boot` file such that it contains the following:
-
-```clojure
-#!/usr/bin/env boot
-
-#tailrecursion.boot.core/version "2.5.0"
-
-(deftask hello
-  "Print a friendly greeting."
-  [& [name]]
-  (fn [continue]
-    (fn [event]
-      (printf "hello, %s!\n" (or name "world"))
-      (continue event))))
-
-(deftask hellos
-  "Print two friendly greetings."
-  []
-  (comp (hello :foo) (hello :bar)))
-```
-
-Now run the new `hellos` task, which composes two instances of the `hello` task
-with different arguments to the constructor:
-
-```
-$ boot hellos
-hello, :foo!
-hello, :bar!
-```
-
-### The Build Environment
-
-The global build environment contains the project metadata. This includes things
-like the project group and artifact ID, version string, dependencies, etc. The
-environment is accessible throughout the build process via the `get-env` and
-`set-env!` functions.
-
-For example:
-
-```clojure
-#!/usr/bin/env boot
-
-#tailrecursion.boot.core/version "2.5.0"
-
-(set-env!
-  :project      'com.me/my-project
-  :version      "0.1.0-SNAPSHOT"
-  :description  "My Clojure project."
-  :url          "http://me.com/projects/my-project"
-  :license      {:name  "Eclipse Public License"
-                 :url   "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies '[[tailrecursion/boot.task "2.0.0"]
-                  [tailrecursion/hoplon    "5.0.0"]]
-  :src-paths    #{"src"})
-
-(deftask env-value
-  "Print the value associated with `key` in the build environment."
-  [key]
-  (fn [continue]
-    (fn [event]
-      (prn (get-env key))
-      (continue event))))
-```
-
-In the example above the environment is configured using `set-env!` and a task
-is defined to print the environment value associated with a given key using
-`get-env`. (This task is similar to the core `debug` task that is included in
-boot already.) We can run the task like this:
-
-```
-$ boot [env-value :src-paths]
-#{"src"}
-```
-
-### Tasks That Modify The Environment
-
-Tasks defined in the `build.boot` script can dynamically modify the build
-environment at runtime. That is, they can use `set-env!` to add dependencies or
-directories to the classpath or otherwise update values in the build
-environment. This makes it possible to define "profile" tasks that can be used
-to modify the behavior of other tasks. These profile-type tasks can either
-create a middleware function or simply return Clojure's `identity` to pass
-control directly to the next task.
-
-For example:
-
-```clojure
-#!/usr/bin/env boot
-
-#tailrecursion.boot.core/version "2.5.0"
-
-(set-env!
-  :project      'com.me/my-project
-  :version      "0.1.0-SNAPSHOT"
-  :description  "My Clojure project."
-  :url          "http://me.com/projects/my-project"
-  :license      {:name  "Eclipse Public License"
-                 :url   "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies '[[tailrecursion/boot.task "2.0.0"]
-                  [tailrecursion/hoplon    "5.0.0"]]
-  :src-paths    #{"src"})
-
-(deftask env-mod
-  "Example profile-type task."
-  []
-  (set-env! :description "My TEST Clojure project.")
-  identity)
-
-(deftask env-value
-  "Print the value associated with `key` in the build environment."
-  [key]
-  (fn [continue]
-    (fn [event]
-      (prn (get-env key))
-      (continue event))))
-```
-
-Now, running this `build.boot` script produces the following:
-
-```
-$ boot [env-value :description]
-"My Clojure project."
-$ boot env-mod [env-value :description]
-"My TEST Clojure project."
-```
-
-In the build script the `deftask` macro defines a function whose body is
-compiled lazily at runtime when the function is called. This means that inside
-a `deftask` you can add dependencies and require namespaces which will then
-be available for use in the build script.
-
-For example:
-
-```clojure
-#!/usr/bin/env boot
-
-#tailrecursion.boot.core/version "2.5.0"
-
-(set-env!
-  :project      'com.me/my-project
-  :version      "0.1.0-SNAPSHOT"
-  :description  "My Clojure project."
-  :url          "http://me.com/projects/my-project"
-  :license      {:name  "Eclipse Public License"
-                 :url   "http://www.eclipse.org/legal/epl-v10.html"}
-  :src-paths    #{"src"})
-
-(deftask load-hoplon
-  "Example profile-type task."
-  []
-  (set-env!
-    :dependencies '[[tailrecursion/boot.task "2.0.0"]
-                    [tailrecursion/hoplon    "5.0.0"]])
-  (require '[tailrecursion.hoplon.boot :as h])
-  identity)
-```
-
-The `load-hoplon` task adds the dependencies needed for building a Hoplon
-application and requires the hoplon boot task namespace, aliasing it to `h`
-locally. To see the effect run the `build.boot` script with and without this
-task and see how the list of available tasks changes.
-
-First without the `load-hoplon` profile:
-
-```
-$ boot help
-tailrecursion/boot 1.0.0: http://github.com/tailrecursion/boot
-
-Usage: boot OPTS task ...
-       boot OPTS [task arg arg] ...
-       boot OPTS [help task]
-
-OPTS:  :v       Verbose exceptions (full cause trace).
-       [:v n]   Cause trace limited to `n` elements each.
-
-Tasks: debug         Print the value of a boot environment key.
-       help          Print help and usage info for a task.
-       lein          Run a leiningen task with a generated `project.clj`.
-       load-hoplon   Example profile-type task.
-       repl          Launch nrepl in the project.
-       syncdir       Copy/sync files between directories.
-       watch         Watch `:src-paths` and call its continuation when files change.
-
-Create a minimal boot script: `boot :strap > build.boot`
-
-```
-
-Then with the `load-hoplon` profile:
-
-```
-$ boot load-hoplon help
-tailrecursion/boot 1.0.0: http://github.com/tailrecursion/boot
-
-Usage: boot OPTS task ...
-       boot OPTS [task arg arg] ...
-       boot OPTS [help task]
-
-OPTS:  :v       Verbose exceptions (full cause trace).
-       [:v n]   Cause trace limited to `n` elements each.
-
-Tasks: debug         Print the value of a boot environment key.
-       help          Print help and usage info for a task.
-       lein          Run a leiningen task with a generated `project.clj`.
-       load-hoplon   Example profile-type task.
-       repl          Launch nrepl in the project.
-       syncdir       Copy/sync files between directories.
-       watch         Watch `:src-paths` and call its continuation when files change.
-       h/hoplon      Build Hoplon web application.
-       h/html2cljs   Convert file from html syntax to cljs syntax.
-
-Create a minimal boot script: `boot :strap > build.boot`
-
-```
-
-Notice how the second list includes `h/hoplon` and `h/html2cljs`, the two tasks
-defined using `deftask` in the [Hoplon boot task namespace][6]. You could run
-the `hoplon` task, for example, by doing
-
-```
-$ boot load-hoplon h/hoplon
-```
-
-### Staging Directories And Temporary Files
-
-The Java/Clojure build process is pretty much wedded to files in the filesystem.
-This adds incidental complexity to the build process and causes undesired
-coupling between tasks and between tasks and the project environment. Boot
-provides facilities to mitigate the issues with managing the files created
-during the build process. This allows tasks to be more general and easily
-composed, and eliminates configuration boilerplate in the project environment.
-
-* Tasks produce files which may be further processed by other tasks or emitted
-  into the final output directory as artifacts. Using boot's file management
-  facilities eliminates the need for the task itself to know which is the case
-  during a particular build.
-
-* Boot's file management facilities eliminate the coupling between tasks and the
-  filesystem, improving the ability to compose these tasks.
-
-* Boot manages these files in such a way as to never accumulate stale or garbage
-  files, so there is no need for a "clean" task. This greatly simplifies the
-  state model for the build process, making it easier to understand what's going
-  on during the build and the interactions between tasks.
-
-The boot build process deals with six types of directories–two of which are
-specified in the project's boot environment (in the `build.boot` file) and the
-other four are created by tasks during the build process and managed by boot.
-
-#### Project Directories
-
-These directories contain files that are part of the project itself and are
-read-only as far as boot tasks are concerned.
-
-* **Project source directories.** These are specified in the `:src-paths` key
-  of the boot environment for the project, and boot adds them to the project's
-  class path automatically.
-
-* **Resource directories.** These are specified using the `add-sync!` function
-  in the `build.boot` file. The contents of these directories are overlayed on
-  some other directory (usually the `:out-path` dir, but it could be any
-  directory) after each build cycle. These directories contain things like CSS
-  stylesheets, image files, etc. Boot does not automatically add resource
-  directories to the project's class path.
-
-#### Boot Managed Directories
-
-These directories contain intermediate files created by boot tasks and are
-managed by boot. Boot deletes managed directories created by previous builds
-each time it starts.
-
-* **Project output directory.** This is specified in the `:out-path` key of
-  the project boot environment. This is where the final artifacts produced by
-  the entire build process are placed. This directory is kept up to date and
-  free of stale artifacts by boot, automatically. Tasks should not add files
-  directly to this directory or manipulate the files it contains. Instead,
-  tasks emit artifacts to staging directories (see below) and boot takes care
-  of syncing them to the output directory at the end of each build cycle.
-
-* **Generated source directories.** These directories are created by tasks
-  via the `mksrcdir!` function. Generated source dirs are similar to the project
-  source dirs, except that tasks can write to them and they're managed by boot.
-  Tasks can use these directories as a place to put intermediate source files
-  that are generated from sources in JAR dependencies (i.e. once created these
-  files won't change from one build cycle to the next).
-
-* **Temporary directories.** Temp directories are created by tasks via the
-  `mktmp!` function. Tasks can use these directories for storing intermediate
-  files that will not be used as input for other tasks or as final compiled
-  artifacts (intermediate JavaScript namespaces created by the Google Closure
-  compiler, for instance). These directories are not automatically added to the
-  project's class path.
-
-* **Staging directories.** These directories are created by tasks via the
-  `mkoutdir!` function. Tasks emit artifacts into these staging directories
-  which are cleaned automatically by boot at the start of each build cycle.
-  Staging directories are automatically added to the project's class path so
-  the files emitted there can be used as input for other tasks (or not) as
-  required. Files in staging directories at the end of the build cycle which
-  have not been consumed by another task (see below) will be synced to the
-  output directory after all tasks in the cycle have been run.
-
-<img height="600px" src="https://raw.github.com/tailrecursion/boot/master/img/files.gif">
-
-The image above illustrates the flow of files through the boot build process.
-On the left and right sides of the image are the various directories involved
-in the build process. The build process depicted consists of two tasks, "Task 1"
-and "Task 2", colored orange and red, respectively, displayed in the center of
-the image.
-
-Tasks participate in the three phases of the build cycle: init, build, and
-filter. The initialization phase occurs once per boot invocation for each task,
-when the tasks are constructed. Tasks return middleware functions which handle
-the build phase of the process. Tasks may "consume" source files (see the next
-section). These files are removed from the staging directories of all tasks by
-boot during the filter phase of the build cycle.
-
-After the final phase of the build cycle stale artifacts are removed from the
-project output directory and any artifacts that remain in staging directories
-are synced over to it.
-
-### Source Files Consumed By Tasks
-
-FIXME
+Jars for all of the boot components will be created and installed to your local
+Maven repository. The executables `bin/boot` and `bin/boot.exe` will be created,
+as well.
+
+## Attribution
+
+Code from other projects was incorporated into boot wherever necessary to
+eliminate external dependencies of boot itself. This ensures that the project
+classpath remains pristine and free from potential dependency conflicts. We've
+pulled in code from the following projects (thanks, guys!)
+
+* [technomancy/leiningen][50]
+* [cemerick/pomegranate][51]
+* [Raynes/conch][52]
+* [tebeka/clj-digest][53]
+* [cldwalker/table][54]
+* [clojure/tools.cli][55]
+* [bbloom/backtick][56]
+* [AvisoNovate/pretty][57]
+
+The boot source is also annotated to provide attribution wherever possible.
+Look for the `:boot/from` key in metadata attached to vars or namespaces.
 
 ## License
 
@@ -640,16 +370,23 @@ Copyright © 2013 Alan Dipert and Micha Niskin
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
-[1]: https://raw.github.com/tailrecursion/boot/master/img/archimedes-lever.gif
-[2]: https://clojars.org/tailrecursion/boot/latest-version.svg?cachebuster=002
-[3]: https://clojars.org/tailrecursion/boot
-[4]: https://github.com/technomancy/leiningen
-[5]: https://github.com/tailrecursion/boot.core/blob/master/src/tailrecursion/boot/core/task.clj
-[6]: https://github.com/tailrecursion/hoplon/blob/master/src/tailrecursion/hoplon/boot.clj
-[7]: https://raw.github.com/tailrecursion/boot/master/img/files.gif
-[8]: https://clojars.org/repo/tailrecursion/boot/1.1.1/boot-1.1.1.jar
+[1]: https://raw.githubusercontent.com/tailrecursion/boot/master/img/archimedes-lever.gif
+[2]: https://github.com/tailrecursion/boot/releases/download/p1/boot
+[3]: https://github.com/tailrecursion/boot/releases/download/p1/boot.exe
+[4]: #download
+[5]: https://drone.io/github.com/tailrecursion/boot/status.png?cache=1
+[6]: https://drone.io/github.com/tailrecursion/boot/latest
 
-[10]: https://github.com/mmcgrana/ring
-[20]: https://github.com/tailrecursion/boot.task
-[30]: https://github.com/technomancy/leiningen/blob/master/doc/PROFILES.md
-[50]: https://github.com/tailrecursion/boot/blob/master/boot.edn
+[20]: doc/clojure-scripting-with-boot.md
+[21]: doc/overview-of-the-boot-workflow.md
+[22]: doc/boot-task-writers-guide.md
+[23]: https://tailrecursion.github.io/boot
+
+[50]: https://github.com/technomancy/leiningen
+[51]: https://github.com/cemerick/pomegranate
+[52]: https://github.com/Raynes/conch
+[53]: https://github.com/tebeka/clj-digest
+[54]: https://github.com/cldwalker/table
+[55]: https://github.com/clojure/tools.cli
+[56]: https://github.com/bbloom/backtick
+[57]: https://github.com/AvisoNovate/pretty
