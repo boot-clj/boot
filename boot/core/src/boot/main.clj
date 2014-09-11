@@ -56,7 +56,8 @@
         (when-let [main# (resolve 'boot.user/-main)] (main# ~@argv))
         (core/boot ~@(or (seq argv) ["boot.task.built-in/help"]))))))
 
-(defn -main [[arg0 & args :as args*]]
+(defn -main [worker-pod [arg0 & args :as args*]]
+  (reset! pod/worker-pod worker-pod)
   (let [dotboot?         #(.endsWith (.getName (io/file %)) ".boot")
         script?          #(when (and % (.isFile (io/file %)) (dotboot? %)) %)
         bootscript       (io/file "build.boot")

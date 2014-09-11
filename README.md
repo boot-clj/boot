@@ -43,14 +43,35 @@ Turing-complete build specification.
 * Artifacts can never be stale–there is no need for a `clean` task.
 * Boot itself is "evergreen" (auto-updating) so it will never be out of date.
 
-## Download
+## Install
 
-Binaries in executable format are available:
+Binaries in executable format are available. Follow the instructions for your
+operating system (note: boot requires the Java Runtime Environment (JRE)
+version 1.7 or greater).
 
-* [boot][2] (Unix/Linux/OSX)
-* [boot.exe][3] (Windows)
+#### Unix, Linux, OSX
 
-Boot requires the Java Runtime Environment (JRE) version 1.7 or greater.
+* Download [boot.sh][2]
+* Rename `boot.sh` to `boot` and make it executable:
+
+  ```
+  $ mv boot.sh boot && chmod a+x boot
+  ```
+
+* Put `boot` in a directory that's in your `$PATH`:
+
+  ```
+  $ sudo mv boot /usr/local/bin
+  ```
+  
+#### Windows
+
+* Download [boot.exe][3]
+* Put `boot.exe` in a directory that's in your `%PATH%`:
+
+  ```
+  C:\> move boot.exe C:\Windows\System32
+  ```
 
 ## Documentation
 

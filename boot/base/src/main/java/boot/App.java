@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicLong;
 import org.projectodd.shimdandy.ClojureRuntimeShim;
 
 @SuppressWarnings("unchecked")
@@ -20,19 +21,16 @@ public class App {
     private static HashMap<String, File[]> depsCache  = null;
     private static String                  cljversion = "1.6.0";
 
-    private static final String appversion = "2.0.0";
-    private static final String apprelease = "r1";
-    private static final String depversion = appversion + "-SNAPSHOT";
-    private static final String aetherjar  = "aether-" + depversion + ".uber.jar";
+    private static final String     appversion = "2.0.0";
+    private static final String     apprelease = "r1";
+    private static final String     depversion = appversion + "-SNAPSHOT";
+    private static final String     aetherjar  = "aether-" + depversion + ".uber.jar";
+    private static final AtomicLong counter    = new AtomicLong(0);
 
-    public static ClojureRuntimeShim core   = null;
-    public static ClojureRuntimeShim worker = null;
-
-    public static ClojureRuntimeShim getCore()    { return core; }
-    public static ClojureRuntimeShim getWorker()  { return worker; }
     public static File               getBootDir() { return bootdir; }
     public static String             getVersion() { return appversion; }
     public static String             getRelease() { return apprelease; }
+    public static long               getNextId()  { return counter.addAndGet(1); }
     
     private static FileLock
     getLock(File f) throws Exception {
@@ -40,12 +38,11 @@ public class App {
         return (new RandomAccessFile(lockfile, "rw")).getChannel().lock(); }
 
     private static HashMap<String, File[]>
-    seedCache(ClojureRuntimeShim a) throws Exception {
+    seedCache() throws Exception {
         if (depsCache != null) return depsCache;
         else {
-            if (a == null) {
-                ensureResourceFile(aetherjar, aetherfile);
-                a = newShim(new File[] { aetherfile }); }
+            ensureResourceFile(aetherjar, aetherfile);
+            ClojureRuntimeShim a = newShim(new File[] { aetherfile });
         
             HashMap<String, File[]> cache = new HashMap<>();
         
@@ -62,12 +59,13 @@ public class App {
                 if (! f.exists()) throw new Exception("dep jar doesn't exist");
         return cache; }
 
-    private static void
+    private static Object
     writeCache(File f, Object m) throws Exception {
         FileLock         lock = getLock(f);
         FileOutputStream file = new FileOutputStream(f);
         try { (new ObjectOutputStream(file)).writeObject(m); }
-        finally { file.close(); lock.release(); }}
+        finally { file.close(); lock.release(); }
+        return m; }
     
     private static Object
     readCache(File f) throws Exception {
@@ -78,8 +76,8 @@ public class App {
             if (age > max) throw new Exception("cache age exceeds TTL");
             return validateCache((new ObjectInputStream(new FileInputStream(f))).readObject()); }
         catch (Throwable e) {
-            System.err.println("boot: checking for boot core updates...");
-            return seedCache(null); }
+            System.err.println("checking for boot updates...");
+            return writeCache(f, seedCache()); }
         finally { lock.release(); }}
     
     public static ClojureRuntimeShim
@@ -133,7 +131,6 @@ public class App {
     main(String[] args) throws Exception {
         if (args.length > 0
             && ((args[0]).equals("-V")
-                || (args[0]).equals("version")
                 || (args[0]).equals("--version"))) {
             System.err.println(appversion + "-" + apprelease);
             System.exit(0); }
@@ -170,18 +167,12 @@ public class App {
                 public Object call() throws Exception {
                     return newShim(cache.get("boot/core")); }});
         
-        final Future f3 = ex.submit(new Callable() {
-                public Object call() throws Exception {
-                    writeCache(cachefile, seedCache((ClojureRuntimeShim) f1.get()));
-                    return null; }});
-        
         Thread shutdown = new Thread() { public void run() { ex.shutdown(); }};
         Runtime.getRuntime().addShutdownHook(shutdown);
 
-        worker = (ClojureRuntimeShim) f1.get();
-        core   = (ClojureRuntimeShim) f2.get();
+        final ClojureRuntimeShim core = (ClojureRuntimeShim) f2.get();
 
         core.require("boot.main");
-        core.invoke("boot.main/-main", args);
+        core.invoke("boot.main/-main", f1.get(), args);
         
         System.exit(0); }}

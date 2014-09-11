@@ -7,6 +7,8 @@
    [boot.from.io.aviso.exception :as pretty])
   (:import
    [java.io       File]
+   [java.nio      ByteBuffer]
+   [java.util     UUID]
    [java.util.zip ZipFile]
    [java.util.jar JarEntry JarOutputStream]))
 

@@ -244,12 +244,32 @@
                         `(boot.aether/jar-entries-in-dep-order ~env))))
                 (core/consume-file! jarfile)))))))))
 
+(core/deftask web
+  "Create project web.xml file.
+
+  The --serve option is required. The others are optional."
+  
+  [s serve SYM        sym "The 'serve' callback function."
+   c create SYM       sym "The 'create' callback function."
+   d destroy SYM      sym "The 'destroy' callback function."]
+  
+  (defonce web-created? (atom false))
+  (core/with-pre-wrap
+    (when-not @web-created?
+      (-> (and (symbol? serve) (namespace serve)) 
+        (assert "no serve function specified"))
+      (let [tgt (core/mktgtdir! ::web-tgt)]
+        (pod/call-worker
+          `(boot.web/spit-web! ~(.getPath tgt) ~serve ~create ~destroy))
+        (reset! web-created? true)))))
+
 (core/deftask war
   "Create war file for web deployment."
   []
   (let [tgt (core/mktgtdir! ::war-tgt)]
     (comp
       (jar)
+      (web)
       (core/with-pre-wrap
         (doseq [jarfile (->> (core/tgt-files) (core/by-ext [".jar"]))]
           (let [warname (.replaceAll (.getName (io/file jarfile)) "\\.jar$" ".war")

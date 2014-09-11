@@ -12,6 +12,7 @@
    [clojure.lang  DynamicClassLoader])
   (:refer-clojure :exclude [add-classpath]))
 
+
 (defn extract-ids
   [sym]
   (let [[group artifact] ((juxt namespace name) sym)]
@@ -118,7 +119,7 @@
 (defn copy-resource
   [resource-path out-path]
   (with-open [in  (io/input-stream (io/resource resource-path))
-              out (io/output-stream (io/file out-path))]
+              out (io/output-stream (doto (io/file out-path) io/make-parents))]
     (io/copy in out)))
 
 (defn call-in
@@ -132,9 +133,11 @@
      (let [ret (.invoke pod "boot.pod/call-in" (pr-str expr))]
       (util/guard (read-string ret)))))
 
+(def worker-pod (atom nil))
+
 (defn call-worker
   [expr]
-  (call-in (boot.App/getWorker) expr))
+  (call-in @worker-pod expr))
 
 (defn resolve-dependencies
   [env]

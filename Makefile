@@ -1,7 +1,7 @@
 .PHONY: help install deploy test
 
 bootjar    = $(PWD)/bin/boot2
-bootbin    = $(PWD)/bin/boot
+bootbin    = $(PWD)/bin/boot.sh
 bootexe    = $(bootbin).exe
 bootjarurl = https://github.com/tailrecursion/boot/releases/download/p1/boot
 podjar     = boot/pod/target/pod-2.0.0-SNAPSHOT.jar
