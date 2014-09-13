@@ -392,8 +392,8 @@ Copyright © 2013 Alan Dipert and Micha Niskin
 Distributed under the Eclipse Public License, the same as Clojure.
 
 [1]: https://raw.githubusercontent.com/tailrecursion/boot/master/img/archimedes-lever.gif
-[2]: https://github.com/tailrecursion/boot/releases/download/p1/boot
-[3]: https://github.com/tailrecursion/boot/releases/download/p1/boot.exe
+[2]: https://github.com/tailrecursion/boot/releases/download/v2-r1/boot.sh
+[3]: https://github.com/tailrecursion/boot/releases/download/v2-r1/boot.exe
 [4]: #download
 [5]: https://drone.io/github.com/tailrecursion/boot/status.png?cache=1
 [6]: https://drone.io/github.com/tailrecursion/boot/latest
