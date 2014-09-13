@@ -6,12 +6,11 @@
    [dynapath.util              :as dp]
    [dynapath.dynamic-classpath :as cp])
   (:import
-   [java.util.jar JarFile]
-   [java.util     Properties]
-   [java.net      URL URLClassLoader]
-   [clojure.lang  DynamicClassLoader])
+   [java.util.jar        JarFile]
+   [java.util            Properties]
+   [java.net             URL URLClassLoader]
+   [java.util.concurrent ConcurrentLinkedQueue])
   (:refer-clojure :exclude [add-classpath]))
-
 
 (defn extract-ids
   [sym]
@@ -133,7 +132,10 @@
      (let [ret (.invoke pod "boot.pod/call-in" (pr-str expr))]
       (util/guard (read-string ret)))))
 
-(def worker-pod (atom nil))
+(def  pod-id                 (atom nil))
+(def  worker-pod             (atom nil))
+(def  shutdown-hooks         (atom nil))
+(defn add-shutdown-hook! [f] (.offer @shutdown-hooks f))
 
 (defn call-worker
   [expr]

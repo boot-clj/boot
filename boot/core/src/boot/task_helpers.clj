@@ -3,6 +3,7 @@
    [clojure.set               :as set]
    [clojure.string            :as string]
    [clojure.stacktrace        :as trace]
+   [boot.pod                  :as pod]
    [boot.core                 :as core]
    [boot.file                 :as file]
    [boot.from.me.raynes.conch :as conch]))
@@ -58,8 +59,8 @@
   (atom ()))
 
 ;; cleanup background tasks on shutdown
-(-> (Runtime/getRuntime)
-  (.addShutdownHook (Thread. #(doseq [job @bgs] (future-cancel job)))))
+(def add-shutdown!
+  (delay (pod/add-shutdown-hook! #(doseq [job @bgs] (future-cancel job)))))
 
 ;; Task helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -75,6 +76,7 @@
 (defn bg-task
   "Run the given task once, in a separate, background thread."
   [task]
+  @add-shutdown!
   (once
     (core/with-pre-wrap
       (swap! bgs conj (future ((task identity) core/*event*))))))

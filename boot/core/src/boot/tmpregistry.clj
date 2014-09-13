@@ -3,6 +3,7 @@
   (:require
     [boot.file       :as f]
     [boot.kahnsort   :as k]
+    [boot.pod        :as pod]
     [clojure.java.io :as io]
     [clojure.string  :as str]
     [clojure.core    :as core]
@@ -22,12 +23,11 @@
     (.delete delete)))
 
 (defn pid! []
-  (->> (.. ManagementFactory getRuntimeMXBean getName) 
-    (take-while (partial not= \@))
-    (apply str)))
-
-(defn add-shutdown-hook! [f]
-  (.addShutdownHook (Runtime/getRuntime) (Thread. f)))
+  (format "%s-%s"
+    (->> (.. ManagementFactory getRuntimeMXBean getName) 
+      (take-while (partial not= \@))
+      (apply str))
+    (str @pod/pod-id)))
 
 (defn mark-delete-me! [dir]
   #(when (.exists dir) (.createNewFile (io/file dir ".delete-me"))))
@@ -80,7 +80,7 @@
   ITmpRegistry
   (-init! [this]
     (clean-delete-me! (.getParentFile (io/file dir)))
-    (add-shutdown-hook! (mark-delete-me! (io/file dir)))
+    (pod/add-shutdown-hook! (mark-delete-me! (io/file dir)))
     (add-watch reg ::_ #(persist! dir initialized? %3 %4)))
   (-get [this k]
     (munged-file dir k (nth (@reg k) 2)))

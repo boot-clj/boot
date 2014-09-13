@@ -2,7 +2,7 @@
 
 bootjar    = $(PWD)/bin/boot2
 bootbin    = $(PWD)/bin/boot.sh
-bootexe    = $(bootbin).exe
+bootexe    = $(PWD)/bin/boot.exe
 bootjarurl = https://github.com/tailrecursion/boot/releases/download/p1/boot
 podjar     = boot/pod/target/pod-2.0.0-SNAPSHOT.jar
 aetherjar  = boot/aether/target/aether-2.0.0-SNAPSHOT.jar
@@ -22,18 +22,18 @@ bin/lein:
 	chmod 755 bin/lein
 
 $(podjar): $(shell find boot/pod/src)
-	(cd boot/pod && lein install)
+	(cd boot/pod && lein clean && lein install)
 
 $(aetherjar): $(podjar) $(shell find boot/aether/src)
-	(cd boot/aether && lein install && lein uberjar && \
+	(cd boot/aether && lein clean && lein install && lein uberjar && \
 		mkdir -p ../base/src/main/resources && \
 	 	cp target/*standalone*.jar ../base/src/main/resources/$(aetheruber))
 
 $(workerjar): $(shell find boot/worker/src)
-	(cd boot/worker && lein install)
+	(cd boot/worker && lein clean && lein install)
 
 $(corejar): $(shell find boot/core/src)
-	(cd boot/core && lein install)
+	(cd boot/core && lein clean && lein install)
 
 $(baseuber): $(shell find boot/base/src)
 	(cd boot/base && mvn -q clean && mvn -q assembly:assembly -DdescriptorId=jar-with-dependencies)
@@ -49,8 +49,10 @@ $(bootbin): $(baseuber)
 	@echo "*** Created boot executable: $(bootbin) ***"
 
 $(bootexe): $(baseuber)
-	if [ -z $$RUNNING_IN_CI ]; then launch4j launch4j-config.xml; else true; fi
-	@echo "*** Created boot executable: $(bootexe) ***"
+	@if [ -z $$RUNNING_IN_CI ] && which launch4j; then \
+		launch4j launch4j-config.xml; \
+		echo "*** Created boot executable: $(bootexe) ***"; \
+	else true; fi
 
 .installed: $(alljars) $(bootbin) $(bootexe)
 	date > .installed

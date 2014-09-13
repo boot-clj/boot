@@ -10,27 +10,36 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import org.projectodd.shimdandy.ClojureRuntimeShim;
 
 @SuppressWarnings("unchecked")
 public class App {
     private static File[]                  podjars    = null;
+    private static File[]                  corejars   = null;
+    private static File[]                  workerjars = null;
     private static File                    bootdir    = null;
     private static File                    aetherfile = null;
     private static HashMap<String, File[]> depsCache  = null;
     private static String                  cljversion = "1.6.0";
 
-    private static final String     appversion = "2.0.0";
-    private static final String     apprelease = "r1";
-    private static final String     depversion = appversion + "-SNAPSHOT";
-    private static final String     aetherjar  = "aether-" + depversion + ".uber.jar";
-    private static final AtomicLong counter    = new AtomicLong(0);
+    private static final String            appversion = "2.0.0";
+    private static final String            apprelease = "r1";
+    private static final String            depversion = appversion + "-SNAPSHOT";
+    private static final String            aetherjar  = "aether-" + depversion + ".uber.jar";
+    private static final AtomicLong        counter    = new AtomicLong(0);
+    private static final ExecutorService   ex         = Executors.newCachedThreadPool();
 
-    public static File               getBootDir() { return bootdir; }
-    public static String             getVersion() { return appversion; }
-    public static String             getRelease() { return apprelease; }
-    public static long               getNextId()  { return counter.addAndGet(1); }
+    private static long  getNextId()  { return counter.addAndGet(1); }
+    
+    public static File   getBootDir() { return bootdir; }
+    public static String getVersion() { return appversion; }
+    public static String getRelease() { return apprelease; }
+
+    public static class Exit extends Exception {
+        public Exit(String m) { super(m); }
+        public Exit(String m, Throwable c) { super(m, c); }}
     
     private static FileLock
     getLock(File f) throws Exception {
@@ -61,10 +70,9 @@ public class App {
 
     private static Object
     writeCache(File f, Object m) throws Exception {
-        FileLock         lock = getLock(f);
         FileOutputStream file = new FileOutputStream(f);
         try { (new ObjectOutputStream(file)).writeObject(m); }
-        finally { file.close(); lock.release(); }
+        finally { file.close(); }
         return m; }
     
     private static Object
@@ -127,6 +135,37 @@ public class App {
         return (File[]) shim.invoke(
             "boot.aether/resolve-dependency-jars", sym, depversion, cljversion); }
     
+    public static Future<ClojureRuntimeShim>
+    newCore() throws Exception {
+        final File[] jars = corejars;
+        return ex.submit(new Callable() {
+                public ClojureRuntimeShim
+                call() throws Exception { return newShim(jars); }}); }
+                
+    public static Future<ClojureRuntimeShim>
+    newWorker() throws Exception {
+        final File[] jars = workerjars;
+        return ex.submit(new Callable() {
+                public ClojureRuntimeShim
+                call() throws Exception { return newShim(jars); }}); }
+    
+    public static int
+    runBoot(Future<ClojureRuntimeShim> core,
+            Future<ClojureRuntimeShim> worker,
+            String[] args) throws Exception {
+        final Future<ClojureRuntimeShim> c = core;
+        final Future<ClojureRuntimeShim> w = worker;
+
+        final ConcurrentLinkedQueue<Runnable> hooks = new ConcurrentLinkedQueue<>();
+
+        try {
+            c.get().require("boot.main");
+            c.get().invoke("boot.main/-main", getNextId(), w.get(), hooks, args);
+            return -1; }
+        catch (Throwable t) {
+            for (Runnable h : hooks) h.run();
+            return (t instanceof Exit) ? Integer.parseInt(t.getMessage()) : -2; }}
+                
     public static void
     main(String[] args) throws Exception {
         if (args.length > 0
@@ -155,24 +194,11 @@ public class App {
         
         final HashMap<String, File[]> cache = (HashMap<String, File[]>) readCache(cachefile);
 
-        podjars = cache.get("boot/pod");
-        
-        final ExecutorService ex = Executors.newCachedThreadPool();
-
-        final Future f1 = ex.submit(new Callable() {
-                public Object call() throws Exception {
-                    return newShim(cache.get("boot/worker")); }});
-
-        final Future f2 = ex.submit(new Callable() {
-                public Object call() throws Exception {
-                    return newShim(cache.get("boot/core")); }});
+        podjars    = cache.get("boot/pod");
+        corejars   = cache.get("boot/core");
+        workerjars = cache.get("boot/worker");
         
         Thread shutdown = new Thread() { public void run() { ex.shutdown(); }};
         Runtime.getRuntime().addShutdownHook(shutdown);
 
-        final ClojureRuntimeShim core = (ClojureRuntimeShim) f2.get();
-
-        core.require("boot.main");
-        core.invoke("boot.main/-main", f1.get(), args);
-        
-        System.exit(0); }}
+        System.exit(runBoot(newCore(), newWorker(), args)); }}

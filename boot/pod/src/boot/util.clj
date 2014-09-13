@@ -16,17 +16,9 @@
 
 (def verbose-exceptions (atom 1))
 
-(defn info
-  [& more]
-  (binding [*out* *err*] (apply printf more) (flush)))
-
-(defn warn
-  [& more]
-  (binding [*out* *err*] (apply printf more) (flush)))
-
-(defn fail
-  [& more]
-  (binding [*out* *err*] (apply printf more) (flush)))
+(defn info [& more] (binding [*out* *err*] (apply printf more) (flush)))
+(defn warn [& more] (binding [*out* *err*] (apply printf more) (flush)))
+(defn fail [& more] (binding [*out* *err*] (apply printf more) (flush)))
 
 (defmacro with-let
   "Binds resource to binding and evaluates body.  Then, returns
@@ -66,15 +58,17 @@
   [& body]
   `(binding [*out* *err*]
      ~@body
-     (System/exit 1)))
+     (throw (boot.App$Exit. (str 1)))))
 
 (defmacro exit-ok
   [& body]
   `(try
      ~@body
-     (System/exit 0)
+     (throw (boot.App$Exit. (str 0)))
      (catch Throwable e#
-       (exit-error (print-ex e#)))))
+       (if (instance? boot.App$Exit e#)
+         (throw e#)
+         (exit-error (print-ex e#))))))
 
 (defn print-ex
   [ex]
