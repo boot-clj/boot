@@ -156,6 +156,8 @@ public class App {
         try {
             core.get().require("boot.main");
             core.get().invoke("boot.main/-main", nextId(), worker.get(), hooks, args);
+            ((URLClassLoader) core.get().getClassLoader()).close();
+            core.get().setClassLoader(null);
             return -1; }
         catch (Throwable t) {
             return (t instanceof Exit) ? Integer.parseInt(t.getMessage()) : -2; }

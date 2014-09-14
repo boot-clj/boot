@@ -41,7 +41,7 @@ $(baseuber): $(shell find boot/base/src)
 $(bootbin): $(baseuber)
 	mkdir -p bin
 	echo '#!/usr/bin/env bash' > $(bootbin)
-	echo 'DFL_OPTS="-client -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xmx2g"' >> $(bootbin)
+	echo 'DFL_OPTS="-client -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xmx2g -XX:MaxPermSize=384m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"' >> $(bootbin)
 	echo 'java $${BOOT_JVM_OPTIONS:-$$DFL_OPTS} -jar $$0 "$$@"' >> $(bootbin)
 	echo 'exit' >> $(bootbin)
 	cat $(baseuber) >> $(bootbin)
