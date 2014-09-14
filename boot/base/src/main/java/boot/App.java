@@ -31,7 +31,7 @@ public class App {
     private static final AtomicLong        counter    = new AtomicLong(0);
     private static final ExecutorService   ex         = Executors.newCachedThreadPool();
 
-    private static long  getNextId()  { return counter.addAndGet(1); }
+    private static long  nextId()     { return counter.addAndGet(1); }
     
     public static File   getBootDir() { return bootdir; }
     public static String getVersion() { return appversion; }
@@ -151,12 +151,12 @@ public class App {
     runBoot(Future<ClojureRuntimeShim> core,
             Future<ClojureRuntimeShim> worker,
             String[] args) throws Exception {
-
-        ConcurrentLinkedQueue<Runnable> hooks = new ConcurrentLinkedQueue<>();
+        ConcurrentLinkedQueue<Runnable>
+        hooks = new ConcurrentLinkedQueue<>();
 
         try {
             core.get().require("boot.main");
-            core.get().invoke("boot.main/-main", getNextId(), worker.get(), hooks, args);
+            core.get().invoke("boot.main/-main", nextId(), worker.get(), hooks, args);
             return -1; }
         catch (Throwable t) {
             return (t instanceof Exit) ? Integer.parseInt(t.getMessage()) : -2; }
