@@ -121,6 +121,11 @@
               out (io/output-stream (doto (io/file out-path) io/make-parents))]
     (io/copy in out)))
 
+(def  pod-id                 (atom nil))
+(def  worker-pod             (atom nil))
+(def  shutdown-hooks         (atom nil))
+(defn add-shutdown-hook! [f] (.offer @shutdown-hooks f))
+
 (defn call-in
   ([expr]
      (let [[f & args] (read-string expr)]
@@ -131,11 +136,6 @@
   ([pod expr]
      (let [ret (.invoke pod "boot.pod/call-in" (pr-str expr))]
       (util/guard (read-string ret)))))
-
-(def  pod-id                 (atom nil))
-(def  worker-pod             (atom nil))
-(def  shutdown-hooks         (atom nil))
-(defn add-shutdown-hook! [f] (.offer @shutdown-hooks f))
 
 (defn call-worker
   [expr]
