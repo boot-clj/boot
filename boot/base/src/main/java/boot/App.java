@@ -179,16 +179,15 @@ public class App {
         if (bhome != null) bootdir = new File(bhome);
         else bootdir = new File(new File(homed), ".boot");
 
-        File jardir  = new File(new File(bootdir, "lib"), apprelease);
-        aetherfile   = new File(jardir, aetherjar);
-        
-        final File cachedir  = new File(new File(bootdir, "cache"), cljversion);
-        final File cachefile = new File(cachedir, "deps.cache");
+        File jardir    = new File(new File(bootdir, "lib"), apprelease);
+        aetherfile     = new File(jardir, aetherjar);
+        File cachedir  = new File(new File(bootdir, "cache"), cljversion);
+        File cachefile = new File(cachedir, "deps.cache");
         
         jardir.mkdirs();
         cachedir.mkdirs();
         
-        final HashMap<String, File[]> cache = (HashMap<String, File[]>) readCache(cachefile);
+        HashMap<String, File[]> cache = (HashMap<String, File[]>) readCache(cachefile);
 
         podjars    = cache.get("boot/pod");
         corejars   = cache.get("boot/core");
