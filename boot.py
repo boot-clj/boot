@@ -16,17 +16,11 @@ import sys, os, nrepl, json
 c = nrepl.connect("nrepl://localhost:7888")
 wc = nrepl.WatchableConnection(c)
 
-stop = False
-
 def watch_out (msg, wc, key):
-    global stop
-    ex  = msg.get("ex", None)
     out = msg.get("out", None)
     err = msg.get("err", None)
     val = msg.get("value", None)
     sta = msg.get("status", None)
-    if ex:
-        stop = True
     if sta == ["done"]:
         os._exit(0)
     if err:
@@ -49,5 +43,4 @@ wc.watch("out", {}, watch_out)
 wc.send({"op": "eval",
          "code": '(boot %s) nil' % args})
 
-while True:
-    pass
+while True: pass
