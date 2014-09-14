@@ -82,7 +82,7 @@
   "Print the boot environment map."
   []
   (core/with-pre-wrap
-    (pprint/pprint (core/get-env))))
+    (prn (core/get-env))))
 
 (core/deftask wait
   "Wait before calling the next handler.

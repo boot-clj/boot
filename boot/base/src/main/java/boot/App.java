@@ -136,11 +136,10 @@ public class App {
             "boot.aether/resolve-dependency-jars", sym, depversion, cljversion); }
     
     public static Future<ClojureRuntimeShim>
-    newShimFuture(File[] jars) throws Exception {
-        final File[] j = jars;
+    newShimFuture(final File[] jars) throws Exception {
         return ex.submit(new Callable() {
                 public ClojureRuntimeShim
-                call() throws Exception { return newShim(j); }}); }
+                call() throws Exception { return newShim(jars); }}); }
                 
     public static Future<ClojureRuntimeShim>
     newCore() throws Exception { return newShimFuture(corejars); }
@@ -152,14 +151,12 @@ public class App {
     runBoot(Future<ClojureRuntimeShim> core,
             Future<ClojureRuntimeShim> worker,
             String[] args) throws Exception {
-        final Future<ClojureRuntimeShim> c = core;
-        final Future<ClojureRuntimeShim> w = worker;
 
         final ConcurrentLinkedQueue<Runnable> hooks = new ConcurrentLinkedQueue<>();
 
         try {
-            c.get().require("boot.main");
-            c.get().invoke("boot.main/-main", getNextId(), w.get(), hooks, args);
+            core.get().require("boot.main");
+            core.get().invoke("boot.main/-main", getNextId(), worker.get(), hooks, args);
             return -1; }
         catch (Throwable t) {
             return (t instanceof Exit) ? Integer.parseInt(t.getMessage()) : -2; }
