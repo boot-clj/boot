@@ -10,6 +10,7 @@
 #   In another do `./boot.py <arg> <arg>...`, giving regular boot args.
 #
 
+from __future__ import print_function
 import sys, os, nrepl, json
 
 c = nrepl.connect("nrepl://localhost:7888")
@@ -21,15 +22,17 @@ def watch_out (msg, wc, key):
     global stop
     ex  = msg.get("ex", None)
     out = msg.get("out", None)
+    err = msg.get("err", None)
     val = msg.get("value", None)
     sta = msg.get("status", None)
     if ex:
         stop = True
     if sta == ["done"]:
         os._exit(0)
+    if err:
+        print(err.rstrip(), file=sys.stderr)
     if out:
-        print out.rstrip()
-        if stop: os._exit(0)
+        print(out.rstrip(), file=sys.stdout)
         
 args = ''
 
@@ -44,7 +47,7 @@ else:
 wc.watch("out", {}, watch_out)
 
 wc.send({"op": "eval",
-         "code": '(boot %s)' % args})
+         "code": '(boot %s) nil' % args})
 
 while True:
     pass
