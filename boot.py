@@ -39,8 +39,6 @@ else:
     args = '"help"'
     
 wc.watch("out", {}, watch_out)
-
-wc.send({"op": "eval",
-         "code": '(boot %s) nil' % args})
+wc.send({"op": "eval", "code": '(boot %s) nil' % args})
 
 while True: pass
