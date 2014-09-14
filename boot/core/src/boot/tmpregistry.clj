@@ -15,7 +15,7 @@
 ;; helpers
 
 (defn munged-file [dir kw & n]
-  (apply io/file dir (->> kw hash (format "%x")) (remove nil? n)))
+  (apply io/file dir (-> kw hash (Integer/toString 36)) (remove nil? n)))
 
 (defn delete! [f]
   (let [delete (io/file f)]
@@ -24,10 +24,12 @@
 
 (defn pid! []
   (format "%s-%s"
-    (->> (.. ManagementFactory getRuntimeMXBean getName) 
-      (take-while (partial not= \@))
-      (apply str))
-    (str @pod/pod-id)))
+    (-> (->> (.. ManagementFactory getRuntimeMXBean getName) 
+          (take-while (partial not= \@))
+          (apply str)
+          Long/parseLong)
+      (Long/toString 36))
+    (Long/toString @pod/pod-id 36)))
 
 (defn mark-delete-me! [dir]
   #(when (.exists dir) (.createNewFile (io/file dir ".delete-me"))))
