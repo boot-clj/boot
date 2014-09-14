@@ -22,14 +22,15 @@
     (doseq [child (.listFiles delete)] (delete! child))
     (.delete delete)))
 
-(defn pid! []
-  (format "%s-%s"
+(defn dir-id []
+  (apply str
     (-> (->> (.. ManagementFactory getRuntimeMXBean getName) 
           (take-while (partial not= \@))
           (apply str)
           Long/parseLong)
       (Long/toString 36))
-    (Long/toString @pod/pod-id 36)))
+    (when-not (= 1 @pod/pod-id)
+      ["-" (Long/toString @pod/pod-id 36)])))
 
 (defn mark-delete-me! [dir]
   #(when (.exists dir) (.createNewFile (io/file dir ".delete-me"))))
@@ -108,4 +109,4 @@
     (when (f/parent? dir f) f)))
 
 (defn registry [dir]
-  (TmpRegistry. (io/file dir (pid!)) (atom false) (atom {}) (atom {})))
+  (TmpRegistry. (io/file dir (dir-id)) (atom false) (atom {}) (atom {})))
