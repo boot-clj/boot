@@ -153,7 +153,6 @@ public class App {
             String[] args) throws Exception {
         ConcurrentLinkedQueue<Runnable>
         hooks = new ConcurrentLinkedQueue<>();
-
         try {
             core.get().require("boot.main");
             core.get().invoke("boot.main/-main", nextId(), worker.get(), hooks, args);
