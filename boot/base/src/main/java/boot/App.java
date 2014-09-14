@@ -162,8 +162,8 @@ public class App {
             c.get().invoke("boot.main/-main", getNextId(), w.get(), hooks, args);
             return -1; }
         catch (Throwable t) {
-            for (Runnable h : hooks) h.run();
-            return (t instanceof Exit) ? Integer.parseInt(t.getMessage()) : -2; }}
+            return (t instanceof Exit) ? Integer.parseInt(t.getMessage()) : -2; }
+        finally { for (Runnable h : hooks) h.run(); }}
                 
     public static void
     main(String[] args) throws Exception {
