@@ -152,7 +152,7 @@ public class App {
             Future<ClojureRuntimeShim> worker,
             String[] args) throws Exception {
 
-        final ConcurrentLinkedQueue<Runnable> hooks = new ConcurrentLinkedQueue<>();
+        ConcurrentLinkedQueue<Runnable> hooks = new ConcurrentLinkedQueue<>();
 
         try {
             core.get().require("boot.main");
