@@ -136,18 +136,17 @@ public class App {
             "boot.aether/resolve-dependency-jars", sym, depversion, cljversion); }
     
     public static Future<ClojureRuntimeShim>
-    newCore() throws Exception {
-        final File[] jars = corejars;
+    newShimFuture(File[] jars) throws Exception {
+        final File[] j = jars;
         return ex.submit(new Callable() {
                 public ClojureRuntimeShim
-                call() throws Exception { return newShim(jars); }}); }
+                call() throws Exception { return newShim(j); }}); }
                 
     public static Future<ClojureRuntimeShim>
-    newWorker() throws Exception {
-        final File[] jars = workerjars;
-        return ex.submit(new Callable() {
-                public ClojureRuntimeShim
-                call() throws Exception { return newShim(jars); }}); }
+    newCore() throws Exception { return newShimFuture(corejars); }
+    
+    public static Future<ClojureRuntimeShim>
+    newWorker() throws Exception { return newShimFuture(workerjars); }
     
     public static int
     runBoot(Future<ClojureRuntimeShim> core,
