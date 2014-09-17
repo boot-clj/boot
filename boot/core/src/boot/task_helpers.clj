@@ -10,18 +10,6 @@
    [boot.from.me.raynes.conch :as conch]))
 
 (defn- first-line [s] (when s (first (string/split s #"\n"))))
-(defn- now        [ ] (System/currentTimeMillis))
-(defn- ms->s      [x] (double (/ x 1000)))
-
-(defmacro print-time [ok fail expr]
-  `(let [start# (now)]
-     (try
-       (let [end# (do ~expr (ms->s (- (now) start#)))]
-         (printf ~ok end#))
-       (catch Throwable e#
-         (let [time#  (ms->s (- (now) start#))
-               trace# (with-out-str (trace/print-cause-trace e#))]
-           (println (format ~fail trace# time#)))))))
 
 (defn tasks-table [tasks]
   (let [get-task  #(-> % :name str)
@@ -60,7 +48,7 @@
   (atom ()))
 
 ;; cleanup background tasks on shutdown
-(def add-shutdown!
+(def ^:private add-shutdown!
   (delay (pod/add-shutdown-hook! #(doseq [job @bgs] (future-cancel job)))))
 
 ;; Task helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -81,48 +69,3 @@
   (once
     (core/with-pre-wrap
       (swap! bgs conj (future ((task identity) core/*event*))))))
-
-(defn auto
-  "Run every `msec` (default 200) milliseconds."
-  [& [msec]]
-  (fn [continue]
-    (fn [event]
-      (continue event)
-      (Thread/sleep (or msec 200))
-      (recur (core/make-event event)))))
-
-(defn files-changed?
-  [& [type fancy?]]
-  (let [ignored?  (git/make-gitignore-matcher (core/get-env :src-paths))
-        dirs      (remove core/tmpfile? (core/get-env :src-paths)) 
-        watchers  (map file/make-watcher dirs)
-        since     (atom 0)]
-    (fn [continue]
-      (fn [event]
-        (let [clean #(assoc %2 %1 (set (remove ignored? (get %2 %1))))
-              info  (->> (map #(%) watchers)
-                      (reduce (partial merge-with set/union))
-                      (clean :time)
-                      (clean :hash))]
-          (if-let [mods (->> (or type :time) (get info) seq)]
-            (do
-              (let [path   (file/path (first mods))
-                    ok-v   "\033[34m↳ Elapsed time: %6.3f sec ›\033[33m 00:00:00 \033[0m"
-                    ok-q   "Elapsed time: %6.3f sec\n"
-                    fail-v "\n\033[31m%s\033[0m\n\033[34m↳ Elapsed time: %6.3f sec ›\033[33m 00:00:00 \033[0m"
-                    fail-q "\n%s\nElapsed time: %6.3f sec\n"
-                    ok     (if-not fancy? ok-q ok-v)
-                    fail   (if-not fancy? fail-q fail-v)]
-                (when (not= 0 @since) (println)) 
-                (reset! since (:time event))
-                (print-time ok fail (continue (assoc event :watch info)))
-                (flush)))
-            (let [diff  (long (/ (- (:time event) @since) 1000))
-                  pad   (apply str (repeat 9 "\b"))
-                  s     (mod diff 60)
-                  m     (mod (long (/ diff 60)) 60)
-                  h     (mod (long (/ diff 3600)) 24)]
-              (core/sync!)
-              (when fancy?
-                (printf "\033[33m%s%02d:%02d:%02d \033[0m" pad h m s)
-                (flush)))))))))
