@@ -274,15 +274,15 @@
   "Create project web.xml file.
 
   The --serve option is required. The others are optional."
-  
+
   [s serve SYM        sym "The 'serve' callback function."
    c create SYM       sym "The 'create' callback function."
    d destroy SYM      sym "The 'destroy' callback function."]
-  
+
   (defonce web-created? (atom false))
   (core/with-pre-wrap
     (when-not @web-created?
-      (-> (and (symbol? serve) (namespace serve)) 
+      (-> (and (symbol? serve) (namespace serve))
         (assert "no serve function specified"))
       (let [tgt (core/mktgtdir! ::web-tgt)]
         (pod/call-worker
