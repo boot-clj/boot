@@ -1,12 +1,11 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"github.com/jackpal/bencode-go"
 	"net"
 	"os"
-	"strings"
+	"strconv"
 )
 
 type Request struct {
@@ -22,38 +21,40 @@ type Response struct {
 	RootEx  string   "root-ex"
 }
 
-func message(args []string) (string, error) {
-	conn, err := net.Dial("tcp", "0.0.0.0:53788")
-	if err != nil {
-		return "", err
+func (req Request) send(conn net.Conn) (*Response, error) {
+  if err := bencode.Marshal(conn, req); err != nil {
+		return nil, err
 	}
-	var tasks string
-	if len(args) > 0 {
-		tasks = strings.Join(args, " ")
-	} else {
-		tasks = "help"
+  res := &Response{}
+	if err := bencode.Unmarshal(conn, res); err != nil {
+		return nil, err
 	}
-  fmt.Print(tasks)
-	if err := bencode.Marshal(conn, Request{"eval", "(boot " + tasks + ") nil"}); err != nil {
-		return "", err
+	return res, nil
+}
+
+func NewRequest(taskargs []string) *Request {
+	code := "(boot"
+	for _, taskarg := range taskargs {
+		code += " " + strconv.Quote(taskarg)
 	}
-	var res Response
-	if err := bencode.Unmarshal(conn, &res); err != nil {
-		return "", err
-	}
-	if res.Ex != "" {
-		return "", errors.New(res.Ex)
-	}
-	return res.Out, nil
+	code += ")"
+	return &Request{"eval", code}
 }
 
 func main() {
-	out, err := message(os.Args[1:])
+	conn, err := net.Dial("tcp", "0.0.0.0:50243")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error connecting to boot build server: %v\n", err)
 		os.Exit(1)
-	} else {
-		fmt.Fprint(os.Stdout, out)
-		os.Exit(0)
 	}
+	req := NewRequest(os.Args[1:])
+	res, err := req.send(conn)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error encoding or decoding tasks: %v\n", err)
+		os.Exit(1)
+	} else if res.Ex != "" {
+		fmt.Fprintf(os.Stderr, "Error from boot build server: %v\n", res.Ex)
+		os.Exit(1)
+	}
+	fmt.Print(res.Out)
 }
