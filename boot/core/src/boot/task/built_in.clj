@@ -81,6 +81,13 @@
               `(boot.notify/failure! ~theme ~failure))
             (throw t)))))))
 
+(core/deftask print-deps
+  "Print the project's dependency graph."
+  []
+  (core/with-pre-wrap
+    (pod/call-worker
+      `(boot.aether/print-dep-tree ~(core/get-env)))))
+
 (core/deftask print-env
   "Print the boot environment map."
   []
@@ -183,13 +190,6 @@
       (when (or client (not server))
         (pod/call-worker
           `(boot.repl-client/client ~cli-opts))))))
-
-(core/deftask dep-tree
-  "Print the project's dependency graph."
-  []
-  (core/with-pre-wrap
-    (pod/call-worker
-      `(boot.aether/print-dep-tree ~(core/get-env)))))
 
 (core/deftask pom
   "Write the project's pom.xml file."
