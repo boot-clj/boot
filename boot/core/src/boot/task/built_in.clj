@@ -112,6 +112,8 @@
   (let [ms   TimeUnit/MILLISECONDS
         q    (LinkedBlockingQueue.)
         ps   (into-array String (:src-paths (core/get-env)))
+        ps   (->> (core/get-env) :src-paths
+               (remove core/tmpfile?) (into-array String))
         k    (.invoke @pod/worker-pod "boot.watcher/make-watcher" q ps)
         ign? (git/make-gitignore-matcher (core/get-env :src-paths))]
     (fn [continue]
