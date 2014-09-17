@@ -7,8 +7,11 @@
    [boot.core                 :as core]
    [boot.main                 :as main]
    [boot.util                 :as util]
+   [boot.gitignore            :as git]
    [boot.task-helpers         :as helpers]
-   [boot.from.table.core      :as table]))
+   [boot.from.table.core      :as table])
+  (:import
+   [java.util.concurrent LinkedBlockingQueue TimeUnit]))
 
 ;; Tasks ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -78,11 +81,15 @@
               `(boot.notify/failure! ~theme ~failure))
             (throw t)))))))
 
-(core/deftask debug
+(core/deftask print-env
   "Print the boot environment map."
   []
-  (core/with-pre-wrap
-    (prn (core/get-env))))
+  (core/with-pre-wrap (prn (core/get-env))))
+
+(core/deftask print-event
+  "Print the event map."
+  []
+  (core/with-pre-wrap (prn core/*event*)))
 
 (core/deftask wait
   "Wait before calling the next handler.
@@ -97,12 +104,31 @@
 (core/deftask watch
   "Call the next handler whenever source files change.
 
-  Default polling interval is 200ms."
+  Debouncing time is 10ms by default."
 
-  [f fancy     bool "Print updating timer and ANSI color output."
-   t time MSEC int  "The polling interval in milliseconds."]
+  [d debounce MSEC long "The time to wait (millisec) for filesystem to settle down."]
 
-  (comp (helpers/auto (or time 200)) (helpers/files-changed? :time fancy)))
+  (.require @pod/worker-pod (into-array String ["boot.watcher"]))
+  (let [ms   TimeUnit/MILLISECONDS
+        q    (LinkedBlockingQueue.)
+        ps   (into-array String (:src-paths (core/get-env)))
+        k    (.invoke @pod/worker-pod "boot.watcher/make-watcher" q ps)
+        ign? (git/make-gitignore-matcher (core/get-env :src-paths))]
+    (fn [continue]
+      (fn [event]
+        (continue event)
+        (loop [ret (util/guard [(.take q)])]
+          (when ret
+            (if-let [more (.poll q (or debounce 10) TimeUnit/MILLISECONDS)]
+              (recur (conj ret more))
+              (let [start   (System/currentTimeMillis)
+                    etime   #(- (System/currentTimeMillis) start)
+                    changed (->> ret (remove (comp ign? io/file)) set)]
+                (when-not (empty? changed)
+                  (continue (assoc (core/make-event event) ::watch changed))
+                  (util/info "Elapsed time: %.3f sec\n" (float (/ (etime) 1000))))
+                (recur (util/guard [(.take q)]))))))
+        (.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)))))
 
 (core/deftask syncdir
   "Copy/sync files between directories.

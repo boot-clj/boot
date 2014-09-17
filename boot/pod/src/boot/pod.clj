@@ -124,7 +124,12 @@
 (def  pod-id                 (atom nil))
 (def  worker-pod             (atom nil))
 (def  shutdown-hooks         (atom nil))
-(defn add-shutdown-hook! [f] (.offer @shutdown-hooks f))
+
+(defn add-shutdown-hook!
+  [f]
+  (if (not= 1 @pod-id)
+    (.offer @shutdown-hooks f)
+    (->> f Thread. (.addShutdownHook (Runtime/getRuntime)))))
 
 (defn call-in
   ([expr]
@@ -140,6 +145,21 @@
 (defn call-worker
   [expr]
   (call-in @worker-pod expr))
+
+(defn eval-in*
+  ([expr-str]
+     (->> expr-str read-string eval pr-str))
+  ([pod expr]
+     (let [ret (.invoke pod "boot.pod/eval-in*" (pr-str expr))]
+       (util/guard (read-string ret)))))
+
+(defmacro eval-in
+  [pod & body]
+  `(eval-in* ~pod (bt/template (do ~@body))))
+
+(defmacro eval-worker
+  [& body]
+  `(eval-in @worker-pod ~@body))
 
 (defn resolve-dependencies
   [env]

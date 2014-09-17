@@ -6,7 +6,6 @@
    [boot.core                   :as core]
    [boot.file                   :as file]
    [boot.util                   :as util]
-   [boot.gitignore              :as git]
    [boot.tmpregistry            :as tmp]
    [boot.from.clojure.tools.cli :as cli]))
 
@@ -82,23 +81,21 @@
               bootforms   (some->> arg0 slurp util/read-string-all)
               userforms   (when profile? (some->> userscript slurp util/read-string-all))
               scriptforms (emit boot? args userforms bootforms)
-              scriptstr   (str (string/join "\n\n" (map util/pp-str scriptforms)) "\n")]
+              scriptstr   (str (string/join "\n\n" (map pr-str scriptforms)) "\n")]
 
           (swap! util/verbose-exceptions + (or (:verbose opts) 0))
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
           (when (:version opts) (util/exit-ok (println boot-version)))
 
-          (reset! (var-get #'core/gitignore) (git/make-gitignore-matcher))
-          (reset! (var-get #'core/tmpregistry) (tmp/init! (tmp/registry (io/file ".boot" "tmp"))))
+          (reset! (var-get #'core/tmpregistry)
+            (tmp/init! (tmp/registry (io/file ".boot" "tmp"))))
 
           (#'core/init!
             :boot-version boot-version
             :boot-options opts
             :default-task 'boot.task.built-in/help)
 
-          (let [tmpd (core/mktmpdir! ::bootscript)
-                file #(doto (apply io/file %&) io/make-parents)
-                tmpf (.getPath (file tmpd "boot" "user.clj"))]
+          (let [tmpf (.getPath (file/tmpfile "boot.user" ".clj"))]
             (core/set-env! :boot-user-ns-file tmpf)
             (doseq [[k v] (:set-env opts)] (core/set-env! k v))
             (doseq [k [:src-paths :tgt-path :dependencies]]

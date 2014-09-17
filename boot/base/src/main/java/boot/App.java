@@ -62,10 +62,11 @@ public class App {
             return depsCache = cache; }}
     
     private static Object
-    validateCache(Object cache) throws Exception {
+    validateCache(File f, Object cache) throws Exception {
         for (File[] fs : ((HashMap<String, File[]>) cache).values())
-            for (File f : fs)
-                if (! f.exists()) throw new Exception("dep jar doesn't exist");
+            for (File d : fs)
+                if (! d.exists() || f.lastModified() < d.lastModified())
+                    throw new Exception("dep jar doesn't exist");
         return cache; }
 
     private static Object
@@ -82,7 +83,7 @@ public class App {
             long max = 18 * 60 * 60 * 1000;
             long age = System.currentTimeMillis() - f.lastModified();
             if (age > max) throw new Exception("cache age exceeds TTL");
-            return validateCache((new ObjectInputStream(new FileInputStream(f))).readObject()); }
+            return validateCache(f, (new ObjectInputStream(new FileInputStream(f))).readObject()); }
         catch (Throwable e) {
             System.err.println("checking for boot updates...");
             return writeCache(f, seedCache()); }
@@ -156,12 +157,12 @@ public class App {
         try {
             core.get().require("boot.main");
             core.get().invoke("boot.main/-main", nextId(), worker.get(), hooks, args);
-            ((URLClassLoader) core.get().getClassLoader()).close();
-            core.get().setClassLoader(null);
             return -1; }
         catch (Throwable t) {
             return (t instanceof Exit) ? Integer.parseInt(t.getMessage()) : -2; }
-        finally { for (Runnable h : hooks) h.run(); }}
+        finally {
+            for (Runnable h : hooks) h.run();
+            core.get().invoke("clojure.core/shutdown-agents"); }}
                 
     public static void
     main(String[] args) throws Exception {

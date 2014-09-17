@@ -6,6 +6,7 @@
    [boot.pod                  :as pod]
    [boot.core                 :as core]
    [boot.file                 :as file]
+   [boot.gitignore            :as git]
    [boot.from.me.raynes.conch :as conch]))
 
 (defn- first-line [s] (when s (first (string/split s #"\n"))))
@@ -92,12 +93,13 @@
 
 (defn files-changed?
   [& [type fancy?]]
-  (let [dirs      (remove core/tmpfile? (core/get-env :src-paths)) 
+  (let [ignored?  (git/make-gitignore-matcher (core/get-env :src-paths))
+        dirs      (remove core/tmpfile? (core/get-env :src-paths)) 
         watchers  (map file/make-watcher dirs)
         since     (atom 0)]
     (fn [continue]
       (fn [event]
-        (let [clean #(assoc %2 %1 (set (remove core/ignored? (get %2 %1))))
+        (let [clean #(assoc %2 %1 (set (remove ignored? (get %2 %1))))
               info  (->> (map #(%) watchers)
                       (reduce (partial merge-with set/union))
                       (clean :time)

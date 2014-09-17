@@ -21,27 +21,27 @@ bin/lein:
 	wget https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein -O bin/lein
 	chmod 755 bin/lein
 
-$(podjar): $(shell find boot/pod/src)
+$(podjar): boot/pod/project.clj $(shell find boot/pod/src)
 	(cd boot/pod && lein clean && lein install)
 
-$(aetherjar): $(podjar) $(shell find boot/aether/src)
+$(aetherjar): boot/aether/project.clj $(podjar) $(shell find boot/aether/src)
 	(cd boot/aether && lein clean && lein install && lein uberjar && \
 		mkdir -p ../base/src/main/resources && \
 	 	cp target/*standalone*.jar ../base/src/main/resources/$(aetheruber))
 
-$(workerjar): $(shell find boot/worker/src)
+$(workerjar): boot/worker/project.clj $(shell find boot/worker/src)
 	(cd boot/worker && lein clean && lein install)
 
-$(corejar): $(shell find boot/core/src)
+$(corejar): boot/core/project.clj $(shell find boot/core/src)
 	(cd boot/core && lein clean && lein install)
 
-$(baseuber): $(shell find boot/base/src)
+$(baseuber): boot/base/pom.xml $(shell find boot/base/src)
 	(cd boot/base && mvn -q clean && mvn -q assembly:assembly -DdescriptorId=jar-with-dependencies)
 
 $(bootbin): $(baseuber)
 	mkdir -p bin
 	echo '#!/usr/bin/env bash' > $(bootbin)
-	echo 'DFL_OPTS="-client -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xmx2g -XX:MaxPermSize=384m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"' >> $(bootbin)
+	echo 'DFL_OPTS="-client -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xmx2g -XX:MaxPermSize=128m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"' >> $(bootbin)
 	echo 'java $${BOOT_JVM_OPTIONS:-$$DFL_OPTS} -jar $$0 "$$@"' >> $(bootbin)
 	echo 'exit' >> $(bootbin)
 	cat $(baseuber) >> $(bootbin)

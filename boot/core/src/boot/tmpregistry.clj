@@ -29,8 +29,7 @@
           (apply str)
           Long/parseLong)
       (Long/toString 36))
-    (when-not (= 1 @pod/pod-id)
-      ["-" (Long/toString @pod/pod-id 36)])))
+    (when-not (= 1 @pod/pod-id) ["-" (Long/toString @pod/pod-id 36)])))
 
 (defn mark-delete-me! [dir]
   #(when (.exists dir) (.createNewFile (io/file dir ".delete-me"))))

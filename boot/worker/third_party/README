@@ -1,0 +1,16 @@
+barbarywatchservice
+--------------------------------------------------------------------------------
+URL: http://barbarywatchservice.googlecode.com/svn/trunk/
+Version: r12
+Local modifications:
+- Delete pre-built binaries in lib/ and bin/
+- Delete .idea directory
+- Delete WatchService.iml
+- Add a LICENSE file for the LGPL, which is the distribution license according
+  to the Google Code page
+- Remove support for the polling watch service, since the java.nio.file package
+  works fine for this, and we don't want to make sure the polling and listening
+  watch service behave equivalently with our changes.
+- Do not find modified files recursively, and do not include the root directory
+  in the list of modified files. This more closely matches how java.nio.file
+  works.

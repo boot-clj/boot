@@ -23,7 +23,6 @@
 ;; _These functions are used internally by boot and are not part of the public API._
 
 (def ^:private tmpregistry  (atom nil))
-(def ^:private gitignore    (atom nil))
 
 (defn- rm-clojure-dep
   [deps]
@@ -190,11 +189,6 @@
          (tmp/sync! @tmpregistry))))
   ([dest & srcs]
      (apply file/sync :hash dest srcs)))
-
-(defn ignored?
-  "Returns truthy if the file f is ignored in the user's gitignore config."
-  [f]
-  (@gitignore f))
 
 (defn tmpfile?
   "Returns truthy if the file f is a tmpfile managed by the tmpregistry."
