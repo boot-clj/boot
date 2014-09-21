@@ -22,6 +22,7 @@ type Response struct {
 }
 
 func (req Request) send(conn net.Conn) (*Response, error) {
+	fmt.Println("request: ", req)
   if err := bencode.Marshal(conn, req); err != nil {
 		return nil, err
 	}
@@ -38,10 +39,10 @@ func NewRequest(taskargs []string) *Request {
 		for _, taskarg := range taskargs {
 			code += " " + strconv.Quote(taskarg)
 		}
-		code += ")"
 	} else {
 		code += " help"
 	}
+	code += ")"
 	return &Request{"eval", code}
 }
 
