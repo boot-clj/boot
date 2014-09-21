@@ -34,15 +34,19 @@ func (req Request) send(conn net.Conn) (*Response, error) {
 
 func NewRequest(taskargs []string) *Request {
 	code := "(boot"
-	for _, taskarg := range taskargs {
-		code += " " + strconv.Quote(taskarg)
+	if len(taskargs) > 0 {
+		for _, taskarg := range taskargs {
+			code += " " + strconv.Quote(taskarg)
+		}
+		code += ")"
+	} else {
+		code += " help"
 	}
-	code += ")"
 	return &Request{"eval", code}
 }
 
 func main() {
-	conn, err := net.Dial("tcp", "0.0.0.0:50243")
+	conn, err := net.Dial("tcp", "0.0.0.0:52644")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error connecting to boot build server: %v\n", err)
 		os.Exit(1)
