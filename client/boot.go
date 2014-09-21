@@ -21,18 +21,6 @@ type Response struct {
 	RootEx  string   "root-ex"
 }
 
-func (req Request) send(conn net.Conn) (*Response, error) {
-	fmt.Println("request: ", req)
-  if err := bencode.Marshal(conn, req); err != nil {
-		return nil, err
-	}
-  res := &Response{}
-	if err := bencode.Unmarshal(conn, res); err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
 func NewRequest(taskargs []string) *Request {
 	code := "(boot"
 	if len(taskargs) > 0 {
@@ -46,14 +34,37 @@ func NewRequest(taskargs []string) *Request {
 	return &Request{"eval", code}
 }
 
-func main() {
-	conn, err := net.Dial("tcp", "0.0.0.0:52644")
+type Server struct {
+	net.Conn
+}
+
+func CreateServer(url string) (*Server, error) {
+	conn, err := net.Dial("tcp", url)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error connecting to boot build server: %v\n", err)
+		return nil, err
+	}
+	return &Server{conn}, nil
+}
+
+func (srv Server) send(req *Request) (*Response, error) {
+	if err := bencode.Marshal(srv, *req); err != nil {
+		return nil, err
+	}
+	res := &Response{}
+	if err := bencode.Unmarshal(srv, res); err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func main() {
+	srv, err := CreateServer("0.0.0.0:52644")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error connecting to boot server: %v\n", err)
 		os.Exit(1)
 	}
 	req := NewRequest(os.Args[1:])
-	res, err := req.send(conn)
+	res, err := srv.send(req)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error encoding or decoding tasks: %v\n", err)
 		os.Exit(1)
