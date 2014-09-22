@@ -28,12 +28,9 @@
       (init-params :create create :serve serve :destroy destroy))
     (servlet-mapping (servlet-name name) (url-pattern "/*"))))
 
-(defn spit-web! [tgt serve create destroy]
+(defn spit-web! [webxmlfile servletfile serve create destroy]
   (util/info "Creating web.xml...")
-  (let [web-inf (io/file tgt "WEB-INF")]
-    (spit
-      (doto (io/file web-inf "web.xml") io/make-parents)
-      (pr-str (web-xml "boot-webapp" "boot-webapp" serve create destroy)))
-    (pod/copy-resource
-      "tailrecursion/ClojureAdapterServlet.class"
-      (io/file web-inf "classes" "tailrecursion" "ClojureAdapterServlet.class"))))
+  (let [xmlfile (io/file webxmlfile)
+        clsfile (io/file servletfile)]
+    (spit xmlfile (pr-str (web-xml "boot-webapp" "boot-webapp" serve create destroy)))
+    (pod/copy-resource "tailrecursion/ClojureAdapterServlet.class" clsfile)))

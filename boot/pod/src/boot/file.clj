@@ -26,6 +26,9 @@
 (defn parent-seq [f]
   (->> f file (iterate #(.getParentFile %)) (take-while identity)))
 
+(defn split-path [p]
+  (->> p parent-seq reverse (map (memfn getName))))
+
 (defn parent? [parent child]
   (some (partial = parent) (parent-seq child)))
 

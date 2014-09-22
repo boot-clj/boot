@@ -11,18 +11,18 @@
 
 (defn- first-line [s] (when s (first (string/split s #"\n"))))
 
-(defn tasks-table [tasks]
+(defn- tasks-table [tasks]
   (let [get-task  #(-> % :name str)
         get-desc  #(-> % :doc first-line)]
     (->> tasks (map (fn [x] ["" (get-task x) (get-desc x)])))))
 
-(defn set-title [[[_ & xs] & zs] title] (into [(into [title] xs)] zs))
+(defn- set-title [[[_ & xs] & zs] title] (into [(into [title] xs)] zs))
 
-(defn version-str []
+(defn- version-str []
   (format "Boot Version:  %s\nDocumentation: %s"
     (core/get-env :boot-version) "http://github.com/tailrecursion/boot"))
 
-(defn available-tasks [sym]
+(defn- available-tasks [sym]
   (let [base  {nil (the-ns sym)}
         task? #(:boot.core/task %)
         addrf #(if-not (seq %1) %2 (symbol %1 (str %2)))

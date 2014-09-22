@@ -59,19 +59,16 @@
 
 ;;; public ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn spit-pom! [tgtdir {:keys [project version] :as env}]
+(defn spit-pom! [xmlpath proppath {:keys [project version] :as env}]
   (let [[gid aid] (util/extract-ids project)
-        tgtdir    (io/file tgtdir)
-        pomdir    (io/file tgtdir "META-INF" "maven" gid aid)
         prop      (doto (Properties.)
                     (.setProperty "groupId"    gid)
                     (.setProperty "artifactId" aid)
                     (.setProperty "version"    version))
-        pomfile   (io/file pomdir "pom.xml")
-        propfile  (io/file pomdir "pom.properties")]
-    (io/make-parents pomfile)
-    (util/info "Writing %s...\n" (file/relative-to tgtdir pomfile))
-    (spit pomfile (pr-str (pom-xml env)))
-    (util/info "Writing %s...\n" (file/relative-to tgtdir propfile))
+        xmlfile   (doto (io/file xmlpath) io/make-parents)
+        propfile  (doto (io/file proppath) io/make-parents)]
+    (util/info "Writing %s...\n" xmlfile)
+    (spit xmlfile (pr-str (pom-xml env)))
+    (util/info "Writing %s...\n" propfile)
     (with-open [s (io/output-stream propfile)]
       (.store prop s (str gid "/" aid " " version " property file")))))

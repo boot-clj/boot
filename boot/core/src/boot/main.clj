@@ -44,10 +44,11 @@
   `(~'(ns boot.user
         (:require
          [boot.task.built-in :refer :all]
-         [boot.repl :refer :all]
-         [boot.cli  :refer :all]
-         [boot.core :refer :all]
-         [boot.util :refer :all :exclude [pp]]))
+         [boot.task-helpers  :refer :all]
+         [boot.repl          :refer :all]
+         [boot.cli           :refer :all]
+         [boot.core          :refer :all]
+         [boot.util          :refer :all]))
     ~@(when userscript (with-comments "profile" userscript))
     ~@(with-comments "boot script" bootscript)
     (let [boot?# ~boot?]

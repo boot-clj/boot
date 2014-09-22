@@ -105,20 +105,30 @@
 
 (defn pom-properties-map
   [pom-properties-path]
-  (let [p (doto (Properties.) (.load (io/input-stream pom-properties-path)))]
-    {:project (symbol (.getProperty p "groupId") (.getProperty p "artifactId"))
-     :version (.getProperty p "version")}))
+  (let [p   (doto (Properties.) (.load (io/input-stream pom-properties-path)))
+        gid (.getProperty p "groupId")
+        aid (.getProperty p "artifactId")]
+    {:group-id    gid
+     :artifact-id aid
+     :project     (symbol gid aid)
+     :version     (.getProperty p "version")}))
 
 (defn pom-xml
   [jarpath]
   (let [jarfile (JarFile. (io/file jarpath))]
-    (->> jarfile .entries enumeration-seq
+    (some->> jarfile .entries enumeration-seq
       (filter #(.endsWith (.getName %) "/pom.xml"))
       first (.getInputStream jarfile) slurp)))
 
 (defn copy-resource
   [resource-path out-path]
   (with-open [in  (io/input-stream (io/resource resource-path))
+              out (io/output-stream (doto (io/file out-path) io/make-parents))]
+    (io/copy in out)))
+
+(defn copy-url
+  [url-str out-path]
+  (with-open [in  (io/input-stream url-str)
               out (io/output-stream (doto (io/file out-path) io/make-parents))]
     (io/copy in out)))
 

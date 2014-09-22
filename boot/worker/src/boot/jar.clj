@@ -41,20 +41,10 @@
     (with-open [s (JarOutputStream. (io/output-stream jarfile) manifest)]
       (doseq [[jarpath srcpath] files :let [f (io/file srcpath)]]
         (let [entry (doto (JarEntry. jarpath) (.setTime (.lastModified f)))]
-          (doto s (.putNextEntry entry) (write! (io/input-stream srcpath)) .closeEntry))))))
-
-(defn uber-jar! [jarpath uberpath urls]
-  (let [uberfile (io/file uberpath)
-        jarfile  (JarFile. (io/file jarpath))
-        manifest (.getManifest jarfile)]
-    (util/info "Writing %s...\n" (.getName uberfile))
-    (with-open [s (JarOutputStream. (io/output-stream uberfile) manifest)]
-      (doseq [[jarpath srcurl] (concat (aether/jar-entries jarpath) urls)]
-        (when-not (.startsWith jarpath "META-INF/")
-          (let [entry (JarEntry. jarpath)]
-            (try (doto s (.putNextEntry entry) (write! (io/input-stream srcurl)))
-                 (catch Throwable t
-                   (if-not (and (instance? ZipException t)
-                             (.startsWith (.getMessage t) "duplicate entry:"))
-                     (throw t)
-                     (println (.getMessage t)))))))))))
+          (try
+            (doto s (.putNextEntry entry) (write! (io/input-stream srcpath)) .closeEntry)
+            (catch Throwable t
+              (if-not (and (instance? ZipException t)
+                        (.startsWith (.getMessage t) "duplicate entry:"))
+                (throw t)
+                (println (.getMessage t))))))))))

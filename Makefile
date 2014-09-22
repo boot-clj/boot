@@ -22,18 +22,18 @@ bin/lein:
 	chmod 755 bin/lein
 
 $(podjar): boot/pod/project.clj $(shell find boot/pod/src)
-	(cd boot/pod && lein clean && lein install)
+	(cd boot/pod && lein install)
 
 $(aetherjar): boot/aether/project.clj $(podjar) $(shell find boot/aether/src)
-	(cd boot/aether && lein clean && lein install && lein uberjar && \
+	(cd boot/aether && lein install && lein uberjar && \
 		mkdir -p ../base/src/main/resources && \
 	 	cp target/*standalone*.jar ../base/src/main/resources/$(aetheruber))
 
 $(workerjar): boot/worker/project.clj $(shell find boot/worker/src)
-	(cd boot/worker && lein clean && lein install)
+	(cd boot/worker && lein install)
 
 $(corejar): boot/core/project.clj $(shell find boot/core/src)
-	(cd boot/core && lein clean && lein install)
+	(cd boot/core && lein install)
 
 $(baseuber): boot/base/pom.xml $(shell find boot/base/src)
 	(cd boot/base && mvn -q clean && mvn -q assembly:assembly -DdescriptorId=jar-with-dependencies)

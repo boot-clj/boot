@@ -1,15 +1,17 @@
 (ns boot.task.built-in
   (:require
-   [clojure.java.io           :as io]
-   [clojure.set               :as set]
-   [clojure.pprint            :as pprint]
-   [boot.pod                  :as pod]
-   [boot.core                 :as core]
-   [boot.main                 :as main]
-   [boot.util                 :as util]
-   [boot.gitignore            :as git]
-   [boot.task-helpers         :as helpers]
-   [boot.from.table.core      :as table])
+   [clojure.java.io      :as io]
+   [clojure.set          :as set]
+   [clojure.pprint       :as pprint]
+   [clojure.string       :as string]
+   [boot.pod             :as pod]
+   [boot.file            :as file]
+   [boot.core            :as core]
+   [boot.main            :as main]
+   [boot.util            :as util]
+   [boot.gitignore       :as git]
+   [boot.task-helpers    :as helpers]
+   [boot.from.table.core :as table])
   (:import
    [java.util.concurrent LinkedBlockingQueue TimeUnit]))
 
@@ -21,9 +23,9 @@
   Here is some other stuff."
   []
   (core/with-pre-wrap
-    (let [tasks (helpers/available-tasks 'boot.user)
+    (let [tasks (#'helpers/available-tasks 'boot.user)
           opts  (->> main/cli-opts (mapv (fn [[x y z]] ["" (str x " " y) z])))]
-      (printf "%s\n\n" (helpers/version-str))
+      (printf "%s\n\n" (#'helpers/version-str))
       (printf "%s\n"
         (-> [[""       ""]
              ["Usage:" "boot OPTS <task> TASK_OPTS <task> TASK_OPTS ..."]]
@@ -31,8 +33,8 @@
           with-out-str))
       (printf "%s\nDo `boot <task> -h` to see usage info and TASK_OPTS for <task>.\n"
         (-> [["" "" ""]]
-          (into (helpers/set-title (conj opts ["" "" ""]) "OPTS:"))
-          (into (helpers/set-title (helpers/tasks-table tasks) "Tasks:"))
+          (into (#'helpers/set-title (conj opts ["" "" ""]) "OPTS:"))
+          (into (#'helpers/set-title (#'helpers/tasks-table tasks) "Tasks:"))
           (table/table :style :none)
           with-out-str)))))
 
@@ -188,76 +190,40 @@
    l license KEY=VAL  {kw str} "The project license map (KEY in name, url)."
    s scm KEY=VAL      {kw str} "The project scm map (KEY in url, tag)."]
 
-  (defonce pom-created? (atom false))
-  (let [opts (assoc *opts* :dependencies (:dependencies (core/get-env)))]
+  (let [tgt  (core/mktgtdir! ::pom-tgt)
+        opts (assoc *opts* :dependencies (:dependencies (core/get-env)))]
     (core/with-pre-wrap
-      (when-not @pom-created?
-        (when-not (and project version)
-          (throw (Exception. "need project and version to create pom.xml")))
-        (let [tgt (core/mktgtdir! ::pom-tgt)]
+      (when-not (and project version)
+        (throw (Exception. "need project and version to create pom.xml")))
+      (let [[gid aid] (util/extract-ids project)
+            pomdir    (io/file tgt "META-INF" "maven" gid aid)
+            xmlfile   (io/file pomdir "pom.xml")
+            propfile  (io/file pomdir "pom.properties")]
+        (when-not (and (.exists xmlfile) (.exists propfile))
           (pod/call-worker
-            `(boot.pom/spit-pom! ~(.getPath tgt) ~opts))
-          (reset! pom-created? true))))))
+            `(boot.pom/spit-pom! ~(.getPath xmlfile) ~(.getPath propfile) ~opts)))))))
 
-(core/deftask jar
-  "Build a jar file for the project."
+(core/deftask uber
+  "Add files from dependency jars to fileset.
 
-  [S no-source        bool      "Exclude source files from jar."
-   M manifest KEY=VAL {str str} "The jar manifest map."
-   m main MAIN        sym       "The namespace containing the -main function."
-   s filter-src FUNC  code      "The function to pass source file paths through for filtering."
-   j filter-jar FUNC  code      "The function to pass jar paths through for filtering."]
-
-  (let [tgt (core/mktgtdir! ::jar-tgt)]
-    (comp
-      (pom)
-      (core/with-pre-wrap
-        (doseq [pomprop (->> (core/tgt-files) (core/by-name ["pom.properties"]))]
-          (let [{:keys [project version]} (pod/pom-properties-map pomprop)
-                pomxml  (io/file (.replaceAll (.getPath pomprop) "[.]properties$" ".xml"))
-                jarname (util/jarname project version)
-                jarfile (io/file tgt jarname)]
-            (when-not (.exists jarfile)
-              (let [index   (->> (if no-source (core/tgt-files) (core/src-files))
-                              (map (juxt core/relative-path (memfn getPath))) (into {}))
-                    ks      (set ((or filter-jar identity) (keys index)))
-                    vs      (set ((or filter-src identity) (vals index)))
-                    keep?   #(and (contains? ks %1) (contains? vs %2))
-                    paths   (->> index (reduce-kv #(if-not (keep? %2 %3) %1 (assoc %1 %2 %3)) {}))]
-                (pod/call-worker
-                  `(boot.jar/spit-jar! ~(.getPath jarfile) ~paths ~manifest ~main))
-                (core/consume-file! pomxml pomprop)))))))))
-
-(core/deftask uberjar
-  "Build project jar with dependencies included.
-
-  By default, dependencies with the following scopes will be included in the
-  uber jar file: compile, runtime, and provided."
+  By default, files from dependencies with the following scopes will be included
+  in the fileset: compile, runtime, and provided."
 
   [x exclude-scope SCOPE #{str} "The set of excluded scopes."]
 
-  (let [tgt        (core/mktgtdir! ::uberjar-tgt)
+  (let [tgt        (core/mktgtdir! ::uber-tgt)
         dfl-scopes #{"compile" "runtime" "provided"}
         scopes     (set/difference dfl-scopes exclude-scope)]
-    (comp
-      (jar)
-      (core/with-pre-wrap
-        (doseq [jarfile (->> (core/tgt-files)
-                          (core/by-ext [".jar"])
-                          (core/not-by-ext [".uber.jar"]))]
-          (let [ubername (str (.replaceAll (.getName jarfile) "[.]jar$" "") ".uber.jar")
-                uberfile (io/file tgt ubername)]
-            (when-not (.exists uberfile)
-              (let [scope? #(contains? scopes (:scope (util/dep-as-map %)))
-                    env    (-> (core/get-env)
-                             (update-in [:dependencies] (partial filter scope?)))]
-                (pod/call-worker
-                  `(boot.jar/uber-jar!
-                     ~(.getPath jarfile)
-                     ~(.getPath uberfile)
-                     ~(pod/call-worker
-                        `(boot.aether/jar-entries-in-dep-order ~env))))
-                (core/consume-file! jarfile)))))))))
+    (core/with-pre-wrap
+      (let [scope? #(contains? scopes (:scope (util/dep-as-map %)))
+            urls   (-> (core/get-env)
+                     (update-in [:dependencies] (partial filter scope?))
+                     pod/jar-entries-in-dep-order)]
+        (doseq [[relpath url-str] urls]
+          (let [segs    (file/split-path relpath)
+                outfile (apply io/file tgt segs)]
+            (when-not (or (.exists outfile) (= "META-INF" (first (file/split-path relpath))))
+              (pod/copy-url url-str outfile))))))))
 
 (core/deftask web
   "Create project web.xml file.
@@ -268,65 +234,82 @@
    c create SYM       sym "The 'create' callback function."
    d destroy SYM      sym "The 'destroy' callback function."]
 
-  (defonce web-created? (atom false))
-  (core/with-pre-wrap
-    (when-not @web-created?
-      (-> (and (symbol? serve) (namespace serve))
-        (assert "no serve function specified"))
-      (let [tgt (core/mktgtdir! ::web-tgt)]
+  (let [tgt     (core/mktgtdir! ::web-tgt)
+        xmlfile (io/file tgt "WEB-INF" "web.xml")
+        clsfile (io/file tgt "WEB-INF" "classes" "tailrecursion" "ClojureAdapterServlet.class")]
+    (core/with-pre-wrap
+      (when-not (and (.exists xmlfile) (.exists clsfile))
+        (-> (and (symbol? serve) (namespace serve))
+          (assert "no serve function specified"))
         (pod/call-worker
-          `(boot.web/spit-web! ~(.getPath tgt) ~serve ~create ~destroy))
-        (reset! web-created? true)))))
+          `(boot.web/spit-web! ~(.getPath xmlfile) ~(.getPath clsfile) ~serve ~create ~destroy))))))
+
+(core/deftask jar
+  "Build a jar file for the project."
+
+  [f file PATH        str       "The target jar file."
+   M manifest KEY=VAL {str str} "The jar manifest map."
+   m main MAIN        sym       "The namespace containing the -main function."]
+
+  (let [tgt (core/mktgtdir! ::jar-tgt)]
+    (core/with-pre-wrap
+      (let [pomprop (->> (core/tgt-files) (core/by-name ["pom.properties"]) first)
+            [aid v] (some->> pomprop pod/pom-properties-map ((juxt :artifact-id :version)))
+            jarname (or file (and aid v (str aid "-" v ".jar")) "project.jar")
+            jarfile (io/file tgt jarname)]
+        (when-not (.exists jarfile)
+          (let [index (->> (core/tgt-files)
+                        (map (juxt core/relative-path (memfn getPath))))]
+            (pod/call-worker
+              `(boot.jar/spit-jar! ~(.getPath jarfile) ~index ~manifest ~main))
+            (doseq [[_ f] index] (core/consume-file! (io/file f)))))))))
 
 (core/deftask war
   "Create war file for web deployment."
-  []
+
+  [f file PATH str "The target war file."]
+
   (let [tgt (core/mktgtdir! ::war-tgt)]
-    (comp
-      (jar)
-      (web)
-      (core/with-pre-wrap
-        (doseq [jarfile (->> (core/tgt-files) (core/by-ext [".jar"]))]
-          (let [warname (.replaceAll (.getName (io/file jarfile)) "\\.jar$" ".war")
-                warfile (io/file tgt warname)]
-            (when-not (.exists warfile)
-              (let [index   (pod/call-worker
-                              `(boot.aether/jar-entries ~(.getPath jarfile)))
-                    paths   (->> index
-                              (remove #(.startsWith (first %) "META-INF/"))
-                              (map (fn [[x y]] [(str "WEB-INF/classes/" x) y])))]
-                (pod/call-worker
-                  `(boot.jar/spit-jar! ~(.getPath warfile) ~(vec paths) nil nil))
-                (core/consume-file! jarfile)))))))))
+    (core/with-pre-wrap
+      (let [warname (or file "project.war")
+            warfile (io/file tgt warname)]
+        (when-not (.exists warfile)
+          (let [->war #(let [r  (core/relative-path %)
+                             r' (file/split-path r)]
+                         (if (contains? #{"META-INF" "WEB-INF"} (first r'))
+                           r
+                           (.getPath (apply io/file "WEB-INF" "classes" r'))))
+                index (->> (core/tgt-files) (map (juxt ->war (memfn getPath))))]
+            (pod/call-worker
+              `(boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))
+            (doseq [[_ f] index] (core/consume-file! (io/file f)))))))))
 
 (core/deftask install
   "Install project jar to local Maven repository."
 
   [f file PATH str "The jar file to install."]
 
-  (comp
-    (if file identity (jar))
-    (core/with-pre-wrap
-      (let [jarfiles (or (and file [(io/file file)])
-                      (->> (core/tgt-files) (core/by-ext [".jar"])))]
-        (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
-        (doseq [jarfile jarfiles]
-          (util/info "Installing %s...\n" (.getName jarfile))
-          (pod/call-worker
-            `(boot.aether/install ~(.getPath jarfile))))))))
+  (core/with-pre-wrap
+    (let [jarfiles (or (and file [(io/file file)])
+                     (->> (core/tgt-files) (core/by-ext [".jar"])))]
+      (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
+      (doseq [jarfile jarfiles]
+        (util/info "Installing %s...\n" (.getName jarfile))
+        (pod/call-worker
+          `(boot.aether/install ~(.getPath jarfile)))))))
 
 (core/deftask push
   "Push project jar to Clojars."
 
   [f file PATH str "The jar file to push to Clojars."]
 
-  (comp
-    (if file identity (jar))
+  (let [tmp (core/mktmpdir! ::push-tmp)]
     (core/with-pre-wrap
       (let [jarfiles (or (and file [(io/file file)])
-                      (->> (core/tgt-files) (core/by-ext [".jar"])))]
+                       (->> (core/tgt-files) (core/by-ext [".jar"])))]
         (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
         (doseq [jarfile jarfiles]
-          (let [tmp (core/mktmpdir! ::push-tmp)
-                pom (doto (io/file tmp "pom.xml") (spit (pod/pom-xml jarfile)))]
-            ((helpers/sh "scp" (.getPath jarfile) (.getPath pom) "clojars@clojars.org:"))))))))
+          (if-let [xml (pod/pom-xml jarfile)]
+            (let [pom (doto (io/file tmp "pom.xml") (spit xml))]
+              ((helpers/sh "scp" (.getPath jarfile) (.getPath pom) "clojars@clojars.org:")))
+            (throw (Exception. "jar file has no pom.xml"))))))))
