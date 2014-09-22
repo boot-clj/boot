@@ -21,7 +21,9 @@
   (:require
    [clojure.java.io :as io]))
 
-(defprotocol IRegister (register [this path events]))
+(defprotocol IRegister
+  (register [this path events])
+  (enum->kw [this x]))
 
 (extend-type java.nio.file.WatchService
   IRegister
@@ -31,7 +33,12 @@
                                    :modify StandardWatchEventKinds/ENTRY_MODIFY
                                    :delete StandardWatchEventKinds/ENTRY_DELETE}
                                events))]
-      (.register path service events))))
+      (.register path service events)))
+  (enum->kw [this x]
+    (-> {StandardWatchEventKinds/ENTRY_CREATE :create
+         StandardWatchEventKinds/ENTRY_MODIFY :modify
+         StandardWatchEventKinds/ENTRY_DELETE :delete}
+      (get x))))
 
 (extend-type com.barbarysoftware.watchservice.WatchService
   IRegister
@@ -41,7 +48,12 @@
                                    :modify StandardWatchEventKind/ENTRY_MODIFY
                                    :delete StandardWatchEventKind/ENTRY_DELETE}
                                events))]
-      (.register path service events))))
+      (.register path service events)))
+  (enum->kw [this x]
+    (-> {StandardWatchEventKind/ENTRY_CREATE :create
+         StandardWatchEventKind/ENTRY_MODIFY :modify
+         StandardWatchEventKind/ENTRY_DELETE :delete}
+      (get x))))
 
 (defn- register-recursive
   [service path events]
@@ -67,16 +79,13 @@
 (defn- service
   [queue paths]
   (let [service (new-watch-service)
-        types   {StandardWatchEventKind/ENTRY_CREATE :create
-                 StandardWatchEventKind/ENTRY_MODIFY :modify
-                 StandardWatchEventKind/ENTRY_DELETE :delete}
         doreg   #(register-recursive %1 %2 [:create :modify :delete])]
     (doseq [path paths] (doreg service (io/file path)))
     (-> #(let [watch-key (take-watch-key service)]
            (doseq [event (and watch-key (.isValid watch-key) (.pollEvents watch-key))]
              (let [dir     (.toFile (.watchable watch-key))
                    changed (io/file dir (str (.context event)))
-                   etype   (types (.kind event))
+                   etype   (enum->kw service (.kind event))
                    dir?    (.isDirectory changed)]
                (cond
                  (and dir? (= :create etype)) (doreg service changed)

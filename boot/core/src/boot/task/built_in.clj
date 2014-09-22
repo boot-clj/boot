@@ -138,18 +138,6 @@
                 (recur (util/guard [(.take q)]))))))
         (.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)))))
 
-(core/deftask syncdir
-  "Copy/sync files between directories.
-
-  The `in-dir` directories will be overlayed on the `out-dir` directory. Empty
-  directories are ignored. Similar to `rsync --delete` in a Unix system."
-
-  [i in-dirs DIR #{str} "The set of source directories."
-   o out-dir DIR str    "The destination directory."]
-
-  (core/add-sync! out-dir in-dirs)
-  identity)
-
 (core/deftask repl
   "Start a REPL session for the current project.
 
