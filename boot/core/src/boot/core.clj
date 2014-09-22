@@ -389,7 +389,7 @@
   (let [want? #(and (.isFile %) (not (contains? @consumed-files %)))]
     (->> @tgtdirs (mapcat file-seq) (filter want?))))
 
-(defn src-resources
+#_(defn src-resources
   "Returns a seq of urls corresponding to resources in jars on the classpath.
   Regexes can be (optionally) provided to restrict the set to jar dependencies
   whose group-id/artifact-id symbol matches one of the regexes."

@@ -85,8 +85,7 @@
   "Print the project's dependency graph."
   []
   (core/with-pre-wrap
-    (pod/call-worker
-      `(boot.aether/print-dep-tree ~(core/get-env)))))
+    (print (pod/call-worker `(boot.aether/dep-tree ~(core/get-env))))))
 
 (core/deftask print-env
   "Print the boot environment map."

@@ -9,7 +9,8 @@
    [java.util.jar        JarFile]
    [java.util            Properties]
    [java.net             URL URLClassLoader]
-   [java.util.concurrent ConcurrentLinkedQueue])
+   [java.util.concurrent ConcurrentLinkedQueue]
+   [java.nio.file        Files])
   (:refer-clojure :exclude [add-classpath]))
 
 (defn extract-ids
@@ -172,6 +173,10 @@
 (defn add-dependencies
   [env]
   (doseq [jar (resolve-dependency-jars env)] (add-classpath jar)))
+
+(defn jar-entries-in-dep-order
+  [env]
+  (call-worker `(boot.aether/jar-entries-in-dep-order ~env)))
 
 (defn make-pod
   ([] (boot.App/newPod))

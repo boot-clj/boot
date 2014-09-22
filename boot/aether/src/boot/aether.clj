@@ -144,13 +144,14 @@
       (println (apply str (repeat (* depth 4) \space)) coord)
       (when branch (print-tree branch (inc depth))))))
 
-(defn print-dep-tree
-  "Prints the dependency graph."
+(defn dep-tree
+  "Returns the printed dependency graph as a string."
   [env]
   (->> env
     resolve-dependencies-memoized*
     (aether/dependency-hierarchy (:dependencies env))
-    print-tree))
+    print-tree
+    with-out-str))
 
 (defn install
   [jarfile]
