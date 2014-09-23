@@ -18,9 +18,7 @@
 ;; Tasks ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (core/deftask help
-  "Print usage info and list available tasks.
-
-  Here is some other stuff."
+  "Print usage info and list available tasks."
   []
   (core/with-pre-wrap
     (let [tasks (#'helpers/available-tasks 'boot.user)
@@ -50,7 +48,7 @@
         ├── <theme-name>_success.mp3
         └── <theme-name>_warning.mp3
 
-   Sound files specified individually take precedence over theme sounds."
+  Sound files specified individually take precedence over theme sounds."
 
   [t theme NAME   str "The notification sound theme."
    s success FILE str "The sound file to play when the build is successful."
