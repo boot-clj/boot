@@ -11,11 +11,13 @@
    [java.util.jar JarFile]
    [org.sonatype.aether.resolution DependencyResolutionException]))
 
-(def offline? (atom false))
-(def update?  (atom :daily))
+(def offline?   (atom false))
+(def update?    (atom :daily))
+(def local-repo (atom nil))
 
-(defn set-offline! [x] (reset! offline? x))
-(defn set-update!  [x] (reset! update? x))
+(defn set-offline!    [x] (reset! offline? x))
+(defn set-update!     [x] (reset! update? x))
+(defn set-local-repo! [x] (reset! local-repo x))
 
 (defn default-repositories
   []
@@ -60,15 +62,15 @@
   [env]
   (try
     (aether/resolve-dependencies
-      :coordinates        (:dependencies env)
-      :repositories       (->> (or (:repositories env) (default-repositories))
-                            (map (juxt first (fn [[x y]] (if (map? y) y {:url y}))))
-                            (map (juxt first (fn [[x y]] (update-in y [:update] #(or % @update?))))))
-      :local-repo         (:local-repo env)
-      :offline?           (or @offline? (:offline? env))
-      :mirrors            (:mirrors env)
-      :proxy              (or (:proxy env) (get-proxy-settings))
-      :transfer-listener  transfer-listener)
+      :coordinates       (:dependencies env)
+      :repositories      (->> (or (:repositories env) (default-repositories))
+                           (map (juxt first (fn [[x y]] (if (map? y) y {:url y}))))
+                           (map (juxt first (fn [[x y]] (update-in y [:update] #(or % @update?))))))
+      :local-repo        (or (:local-repo env) @local-repo nil)
+      :offline?          (or @offline? (:offline? env))
+      :mirrors           (:mirrors env)
+      :proxy             (or (:proxy env) (get-proxy-settings))
+      :transfer-listener transfer-listener)
     (catch Exception e
       (let [root-cause (last (take-while identity (iterate (memfn getCause) e)))]
         (if-not (and (not @offline?) (instance? java.net.UnknownHostException root-cause))

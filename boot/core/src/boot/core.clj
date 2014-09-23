@@ -24,6 +24,10 @@
 
 (def ^:private tmpregistry  (atom nil))
 
+(defn- printable-readable?
+  [form]
+  (try (read-string (pr-str form)) (catch Throwable _)))
+
 (defn- rm-clojure-dep
   [deps]
   (vec (remove (comp (partial = 'org.clojure/clojure) first) deps)))
@@ -47,6 +51,11 @@
     (let [o (get old k ::noval)
           n (get new k ::noval)]
       (if (not= o n) (on-env! k o n new)))))
+
+(defn- order-set-env-keys
+  [kvs]
+  (let [dk :dependencies]
+    (->> kvs (sort-by first #(cond (= %1 dk) 1 (= %2 dk) -1 :else 0)))))
 
 (def ^:private base-env
   "Returns initial boot environment settings."
@@ -114,19 +123,25 @@
 
 ;; ## Boot Environment Management Functions
 
-(defn set-env!
-  "Update the boot environment atom `this` with the given key-value pairs given
-  in `kvs`. See also `on-env!` and `merge-env!`."
-  [& kvs]
-  (doseq [[k v] (partition 2 kvs)]
-    (swap! boot-env update-in [k] (partial merge-env! k) v @boot-env)))
-
 (defn get-env
   "Returns the value associated with the key `k` in the boot environment, or
   `not-found` if the environment doesn't contain key `k` and `not-found` was
   given. Calling this function with no arguments returns the environment map."
   [& [k not-found]]
   (if k (get @boot-env k not-found) @boot-env))
+
+(defn set-env!
+  "Update the boot environment atom `this` with the given key-value pairs given
+  in `kvs`. See also `on-env!` and `merge-env!`. The values in the env map must
+  be both printable by the Clojure printer and readable by its reader. If the
+  value for a key is a function, that function will be applied to the current
+  value of that key and the result will become the new value (similar to how
+  clojure.core/update-in works."
+  [& kvs]
+  (doseq [[k v] (order-set-env-keys (partition 2 kvs))]
+    (let [v (if-not (fn? v) v (v (get-env k)))]
+      (assert (printable-readable? v) "value not readable by Clojure reader")
+      (swap! boot-env update-in [k] (partial merge-env! k) v @boot-env))))
 
 (defn add-sync!
   "Specify directories to sync after build event. The `dst` argument is the 

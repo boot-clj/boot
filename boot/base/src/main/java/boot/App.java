@@ -23,6 +23,7 @@ public class App {
     private static File                    aetherfile = null;
     private static HashMap<String, File[]> depsCache  = null;
     private static String                  cljversion = "1.6.0";
+    private static String                  localrepo  = null;
 
     private static final String            appversion = "2.0.0";
     private static final String            apprelease = "r1";
@@ -85,7 +86,7 @@ public class App {
             if (age > max) throw new Exception("cache age exceeds TTL");
             return validateCache(f, (new ObjectInputStream(new FileInputStream(f))).readObject()); }
         catch (Throwable e) {
-            System.err.println("checking for boot updates...");
+            System.err.println("Checking for boot updates...");
             return writeCache(f, seedCache()); }
         finally { lock.release(); }}
     
@@ -133,6 +134,8 @@ public class App {
     public static File[]
     resolveDepJars(ClojureRuntimeShim shim, String sym) {
         shim.require("boot.aether");
+        if (localrepo != null)
+            shim.invoke("boot.aether/set-local-repo!", localrepo);
         return (File[]) shim.invoke(
             "boot.aether/resolve-dependency-jars", sym, depversion, cljversion); }
     
@@ -155,6 +158,9 @@ public class App {
         ConcurrentLinkedQueue<Runnable>
         hooks = new ConcurrentLinkedQueue<>();
         try {
+            if (localrepo != null) {
+                worker.get().require("boot.aether");
+                worker.get().invoke("boot.aether/set-local-repo!", localrepo); }
             core.get().require("boot.main");
             core.get().invoke("boot.main/-main", nextId(), worker.get(), hooks, args);
             return -1; }
@@ -172,9 +178,11 @@ public class App {
             System.err.println(appversion + "-" + apprelease);
             System.exit(0); }
         
+        localrepo    = System.getenv("BOOT_LOCAL_REPO");
         String bhome = System.getenv("BOOT_HOME");
         String homed = System.getProperty("user.home");
         String clj_v = System.getenv("BOOT_CLOJURE_VERSION");
+        String dir_l = (localrepo == null) ? "default" : String.valueOf(localrepo.hashCode());
         
         if (clj_v != null) cljversion = clj_v;
         
@@ -183,7 +191,7 @@ public class App {
 
         File jardir    = new File(new File(bootdir, "lib"), apprelease);
         aetherfile     = new File(jardir, aetherjar);
-        File cachedir  = new File(new File(bootdir, "cache"), cljversion);
+        File cachedir  = new File(new File(new File(bootdir, "cache"), dir_l), cljversion);
         File cachefile = new File(cachedir, "deps.cache");
         
         jardir.mkdirs();

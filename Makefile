@@ -1,4 +1,4 @@
-.PHONY: help install deploy test
+.PHONY: help install deploy test clean
 
 bootjar    = $(PWD)/bin/boot2
 bootbin    = $(PWD)/bin/boot.sh
@@ -15,6 +15,13 @@ alljars    = $(podjar) $(aetherjar) $(workerjar) $(corejar) $(baseuber)
 
 help:
 	@echo "Usage: make {help|install|deploy|test}" 1>&2 && false
+
+clean:
+	(cd boot/base && mvn -q clean)
+	(cd boot/core && lein clean)
+	(cd boot/aether && lein clean)
+	(cd boot/pod && lein clean)
+	(cd boot/worker && lein clean)
 
 bin/lein:
 	mkdir -p bin

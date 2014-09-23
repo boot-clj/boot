@@ -14,7 +14,7 @@
 (defn- tasks-table [tasks]
   (let [get-task  #(-> % :name str)
         get-desc  #(-> % :doc first-line)]
-    (->> tasks (map (fn [x] ["" (get-task x) (get-desc x)])))))
+    (->> tasks (mapv (fn [x] ["" (get-task x) (get-desc x)])))))
 
 (defn- set-title [[[_ & xs] & zs] title] (into [(into [title] xs)] zs))
 
