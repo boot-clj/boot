@@ -217,9 +217,8 @@
   []
   (let [tgt (core/mktgtdir! ::add-srcs-tgt)]
     (core/with-pre-wrap
-      (doseq [in (remove core/tmpfile? (core/src-files))]
-        (let [out (io/file tgt (core/relative-path in))]
-          (when-not (.exists out) (io/copy in (doto out io/make-parents))))))))
+      (when-let [dirs (seq (remove core/tmpfile? (core/get-env :src-paths)))]
+        (apply file/sync :time tgt dirs)))))
 
 (core/deftask uber
   "Add files from dependency jars to fileset.
