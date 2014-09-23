@@ -3,19 +3,18 @@
    [clojure.java.io :as io]
    [boot.pod        :as pod]
    [boot.file       :as file]
-   [boot.util       :as util]
-   [boot.aether     :as aether])
+   [boot.util       :as util])
   (:import
    [java.io File]
    [java.util.zip ZipException]
    [java.util.jar JarFile JarEntry JarOutputStream Manifest Attributes$Name]))
 
-(def dfl-attr
-  {"Created-By"  "Tailrecursion Boot Build Tool"
-   "Built-By"    (System/getProperty "user.name")
-   "Build-Jdk"   (System/getProperty "java.version")})
+(def ^:private dfl-attr
+  {"Created-By" "Tailrecursion Boot Build Tool"
+   "Built-By"   (System/getProperty "user.name")
+   "Build-Jdk"  (System/getProperty "java.version")})
 
-(defn create-manifest [main ext-attrs]
+(defn- create-manifest [main ext-attrs]
   (let [extra-attr  (merge-with into dfl-attr ext-attrs)
         manifest    (Manifest.) 
         attributes  (.getMainAttributes manifest)]

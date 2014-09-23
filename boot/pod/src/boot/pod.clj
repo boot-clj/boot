@@ -180,13 +180,47 @@
   [env]
   (->> env resolve-dependencies (map (comp io/file :jar))))
 
+(defn resolve-dependency-jar
+  [env project version]
+  (let [jarname (format "%s-%s.jar" (name project) version)]
+    (->> [[project version]]
+      (assoc env :dependencies)
+      resolve-dependency-jars
+      (filter (comp (partial = jarname) (memfn getName)))
+      first)))
+
 (defn add-dependencies
   [env]
   (doseq [jar (resolve-dependency-jars env)] (add-classpath jar)))
 
+(def jar-entries
+  "Given a path to a jar file, returns a list of [resource-path, resource-url]
+  string pairs corresponding to all entries contained the jar contains."
+  (memoize
+    (fn [path]
+      (let [f (io/file path)]
+        (when (and path (.endsWith (.getPath f) ".jar"))
+          (when (and (.exists f) (.isFile f))
+            (->> f JarFile. .entries enumeration-seq
+              (keep #(when-not (.isDirectory %)
+                       (let [name (.getName %)]
+                         [name (->> (io/file (io/file (str path "!")) name)
+                                 .toURI .toURL .toString (str "jar:"))]))))))))))
+
 (defn jar-entries-in-dep-order
   [env]
   (call-worker `(boot.aether/jar-entries-in-dep-order ~env)))
+
+(defn copy-dependency-jar-entries
+  [env outdir project version & regexes]
+  (let [keep? (if-not (seq regexes)
+                (constantly true)
+                (apply some-fn (map #(partial re-find %) regexes)))
+        ents  (->> (resolve-dependency-jar env project version)
+                jar-entries
+                (filter (comp keep? first))
+                (map (fn [[k v]] [v (.getPath (io/file outdir k))])))]
+    (doseq [[url-str out-path] ents] (copy-url url-str out-path))))
 
 (defn make-pod
   ([] (boot.App/newPod))

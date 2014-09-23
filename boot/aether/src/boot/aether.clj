@@ -103,20 +103,6 @@
      (->> {:dependencies [['org.clojure/clojure cljversion] [(symbol sym-str) version]]}
        resolve-dependencies (map (comp io/file :jar)) (into-array java.io.File))))
 
-(def jar-entries
-  "Given a path to a jar file, returns a list of [resource-path, resource-url]
-  string pairs corresponding to all entries contained the jar contains."
-  (memoize
-    (fn [path]
-      (when (and path (.endsWith path ".jar"))
-        (let [f (io/file path)]
-          (when (and (.exists f) (.isFile f))
-            (->> f JarFile. .entries enumeration-seq
-              (keep #(when-not (.isDirectory %)
-                       (let [name (.getName %)]
-                         [name (->> (io/file (io/file (str path "!")) name)
-                                 .toURI .toURL .toString (str "jar:"))]))))))))))
-
 (def jar-entries-in-dep-order
   "Given an env map and optional regexes, returns a list of jar entries above
   for all jars (including transitive dependencies). If regexes are provided
@@ -135,7 +121,7 @@
           (pmap #(vector % (get (resol' (vector %)) %)))
           (map (fn [[[k & _] v]] [k (set (map first v))]))
           ((comp reverse ksort/topo-sort (partial into {})))
-          (mapcat (comp jar-entries jars)))))))
+          (mapcat (comp pod/jar-entries jars)))))))
 
 (defn- print-tree
   [tree & [prefixes]]

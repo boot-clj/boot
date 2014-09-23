@@ -8,5 +8,4 @@
                  [reply                                 "0.3.4"          :scope "compile"]
                  [alandipert/desiderata                 "1.0.2"          :scope "compile"]
                  [org.clojure/data.xml                  "0.0.7"          :scope "compile"]
-                 [javazoom/jlayer                       "1.0.1"          :scope "compile"]
-                 [tailrecursion/clojure-adapter-servlet "0.1.0-SNAPSHOT" :scope "compile"]])
+                 [javazoom/jlayer                       "1.0.1"          :scope "compile"]])

@@ -211,8 +211,15 @@
       (apply file/sync :time tgt dirs))))
 
 (core/deftask add-src
-  "Add source files to fileset."
-  []
+  "Add source files to fileset.
+
+  The filters option specifies a set of regular expressions (as strings) that
+  will be used to filter the source files. If no filters are specified, or if
+  any of the filter regexes match the path of the source file relative to its
+  source dir, then the file is added to the fileset."
+
+  [f filters REGEX #{str} "The set of regular expressions to match against."]
+
   (let [tgt (core/mktgtdir! ::add-srcs-tgt)]
     (core/with-pre-wrap
       (when-let [dirs (seq (remove core/tmpfile? (core/get-env :src-paths)))]
@@ -249,15 +256,18 @@
    c create SYM       sym "The 'create' callback function."
    d destroy SYM      sym "The 'destroy' callback function."]
 
-  (let [tgt     (core/mktgtdir! ::web-tgt)
-        xmlfile (io/file tgt "WEB-INF" "web.xml")
-        clsfile (io/file tgt "WEB-INF" "classes" "tailrecursion" "ClojureAdapterServlet.class")]
+  (let [tgt      (core/mktgtdir! ::web-tgt)
+        xmlfile  (io/file tgt "WEB-INF" "web.xml")
+        implp    'tailrecursion/clojure-adapter-servlet
+        implv    "0.1.0-SNAPSHOT"]
     (core/with-pre-wrap
-      (when-not (and (.exists xmlfile) (.exists clsfile))
+      (when-not (.exists xmlfile)
         (-> (and (symbol? serve) (namespace serve))
           (assert "no serve function specified"))
+        (pod/copy-dependency-jar-entries
+          (core/get-env) tgt implp implv #"^tailrecursion/.*\.(class|clj)$")
         (pod/call-worker
-          `(boot.web/spit-web! ~(.getPath xmlfile) ~(.getPath clsfile) ~serve ~create ~destroy))))))
+          `(boot.web/spit-web! ~(.getPath xmlfile) ~serve ~create ~destroy))))))
 
 (core/deftask jar
   "Build a jar file for the project."
