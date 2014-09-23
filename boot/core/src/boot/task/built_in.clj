@@ -203,6 +203,15 @@
           (pod/call-worker
             `(boot.pom/spit-pom! ~(.getPath xmlfile) ~(.getPath propfile) ~opts)))))))
 
+(core/deftask add-dir
+  "Add files in resource directories to fileset."
+
+  [d dirs PATH #{str} "The set of resource directories."]
+
+  (let [tgt (core/mktgtdir! ::add-dir-tgt)]
+    (core/with-pre-wrap
+      (apply file/sync :time tgt dirs))))
+
 (core/deftask add-src
   "Add source files to fileset."
   []
