@@ -203,6 +203,15 @@
           (pod/call-worker
             `(boot.pom/spit-pom! ~(.getPath xmlfile) ~(.getPath propfile) ~opts)))))))
 
+(core/deftask add-src
+  "Add source files to fileset."
+  []
+  (let [tgt (core/mktgtdir! ::add-srcs-tgt)]
+    (core/with-pre-wrap
+      (doseq [in (remove core/tmpfile? (core/src-files))]
+        (let [out (io/file tgt (core/relative-path in))]
+          (when-not (.exists out) (io/copy in (doto out io/make-parents))))))))
+
 (core/deftask uber
   "Add files from dependency jars to fileset.
 

@@ -380,14 +380,14 @@
   :src-paths boot environment. Note that this includes the `tgt-files` below."
   []
   (let [want? #(and (.isFile %) (not (contains? @consumed-files %)))]
-    (->> :src-paths get-env (map io/file) (mapcat file-seq) (filter want?))))
+    (->> :src-paths get-env (map io/file) (mapcat file-seq) (filter want?) set)))
 
 (defn tgt-files
   "Returns a seq of `java.io.File` objects--the contents of directories created
   by tasks via the `mktgtdir!` function above."
   []
   (let [want? #(and (.isFile %) (not (contains? @consumed-files %)))]
-    (->> @tgtdirs (mapcat file-seq) (filter want?))))
+    (->> @tgtdirs (mapcat file-seq) (filter want?) set)))
 
 #_(defn src-resources
   "Returns a seq of urls corresponding to resources in jars on the classpath.
