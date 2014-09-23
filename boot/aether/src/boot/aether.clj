@@ -138,11 +138,15 @@
           (mapcat (comp jar-entries jars)))))))
 
 (defn- print-tree
-  [tree & [depth]]
-  (let [depth (or depth 0)]
-    (doseq [[coord branch] tree]
-      (println (apply str (repeat (* depth 4) \space)) coord)
-      (when branch (print-tree branch (inc depth))))))
+  [tree & [prefixes]]
+  (loop [[[coord branch] & more] (seq tree)]
+    (when coord
+      (let [pfx (cond (not prefixes) "" (seq more) "├── " :else "└── ")]
+        (println (str (apply str prefixes) pfx coord)))
+      (when branch
+        (let [pfx (cond (not prefixes) "" (seq more) "│   " :else "    ")]
+          (print-tree branch (concat prefixes (list pfx)))))
+      (recur more))))
 
 (defn dep-tree
   "Returns the printed dependency graph as a string."
