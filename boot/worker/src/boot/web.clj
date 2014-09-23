@@ -32,5 +32,9 @@
   (util/info "Creating web.xml...")
   (let [xmlfile (io/file webxmlfile)
         clsfile (io/file servletfile)]
-    (spit xmlfile (pr-str (web-xml "boot-webapp" "boot-webapp" serve create destroy)))
-    (pod/copy-resource "tailrecursion/ClojureAdapterServlet.class" clsfile)))
+    (spit
+      (doto xmlfile io/make-parents)
+      (pr-str (web-xml "boot-webapp" "boot-webapp" serve create destroy)))
+    (pod/copy-resource
+      "tailrecursion/ClojureAdapterServlet.class"
+      (doto clsfile io/make-parents))))
