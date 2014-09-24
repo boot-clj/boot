@@ -36,7 +36,6 @@
   (let [manifest  (create-manifest main attr)
         jarfile   (io/file jarpath)]
     (io/make-parents jarfile)
-    (util/info "Writing %s...\n" (.getName jarfile))
     (with-open [s (JarOutputStream. (io/output-stream jarfile) manifest)]
       (doseq [[jarpath srcpath] files :let [f (io/file srcpath)]]
         (let [entry (doto (JarEntry. jarpath) (.setTime (.lastModified f)))]
@@ -46,4 +45,4 @@
               (if-not (and (instance? ZipException t)
                         (.startsWith (.getMessage t) "duplicate entry:"))
                 (throw t)
-                (println (.getMessage t))))))))))
+                (util/warn "%s\n" (.getMessage t))))))))))

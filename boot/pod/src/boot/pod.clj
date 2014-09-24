@@ -104,14 +104,16 @@
                (.getInputStream jarfile))))))
 
 (defn pom-properties-map
-  [pom-properties-path]
-  (let [p   (doto (Properties.) (.load (io/input-stream pom-properties-path)))
-        gid (.getProperty p "groupId")
-        aid (.getProperty p "artifactId")]
+  [prop-or-jarpath]
+  (let [prop (if (instance? Properties prop-or-jarpath)
+               prop-or-jarpath
+               (doto (Properties.) (.load (io/input-stream prop-or-jarpath))))
+        gid  (.getProperty prop "groupId")
+        aid  (.getProperty prop "artifactId")]
     {:group-id    gid
      :artifact-id aid
      :project     (symbol gid aid)
-     :version     (.getProperty p "version")}))
+     :version     (.getProperty prop "version")}))
 
 (defn pom-xml
   [jarpath]

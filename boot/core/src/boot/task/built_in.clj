@@ -132,6 +132,7 @@
         ign?     (git/make-gitignore-matcher (core/get-env :src-paths))]
     (fn [continue]
       (fn [event]
+        (util/info "Starting file watcher (CTRL-C to quit)...\n")
         (loop [ret (util/guard [(.take q)])]
           (when ret
             (if-let [more (.poll q (or debounce 10) TimeUnit/MILLISECONDS)]
@@ -209,6 +210,7 @@
             xmlfile   (io/file pomdir "pom.xml")
             propfile  (io/file pomdir "pom.properties")]
         (when-not (and (.exists xmlfile) (.exists propfile))
+          (util/info "Writing %s and %s...\n" (.getName xmlfile) (.getName propfile))
           (pod/call-worker
             `(boot.pom/spit-pom! ~(.getPath xmlfile) ~(.getPath propfile) ~opts)))))))
 
@@ -225,6 +227,7 @@
 
   (let [tgt (core/mktgtdir! ::add-dir-tgt)]
     (core/with-pre-wrap
+      (util/info "Adding resource directories...\n")
       (binding [file/*filters* (mapv re-pattern filters)]
         (apply file/sync :time tgt dirs)))))
 
@@ -241,6 +244,7 @@
   (let [tgt (core/mktgtdir! ::add-srcs-tgt)]
     (core/with-pre-wrap
       (when-let [dirs (seq (remove core/tmpfile? (core/get-env :src-paths)))]
+        (util/info "Adding src files...\n")
         (binding [file/*filters* (mapv re-pattern filters)]
           (apply file/sync :time tgt dirs))))))
 
@@ -270,6 +274,7 @@
             urls   (-> (core/get-env)
                      (update-in [:dependencies] (partial filter scope?))
                      pod/jar-entries-in-dep-order)]
+        (util/info "Adding uberjar entries...\n")
         (doseq [[relpath url-str] urls]
           (when (or (empty? filters) (keep? relpath))
             (let [segs    (file/split-path relpath)
@@ -294,8 +299,10 @@
       (when-not (.exists xmlfile)
         (-> (and (symbol? serve) (namespace serve))
           (assert "no serve function specified"))
+        (util/info "Adding servlet impl...\n")
         (pod/copy-dependency-jar-entries
           (core/get-env) tgt implp implv #"^tailrecursion/.*\.(class|clj)$")
+        (util/info "Writing %s...\n" (.getName xmlfile))
         (pod/call-worker
           `(boot.web/spit-web! ~(.getPath xmlfile) ~serve ~create ~destroy))))))
 
@@ -315,6 +322,7 @@
         (when-not (.exists jarfile)
           (let [index (->> (core/tgt-files)
                         (map (juxt core/relative-path (memfn getPath))))]
+            (util/info "Writing %s...\n" (.getName jarfile))
             (pod/call-worker
               `(boot.jar/spit-jar! ~(.getPath jarfile) ~index ~manifest ~main))
             (doseq [[_ f] index] (core/consume-file! (io/file f)))))))))
@@ -335,12 +343,18 @@
                            r
                            (.getPath (apply io/file "WEB-INF" "classes" r'))))
                 index (->> (core/tgt-files) (map (juxt ->war (memfn getPath))))]
+            (util/info "Writing %s...\n" (.getName warfile))
             (pod/call-worker
               `(boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))
             (doseq [[_ f] index] (core/consume-file! (io/file f)))))))))
 
 (core/deftask install
-  "Install project jar to local Maven repository."
+  "Install project jar to local Maven repository.
+
+  The file option allows installation of arbitrary jar files. If no file option
+  is given then any jar artifacts created during the build will be installed.
+
+  Note that installation requires the jar to contain a pom.xml file."
 
   [f file PATH str "The jar file to install."]
 
@@ -351,20 +365,39 @@
       (doseq [jarfile jarfiles]
         (util/info "Installing %s...\n" (.getName jarfile))
         (pod/call-worker
-          `(boot.aether/install ~(.getPath jarfile)))))))
+          `(boot.aether/install ~(core/get-env) ~(.getPath jarfile)))))))
+
+(core/deftask deploy
+  "Deploy project jar to a Maven repository.
+
+  Both the file and repo options are required. The jar file must contain a
+  pom.xml entry."
+
+  [f file PATH  str "The jar file to deploy."
+   r repo ALIAS str "The alias of the deploy repository."]
+
+  (core/with-pre-wrap
+    (let [f (io/file file)
+          r (-> (->> (core/get-env :repositories) (into {})) (get repo))]
+      (when-not (and r (.exists f))
+        (throw (Exception. "missing jar file or repo alias option")))
+      (util/info "Deploying %s...\n" (.getName f))
+      (pod/call-worker
+        `(boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f))))))
 
 (core/deftask push
-  "Push project jar to Clojars."
+  "Push project jar to Clojars.
 
-  [f file PATH str "The jar file to push to Clojars."]
+  The file option is required, and the jar file must contain a pom.xml entry."
+
+  [f file PATH str "The path to the jar file."]
 
   (let [tmp (core/mktmpdir! ::push-tmp)]
     (core/with-pre-wrap
-      (let [jarfiles (or (and file [(io/file file)])
-                       (->> (core/tgt-files) (core/by-ext [".jar"])))]
-        (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
-        (doseq [jarfile jarfiles]
-          (if-let [xml (pod/pom-xml jarfile)]
-            (let [pom (doto (io/file tmp "pom.xml") (spit xml))]
-              ((helpers/sh "scp" (.getPath jarfile) (.getPath pom) "clojars@clojars.org:")))
-            (throw (Exception. "jar file has no pom.xml"))))))))
+      (let [jarfile (io/file file)]
+        (when-not (.exists jarfile) (throw (Exception. "can't find jar file")))
+        (if-let [xml (pod/pom-xml jarfile)]
+          (let [pom (doto (io/file tmp "pom.xml") (spit xml))]
+            (util/info "Pushing %s to Clojars...\n" (.getName jarfile))
+            ((helpers/sh "scp" (.getPath jarfile) (.getPath pom) "clojars@clojars.org:")))
+          (throw (Exception. "jar file does not contain a pom.xml entry")))))))

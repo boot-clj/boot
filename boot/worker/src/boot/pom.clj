@@ -67,8 +67,6 @@
                     (.setProperty "version"    version))
         xmlfile   (doto (io/file xmlpath) io/make-parents)
         propfile  (doto (io/file proppath) io/make-parents)]
-    (util/info "Writing %s...\n" (.getName xmlfile))
     (spit xmlfile (pr-str (pom-xml env)))
-    (util/info "Writing %s...\n" (.getName propfile))
     (with-open [s (io/output-stream propfile)]
       (.store prop s (str gid "/" aid " " version " property file")))))

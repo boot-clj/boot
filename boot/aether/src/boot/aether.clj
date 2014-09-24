@@ -146,15 +146,26 @@
     with-out-str))
 
 (defn install
-  [jarfile]
-  (let [pomprop (pod/pom-properties jarfile)
-        gid     (.getProperty pomprop "groupId")
-        aid     (.getProperty pomprop "artifactId")
-        version (.getProperty pomprop "version")
+  [env jarfile]
+  (let [{:keys [project version]}
+        (-> jarfile pod/pom-properties pod/pom-properties-map)
         pomfile (doto (File/createTempFile "pom" ".xml")
-                  .deleteOnExit (spit (pod/pom-xml jarfile)))
-        project (symbol gid aid)]
+                  .deleteOnExit (spit (pod/pom-xml jarfile)))]
     (aether/install
       :coordinates [project version]
       :jar-file    (io/file jarfile)
-      :pom-file    (io/file pomfile))))
+      :pom-file    (io/file pomfile)
+      :local-repo  (or (:local-repo env) @local-repo nil))))
+
+(defn deploy
+  [env repo jarfile]
+  (let [{:keys [project version]}
+        (-> jarfile pod/pom-properties pod/pom-properties-map)
+        pomfile (doto (File/createTempFile "pom" ".xml")
+                  .deleteOnExit (spit (pod/pom-xml jarfile)))]
+    (aether/deploy
+      :coordinates [project version]
+      :jar-file    (io/file jarfile)
+      :pom-file    (io/file pomfile)
+      :repository  [repo]
+      :local-repo  (or (:local-repo env) @local-repo nil))))

@@ -30,7 +30,6 @@
 
 (defn spit-web! [webxmlfile serve create destroy]
   (let [xmlfile  (io/file webxmlfile)]
-    (util/info "Writing web.xml...\n")
     (spit
       (doto xmlfile io/make-parents)
       (pr-str (web-xml "boot-webapp" "boot-webapp" serve create destroy)))))
