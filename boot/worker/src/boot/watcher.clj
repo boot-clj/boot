@@ -102,7 +102,9 @@
 
 (defn make-watcher
   [queue paths]
-  (let [k (str (gensym))
-        s (service queue paths)]
+  (let [k  (str (gensym))
+        s  (service queue paths)
+        fs (->> paths (mapcat (comp file-seq io/file)) (filter (memfn isFile)))]
     (swap! watchers assoc k s)
+    (doseq [f fs] (.offer queue (.getPath f)))
     k))

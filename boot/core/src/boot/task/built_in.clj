@@ -133,7 +133,6 @@
         ign? (git/make-gitignore-matcher (core/get-env :src-paths))]
     (fn [continue]
       (fn [event]
-        (continue event)
         (loop [ret (util/guard [(.take q)])]
           (when ret
             (if-let [more (.poll q (or debounce 10) TimeUnit/MILLISECONDS)]
@@ -142,8 +141,8 @@
                     etime   #(- (System/currentTimeMillis) start)
                     changed (->> ret (remove (comp ign? io/file)) set)]
                 (when-not (empty? changed)
-                  (continue (assoc (core/make-event event) ::watch changed))
-                  (util/info "Elapsed time: %.3f sec\n" (float (/ (etime) 1000))))
+                  (-> event core/prep-build! (assoc ::watch changed) continue)
+                  (util/info "Elapsed time: %.3f sec\n\n" (float (/ (etime) 1000))))
                 (recur (util/guard [(.take q)]))))))
         (.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)))))
 
@@ -211,13 +210,20 @@
             `(boot.pom/spit-pom! ~(.getPath xmlfile) ~(.getPath propfile) ~opts)))))))
 
 (core/deftask add-dir
-  "Add files in resource directories to fileset."
+  "Add files in resource directories to fileset.
 
-  [d dirs PATH #{str} "The set of resource directories."]
+  The filters option specifies a set of regular expressions (as strings) that
+  will be used to filter the resource files. If no filters are specified, or if
+  any of the filter regexes match the path of the resource file relative to the
+  resource dir, then the file is added to the fileset."
+
+  [d dirs PATH     #{str} "The set of resource directories."
+   f filters REGEX #{str} "The set of regular expressions to match against."]
 
   (let [tgt (core/mktgtdir! ::add-dir-tgt)]
     (core/with-pre-wrap
-      (apply file/sync :time tgt dirs))))
+      (binding [file/*filters* (mapv re-pattern filters)]
+        (apply file/sync :time tgt dirs)))))
 
 (core/deftask add-src
   "Add source files to fileset.
@@ -232,29 +238,40 @@
   (let [tgt (core/mktgtdir! ::add-srcs-tgt)]
     (core/with-pre-wrap
       (when-let [dirs (seq (remove core/tmpfile? (core/get-env :src-paths)))]
-        (apply file/sync :time tgt dirs)))))
+        (binding [file/*filters* (mapv re-pattern filters)]
+          (apply file/sync :time tgt dirs))))))
 
 (core/deftask uber
-  "Add files from dependency jars to fileset.
+  "Add jar entries from dependencies to fileset.
 
   By default, files from dependencies with the following scopes will be included
-  in the fileset: compile, runtime, and provided."
+  in the fileset: compile, runtime, and provided.
 
-  [x exclude-scope SCOPE #{str} "The set of excluded scopes."]
+  The filters option specifies a set of regular expressions (as strings) that
+  will be used to filter the jar entries. If no filters are specified, or if
+  any of the filter regexes match the path of the jar entry, then the entry is
+  added to the fileset."
+
+  [x exclude-scope SCOPE #{str} "The set of excluded scopes."
+   f filters REGEX       #{str} "The set of regular expressions to match against."]
 
   (let [tgt        (core/mktgtdir! ::uber-tgt)
         dfl-scopes #{"compile" "runtime" "provided"}
-        scopes     (set/difference dfl-scopes exclude-scope)]
+        scopes     (set/difference dfl-scopes exclude-scope)
+        filters    (map re-pattern filters)
+        keep?      (when (seq filters)
+                     (apply some-fn (map (partial partial re-find) filters)))]
     (core/with-pre-wrap
       (let [scope? #(contains? scopes (:scope (util/dep-as-map %)))
             urls   (-> (core/get-env)
                      (update-in [:dependencies] (partial filter scope?))
                      pod/jar-entries-in-dep-order)]
         (doseq [[relpath url-str] urls]
-          (let [segs    (file/split-path relpath)
-                outfile (apply io/file tgt segs)]
-            (when-not (or (.exists outfile) (= "META-INF" (first (file/split-path relpath))))
-              (pod/copy-url url-str outfile))))))))
+          (when (or (empty? filters) (keep? relpath))
+            (let [segs    (file/split-path relpath)
+                  outfile (apply io/file tgt segs)]
+              (when-not (or (.exists outfile) (= "META-INF" (first segs)))
+                (pod/copy-url url-str outfile)))))))))
 
 (core/deftask web
   "Create project web.xml file.

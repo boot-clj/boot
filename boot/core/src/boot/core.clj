@@ -278,6 +278,7 @@
   "FIXME: document"
   [& args]
   (doseq [f @tgtdirs] (tmp/make-file! ::tmp/dir f))
+  (reset! consumed-files #{})
   (apply make-event args))
 
 (defn construct-tasks

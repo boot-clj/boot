@@ -1,11 +1,12 @@
 (ns boot.file
   (:require
-    [boot.from.digest :as d]
-    [clojure.data     :as data]
-    [clojure.java.io  :refer [copy file delete-file make-parents]]
-    [clojure.set      :refer [union intersection difference]])
+   [boot.from.digest :as d]
+   [clojure.data     :as data]
+   [clojure.java.io  :refer [copy file delete-file make-parents]]
+   [clojure.set      :refer [union intersection difference]])
   (:import
-    java.lang.management.ManagementFactory)
+   [java.nio.file Files]
+   [java.lang.management ManagementFactory])
   (:refer-clojure :exclude [sync name file-seq]))
 
 (defn file? [f] (when (try (.isFile (file f)) (catch Throwable _)) f))
@@ -69,10 +70,8 @@
 (defn copy-with-lastmod
   [src-file dst-file]
   (make-parents dst-file)
-  (try
-    (copy src-file dst-file) 
-    (.setLastModified dst-file (.lastModified src-file))
-    (catch Throwable _)))
+  (when (.exists dst-file) (.delete dst-file))
+  (Files/createLink (.toPath dst-file) (.toPath src-file)))
 
 (defn copy-files
   [src dest]
@@ -84,11 +83,13 @@
 (defn select-keys-by [m pred?]
   (select-keys m (filter pred? (keys m))))
 
+(def ^:dynamic *filters* nil)
+
 (defn dir-set 
   ([dir] 
    (let [info (juxt #(relative-to dir %) #(.lastModified %))
          mapf #(zipmap [:dir :abs :rel :mod] (list* dir % (info %)))]
-     (set (mapv mapf (filter file? (file-seq dir))))))
+     (set (mapv mapf (filter (memfn isFile) (file-seq dir))))))
   ([dir1 dir2 & dirs]
    (reduce union (map dir-set (list* dir1 dir2 dirs)))))
 
@@ -125,10 +126,16 @@
         rm (map #(vector :rm (file dst %)) to-rm)]
     (concat cp rm)))
 
+(defn keep-filters?
+  [f]
+  (or (empty? *filters*)
+    ((apply some-fn (map (partial partial re-find) *filters*)) (.getPath f))))
+
 (defn sync*
   [ops]
-  (let [opfn {:cp #(copy-with-lastmod (nth % 1) (nth % 2))
-              :rm #(.delete (nth % 1))}]
+  (let [opfn {:rm #(.delete (nth % 1))
+              :cp #(when (keep-filters? (nth % 2))
+                     (copy-with-lastmod (nth % 1) (nth % 2)))}]
     (doseq [[op s d :as cmd] ops] ((opfn op) cmd))))
 
 (defn sync
