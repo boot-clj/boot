@@ -189,7 +189,7 @@
           `(boot.repl-client/client ~cli-opts))))))
 
 (core/deftask pom
-  "Craete project pom.xml file.
+  "Create project pom.xml file.
 
   The project and version must be specified to make a pom.xml."
 
