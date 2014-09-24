@@ -36,7 +36,7 @@
   "Add Maven dependencies to the classpath, fetching them if necessary."
   [old new env]
   (->> new rm-clojure-dep (assoc env :dependencies) pod/add-dependencies)
-  (into (or old []) new))
+  new)
 
 (defn- add-directories!
   "Add URLs (directories or jar files) to the classpath."
@@ -57,15 +57,6 @@
   (let [dk :dependencies]
     (->> kvs (sort-by first #(cond (= %1 dk) 1 (= %2 dk) -1 :else 0)))))
 
-(def ^:private base-env
-  "Returns initial boot environment settings."
-  (fn []
-    '{:dependencies []
-      :src-paths    #{}
-      :tgt-path     "target"
-      :repositories [["clojars"       "http://clojars.org/repo/"]
-                     ["maven-central" "http://repo1.maven.org/maven2/"]]}))
-
 ;; ## Boot Environment
 ;;
 ;; _These functions are used internally by boot and are not part of the public
@@ -74,7 +65,7 @@
 (declare ^{:dynamic true :doc "The running version of boot."} *boot-version*)
 (declare ^{:dynamic true :doc "Command line options for boot itself."} *boot-opts*)
 
-(def boot-env
+(def ^:private boot-env
   "Atom containing environment key/value pairs. Do not manipulate this atom
   directly. Use `set-env!` (below) instead."
   (atom nil))
@@ -84,7 +75,13 @@
   There should be no need to call this function directly."
   [& kvs]
   (doto boot-env
-    (reset! (merge (base-env) (apply hash-map kvs)))
+    (reset!
+      (->> (apply hash-map kvs)
+        (merge {:dependencies []
+                :src-paths    #{}
+                :tgt-path     "target"
+                :repositories [["clojars"       "http://clojars.org/repo/"]
+                               ["maven-central" "http://repo1.maven.org/maven2/"]]})))
     (add-watch ::boot #(configure!* %3 %4))))
 
 (defmulti on-env!
@@ -110,19 +107,6 @@
 ;; ## Boot API Functions
 ;;
 ;; _Functions provided for use in boot tasks._
-
-;; Maven Repository Global Configuration
-
-(defn set-offline!
-  "Set/unset offline mode for dependency resolution."
-  [x]
-  (pod/call-worker `(boot.aether/set-offline! ~x)))
-
-(defn set-update!
-  "Set the snapshot update frequency for dependency resolution. Accepted values
-  of x are `:always`, `:daily`, or `:never`."
-  [x]
-  (pod/call-worker `(boot.aether/set-update! ~x)))
 
 ;; ## Boot Environment Management Functions
 
@@ -160,7 +144,13 @@
   [dst & [srcs]]
   (tmp/add-sync! @tmpregistry dst srcs))
 
-;; ## Task helpers
+(defn add-wagon!
+  "FIXME: document this."
+  [maven-coord & [scheme-map]]
+  (pod/call-worker
+    `(boot.aether/add-wagon ~(get-env) ~maven-coord ~scheme-map)))
+
+;; ## Task helpers – managed temp files
 
 (def ^:private consumed-files (atom #{}))
 
@@ -195,24 +185,15 @@
   [f]
   (tmp/tmpfile? @tmpregistry f))
 
-(defn mktmp!
-  "Create a temp file and return its `File` object. If `mktmp!` has already 
-  been called with the given `key` the tmpfile will be truncated. The optional
-  `name` argument can be used to customize the temp file name (useful for
-  creating temp files with a specific file extension, for example)."
-  [key & [name]]
-  (tmp/mk! @tmpregistry key name))
-
 (defn mktmpdir!
   "Create a temp directory and return its `File` object. If `mktmpdir!` has
   already been called with the given `key` the directory's contents will be
-  deleted. The optional `name` argument can be used to customize the temp
-  directory name, as with `mktmp!` above."
-  [key & [name]]
-  (tmp/mkdir! @tmpregistry key name))
+  deleted."
+  [key]
+  (tmp/mkdir! @tmpregistry key))
 
-(def tgtdirs
-  "Atom containing a vector of File objects--directories created by `mktgtdir!`.
+(def ^:private tgtdirs
+  "Atom containing a vector of File objects–directories created by `mktgtdir!`.
   This atom is managed by boot and shouldn't be manipulated directly."
   (atom []))
 

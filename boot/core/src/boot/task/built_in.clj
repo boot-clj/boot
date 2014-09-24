@@ -301,7 +301,7 @@
           (assert "no serve function specified"))
         (util/info "Adding servlet impl...\n")
         (pod/copy-dependency-jar-entries
-          (core/get-env) tgt implp implv #"^tailrecursion/.*\.(class|clj)$")
+          (core/get-env) tgt [implp implv] #"^tailrecursion/.*\.(class|clj)$")
         (util/info "Writing %s...\n" (.getName xmlfile))
         (pod/call-worker
           `(boot.web/spit-web! ~(.getPath xmlfile) ~serve ~create ~destroy))))))

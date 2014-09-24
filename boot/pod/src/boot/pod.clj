@@ -144,20 +144,23 @@
     (.offer @shutdown-hooks f)
     (->> f Thread. (.addShutdownHook (Runtime/getRuntime)))))
 
+(defn- eval-fn-call
+  [[f & args]]
+  (when-let [ns (namespace f)] (require (symbol ns)))
+  (if-let [f (resolve f)]
+    (apply f args)
+    (throw (Exception. (format "can't resolve symbol (%s)" f)))))
+
 (defn call-in
   ([expr]
-     (let [[f & args] (read-string expr)]
-       (when-let [ns (namespace f)] (require (symbol ns)))
-       (if-let [f (resolve f)]
-         (pr-str (apply f args))
-         (throw (Exception. (format "can't resolve symbol (%s)" f))))))
+     (pr-str (eval-fn-call (read-string expr))))
   ([pod expr]
      (let [ret (.invoke pod "boot.pod/call-in" (pr-str expr))]
       (util/guard (read-string ret)))))
 
 (defn call-worker
   [expr]
-  (call-in @worker-pod expr))
+  (if @worker-pod (call-in @worker-pod expr) (eval-fn-call expr)))
 
 (defn eval-in*
   ([expr-str]
@@ -183,7 +186,7 @@
   (->> env resolve-dependencies (map (comp io/file :jar))))
 
 (defn resolve-dependency-jar
-  [env project version]
+  [env [project version]]
   (let [jarname (format "%s-%s.jar" (name project) version)]
     (->> [[project version]]
       (assoc env :dependencies)
@@ -214,11 +217,11 @@
   (call-worker `(boot.aether/jar-entries-in-dep-order ~env)))
 
 (defn copy-dependency-jar-entries
-  [env outdir project version & regexes]
+  [env outdir coord & regexes]
   (let [keep? (if-not (seq regexes)
                 (constantly true)
                 (apply some-fn (map #(partial re-find %) regexes)))
-        ents  (->> (resolve-dependency-jar env project version)
+        ents  (->> (resolve-dependency-jar env coord)
                 jar-entries
                 (filter (comp keep? first))
                 (map (fn [[k v]] [v (.getPath (io/file outdir k))])))]

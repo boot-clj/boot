@@ -27,7 +27,7 @@
 (defn transfer-listener
   [{type :type meth :method {name :name repo :repository} :resource err :error}]
   (when (and (.endsWith name ".jar") (= type :started))
-    (util/info "Retrieving %s from %s\n" name repo)))
+    (util/info "Retrieving %s from %s\n" (.getName (io/file name)) repo)))
 
 (defn ^{:boot/from :technomancy/leiningen} build-url
   "Creates java.net.URL from string"
@@ -169,3 +169,17 @@
       :pom-file    (io/file pomfile)
       :repository  [repo]
       :local-repo  (or (:local-repo env) @local-repo nil))))
+
+(def ^:private wagon-files (atom #{}))
+
+(defn add-wagon
+  [env coord & [mapping]]
+  (pod/add-dependencies (assoc env :dependencies [coord]))
+  (let [m (or mapping (locking wagon-files
+                        (->> (pod/resources "leiningen/wagons.clj")
+                          (remove (partial contains? @wagon-files))
+                          (map #(do (swap! wagon-files conj %)
+                                    (->> % io/input-stream slurp read-string)))
+                          (reduce into {}))))]
+    (doseq [[scheme factory] m]
+      (aether/register-wagon-factory! scheme (eval factory)))))
