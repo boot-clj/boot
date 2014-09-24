@@ -16,7 +16,7 @@
    [java.net URLClassLoader URL]
    java.lang.management.ManagementFactory))
 
-(declare get-env set-env! boot-env on-env! merge-env! tgt-files)
+(declare get-env set-env! boot-env on-env! merge-env! tgt-files relative-path)
 
 ;; ## Utility Functions
 ;;
@@ -162,30 +162,12 @@
 
 ;; ## Task helpers
 
-(def ^:private src-filters (atom []))
 (def ^:private consumed-files (atom #{}))
 
 (defn consume-file!
   "FIXME: document"
   [& fs]
   (swap! consumed-files into fs))
-
-(defn consume-src!
-  "Tasks use this function to declare that they \"consume\" certain files. Files
-  in staging directories which are consumed by tasks will not be synced to the 
-  `:tgt-path` at the end of the build cycle. The `filter` argument is a function
-  which will be called with the seq of artifact `java.io.File` objects from the
-  task staging directories. It should return a seq of files to be comsumed.
-
-  Example:
-
-    ;; my task
-    (deftask foo []
-      ;; consume .cljs files
-      (consume-src! (partial by-ext [\".cljs\"]))
-      ...)"
-  [filter]
-  (swap! src-filters conj filter))
 
 (defn sync!
   "When called with no arguments it triggers the syncing of directories added
@@ -198,13 +180,13 @@
   nothing."
   ([]
      (let [tgtfiles (set (tgt-files))
-           consume  #(set/difference %1 (set (%2 %1)))
-           keepers  (reduce consume tgtfiles @src-filters)
-           deletes  (set/difference tgtfiles (set keepers))]
-       (when (seq keepers)
-         (doseq [f deletes] (.delete f))
-         (doseq [f @consumed-files] (.delete f))
-         (tmp/sync! @tmpregistry))))
+           tgt      (io/file (get-env :tgt-path))]
+       (when-not (empty? tgtfiles)
+         (tmp/sync! @tmpregistry)
+         (doseq [f @consumed-files :let [g (io/file tgt (relative-path f))]]
+           (when (.exists g) (.delete g)))
+         (doseq [d (->> tgt file-seq reverse)]
+           (when (and (.isDirectory d) (not (seq (.listFiles d)))) (.delete d))))))
   ([dest & srcs]
      (apply file/sync :hash dest srcs)))
 
