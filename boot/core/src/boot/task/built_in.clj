@@ -188,7 +188,9 @@
           `(boot.repl-client/client ~cli-opts))))))
 
 (core/deftask pom
-  "Write the project's pom.xml file."
+  "Craete project pom.xml file.
+
+  The project and version must be specified to make a pom.xml."
 
   [p project SYM      sym      "The project id (eg. foo/bar)."
    v version VER      str      "The project version."
@@ -245,8 +247,9 @@
 (core/deftask uber
   "Add jar entries from dependencies to fileset.
 
-  By default, files from dependencies with the following scopes will be included
-  in the fileset: compile, runtime, and provided.
+  By default, entries from dependencies with the following scopes will be copied
+  to the fileset: compile, runtime, and provided. The exclude option may be used
+  to exclude dependencies with the given scope(s).
 
   The filters option specifies a set of regular expressions (as strings) that
   will be used to filter the jar entries. If no filters are specified, or if
