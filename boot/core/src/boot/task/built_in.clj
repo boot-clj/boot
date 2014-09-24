@@ -124,13 +124,12 @@
   [d debounce MSEC long "The time to wait (millisec) for filesystem to settle down."]
 
   (.require @pod/worker-pod (into-array String ["boot.watcher"]))
-  (let [ms   TimeUnit/MILLISECONDS
-        q    (LinkedBlockingQueue.)
-        ps   (into-array String (:src-paths (core/get-env)))
-        ps   (->> (core/get-env) :src-paths
-               (remove core/tmpfile?) (into-array String))
-        k    (.invoke @pod/worker-pod "boot.watcher/make-watcher" q ps)
-        ign? (git/make-gitignore-matcher (core/get-env :src-paths))]
+  (let [q        (LinkedBlockingQueue.)
+        srcdirs  (->> (core/get-env :src-paths) (remove core/tmpfile?))
+        watchers (map file/make-watcher srcdirs)
+        paths    (into-array String srcdirs)
+        k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)
+        ign?     (git/make-gitignore-matcher (core/get-env :src-paths))]
     (fn [continue]
       (fn [event]
         (loop [ret (util/guard [(.take q)])]
@@ -139,7 +138,9 @@
               (recur (conj ret more))
               (let [start   (System/currentTimeMillis)
                     etime   #(- (System/currentTimeMillis) start)
-                    changed (->> ret (remove (comp ign? io/file)) set)]
+                    changed (->> (map #(%) watchers)
+                              (reduce (partial merge-with set/union))
+                              :time (remove ign?) set)]
                 (when-not (empty? changed)
                   (-> event core/prep-build! (assoc ::watch changed) continue)
                   (util/info "Elapsed time: %.3f sec\n\n" (float (/ (etime) 1000))))
