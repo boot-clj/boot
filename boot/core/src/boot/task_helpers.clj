@@ -20,7 +20,7 @@
 
 (defn- version-str []
   (format "Boot Version:  %s\nDocumentation: %s"
-    (core/get-env :boot-version) "http://github.com/tailrecursion/boot"))
+    core/*boot-version* "http://github.com/tailrecursion/boot"))
 
 (defn- available-tasks [sym]
   (let [base  {nil (the-ns sym)}

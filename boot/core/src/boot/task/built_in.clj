@@ -23,27 +23,27 @@
   (core/with-pre-wrap
     (let [tasks (#'helpers/available-tasks 'boot.user)
           opts  (->> main/cli-opts (mapv (fn [[x y z]] ["" (str x " " y) z])))
-          envs  [["" "BOOT_HOME" "Directory where boot stores global state (~/.boot)."]
-                 ["" "BOOT_LOCAL_REPO" "The local Maven repo path (~/.m2/repository)."]
-                 ["" "BOOT_CLOJURE_VERSION" "The version of Clojure boot will load (1.6.0)."]]
-          files [["" "./build.boot" "The build script for this project."]
-                 ["" "$BOOT_HOME/profile.boot" "A script to run before running the build script."]]]
-      (println "asdfasdfasd")
+          envs  [["" "BOOT_HOME"               "Directory where boot stores global state (~/.boot)."]
+                 ["" "BOOT_LOCAL_REPO"         "The local Maven repo path (~/.m2/repository)."]
+                 ["" "BOOT_JVM_OPTIONS"        "Specify JVM options (Unix/Linux/OSX only)."]
+                 ["" "BOOT_CLOJURE_VERSION"    "The version of Clojure boot will provide (1.6.0)."]]
+          files [["" "./.boot"                 "Directory where boot stores local state."]
+                 ["" "./build.boot"            "The build script for this project."]
+                 ["" "$BOOT_HOME/profile.boot" "A script to run before running the build script."]]
+          br    #(conj % ["" "" ""])]
       (printf "%s\n\n" (#'helpers/version-str))
       (printf "%s\n"
-        (-> [[""       ""]
-             ["Usage:" "boot OPTS <task> TASK_OPTS <task> TASK_OPTS ..."]]
+        (-> [["" ""] ["Usage:" "boot OPTS <task> TASK_OPTS <task> TASK_OPTS ..."]]
           (table/table :style :none)
           with-out-str))
       (printf "%s\nDo `boot <task> -h` to see usage info and TASK_OPTS for <task>.\n"
         (-> [["" "" ""]]
-          (into (#'helpers/set-title (conj opts ["" "" ""]) "OPTS:"))
-          (into (#'helpers/set-title (conj (#'helpers/tasks-table tasks) ["" "" ""]) "Tasks:"))
-          (into (#'helpers/set-title (conj envs ["" "" ""]) "Env:"))
+          (into (#'helpers/set-title opts "OPTS:")) (br)
+          (into (#'helpers/set-title (#'helpers/tasks-table tasks) "Tasks:")) (br)
+          (into (#'helpers/set-title envs "Env:")) (br)
           (into (#'helpers/set-title files "Files:"))
           (table/table :style :none)
-          with-out-str)
-        ))))
+          with-out-str)))))
 
 (core/deftask speak
   "Audible notifications during build.

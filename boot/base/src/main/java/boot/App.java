@@ -42,11 +42,6 @@ public class App {
         public Exit(String m) { super(m); }
         public Exit(String m, Throwable c) { super(m, c); }}
     
-    private static FileLock
-    getLock(File f) throws Exception {
-        File lockfile = new File(f.getPath() + ".lock");
-        return (new RandomAccessFile(lockfile, "rw")).getChannel().lock(); }
-
     private static HashMap<String, File[]>
     seedCache() throws Exception {
         if (depsCache != null) return depsCache;
@@ -79,7 +74,7 @@ public class App {
     
     private static Object
     readCache(File f) throws Exception {
-        FileLock lock = getLock(f);
+        FileLock lock = (new RandomAccessFile(f, "rw")).getChannel().lock();
         try {
             long max = 18 * 60 * 60 * 1000;
             long age = System.currentTimeMillis() - f.lastModified();

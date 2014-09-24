@@ -71,6 +71,9 @@
 ;; _These functions are used internally by boot and are not part of the public
 ;; API._
 
+(declare ^{:dynamic true :doc "The running version of boot."} *boot-version*)
+(declare ^{:dynamic true :doc "Command line options for boot itself."} *boot-opts*)
+
 (def boot-env
   "Atom containing environment key/value pairs. Do not manipulate this atom
   directly. Use `set-env!` (below) instead."

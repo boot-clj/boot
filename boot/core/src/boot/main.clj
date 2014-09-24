@@ -9,9 +9,6 @@
    [boot.tmpregistry            :as tmp]
    [boot.from.clojure.tools.cli :as cli]))
 
-(def boot-version
-  (str (boot.App/getVersion) "-" (boot.App/getRelease)))
-
 (def cli-opts
   [
    ["-b" "--boot-script"         "Print generated boot script for debugging."]
@@ -60,6 +57,7 @@
   (reset! pod/pod-id pod-id)
   (reset! pod/worker-pod worker-pod)
   (reset! pod/shutdown-hooks shutdown-hooks)
+
   (let [dotboot?         #(.endsWith (.getName (io/file %)) ".boot")
         script?          #(when (and % (.isFile (io/file %)) (dotboot? %)) %)
         bootscript       (io/file "build.boot")
@@ -75,7 +73,9 @@
         (println (apply str (interpose "\n" errs)))))
 
     (binding [*out* (util/auto-flush *out*)
-              *err* (util/auto-flush *err*)]
+              *err* (util/auto-flush *err*)
+              core/*boot-opts* opts
+              core/*boot-version* (str (boot.App/getVersion) "-" (boot.App/getRelease))]
       (util/exit-ok
         (let [userscript  (script? (io/file (boot.App/getBootDir) "profile.boot"))
               profile?    (not (:no-profile opts))
@@ -86,15 +86,12 @@
 
           (swap! util/verbose-exceptions + (or (:verbose opts) 0))
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
-          (when (:version opts) (util/exit-ok (println boot-version)))
+          (when (:version opts) (util/exit-ok (println core/*boot-version*)))
 
           (reset! (var-get #'core/tmpregistry)
             (tmp/init! (tmp/registry (io/file ".boot" "tmp"))))
 
-          (#'core/init!
-            :boot-version boot-version
-            :boot-options opts
-            :default-task 'boot.task.built-in/help)
+          (#'core/init!)
 
           (let [tmpf (.getPath (file/tmpfile "boot.user" ".clj"))]
             (core/set-env! :boot-user-ns-file tmpf)
