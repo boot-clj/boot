@@ -13,6 +13,9 @@
    [boot.task-helpers        :as helpers]
    [boot.from.table.core     :as table])
   (:import
+   [java.io File]
+   [java.util Arrays]
+   [javax.tools ToolProvider DiagnosticCollector Diagnostic$Kind]
    [java.util.concurrent LinkedBlockingQueue TimeUnit]))
 
 ;; Tasks ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -323,6 +326,39 @@
           (doseq [ns nses]
             (util/info "Compiling %s...\n" ns)
             (compile ns)))))))
+
+(core/deftask javac
+  "Compile java sources."
+  []
+  (let [tgt (core/mktgtdir! ::javac-tgt)]
+    (core/with-pre-wrap
+      (let [throw?    (atom nil)
+            diag-coll (DiagnosticCollector.)
+            compiler  (ToolProvider/getSystemJavaCompiler)
+            file-mgr  (.getStandardFileManager compiler diag-coll nil nil)
+            opts      (->> ["-d" (.getPath tgt)] (into-array String) Arrays/asList)
+            handler   {Diagnostic$Kind/ERROR util/fail
+                       Diagnostic$Kind/WARNING util/warn
+                       Diagnostic$Kind/MANDATORY_WARNING util/warn}
+            srcs      (some->> (core/src-files)
+                        (core/by-ext [".java"])
+                        seq
+                        (into-array File)
+                        Arrays/asList
+                        (.getJavaFileObjectsFromFiles file-mgr))]
+        (when srcs
+          (util/info "Compiling Java classes...\n")
+          (-> compiler (.getTask *err* file-mgr diag-coll opts nil srcs) .call)
+          (doseq [d (.getDiagnostics diag-coll) :let [k (.getKind d)]]
+            (when (= Diagnostic$Kind/ERROR k) (reset! throw? true))
+            ((handler k util/info)
+              "%s: %s, line %d: %s\n"
+              (.toString k)
+              (.. d getSource getName)
+              (.getLineNumber d)
+              (.getMessage d nil)))
+          (.close file-mgr)
+          (when @throw? (throw (Exception. "java compiler error"))))))))
 
 (core/deftask jar
   "Build a jar file for the project."
