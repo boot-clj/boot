@@ -82,7 +82,10 @@
               bootforms   (some->> arg0 slurp util/read-string-all)
               userforms   (when profile? (some->> userscript slurp util/read-string-all))
               scriptforms (emit boot? args userforms bootforms)
-              scriptstr   (str (string/join "\n\n" (map pr-str scriptforms)) "\n")]
+              scriptstr   (str (string/join "\n\n" (map pr-str scriptforms)) "\n")
+              initial-env (->> [:src-paths :tgt-path :dependencies]
+                             (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
+                             (merge {} (:set-env opts)))]
 
           (swap! util/verbose-exceptions + (or (:verbose opts) 0))
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
@@ -94,10 +97,8 @@
           (#'core/init!)
 
           (let [tmpf (.getPath (file/tmpfile "boot.user" ".clj"))]
-            (core/set-env! :boot-user-ns-file tmpf)
-            (doseq [[k v] (:set-env opts)] (core/set-env! k v))
-            (doseq [k [:src-paths :tgt-path :dependencies]]
-              (when-let [v (opts k)] (core/set-env! k v)))
+            (pod/call-worker `(boot.aether/load-wagon-mappings))
+            (apply core/set-env! (->> initial-env (mapcat identity) seq))
             (try (doto tmpf (spit scriptstr) (load-file))
                  (catch clojure.lang.Compiler$CompilerException cx
                    (let [l (.-line cx)

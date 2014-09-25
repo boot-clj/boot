@@ -90,21 +90,21 @@
               `(boot.notify/failure! ~theme ~failure))
             (throw t)))))))
 
-(core/deftask print-deps
+(core/deftask pr-deps
   "Print the project's dependency graph."
   []
   (core/with-pre-wrap
     (print (pod/call-worker `(boot.aether/dep-tree ~(core/get-env))))))
 
-(core/deftask print-env
+(core/deftask pr-env
   "Print the boot environment map."
   []
-  (core/with-pre-wrap (prn (core/get-env))))
+  (core/with-pre-wrap (println (util/pr-color-str (core/get-env)))))
 
-(core/deftask print-event
+(core/deftask pr-event
   "Print the event map."
   []
-  (core/with-pre-wrap (prn core/*event*)))
+  (core/with-pre-wrap (println (util/pr-color-str core/*event*))))
 
 (core/deftask wait
   "Wait before calling the next handler.

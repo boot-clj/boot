@@ -3,6 +3,7 @@
    [clojure.java.io              :as io]
    [clojure.set                  :as set]
    [clojure.pprint               :as pprint]
+   [boot.from.io.aviso.ansi      :as ansi]
    [boot.from.io.aviso.repl      :as repl]
    [boot.from.io.aviso.exception :as pretty])
   (:import
@@ -77,6 +78,20 @@
     1 (pretty/write-exception *err* ex
         {:properties true :filter repl/standard-frame-filter})
     (pretty/write-exception *err* ex {:properties true})))
+
+(defn pr-color-str
+  [form]
+  (cond
+    (symbol?  form) (ansi/bold-white (pr-str form))
+    (keyword? form) (ansi/yellow (pr-str form))
+    (string?  form) (ansi/green (pr-str form))
+    (char?    form) (ansi/red (pr-str form))
+    (number?  form) (ansi/cyan (pr-str form))
+    (seq?     form) (str "(" (apply str (interpose " " (map pr-color-str form))) ")")
+    (vector?  form) (str "[" (apply str (interpose " " (map pr-color-str form))) "]")
+    (set?     form) (str "#{" (apply str (interpose " " (map pr-color-str form))) "}")
+    (map?     form) (str "{" (apply str (interpose " " (map pr-color-str (mapcat identity form)))) "}")
+    :else (pr-str form)))
 
 (defn auto-flush
   [writer]

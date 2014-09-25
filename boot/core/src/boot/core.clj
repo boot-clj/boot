@@ -52,6 +52,18 @@
           n (get new k ::noval)]
       (if (not= o n) (on-env! k o n new)))))
 
+(defn- add-wagon!
+  "FIXME: document this."
+  ([maven-coord scheme-map]
+     (add-wagon! nil [maven-coord] (get-env) scheme-map))
+  ([old new env]
+     (add-wagon! old new env nil))
+  ([old new env scheme-map]
+     (doseq [maven-coord new]
+       (pod/call-worker
+         `(boot.aether/add-wagon ~env ~maven-coord ~scheme-map)))
+     new))
+
 (defn- order-set-env-keys
   [kvs]
   (let [dk :dependencies]
@@ -103,6 +115,7 @@
 (defmethod merge-env! ::default     [key old new env] new)
 (defmethod merge-env! :src-paths    [key old new env] (into (or old #{}) new))
 (defmethod merge-env! :dependencies [key old new env] (add-dependencies! old new env))
+(defmethod merge-env! :wagons       [key old new env] (add-wagon! old new env))
 
 ;; ## Boot API Functions
 ;;
@@ -143,12 +156,6 @@
   "
   [dst & [srcs]]
   (tmp/add-sync! @tmpregistry dst srcs))
-
-(defn add-wagon!
-  "FIXME: document this."
-  [maven-coord & [scheme-map]]
-  (pod/call-worker
-    `(boot.aether/add-wagon ~(get-env) ~maven-coord ~scheme-map)))
 
 ;; ## Task helpers – managed temp files
 

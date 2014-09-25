@@ -4,6 +4,7 @@
   :dependencies [[org.clojure/clojure                   "1.6.0"          :scope "provided"]
                  [boot/base                             "2.0.0-SNAPSHOT" :scope "provided"]
                  [boot/aether                           "2.0.0-SNAPSHOT" :scope "compile"]
+                 [s3-wagon-private                      "1.1.2"          :scope "compile"]
                  [net.java.dev.jna/jna                  "4.1.0"          :scope "compile"]
                  [reply                                 "0.3.4"          :scope "compile"]
                  [alandipert/desiderata                 "1.0.2"          :scope "compile"]

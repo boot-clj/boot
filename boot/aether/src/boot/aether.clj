@@ -5,6 +5,7 @@
    [cemerick.pomegranate.aether :as aether]
    [boot.util                   :as util]
    [boot.pod                    :as pod]
+   [boot.from.io.aviso.ansi     :as ansi]
    [boot.kahnsort               :as ksort])
   (:import
    [java.io File]
@@ -129,8 +130,9 @@
   [tree & [prefixes]]
   (loop [[[coord branch] & more] (seq tree)]
     (when coord
-      (let [pfx (cond (not prefixes) "" (seq more) "├── " :else "└── ")]
-        (println (str (apply str prefixes) pfx coord)))
+      (let [pfx (cond (not prefixes) "" (seq more) "├── " :else "└── ")
+            pfx (ansi/blue (str (apply str prefixes) pfx))]
+        (println (str pfx (util/pr-color-str coord))))
       (when branch
         (let [pfx (cond (not prefixes) "" (seq more) "│   " :else "    ")]
           (print-tree branch (concat prefixes (list pfx)))))
@@ -172,14 +174,19 @@
 
 (def ^:private wagon-files (atom #{}))
 
+(defn load-wagon-mappings
+  [& [mapping]]
+  (locking wagon-files
+    (->> (pod/resources "leiningen/wagons.clj")
+      (remove (partial contains? @wagon-files))
+      (map #(do (swap! wagon-files conj %)
+                (->> % io/input-stream slurp read-string)))
+      (reduce into {})
+      (mapv (fn [[k v]] (aether/register-wagon-factory! k (eval v))))))
+  (doseq [[scheme factory] mapping]
+    (aether/register-wagon-factory! scheme (eval factory))))
+
 (defn add-wagon
   [env coord & [mapping]]
   (pod/add-dependencies (assoc env :dependencies [coord]))
-  (let [m (or mapping (locking wagon-files
-                        (->> (pod/resources "leiningen/wagons.clj")
-                          (remove (partial contains? @wagon-files))
-                          (map #(do (swap! wagon-files conj %)
-                                    (->> % io/input-stream slurp read-string)))
-                          (reduce into {}))))]
-    (doseq [[scheme factory] m]
-      (aether/register-wagon-factory! scheme (eval factory)))))
+  (load-wagon-mappings mapping))
