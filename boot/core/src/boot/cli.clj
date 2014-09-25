@@ -133,6 +133,14 @@
   (let [cli-args (mapv (partial apply argspec->cli-argspec) argspecs)]
     (:summary (cli/parse-opts [] cli-args))))
 
+(defn split-args [args]
+  (loop [kw {} cli [] [arg & more] args]
+    (if-not arg
+      {:kw kw :cli cli}
+      (if-not (keyword? arg)
+        (recur kw (conj cli arg) more)
+        (recur (assoc kw arg (first more)) cli (rest more))))))
+
 (defmacro clifn [doc argspecs & body]
   (assert (string? doc) "missing docstring")
   (let [doc      (string/replace doc #"\n  " "\n")
@@ -146,10 +154,10 @@
         varmeta  {:doc clj-doc :arglists arglists :argspec cli-args}]
     `(->
        (fn [& args#]
-         (let [cli?#     (every? string? args#)
-               parsed#   (when cli?# (cli/parse-opts args# ~cli-args))
-               ~bindings (if-not cli?# args# (:options parsed#))
-               ~'*args*  (when cli?# (:arguments parsed#))]
+         (let [{kws# :kw clis# :cli} (split-args args#)
+               parsed#   (cli/parse-opts clis# ~cli-args)
+               ~bindings (merge kws# (:options parsed#))
+               ~'*args*  (:arguments parsed#)]
            ~@(mapv (partial apply argspec->assert) argspecs)
            (if-not ~'help (do ~@body) (print ~cli-doc))))
        (with-meta ~varmeta))))

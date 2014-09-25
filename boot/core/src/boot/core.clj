@@ -261,11 +261,10 @@
         (when-not (and op (:boot.core/task (meta op)))
           (throw (IllegalArgumentException. (format "No such task (%s)" op-str))))
         (let [spec   (:argspec (meta op))
-              parsed (cli/parse-opts args spec :in-order true)
-              opts   (->> parsed :options (mapcat identity))]
+              parsed (cli/parse-opts args spec :in-order true)]
           (when (seq (:errors parsed))
             (throw (IllegalArgumentException. (string/join "\n" (:errors parsed)))))
-          (recur (conj ret (apply (var-get op) opts)) (:arguments parsed)))))))
+          (recur (conj ret (apply (var-get op) args)) (:arguments parsed)))))))
 
 (def ^:dynamic *warnings* nil)
 
