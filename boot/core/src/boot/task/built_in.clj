@@ -123,7 +123,7 @@
 
   [d debounce MSEC long "The time to wait (millisec) for filesystem to settle down."]
 
-  (.require @pod/worker-pod (into-array String ["boot.watcher"]))
+  (pod/require-in-pod @pod/worker-pod "boot.watcher")
   (let [q        (LinkedBlockingQueue.)
         srcdirs  (->> (core/get-env :src-paths) (remove core/tmpfile?))
         watchers (map file/make-watcher srcdirs)

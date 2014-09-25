@@ -134,9 +134,13 @@
               out (io/output-stream (doto (io/file out-path) io/make-parents))]
     (io/copy in out)))
 
-(def  pod-id                 (atom nil))
-(def  worker-pod             (atom nil))
-(def  shutdown-hooks         (atom nil))
+(def  pod-id         (atom nil))
+(def  worker-pod     (atom nil))
+(def  shutdown-hooks (atom nil))
+
+(defn set-worker-pod!
+  [pod]
+  (reset! worker-pod pod))
 
 (defn add-shutdown-hook!
   [f]
@@ -176,6 +180,10 @@
 (defmacro eval-worker
   [& body]
   `(eval-in @worker-pod ~@body))
+
+(defn require-in-pod
+  [pod ns]
+  (doto pod (.require (into-array String [(str ns)]))))
 
 (defn resolve-dependencies
   [env]
@@ -227,9 +235,16 @@
                 (map (fn [[k v]] [v (.getPath (io/file outdir k))])))]
     (doseq [[url-str out-path] ents] (copy-url url-str out-path))))
 
+(defn- set-this-worker-in-pod!
+  [pod]
+  (doto pod
+    (require-in-pod "boot.pod")
+    (.invoke "boot.pod/set-worker-pod!" @worker-pod)))
+
 (defn make-pod
-  ([] (boot.App/newPod))
+  ([] (set-this-worker-in-pod! (boot.App/newPod)))
   ([{:keys [src-paths] :as env}]
      (let [dirs (map io/file src-paths)
            jars (resolve-dependency-jars env)]
-       (->> (concat dirs jars) (into-array java.io.File) (boot.App/newPod)))))
+       (set-this-worker-in-pod!
+         (->> (concat dirs jars) (into-array java.io.File) (boot.App/newPod))))))
