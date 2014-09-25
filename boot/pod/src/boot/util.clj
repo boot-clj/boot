@@ -3,6 +3,8 @@
    [clojure.java.io              :as io]
    [clojure.set                  :as set]
    [clojure.pprint               :as pprint]
+   [clojure.string               :as string]
+   [boot.file                    :as file]
    [boot.from.io.aviso.ansi      :as ansi]
    [boot.from.io.aviso.repl      :as repl]
    [boot.from.io.aviso.exception :as pretty])
@@ -92,6 +94,11 @@
     (set?     form) (str "#{" (apply str (interpose " " (map pr-color-str form))) "}")
     (map?     form) (str "{" (apply str (interpose " " (map pr-color-str (mapcat identity form)))) "}")
     :else (pr-str form)))
+
+(defn path->ns
+  [path]
+  (-> path file/split-path (#(string/join "." %))
+    (.replace \_ \-) (.replaceAll "\\.clj$" "") symbol))
 
 (defn auto-flush
   [writer]

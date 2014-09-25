@@ -11,8 +11,7 @@
    [boot.util                :as util]
    [boot.gitignore           :as git]
    [boot.task-helpers        :as helpers]
-   [boot.from.table.core     :as table]
-   [boot.from.bultitude.core :as btude])
+   [boot.from.table.core     :as table])
   (:import
    [java.util.concurrent LinkedBlockingQueue TimeUnit]))
 
@@ -315,10 +314,11 @@
   
   (let [tgt (core/mktgtdir! ::aot-tgt)]
     (core/with-pre-wrap
-      (let [nses (if-not all
-                   namespace
-                   (->> (core/get-env :src-paths) (map io/file)
-                     (btude/namespaces-on-classpath :classpath)))]
+      (let [nses (->> (core/src-files)
+                   (map core/relative-path)
+                   (filter #(.endsWith % ".clj"))
+                   (map util/path->ns)
+                   (filter (if all (constantly true) #(contains? namespace %))))]
         (binding [*compile-path* (.getPath tgt)]
           (doseq [ns nses]
             (util/info "Compiling %s...\n" ns)
