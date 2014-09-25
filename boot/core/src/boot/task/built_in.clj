@@ -1,17 +1,18 @@
 (ns boot.task.built-in
   (:require
-   [clojure.java.io      :as io]
-   [clojure.set          :as set]
-   [clojure.pprint       :as pprint]
-   [clojure.string       :as string]
-   [boot.pod             :as pod]
-   [boot.file            :as file]
-   [boot.core            :as core]
-   [boot.main            :as main]
-   [boot.util            :as util]
-   [boot.gitignore       :as git]
-   [boot.task-helpers    :as helpers]
-   [boot.from.table.core :as table])
+   [clojure.java.io          :as io]
+   [clojure.set              :as set]
+   [clojure.pprint           :as pprint]
+   [clojure.string           :as string]
+   [boot.pod                 :as pod]
+   [boot.file                :as file]
+   [boot.core                :as core]
+   [boot.main                :as main]
+   [boot.util                :as util]
+   [boot.gitignore           :as git]
+   [boot.task-helpers        :as helpers]
+   [boot.from.table.core     :as table]
+   [boot.from.bultitude.core :as btude])
   (:import
    [java.util.concurrent LinkedBlockingQueue TimeUnit]))
 
@@ -305,6 +306,23 @@
         (util/info "Writing %s...\n" (.getName xmlfile))
         (pod/call-worker
           `(boot.web/spit-web! ~(.getPath xmlfile) ~serve ~create ~destroy))))))
+
+(core/deftask aot
+  "Perform AOT compilation of Clojure namespaces."
+  
+  [a all          bool   "Compile all namespaces."
+   n namespace NS #{sym} "The set of namespaces to compile."]
+  
+  (let [tgt (core/mktgtdir! ::aot-tgt)]
+    (core/with-pre-wrap
+      (let [nses (if-not all
+                   namespace
+                   (->> (core/get-env :src-paths) (map io/file)
+                     (btude/namespaces-on-classpath :classpath)))]
+        (binding [*compile-path* (.getPath tgt)]
+          (doseq [ns nses]
+            (util/info "Compiling %s...\n" ns)
+            (compile ns)))))))
 
 (core/deftask jar
   "Build a jar file for the project."

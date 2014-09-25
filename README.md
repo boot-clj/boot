@@ -376,6 +376,7 @@ pulled in code from the following projects (thanks, guys!)
 * [technomancy/leiningen][50]
 * [cemerick/pomegranate][51]
 * [Raynes/conch][52]
+* [Raynes/bultitude][60]
 * [tebeka/clj-digest][53]
 * [cldwalker/table][54]
 * [clojure/tools.cli][55]
@@ -415,3 +416,4 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [57]: https://github.com/AvisoNovate/pretty
 [58]: https://github.com/google/hesokuri
 [59]: https://code.google.com/p/barbarywatchservice/
+[60]: https://github.com/Raynes/bultitude
