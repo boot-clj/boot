@@ -220,35 +220,37 @@
 (core/deftask add-dir
   "Add files in resource directories to fileset.
 
-  The filters option specifies a set of regular expressions (as strings) that
-  will be used to filter the resource files. If no filters are specified, or if
-  any of the filter regexes match the path of the resource file relative to the
-  resource dir, then the file is added to the fileset."
+  The include and exclude options specify sets of regular expressions (strings)
+  that will be used to filter the source files. If no filters are specified then
+  all files are added to the fileset."
 
   [d dirs PATH     #{str} "The set of resource directories."
-   f filters REGEX #{str} "The set of regular expressions to match against."]
+   i include REGEX #{str} "The set of regexes that paths must match."
+   x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
   (let [tgt (core/mktgtdir! ::add-dir-tgt)]
     (core/with-pre-wrap
       (util/info "Adding resource directories...\n")
-      (binding [file/*filters* (mapv re-pattern filters)]
+      (binding [file/*include* (mapv re-pattern include)
+                file/*exclude* (mapv re-pattern exclude)]
         (apply file/sync :time tgt dirs)))))
 
 (core/deftask add-src
   "Add source files to fileset.
 
-  The filters option specifies a set of regular expressions (as strings) that
-  will be used to filter the source files. If no filters are specified, or if
-  any of the filter regexes match the path of the source file relative to its
-  source dir, then the file is added to the fileset."
+  The include and exclude options specify sets of regular expressions (strings)
+  that will be used to filter the source files. If no filters are specified then
+  all files are added to the fileset."
 
-  [f filters REGEX #{str} "The set of regular expressions to match against."]
+  [i include REGEX #{str} "The set of regexes that paths must match."
+   x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
   (let [tgt (core/mktgtdir! ::add-srcs-tgt)]
     (core/with-pre-wrap
       (when-let [dirs (seq (remove core/tmpfile? (core/get-env :src-paths)))]
         (util/info "Adding src files...\n")
-        (binding [file/*filters* (mapv re-pattern filters)]
+        (binding [file/*include* (mapv re-pattern include)
+                  file/*exclude* (mapv re-pattern exclude)]
           (apply file/sync :time tgt dirs))))))
 
 (core/deftask uber
@@ -258,28 +260,27 @@
   to the fileset: compile, runtime, and provided. The exclude option may be used
   to exclude dependencies with the given scope(s).
 
-  The filters option specifies a set of regular expressions (as strings) that
-  will be used to filter the jar entries. If no filters are specified, or if
-  any of the filter regexes match the path of the jar entry, then the entry is
-  added to the fileset."
+  The include and exclude options specify sets of regular expressions (strings)
+  that will be used to filter the entries. If no filters are specified then all
+  entries are added to the fileset."
 
-  [x exclude-scope SCOPE #{str} "The set of excluded scopes."
-   f filters REGEX       #{str} "The set of regular expressions to match against."]
+  [S exclude-scope SCOPE #{str} "The set of excluded scopes."
+   i include REGEX       #{str} "The set of regexes that paths must match."
+   x exclude REGEX       #{str} "The set of regexes that paths must not match."]
 
   (let [tgt        (core/mktgtdir! ::uber-tgt)
         dfl-scopes #{"compile" "runtime" "provided"}
         scopes     (set/difference dfl-scopes exclude-scope)
-        filters    (map re-pattern filters)
-        keep?      (when (seq filters)
-                     (apply some-fn (map (partial partial re-find) filters)))]
+        include    (map re-pattern include)
+        exclude    (map re-pattern exclude)]
     (core/with-pre-wrap
       (let [scope? #(contains? scopes (:scope (util/dep-as-map %)))
             urls   (-> (core/get-env)
                      (update-in [:dependencies] (partial filter scope?))
                      pod/jar-entries-in-dep-order)]
         (util/info "Adding uberjar entries...\n")
-        (doseq [[relpath url-str] urls]
-          (when (or (empty? filters) (keep? relpath))
+        (doseq [[relpath url-str] urls :let [f (io/file relpath)]]
+          (when (file/keep-filters? include exclude f)
             (let [segs    (file/split-path relpath)
                   outfile (apply io/file tgt segs)]
               (when-not (or (.exists outfile) (= "META-INF" (first segs)))

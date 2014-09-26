@@ -83,7 +83,8 @@
 (defn select-keys-by [m pred?]
   (select-keys m (filter pred? (keys m))))
 
-(def ^:dynamic *filters* nil)
+(def ^:dynamic *include* nil)
+(def ^:dynamic *exclude* nil)
 
 (defn dir-set 
   ([dir] 
@@ -126,15 +127,20 @@
         rm (map #(vector :rm (file dst %)) to-rm)]
     (concat cp rm)))
 
+(defn match-filter?
+  [filters f]
+  ((apply some-fn (map (partial partial re-find) filters)) (.getPath f)))
+
 (defn keep-filters?
-  [f]
-  (or (empty? *filters*)
-    ((apply some-fn (map (partial partial re-find) *filters*)) (.getPath f))))
+  [include exclude f]
+  (and
+    (or (empty? include) (match-filter? include f))
+    (or (empty? exclude) (not (match-filter? exclude f)))))
 
 (defn sync*
   [ops]
   (let [opfn {:rm #(.delete (nth % 1))
-              :cp #(when (keep-filters? (nth % 2))
+              :cp #(when (keep-filters? *include* *exclude* (nth % 2))
                      (copy-with-lastmod (nth % 1) (nth % 2)))}]
     (doseq [[op s d :as cmd] ops] ((opfn op) cmd))))
 
