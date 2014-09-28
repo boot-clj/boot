@@ -130,9 +130,9 @@
   [tree & [prefixes]]
   (loop [[[coord branch] & more] (seq tree)]
     (when coord
-      (let [pfx (cond (not prefixes) "" (seq more) "├── " :else "└── ")
-            pfx (ansi/blue (str (apply str prefixes) pfx))]
-        (println (str pfx (util/pr-color-str coord))))
+      (let [pfx      (cond (not prefixes) "" (seq more) "├── " :else "└── ")
+            pfx      (ansi/blue (str (apply str prefixes) pfx))]
+        (println (str pfx (->> coord pr-str rest butlast (apply str)))))
       (when branch
         (let [pfx (cond (not prefixes) "" (seq more) "│   " :else "    ")]
           (print-tree branch (concat prefixes (list pfx)))))

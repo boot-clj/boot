@@ -96,20 +96,17 @@
               `(boot.notify/failure! ~theme ~failure))
             (throw t)))))))
 
-(core/deftask info
-  "Print various info about the project/build."
+(core/deftask show
+  "Print project/build info (e.g. dependency graph, etc)."
 
   [d deps  bool "Print project dependency graph."
    e env   bool "Print the boot env map."
    E event bool "Print the build event data."]
 
   (core/with-pre-wrap
-    (when deps
-      (print (pod/call-worker `(boot.aether/dep-tree ~(core/get-env)))))
-    (when env
-      (core/with-pre-wrap (println (util/pr-color-str (core/get-env)))))
-    (when event
-      (core/with-pre-wrap (println (util/pr-color-str core/*event*))))))
+    (when deps  (print (pod/call-worker `(boot.aether/dep-tree ~(core/get-env)))))
+    (when env   (println (pr-str (core/get-env))))
+    (when event (println (pr-str core/*event*)))))
 
 (core/deftask wait
   "Wait before calling the next handler.
@@ -205,7 +202,7 @@
    l license KEY=VAL  {kw str} "The project license map (KEY in name, url)."
    s scm KEY=VAL      {kw str} "The project scm map (KEY in url, tag)."]
 
-  (let [tgt  (core/mktgtdir! ::pom-tgt)
+  (let [tgt  (core/mktgtdir!)
         opts (assoc *opts* :dependencies (:dependencies (core/get-env)))]
     (core/with-pre-wrap
       (when-not (and project version)
@@ -230,7 +227,7 @@
    i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt (core/mktgtdir! ::add-dir-tgt)]
+  (let [tgt (core/mktgtdir!)]
     (core/with-pre-wrap
       (util/info "Adding resource directories...\n")
       (binding [file/*include* (mapv re-pattern include)
@@ -247,7 +244,7 @@
   [i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt (core/mktgtdir! ::add-srcs-tgt)]
+  (let [tgt (core/mktgtdir!)]
     (core/with-pre-wrap
       (when-let [dirs (seq (remove core/tmpfile? (core/get-env :src-paths)))]
         (util/info "Adding src files...\n")
@@ -270,7 +267,7 @@
    i include REGEX       #{str} "The set of regexes that paths must match."
    x exclude REGEX       #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt        (core/mktgtdir! ::uber-tgt)
+  (let [tgt        (core/mktgtdir!)
         dfl-scopes #{"compile" "runtime" "provided"}
         scopes     (set/difference dfl-scopes exclude-scope)
         include    (map re-pattern include)
@@ -297,7 +294,7 @@
    c create SYM       sym "The 'create' callback function."
    d destroy SYM      sym "The 'destroy' callback function."]
 
-  (let [tgt      (core/mktgtdir! ::web-tgt)
+  (let [tgt      (core/mktgtdir!)
         xmlfile  (io/file tgt "WEB-INF" "web.xml")
         implp    'tailrecursion/clojure-adapter-servlet
         implv    "0.1.0-SNAPSHOT"]
@@ -318,7 +315,7 @@
   [a all          bool   "Compile all namespaces."
    n namespace NS #{sym} "The set of namespaces to compile."]
   
-  (let [tgt (core/mktgtdir! ::aot-tgt)]
+  (let [tgt (core/mktgtdir!)]
     (core/with-pre-wrap
       (let [nses (->> (core/src-files)
                    (map core/relative-path)
@@ -333,7 +330,7 @@
 (core/deftask javac
   "Compile java sources."
   []
-  (let [tgt (core/mktgtdir! ::javac-tgt)]
+  (let [tgt (core/mktgtdir!)]
     (core/with-pre-wrap
       (let [throw?    (atom nil)
             diag-coll (DiagnosticCollector.)
@@ -370,7 +367,7 @@
    M manifest KEY=VAL {str str} "The jar manifest map."
    m main MAIN        sym       "The namespace containing the -main function."]
 
-  (let [tgt (core/mktgtdir! ::jar-tgt)]
+  (let [tgt (core/mktgtdir!)]
     (core/with-pre-wrap
       (let [pomprop (->> (core/tgt-files) (core/by-name ["pom.properties"]) first)
             [aid v] (some->> pomprop pod/pom-properties-map ((juxt :artifact-id :version)))
@@ -389,7 +386,7 @@
 
   [f file PATH str "The target war file."]
 
-  (let [tgt (core/mktgtdir! ::war-tgt)]
+  (let [tgt (core/mktgtdir!)]
     (core/with-pre-wrap
       (let [warname (or file "project.war")
             warfile (io/file tgt warname)]

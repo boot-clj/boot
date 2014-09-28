@@ -39,7 +39,7 @@
 
 (defn emit [boot? argv userscript bootscript]
   `(~'(ns boot.user
-        (:require [boot.task.built-in :as b]))
+        (:use boot.core boot.util boot.repl boot.task.built-in))
     ~@(when userscript (with-comments "profile" userscript))
     ~@(with-comments "boot script" bootscript)
     (let [boot?# ~boot?]

@@ -213,11 +213,11 @@
 (defn mktgtdir!
   "Create a tempdir managed by boot into which tasks can emit artifacts. See
   https://github.com/tailrecursion/boot#boot-managed-directories for more info."
-  [key]
-  (util/with-let [f (mktmpdir! key)]
-    (swap! tgtdirs conj f)
-    (set-env! :src-paths #{(.getPath f)})
-    (add-sync! (get-env :tgt-path) [(.getPath f)])))
+  ([] (mktgtdir! (keyword (str (gensym)))))
+  ([key] (util/with-let [f (mktmpdir! key)]
+           (swap! tgtdirs conj f)
+           (set-env! :src-paths #{(.getPath f)})
+           (add-sync! (get-env :tgt-path) [(.getPath f)]))))
 
 (defn mksrcdir!
   "Create a tmpdir managed by boot into which tasks can emit artifacts which
