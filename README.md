@@ -41,7 +41,7 @@ Turing-complete build specification.
 * Compose build pipelines in the project, in the build script, in the REPL, or
   on the command line.
 * Artifacts can never be stale–there is no need for a `clean` task.
-* Boot itself is "evergreen" (auto-updating) so it will never be out of date.
+* ~~Boot itself is "evergreen" (auto-updating) so it will never be out of date.~~
 
 ## Install
 

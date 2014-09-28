@@ -65,6 +65,7 @@ $(bootexe): $(baseuber)
 	@if [ -z $$RUNNING_IN_CI ] && which launch4j; then \
 		launch4j launch4j-config.xml; \
 		echo "*** Created boot executable: $(bootexe) ***"; \
+		[ -e $(bootexe) ] && touch $(bootexe); \
 	else true; fi
 
 .installed: $(basejar) $(alljars) $(bootbin) $(bootexe)
