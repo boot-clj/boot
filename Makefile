@@ -1,7 +1,6 @@
 .PHONY: help install deploy test clean basejar
 
 version    = $(shell grep ^version version.properties |sed 's/.*=//')
-bootjar    = $(PWD)/bin/boot2
 bootbin    = $(PWD)/bin/boot.sh
 bootexe    = $(PWD)/bin/boot.exe
 bootjarurl = https://github.com/tailrecursion/boot/releases/download/p1/boot
@@ -13,7 +12,7 @@ workerjar  = boot/worker/target/worker-$(version).jar
 corejar    = boot/core/target/core-$(version).jar
 basejar    = boot/base/target/base-$(version).jar
 baseuber   = boot/base/target/base-$(version)-jar-with-dependencies.jar
-alljars    = $(podjar) $(aetherjar) $(workerjar) $(corejar) $(baseuber)
+alljars    = $(podjar) $(aetherjar) $(workerjar) $(corejar) $(baseuber) $(bootjar)
 
 help:
 	@echo "version =" $(version)
@@ -30,6 +29,9 @@ bin/lein:
 	mkdir -p bin
 	wget https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein -O bin/lein
 	chmod 755 bin/lein
+
+$(bootjar): boot/boot/project.clj
+	(cd boot/boot && lein install)
 
 $(basejar): boot/base/pom.in.xml $(shell find boot/base/src/main/java)
 	(cd boot/base && cat pom.in.xml |sed 's/__VERSION__/$(version)/' > pom.xml && mvn -q install)
@@ -55,11 +57,7 @@ $(baseuber): $(basejar) $(shell find boot/base/src/main)
 
 $(bootbin): $(baseuber)
 	mkdir -p bin
-	echo '#!/usr/bin/env bash' > $(bootbin)
-	echo 'DFL_OPTS="-client -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xmx2g -XX:MaxPermSize=128m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"' >> $(bootbin)
-	echo 'java $${BOOT_JVM_OPTIONS:-$$DFL_OPTS} -jar $$0 "$$@"' >> $(bootbin)
-	echo 'exit' >> $(bootbin)
-	cat $(baseuber) >> $(bootbin)
+	cat head.sh $(baseuber) > $(bootbin)
 	chmod 0755 $(bootbin)
 	@echo "*** Created boot executable: $(bootbin) ***"
 
@@ -69,7 +67,7 @@ $(bootexe): $(baseuber)
 		echo "*** Created boot executable: $(bootexe) ***"; \
 	else true; fi
 
-.installed: $(alljars) $(bootbin) $(bootexe)
+.installed: $(basejar) $(alljars) $(bootbin) $(bootexe)
 	date > .installed
 
 install: .installed
@@ -80,6 +78,7 @@ install: .installed
 	(cd boot/aether && lein deploy clojars)
 	(cd boot/worker && lein deploy clojars)
 	(cd boot/core   && lein deploy clojars)
+	(cd boot/boot   && lein deploy clojars)
 	date > .deployed
 
 deploy: .deployed
