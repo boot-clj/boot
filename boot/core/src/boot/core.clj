@@ -74,7 +74,8 @@
 ;; _These functions are used internally by boot and are not part of the public
 ;; API._
 
-(declare ^{:dynamic true :doc "The running version of boot."} *boot-version*)
+(declare ^{:dynamic true :doc "The running version of boot app."}      *app-version*)
+(declare ^{:dynamic true :doc "The running version of boot core."}     *boot-version*)
 (declare ^{:dynamic true :doc "Command line options for boot itself."} *boot-opts*)
 
 (def ^:private boot-env

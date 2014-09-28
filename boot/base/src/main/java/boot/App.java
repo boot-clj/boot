@@ -6,6 +6,7 @@ import java.nio.channels.FileChannel;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -16,38 +17,80 @@ import org.projectodd.shimdandy.ClojureRuntimeShim;
 
 @SuppressWarnings("unchecked")
 public class App {
-    private static File[]                  podjars    = null;
-    private static File[]                  corejars   = null;
-    private static File[]                  workerjars = null;
-    private static File                    bootdir    = null;
-    private static File                    aetherfile = null;
-    private static HashMap<String, File[]> depsCache  = null;
-    private static String                  cljversion = "1.6.0";
-    private static String                  localrepo  = null;
+    private static File[]                  podjars     = null;
+    private static File[]                  corejars    = null;
+    private static File[]                  workerjars  = null;
+    private static File                    bootdir     = null;
+    private static File                    aetherfile  = null;
+    private static HashMap<String, File[]> depsCache   = null;
+    private static String                  cljversion  = null;
+    private static String                  bootversion = null;
+    private static String                  localrepo   = null;
+    private static String                  appversion  = null;
+    private static String                  channel     = "RELEASE";
+    private static ClojureRuntimeShim      aethershim  = null;
 
-    private static final String            appversion = "2.0.0";
-    private static final String            apprelease = "r1";
-    private static final String            depversion = appversion + "-SNAPSHOT";
-    private static final String            aetherjar  = "aether-" + depversion + ".uber.jar";
-    private static final AtomicLong        counter    = new AtomicLong(0);
-    private static final ExecutorService   ex         = Executors.newCachedThreadPool();
+    private static final String            aetherjar   = "aether.uber.jar";
+    private static final AtomicLong        counter     = new AtomicLong(0);
+    private static final ExecutorService   ex          = Executors.newCachedThreadPool();
 
-    private static long  nextId()     { return counter.addAndGet(1); }
-    
-    public static File   getBootDir() { return bootdir; }
-    public static String getVersion() { return appversion; }
-    public static String getRelease() { return apprelease; }
+    private static long  nextId()         { return counter.addAndGet(1); }
+
+    public static File   getBootDir()     { return bootdir; }
+    public static String getVersion()     { return appversion; }
+    public static String getBootVersion() { return bootversion; }
 
     public static class Exit extends Exception {
         public Exit(String m) { super(m); }
         public Exit(String m, Throwable c) { super(m, c); }}
     
+    private static String
+    jarVersion(File f, String prefix) throws Exception {
+        String n = f.getName();
+        if (! n.startsWith(prefix))
+            return null;
+        else return n.substring(prefix.length()).replaceAll(".jar$", ""); }
+
+    private static Properties
+    writeProps(File f) throws Exception {
+        ClojureRuntimeShim a = aetherShim();
+        Properties         p = new Properties();
+        String             c = cljversion;
+        String             t = null;
+        
+        if (c == null) c = "1.6.0";
+        
+        if (bootversion != null) 
+            p.setProperty("bootVersion", bootversion);
+        else
+            for (File x : resolveDepJars(a, "boot", channel, c))
+                if (null != (t = jarVersion(x, "boot-")))
+                    p.setProperty("bootVersion", t);
+
+        p.setProperty("clojureVersion", c);
+
+        p.store(new FileOutputStream(f), "---boot version settings---");
+        
+        return p; }
+    
+    private static Properties
+    readProps(File f, boolean create) throws Exception {
+        Properties p = new Properties();
+        try {
+            p.load(new FileInputStream(f));
+            if (p.getProperty("clojureVersion") == null
+                || p.getProperty("bootVersion") == null)
+                throw new Exception("missing info");
+            return p; }
+        catch (Throwable e) {
+            if (! create) return null;
+            else return writeProps(f); }}
+        
     private static HashMap<String, File[]>
     seedCache() throws Exception {
         if (depsCache != null) return depsCache;
         else {
-            ensureResourceFile(aetherjar, aetherfile);
-            ClojureRuntimeShim a = newShim(new File[] { aetherfile });
+            ClojureRuntimeShim a = aetherShim();
         
             HashMap<String, File[]> cache = new HashMap<>();
         
@@ -80,9 +123,7 @@ public class App {
             long age = System.currentTimeMillis() - f.lastModified();
             if (age > max) throw new Exception("cache age exceeds TTL");
             return validateCache(f, (new ObjectInputStream(new FileInputStream(f))).readObject()); }
-        catch (Throwable e) {
-            System.err.println("Checking for boot updates...");
-            return writeCache(f, seedCache()); }
+        catch (Throwable e) { return writeCache(f, seedCache()); }
         finally { lock.release(); }}
     
     public static ClojureRuntimeShim
@@ -111,6 +152,13 @@ public class App {
         
         return newShim(files); }
     
+    private static ClojureRuntimeShim
+    aetherShim() throws Exception {
+        if (aethershim == null) {
+            ensureResourceFile(aetherjar, aetherfile);
+            aethershim = newShim(new File[] { aetherfile }); }
+        return aethershim; }
+        
     public static void
     extractResource(String resource, File outfile) throws Exception {
         ClassLoader  cl  = Thread.currentThread().getContextClassLoader();
@@ -128,11 +176,15 @@ public class App {
     
     public static File[]
     resolveDepJars(ClojureRuntimeShim shim, String sym) {
+        return resolveDepJars(shim, sym, bootversion, cljversion); }
+
+    public static File[]
+    resolveDepJars(ClojureRuntimeShim shim, String sym, String bootversion, String cljversion) {
         shim.require("boot.aether");
         if (localrepo != null)
             shim.invoke("boot.aether/set-local-repo!", localrepo);
         return (File[]) shim.invoke(
-            "boot.aether/resolve-dependency-jars", sym, depversion, cljversion); }
+            "boot.aether/resolve-dependency-jars", sym, bootversion, cljversion); }
     
     public static Future<ClojureRuntimeShim>
     newShimFuture(final File[] jars) throws Exception {
@@ -164,32 +216,74 @@ public class App {
         finally {
             for (Runnable h : hooks) h.run();
             core.get().invoke("clojure.core/shutdown-agents"); }}
+    
+    public static void
+    usage() throws Exception {
+        System.out.printf("Boot App Version: %s\n", appversion);
+        System.out.printf("Boot Lib Version: %s\n", bootversion);
+        System.out.printf("Clojure Version:  %s\n", cljversion); }
                 
+    public static String
+    readVersion() throws Exception {
+        ClassLoader cl  = Thread.currentThread().getContextClassLoader();
+        InputStream in  = cl.getResourceAsStream("boot/base/version.properties");
+        Properties   p  = new Properties();
+        p.load(in);
+        return p.getProperty("version"); }
+
     public static void
     main(String[] args) throws Exception {
-        if (args.length > 0
-            && ((args[0]).equals("-V")
-                || (args[0]).equals("--version"))) {
-            System.err.println(appversion + "-" + apprelease);
-            System.exit(0); }
+        appversion    = readVersion();
+        localrepo     = System.getenv("BOOT_LOCAL_REPO");
+        String bhome  = System.getenv("BOOT_HOME");
+        String homed  = System.getProperty("user.home");
+        String boot_v = System.getenv("BOOT_VERSION");
+        String clj_v  = System.getenv("BOOT_CLOJURE_VERSION");
+        String chan   = System.getenv("BOOT_CHANNEL");
         
-        localrepo    = System.getenv("BOOT_LOCAL_REPO");
-        String bhome = System.getenv("BOOT_HOME");
-        String homed = System.getProperty("user.home");
-        String clj_v = System.getenv("BOOT_CLOJURE_VERSION");
-        String dir_l = (localrepo == null) ? "default" : String.valueOf(localrepo.hashCode());
+        if (chan != null && chan.equals("DEV")) channel = "(0.0.0,)";
+
+        String dir_l  = (localrepo == null) ? "default" : String.valueOf(localrepo.hashCode());
         
         if (clj_v != null) cljversion = clj_v;
+        if (boot_v != null) bootversion = boot_v;
         
         if (bhome != null) bootdir = new File(bhome);
         else bootdir = new File(new File(homed), ".boot");
+        
+        File projectprops = new File("boot.properties");
+        File bootprops    = new File(bootdir, "boot.properties");
 
-        File jardir    = new File(new File(bootdir, "lib"), apprelease);
+        File jardir    = new File(new File(bootdir, "lib"), appversion);
         aetherfile     = new File(jardir, aetherjar);
-        File cachedir  = new File(new File(new File(bootdir, "cache"), dir_l), cljversion);
+
+        jardir.mkdirs();
+
+        if (args.length > 0
+            && ((args[0]).equals("-u")
+                || (args[0]).equals("--update"))) {
+            Properties q = readProps(bootprops, false);
+            q = (q != null) ? q : new Properties();
+            Properties p = writeProps(bootprops);
+            System.out.printf("Lib version %s -> %s\n", q.getProperty("bootVersion"), p.getProperty("bootVersion"));
+            System.out.printf("Clj version %s -> %s\n", q.getProperty("clojureVersion"), p.getProperty("clojureVersion"));
+            System.exit(0); }
+
+        if (cljversion == null || bootversion == null) {
+            Properties p = readProps(projectprops, false);
+            if (p == null) p = readProps(bootprops, true);
+            if (cljversion == null) cljversion = p.getProperty("clojureVersion");
+            if (bootversion == null) bootversion = p.getProperty("bootVersion"); }
+        
+        if (args.length > 0
+            && ((args[0]).equals("-V")
+                || (args[0]).equals("--version"))) {
+            usage();
+            System.exit(0); }
+
+        File cachedir  = new File(new File(new File(new File(bootdir, "cache"), dir_l), cljversion), bootversion);
         File cachefile = new File(cachedir, "deps.cache");
         
-        jardir.mkdirs();
         cachedir.mkdirs();
         
         HashMap<String, File[]> cache = (HashMap<String, File[]>) readCache(cachefile);

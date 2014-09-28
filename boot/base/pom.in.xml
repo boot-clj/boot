@@ -4,7 +4,7 @@
   <groupId>boot</groupId>
   <artifactId>base</artifactId>
   <packaging>jar</packaging>
-  <version>2.0.0-SNAPSHOT</version>
+  <version>__VERSION__</version>
   <name>base</name>
   <url>http://maven.apache.org</url>
   <properties>
@@ -33,6 +33,22 @@
         </configuration>
       </plugin>
     </plugins>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+        <includes>
+          <include>**/*.properties</include>
+        </includes>
+      </resource>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>false</filtering>
+        <excludes>
+          <exclude>**/*.properties</exclude>
+        </excludes>
+      </resource>
+    </resources>
   </build>
   <dependencies>
     <dependency>

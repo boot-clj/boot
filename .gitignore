@@ -15,10 +15,8 @@
 
 *.jar
 *.war
-boot/aether/pom.xml
-boot/core/pom.xml
-boot/pod/pom.xml
-boot/worker/pom.xml
+pom.xml
+pom.xml.asc
 
 ### NREPL ######################################################################
 

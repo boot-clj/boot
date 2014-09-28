@@ -10,8 +10,7 @@
    [boot.from.clojure.tools.cli :as cli]))
 
 (def cli-opts
-  [
-   ["-b" "--boot-script"         "Print generated boot script for debugging."]
+  [["-b" "--boot-script"         "Print generated boot script for debugging."]
    ["-d" "--dependencies ID:VER" "Add dependency to project (eg. -d riddley:0.1.7)."
     :assoc-fn #(let [[p v] (string/split %3 #":" 2)]
                  (update-in %1 [%2] (fnil conj []) [(read-string p) v]))]
@@ -23,6 +22,7 @@
    ["-s" "--src-paths PATH"      "Add PATH to set of source directories."
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
    ["-t" "--tgt-path PATH"       "Set the target directory to PATH."]
+   ["-u" "--update"              "Update boot (see BOOT_CHANNEL env var below)."]
    ["-v" "--verbose"             "More error info (-vv more verbose, etc.)"
     :assoc-fn (fn [x y _] (update-in x [y] (fnil inc 0)))]
    ["-V" "--version"             "Print boot version info."]])
@@ -39,13 +39,7 @@
 
 (defn emit [boot? argv userscript bootscript]
   `(~'(ns boot.user
-        (:require
-         [boot.task.built-in :refer :all]
-         [boot.task-helpers  :refer :all]
-         [boot.repl          :refer :all]
-         [boot.cli           :refer :all]
-         [boot.core          :refer :all]
-         [boot.util          :refer :all]))
+        (:require [boot.task.built-in :as b]))
     ~@(when userscript (with-comments "profile" userscript))
     ~@(with-comments "boot script" bootscript)
     (let [boot?# ~boot?]
@@ -72,12 +66,13 @@
       (util/exit-error
         (println (apply str (interpose "\n" errs)))))
 
-    (binding [*out* (util/auto-flush *out*)
-              *err* (util/auto-flush *err*)
-              core/*boot-opts* opts
-              core/*boot-version* (str (boot.App/getVersion) "-" (boot.App/getRelease))]
+    (binding [*out*               (util/auto-flush *out*)
+              *err*               (util/auto-flush *err*)
+              core/*boot-opts*    opts
+              core/*boot-version* (boot.App/getBootVersion)
+              core/*app-version*  (boot.App/getVersion)]
       (util/exit-ok
-        (let [userscript  (script? (io/file (boot.App/getBootDir) "profile.boot"))
+        (let [userscript  (script? (io/file (System/getProperty "user.home") ".profile.boot"))
               profile?    (not (:no-profile opts))
               bootforms   (some->> arg0 slurp util/read-string-all)
               userforms   (when profile? (some->> userscript slurp util/read-string-all))

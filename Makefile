@@ -1,19 +1,22 @@
-.PHONY: help install deploy test clean
+.PHONY: help install deploy test clean basejar
 
+version    = $(shell grep ^version version.properties |sed 's/.*=//')
 bootjar    = $(PWD)/bin/boot2
 bootbin    = $(PWD)/bin/boot.sh
 bootexe    = $(PWD)/bin/boot.exe
 bootjarurl = https://github.com/tailrecursion/boot/releases/download/p1/boot
-podjar     = boot/pod/target/pod-2.0.0-SNAPSHOT.jar
-aetherjar  = boot/aether/target/aether-2.0.0-SNAPSHOT.jar
-aetheruber = aether-2.0.0-SNAPSHOT.uber.jar
-workerjar  = boot/worker/target/worker-2.0.0-SNAPSHOT.jar
-corejar    = boot/core/target/core-2.0.0-SNAPSHOT.jar
-basejar    = boot/base/target/base-2.0.0-SNAPSHOT.jar
-baseuber   = boot/base/target/base-2.0.0-SNAPSHOT-jar-with-dependencies.jar
+bootjar    = boot/boot/target/boot-$(version).jar
+podjar     = boot/pod/target/pod-$(version).jar
+aetherjar  = boot/aether/target/aether-$(version).jar
+aetheruber = aether.uber.jar
+workerjar  = boot/worker/target/worker-$(version).jar
+corejar    = boot/core/target/core-$(version).jar
+basejar    = boot/base/target/base-$(version).jar
+baseuber   = boot/base/target/base-$(version)-jar-with-dependencies.jar
 alljars    = $(podjar) $(aetherjar) $(workerjar) $(corejar) $(baseuber)
 
 help:
+	@echo "version =" $(version)
 	@echo "Usage: make {help|install|deploy|test}" 1>&2 && false
 
 clean:
@@ -28,13 +31,18 @@ bin/lein:
 	wget https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein -O bin/lein
 	chmod 755 bin/lein
 
+$(basejar): boot/base/pom.in.xml $(shell find boot/base/src/main/java)
+	(cd boot/base && cat pom.in.xml |sed 's/__VERSION__/$(version)/' > pom.xml && mvn -q install)
+
+basejar: $(basejar)
+
 $(podjar): boot/pod/project.clj $(shell find boot/pod/src)
 	(cd boot/pod && lein install)
 
 $(aetherjar): boot/aether/project.clj $(podjar) $(shell find boot/aether/src)
 	(cd boot/aether && lein install && lein uberjar && \
 		mkdir -p ../base/src/main/resources && \
-	 	cp target/*standalone*.jar ../base/src/main/resources/$(aetheruber))
+	 	cp target/aether-$(version)-standalone.jar ../base/src/main/resources/$(aetheruber))
 
 $(workerjar): boot/worker/project.clj $(shell find boot/worker/src)
 	(cd boot/worker && lein install)
@@ -42,8 +50,8 @@ $(workerjar): boot/worker/project.clj $(shell find boot/worker/src)
 $(corejar): boot/core/project.clj $(shell find boot/core/src)
 	(cd boot/core && lein install)
 
-$(baseuber): boot/base/pom.xml $(shell find boot/base/src)
-	(cd boot/base && mvn -q clean && mvn -q assembly:assembly -DdescriptorId=jar-with-dependencies)
+$(baseuber): $(basejar) $(shell find boot/base/src/main)
+	(cd boot/base && mvn -q assembly:assembly -DdescriptorId=jar-with-dependencies)
 
 $(bootbin): $(baseuber)
 	mkdir -p bin
@@ -67,11 +75,11 @@ $(bootexe): $(baseuber)
 install: .installed
 
 .deployed: .installed
-	(cd boot/pod    && lein push)
-	(cd boot/aether && lein push)
-	(cd boot/worker && lein push)
-	(cd boot/core   && lein push)
-	(cd boot/base   && scp pom.xml target/base-2.0.0-SNAPSHOT.jar clojars@clojars.org:)
+	(cd boot/base   && lein deploy clojars boot/base $(version) target/base-$(version).jar pom.xml)
+	(cd boot/pod    && lein deploy clojars)
+	(cd boot/aether && lein deploy clojars)
+	(cd boot/worker && lein deploy clojars)
+	(cd boot/core   && lein deploy clojars)
 	date > .deployed
 
 deploy: .deployed

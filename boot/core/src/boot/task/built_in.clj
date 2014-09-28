@@ -26,16 +26,19 @@
   (core/with-pre-wrap
     (let [tasks (#'helpers/available-tasks 'boot.user)
           opts  (->> main/cli-opts (mapv (fn [[x y z]] ["" (str x " " y) z])))
-          envs  [["" "BOOT_HOME"               "Directory where boot stores global state (~/.boot)."]
-                 ["" "BOOT_LOCAL_REPO"         "The local Maven repo path (~/.m2/repository)."]
-                 ["" "BOOT_JVM_OPTIONS"        "Specify JVM options (Unix/Linux/OSX only)."]
-                 ["" "BOOT_CLOJURE_VERSION"    "The version of Clojure boot will provide (1.6.0)."]]
-          files [["" "./.boot"                 "Directory where boot stores local state."]
-                 ["" "./build.boot"            "The build script for this project."]
-                 ["" "$BOOT_HOME/profile.boot" "A script to run before running the build script."]]
+          envs  [["" "BOOT_HOME"            "Directory where boot stores global state (~/.boot)."]
+                 ["" "BOOT_LOCAL_REPO"      "The local Maven repo path (~/.m2/repository)."]
+                 ["" "BOOT_JVM_OPTIONS"     "Specify JVM options (Unix/Linux/OSX only)."]
+                 ["" "BOOT_CHANNEL"         "Set to 'DEV' to update boot via the testing branch."]
+                 ["" "BOOT_VERSION"         "Specify the version of boot core to use."]
+                 ["" "BOOT_CLOJURE_VERSION" "The version of Clojure boot will provide (1.6.0)."]]
+          files [["" "./.boot"              "Directory where boot stores local state."]
+                 ["" "./build.boot"         "The build script for this project."]
+                 ["" "./boot.properties"    "Specify boot and clj versions for this project."]
+                 ["" "$HOME/.profile.boot"  "A script to run before running the build script."]]
           br    #(conj % ["" "" ""])]
-      (printf "%s\n\n" (#'helpers/version-str))
-      (printf "%s\n"
+      (boot.App/usage)
+      (printf "\n%s\n"
         (-> [["" ""] ["Usage:" "boot OPTS <task> TASK_OPTS <task> TASK_OPTS ..."]]
           (table/table :style :none)
           with-out-str))
@@ -93,21 +96,20 @@
               `(boot.notify/failure! ~theme ~failure))
             (throw t)))))))
 
-(core/deftask pr-deps
-  "Print the project's dependency graph."
-  []
+(core/deftask info
+  "Print various info about the project/build."
+
+  [d deps  bool "Print project dependency graph."
+   e env   bool "Print the boot env map."
+   E event bool "Print the build event data."]
+
   (core/with-pre-wrap
-    (print (pod/call-worker `(boot.aether/dep-tree ~(core/get-env))))))
-
-(core/deftask pr-env
-  "Print the boot environment map."
-  []
-  (core/with-pre-wrap (println (util/pr-color-str (core/get-env)))))
-
-(core/deftask pr-event
-  "Print the event map."
-  []
-  (core/with-pre-wrap (println (util/pr-color-str core/*event*))))
+    (when deps
+      (print (pod/call-worker `(boot.aether/dep-tree ~(core/get-env)))))
+    (when env
+      (core/with-pre-wrap (println (util/pr-color-str (core/get-env)))))
+    (when event
+      (core/with-pre-wrap (println (util/pr-color-str core/*event*))))))
 
 (core/deftask wait
   "Wait before calling the next handler.
@@ -422,8 +424,8 @@
         (pod/call-worker
           `(boot.aether/install ~(core/get-env) ~(.getPath jarfile)))))))
 
-(core/deftask deploy
-  "Deploy project jar to a Maven repository.
+(core/deftask push
+  "Deploy jar file to a Maven repository.
 
   Both the file and repo options are required. The jar file must contain a
   pom.xml entry."
@@ -439,20 +441,3 @@
       (util/info "Deploying %s...\n" (.getName f))
       (pod/call-worker
         `(boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f))))))
-
-(core/deftask push
-  "Push project jar to Clojars.
-
-  The file option is required, and the jar file must contain a pom.xml entry."
-
-  [f file PATH str "The path to the jar file."]
-
-  (let [tmp (core/mktmpdir! ::push-tmp)]
-    (core/with-pre-wrap
-      (let [jarfile (io/file file)]
-        (when-not (.exists jarfile) (throw (Exception. "can't find jar file")))
-        (if-let [xml (pod/pom-xml jarfile)]
-          (let [pom (doto (io/file tmp "pom.xml") (spit xml))]
-            (util/info "Pushing %s to Clojars...\n" (.getName jarfile))
-            ((helpers/sh "scp" (.getPath jarfile) (.getPath pom) "clojars@clojars.org:")))
-          (throw (Exception. "jar file does not contain a pom.xml entry")))))))
