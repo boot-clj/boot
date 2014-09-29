@@ -6,7 +6,21 @@
   <packaging>jar</packaging>
   <version>__VERSION__</version>
   <name>base</name>
-  <url>http://maven.apache.org</url>
+  <url>https://github.com/tailrecursion/boot</url>
+  <description>Boot Java application loader and class.</description>
+  <scm>
+    <connection>scm:git:git://github.com/tailrecursion/boot.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/tailrecursion/boot.git</developerConnection>
+    <tag>HEAD</tag>
+    <url>https://github.com/tailrecursion/boot.git</url>
+  </scm>
+  <licenses>
+    <license>
+      <name>Eclipse Public License 1.0</name>
+      <url>http://opensource.org/licenses/eclipse-1.0.php</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>

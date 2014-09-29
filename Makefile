@@ -1,6 +1,7 @@
 .PHONY: help install deploy test clean basejar
 
 version    = $(shell grep ^version version.properties |sed 's/.*=//')
+verfile    = version.properties
 bootbin    = $(PWD)/bin/boot.sh
 bootexe    = $(PWD)/bin/boot.exe
 bootjarurl = https://github.com/tailrecursion/boot/releases/download/p1/boot
@@ -30,26 +31,26 @@ bin/lein:
 	wget https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein -O bin/lein
 	chmod 755 bin/lein
 
-$(bootjar): boot/boot/project.clj
+$(bootjar): $(verfile) boot/boot/project.clj
 	(cd boot/boot && lein install)
 
-$(basejar): boot/base/pom.in.xml $(shell find boot/base/src/main/java)
+$(basejar): $(verfile) boot/base/pom.in.xml $(shell find boot/base/src/main/java)
 	(cd boot/base && cat pom.in.xml |sed 's/__VERSION__/$(version)/' > pom.xml && mvn -q install)
 
 basejar: $(basejar)
 
-$(podjar): boot/pod/project.clj $(shell find boot/pod/src)
+$(podjar): $(verfile) boot/pod/project.clj $(shell find boot/pod/src)
 	(cd boot/pod && lein install)
 
-$(aetherjar): boot/aether/project.clj $(podjar) $(shell find boot/aether/src)
+$(aetherjar): $(verfile) boot/aether/project.clj $(podjar) $(shell find boot/aether/src)
 	(cd boot/aether && lein install && lein uberjar && \
 		mkdir -p ../base/src/main/resources && \
 	 	cp target/aether-$(version)-standalone.jar ../base/src/main/resources/$(aetheruber))
 
-$(workerjar): boot/worker/project.clj $(shell find boot/worker/src)
+$(workerjar): $(verfile) boot/worker/project.clj $(shell find boot/worker/src)
 	(cd boot/worker && lein install)
 
-$(corejar): boot/core/project.clj $(shell find boot/core/src)
+$(corejar): $(verfile) boot/core/project.clj $(shell find boot/core/src)
 	(cd boot/core && lein install)
 
 $(baseuber): $(basejar) $(shell find boot/base/src/main)

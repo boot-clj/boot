@@ -5,7 +5,12 @@
                (.getProperty "version")))
 
 (defproject boot/core version
-  :aot [#"^(?!boot\.repl-server).*$"]
+  :aot          [#"^(?!boot\.repl-server).*$"]
+  :description  "Core boot module–boot scripts run in this pod."
+  :url          "http://github.com/tailrecursion/boot"
+  :scm          {:url "https://github.com/tailrecursion/boot.git" :dir "../../"}
+  :license      {:name "Eclipse Public License"
+                 :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.6.0"  :scope "provided"]
                  [boot/base           ~version :scope "provided"]
                  [boot/pod            ~version :scope "compile"]])

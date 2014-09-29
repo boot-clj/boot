@@ -6,6 +6,11 @@
 
 (defproject boot/pod version
   :aot :all
+  :description  "Boot pod module–this is included with all pods."
+  :url          "http://github.com/tailrecursion/boot"
+  :scm          {:url "https://github.com/tailrecursion/boot.git" :dir "../../"}
+  :license      {:name "Eclipse Public License"
+                 :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[boot/base                               ~version :scope "provided"]
                  [org.clojure/clojure                     "1.6.0"  :scope "provided"]
                  [org.tcrawley/dynapath                   "0.2.3"  :scope "compile"]

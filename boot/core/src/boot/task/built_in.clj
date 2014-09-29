@@ -131,7 +131,8 @@
         watchers (map file/make-watcher srcdirs)
         paths    (into-array String srcdirs)
         k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)
-        ign?     (git/make-gitignore-matcher (core/get-env :src-paths))]
+        ign?     (git/make-gitignore-matcher (core/get-env :src-paths))
+        ]
     (fn [continue]
       (fn [event]
         (util/info "Starting file watcher (CTRL-C to quit)...\n")
@@ -227,12 +228,15 @@
    i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt (core/mktgtdir!)]
+  (let [tgt  (core/mktgtdir!)
+        ign? (git/make-gitignore-matcher (core/get-env :src-paths))]
     (core/with-pre-wrap
-      (util/info "Adding resource directories...\n")
-      (binding [file/*include* (mapv re-pattern include)
-                file/*exclude* (mapv re-pattern exclude)]
-        (apply file/sync :time tgt dirs)))))
+      (when (seq dirs)
+        (util/info "Adding resource files...\n")
+        (binding [file/*ignore*  ign?
+                  file/*include* (mapv re-pattern include)
+                  file/*exclude* (mapv re-pattern exclude)]
+          (apply file/sync :time tgt dirs))))))
 
 (core/deftask add-src
   "Add source files to fileset.
@@ -244,13 +248,26 @@
   [i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt (core/mktgtdir!)]
+  (let [dirs (remove core/tmpfile? (core/get-env :src-paths))]
+    (add-dir :dirs dirs :include include :exclude exclude)))
+
+(core/deftask map-fileset
+  "Transform current fileset with given mapping fn.
+
+  The mapping function will be called with the relative path of each file in the
+  current fileset. The function should return the relative path desired for that
+  file in the result fileset. If the function returns nil then that file will be
+  removed from the result fileset."
+  
+  [f map-fn CODE code "The mapping function."]
+  
+  (let [tgt  (core/mktgtdir!)]
     (core/with-pre-wrap
-      (when-let [dirs (seq (remove core/tmpfile? (core/get-env :src-paths)))]
-        (util/info "Adding src files...\n")
-        (binding [file/*include* (mapv re-pattern include)
-                  file/*exclude* (mapv re-pattern exclude)]
-          (apply file/sync :time tgt dirs))))))
+      (when map-fn
+        (doseq [f (core/tgt-files) :let [p (core/relative-path f)]]
+          (when-let [p (map-fn p)]
+            (file/copy-with-lastmod f (io/file tgt p)))
+          (core/consume-file! f))))))
 
 (core/deftask uber
   "Add jar entries from dependencies to fileset.
@@ -265,7 +282,8 @@
 
   [S exclude-scope SCOPE #{str} "The set of excluded scopes."
    i include REGEX       #{str} "The set of regexes that paths must match."
-   x exclude REGEX       #{str} "The set of regexes that paths must not match."]
+   x exclude REGEX       #{str} "The set of regexes that paths must not match."
+   ]
 
   (let [tgt        (core/mktgtdir!)
         dfl-scopes #{"compile" "runtime" "provided"}
@@ -361,11 +379,18 @@
           (when @throw? (throw (Exception. "java compiler error"))))))))
 
 (core/deftask jar
-  "Build a jar file for the project."
+  "Build a jar file for the project.
+
+  The include and exclude options specify sets of regular expressions (strings)
+  that will be used to filter the entries. If no filters are specified then all
+  entries are added to the jar file.
+"
 
   [f file PATH        str       "The target jar file."
    M manifest KEY=VAL {str str} "The jar manifest map."
-   m main MAIN        sym       "The namespace containing the -main function."]
+   m main MAIN        sym       "The namespace containing the -main function."
+   i include REGEX       #{str} "The set of regexes that paths must match."
+   x exclude REGEX       #{str} "The set of regexes that paths must not match."]
 
   (let [tgt (core/mktgtdir!)]
     (core/with-pre-wrap
@@ -375,6 +400,7 @@
             jarfile (io/file tgt jarname)]
         (when-not (.exists jarfile)
           (let [index (->> (core/tgt-files)
+                        (filter (partial file/keep-filters? include exclude))
                         (map (juxt core/relative-path (memfn getPath))))]
             (util/info "Writing %s...\n" (.getName jarfile))
             (pod/call-worker
@@ -382,9 +408,15 @@
             (doseq [[_ f] index] (core/consume-file! (io/file f)))))))))
 
 (core/deftask war
-  "Create war file for web deployment."
+  "Create war file for web deployment.
 
-  [f file PATH str "The target war file."]
+  The include and exclude options specify sets of regular expressions (strings)
+  that will be used to filter the entries. If no filters are specified then all
+  entries are added to the war file."
+
+  [f file PATH     str    "The target war file."
+   i include REGEX #{str} "The set of regexes that paths must match."
+   x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
   (let [tgt (core/mktgtdir!)]
     (core/with-pre-wrap
@@ -396,7 +428,9 @@
                          (if (contains? #{"META-INF" "WEB-INF"} (first r'))
                            r
                            (.getPath (apply io/file "WEB-INF" "classes" r'))))
-                index (->> (core/tgt-files) (map (juxt ->war (memfn getPath))))]
+                index (->> (core/tgt-files)
+                        (filter (partial file/keep-filters? include exclude))
+                        (map (juxt ->war (memfn getPath))))]
             (util/info "Writing %s...\n" (.getName warfile))
             (pod/call-worker
               `(boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))

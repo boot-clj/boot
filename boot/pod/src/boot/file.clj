@@ -85,6 +85,7 @@
 
 (def ^:dynamic *include* nil)
 (def ^:dynamic *exclude* nil)
+(def ^:dynamic *ignore* nil)
 
 (defn dir-set 
   ([dir] 
@@ -140,7 +141,8 @@
 (defn sync*
   [ops]
   (let [opfn {:rm #(.delete (nth % 1))
-              :cp #(when (keep-filters? *include* *exclude* (nth % 2))
+              :cp #(when (and (keep-filters? *include* *exclude* (nth % 2))
+                           (or (not *ignore*) (not (*ignore* (nth % 1)))))
                      (copy-with-lastmod (nth % 1) (nth % 2)))}]
     (doseq [[op s d :as cmd] ops] ((opfn op) cmd))))
 
