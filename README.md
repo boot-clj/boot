@@ -368,7 +368,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [21]: doc/overview-of-the-boot-workflow.md
 [22]: doc/boot-task-writers-guide.md
 [23]: https://tailrecursion.github.io/boot
-[24]: doc/updating-boot-and-clojure-versions.md
+[24]: doc/boot-clojure-version-howto.md
 
 [50]: https://github.com/technomancy/leiningen
 [51]: https://github.com/cemerick/pomegranate
