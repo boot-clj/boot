@@ -210,15 +210,17 @@
   "Given a path to a jar file, returns a list of [resource-path, resource-url]
   string pairs corresponding to all entries contained the jar contains."
   (memoize
-    (fn [path]
-      (let [f (io/file path)]
-        (when (and path (.endsWith (.getPath f) ".jar"))
-          (when (and (.exists f) (.isFile f))
-            (->> f JarFile. .entries enumeration-seq
-              (keep #(when-not (.isDirectory %)
-                       (let [name (.getName %)]
-                         [name (->> (io/file (io/file (str path "!")) name)
-                                 .toURI .toURL .toString (str "jar:"))]))))))))))
+    (fn [path-or-jarfile]
+      (when path-or-jarfile
+        (let [f    (io/file path-or-jarfile)
+              path (.getPath f)]
+          (when (.endsWith path ".jar")
+            (when (and (.exists f) (.isFile f))
+              (->> f JarFile. .entries enumeration-seq
+                (keep #(when-not (.isDirectory %)
+                         (let [name (.getName %)]
+                           [name (->> (io/file (io/file (str path "!")) name)
+                                   .toURI .toURL .toString (str "jar:"))])))))))))))
 
 (defn jar-entries-in-dep-order
   [env]

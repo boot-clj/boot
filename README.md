@@ -41,13 +41,12 @@ Turing-complete build specification.
 * Compose build pipelines in the project, in the build script, in the REPL, or
   on the command line.
 * Artifacts can never be stale–there is no need for a `clean` task.
-* ~~Boot itself is "evergreen" (auto-updating) so it will never be out of date.~~
 
 ## Install
 
 Binaries in executable format are available. Follow the instructions for your
-operating system (note: boot requires the Java Runtime Environment (JRE)
-version 1.7 or greater).
+operating system (note: boot requires the Java Development Kit (JDK) version
+1.7 or greater).
 
 #### Unix, Linux, OSX
 
@@ -75,92 +74,66 @@ version 1.7 or greater).
 
 ## Documentation
 
+* [Boot / Clojure Version Howto][24]
 * ~~[Clojure Scripting With Boot][20]~~
 * ~~[Overview of the Boot Workflow][21]~~
 * ~~[The Boot Task Writer's Guide][22]~~
 * ~~[Boot API Documentation][23]~~
 
-## Getting Started
+## Getting Help
 
-Once boot is installed (see [Download][4] above) do this in a terminal:
+Once boot is installed (see [Install][4] above) do this in a terminal:
 
 ```
 $ boot -h
 ```
 
-You should see some usage info and a list of available tasks; something like
-the following:
+You should see the boot manual page printed to the terminal. This information
+includes command line options recognized by boot, a list of available tasks,
+and other information about relevant configuration files and environment
+variables.
+
+You can also get help for a specific task, for example the `repl` task:
 
 ```
-Boot Version:  2.0.0-r1
-Documentation: http://github.com/tailrecursion/boot
-
-Usage:   boot OPTS <task> TASK_OPTS <task> TASK_OPTS ...
-
-OPTS:    -b --boot-script           Print generated boot script for debugging.
-         -d --dependencies ID:VER   Add dependency to project (eg. -d riddley:0.1.7).
-         -e --set-env KEY=VAL       Add KEY => VAL to project env map.
-         -h --help                  Print basic usage and help info.
-         -P --no-profile            Skip loading of profile.boot script.
-         -s --src-paths PATH        Add PATH to set of source directories.
-         -t --tgt-path PATH         Set the target directory to PATH.
-         -V --version               Print boot version info.
-
-Tasks:   debug                      Print the boot environment map.
-         dep-tree                   Print the project's dependency graph.
-         install                    Install project jar to local Maven repository.
-         jar                        Build a jar file for the project.
-         pom                        Write the project's pom.xml file.
-         push                       Push project jar to Clojars.
-         repl                       Start a REPL session for the current project.
-         syncdir                    Copy/sync files between directories.
-         uberjar                    Build project jar with dependencies included.
-         wait                       Wait before calling the next handler.
-         watch                      Call the next handler when source files change.
-
-Do `boot <task> -h` to see usage info and TASK_OPTS for <task>.
+$ boot repl -h
 ```
 
-You can also get help for a specific task:
+You should see usage info and command line options for the specified task.
+
+### Task Help in the REPL
+
+You can also get help in the REPL. First start a REPL session:
 
 ```
-$ boot pom -h
+$ boot repl
 ```
 
-You should see usage info and command line options for the `pom` task:
+Then, to get help for the `repl` task, do:
 
 ```
--------------------------
-boot.task.built-in/pom
-([& {:keys [help project version description url license scm], :as *opts*}])
-  Write the project's pom.xml file.
-
-  Options:
-    -h, --help              Print usage info for this task.
-    -p, --project PROJECT   The project groupId/artifactId.
-    -v, --version VERSION   The project version.
-    -d, --description DESC  A description of the project.
-    -u, --url URL           The URL for the project homepage.
-    -l, --license KEY=VAL   Add KEY => VAL to license map (KEY one of name, url).
-    -s, --scm KEY=VAL       Add KEY => VAL to scm map (KEY one of url, tag).
+boot.user=> (doc repl)
 ```
 
-### Build a Simple Project
+The output will be slightly different from the command line help info. We'll see
+why this is so a little later.
+
+## Build a Simple Project
 
 Let's build a simple project to get our feet wet. We'll create a new directory,
-say `boot-project`, and a source directory in there named `src` with a source
+say `my-project`, and a source directory in there named `src` with a source
 file, `hello.txt`:
 
 ```
-$ mkdir -p boot-project/src
-$ cd boot-project
+$ mkdir -p my-project/src
+$ cd my-project
 $ echo "hi there" > src/greet.txt
 ```
 
 The directory should now have the following structure:
 
 ```
-boot-project
+my-project
 └── src
     └── hello.txt
 ```
@@ -171,7 +144,7 @@ from the command line:
 
 ```
 # The -- args below are optional. We use them here to visually separate the tasks.
-$ boot -s src -- pom -p boot-project -v 0.1.0 -- jar -M Foo=bar -- install
+$ boot -s src -- pom -p my-project -v 0.1.0 -- jar -M Foo=bar -- install
 ```
 
 What we did here was we built a pipeline on the command line and ran it to
@@ -207,7 +180,7 @@ option from the command line.
 Now that boot environment is set up we can build the project:
 
 ```clojure
-boot.user=> (boot (pom :project 'boot-project :version "0.1.0")
+boot.user=> (boot (pom :project 'my-project :version "0.1.0")
        #_=>       (jar :manifest {:Foo "bar"})
        #_=>       (install))
 ```
@@ -226,7 +199,7 @@ The `task-options!` macro does this. Continuing in the REPL:
 
 ```clojure
 boot.user=> (task-options!
-       #_=>   pom [:project 'boot-project
+       #_=>   pom [:project 'my-project
        #_=>        :version "0.1.0"]
        #_=>   jar [:manifest {:Foo "bar"}])
 ```
@@ -238,32 +211,15 @@ task functions have been "curried":
 boot.user=> (boot (pom) (jar) (install))
 ```
 
-These built-in tasks actually call the tasks they depend on when they don't
-find the inputs they need. The `install` task, for instance, needs a jar file
-to install, so it calls the `jar` task when it can't find one. The jar task
-needs the `pom.xml` and `pom.properties` files in order to create the jar, so
-it calls the `pom` task when necessary, and so on.
-
-Since these tasks now have their options set via `task-options!` we don't need
-to call them all anymore. All we need to do now is call the `install` task, and
-the others will be called as necessary automatically.
-
-```clojure
-boot.user=> (boot (install))
-```
-
 Individual options can still be set by providing arguments to the tasks such
 that they override those set with `task-options!`. Let's build our project with
 a different version number, for example:
 
 ```clojure
-boot.user=> (boot (pom :version "0.1.1") (install))
+boot.user=> (boot (pom :version "0.1.1") (jar) (install))
 ```
 
-We'll see later exactly how all of this works, but for now just notice that we
-didn't need to specify the `jar` task this time, because it was called by the
-`install` task. We did, however, want to specify the `pom` task so that we
-could override the `:version` argument.
+Pretty simple, right?
 
 ### Write a Build Script
 
@@ -279,7 +235,7 @@ contents:
   :src-paths #{"src"})
 
 (task-options!
-  pom [:project 'boot-project
+  pom [:project 'my-project
        :version "0.1.0"]
   jar [:manifest {:Foo "bar"}])
 ```
@@ -288,13 +244,13 @@ Now we can build the project without specifying the options for each task on
 the command line–we only need to specify the tasks to create the pipeline.
 
 ```
-$ boot install
+$ boot pom jar install
 ```
 
 And we can override these options on the command line as we did in the REPL:
 
 ```
-$ boot -- pom -v 0.1.1 -- install
+$ boot -- pom -v 0.1.1 -- jar -- install
 ```
 
 Notice how we did not need a `(boot ...)` expression in the `build.boot` script.
@@ -304,7 +260,7 @@ You can start a REPL in the context of the boot script (compiled as the
 `boot.user` namespace), and build interactively too:
 
 ```clojure
-boot.user=> (boot (install))
+boot.user=> (boot (pom) (jar) (install))
 ```
 
 When boot is run from the command line it actually generates a `boot` expression
@@ -312,25 +268,27 @@ according to the command line options provided.
 
 ### Define a Task
 
-Custom tasks can be defined in the project or in `build.boot`. As an example
-let's make a task that performs the last example above, and name it `build`.
-We'll modify `build.boot` such that it contains the following:
+Custom tasks can be defined in the project or in `build.boot`. This is generally
+how boot is expected to be used, in fact. Boot ships with a selection of small
+tasks that can be composed uniformly, and the user assembles them into something
+that makes sense for the specific project.
+
+As an example let's make a task that performs the last example above, and name
+it `build`. We'll modify `build.boot` such that it contains the following:
 
 ```clojure
 (set-env!
   :src-paths #{"src"})
 
 (task-options!
-  pom [:project 'boot-project
+  pom [:project 'my-project
        :version "0.1.0"]
   jar [:manifest {:Foo "bar"}])
 
 (deftask build
-  "Build project version 0.1.1"
+  "Build my project."
   []
-  (comp
-    (pom :version "0.1.1")
-    (install)))
+  (comp (pom) (jar) (install)))
 ```
 
 Now we should be able to see the `build` task listed among the available tasks
@@ -340,31 +298,35 @@ would run any other task:
 ```
 $ boot build
 ```
+
 Tasks are functions that return pipelines. Pipelines compose functionally to
-produce new pipelines. The `pom` and `install` functions we used in the
-definition of `build` are, in fact, the same functions that were called when we
-used them on the command line before. Boot's command line parsing implicitly
-composes them; in our task we compose them using Clojure's `comp` function.
+produce new pipelines. If you've used [transducers][7] or [ring middleware][8]
+this pattern should be familiar. The `pom` and `install` functions we used in
+the definition of `build` are, in fact, the same functions that were called
+when we used them on the command line before. Boot's command line parsing
+implicitly composes them; in our task we compose them using Clojure's `comp`
+function.
 
 ## Hacking Boot
 
 To build boot from source you will need:
 
-* Java 7+
+* JDK 1.7
 * GNU make
 * maven 3
-* launch4j
+* launch4j (optional)
 * bash shell, wget
 
 In a terminal in the project directory do:
 
 ```
+$ make deps
 $ make install
 ```
 
 Jars for all of the boot components will be created and installed to your local
-Maven repository. The executables `bin/boot` and `bin/boot.exe` will be created,
-as well.
+Maven repository. The executables `bin/boot.sh` and `bin/boot.exe` (if you have
+launch4j available) will be created, as well.
 
 ## Attribution
 
@@ -396,14 +358,17 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [1]: https://raw.githubusercontent.com/tailrecursion/boot/master/img/archimedes-lever.gif
 [2]: https://github.com/tailrecursion/boot/releases/download/v2-r1/boot.sh
 [3]: https://github.com/tailrecursion/boot/releases/download/v2-r1/boot.exe
-[4]: #download
+[4]: #install
 [5]: https://drone.io/github.com/tailrecursion/boot/status.png?cache=1
 [6]: https://drone.io/github.com/tailrecursion/boot/latest
+[7]: http://clojure.org/transducers
+[8]: http://drtom.ch/posts/2012-12-10/An_Introduction_to_Webprogramming_in_Clojure_-_Ring_and_Middleware/#ring-middleware
 
 [20]: doc/clojure-scripting-with-boot.md
 [21]: doc/overview-of-the-boot-workflow.md
 [22]: doc/boot-task-writers-guide.md
 [23]: https://tailrecursion.github.io/boot
+[24]: doc/updating-boot-and-clojure-versions.md
 
 [50]: https://github.com/technomancy/leiningen
 [51]: https://github.com/cemerick/pomegranate

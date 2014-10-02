@@ -92,6 +92,7 @@
       (->> (apply hash-map kvs)
         (merge {:dependencies []
                 :src-paths    #{}
+                :rsc-paths    #{}
                 :tgt-path     "target"
                 :repositories [["clojars"       "http://clojars.org/repo/"]
                                ["maven-central" "http://repo1.maven.org/maven2/"]]})))
@@ -177,7 +178,7 @@
   artifacts in target directories to sync. If there are none `sync!` does
   nothing."
   ([]
-     (let [tgtfiles (set (tgt-files))
+     (let [tgtfiles (tgt-files)
            tgt      (io/file (get-env :tgt-path))]
        (when-not (empty? tgtfiles)
          (tmp/sync! @tmpregistry)
@@ -197,8 +198,8 @@
   "Create a temp directory and return its `File` object. If `mktmpdir!` has
   already been called with the given `key` the directory's contents will be
   deleted."
-  [key]
-  (tmp/mkdir! @tmpregistry key))
+  ([] (mktmpdir! (keyword (str (gensym)))))
+  ([key] (tmp/mkdir! @tmpregistry key)))
 
 (def ^:private tgtdirs
   "Atom containing a vector of File objects–directories created by `mktgtdir!`.
@@ -216,22 +217,27 @@
   ([] (mktgtdir! (keyword (str (gensym)))))
   ([key] (util/with-let [f (mktmpdir! key)]
            (swap! tgtdirs conj f)
-           (set-env! :src-paths #{(.getPath f)})
-           (add-sync! (get-env :tgt-path) [(.getPath f)]))))
+           (set-env! :src-paths #(conj % (.getPath f)))
+           (add-sync! (get-env :tgt-path) #{(.getPath f)}))))
 
 (defn mksrcdir!
   "Create a tmpdir managed by boot into which tasks can emit artifacts which
   are constructed in order to be intermediate source files but not intended to
   be synced to the project `:tgt-path`. See https://github.com/tailrecursion/boot#boot-managed-directories
   for more info."
-  [key & [name]]
-  (util/with-let [f (mktmpdir! key name)]
-    (set-env! :src-paths #{(.getPath f)})))
+  ([] (mksrcdir! (keyword (str (gensym)))))
+  ([key] (util/with-let [f (mktmpdir! key)]
+           (set-env! :src-paths #(conj % (.getPath f))))))
 
-(defn unmk!
-  "Delete the temp or target file or directory created with the given `key`."
-  [key]
-  (tmp/unmk! @tmpregistry key))
+(defn mkrscdir!
+  "Create a tmpdir managed by boot into which tasks can emit files which are
+  to be resources. Resources are not compiled or processed by build tasks, but
+  are included in the final packaged artifact. These resource directories are
+  not emptied by boot for each build cycle."
+  ([] (mkrscdir! (keyword (str (gensym)))))
+  ([key] (util/with-let [f (mktmpdir! key)]
+           (set-env! :rsc-paths #(conj % (.getPath f)))
+           (add-sync! (get-env :tgt-path) #{(.getPath f)}))))
 
 (defmacro deftask
   "Define a boot task."
@@ -372,6 +378,14 @@
   (let [want? #(and (.isFile %) (not (contains? @consumed-files %)))]
     (->> :src-paths get-env (map io/file) (mapcat file-seq) (filter want?) set)))
 
+(defn rsc-files
+  "Returns a seq of `java.io.File` objects--the contents of directories in the
+  :rsc-paths boot environment. Note that this includes directories created by
+  tasks via the `mkrscdir!` function above."
+  []
+  (let [want? #(and (.isFile %) (not (contains? @consumed-files %)))]
+    (->> :rsc-paths get-env (map io/file) (mapcat file-seq) (filter want?) set)))
+
 (defn tgt-files
   "Returns a seq of `java.io.File` objects--the contents of directories created
   by tasks via the `mktgtdir!` function above."
@@ -379,15 +393,7 @@
   (let [want? #(and (.isFile %) (not (contains? @consumed-files %)))]
     (->> @tgtdirs (mapcat file-seq) (filter want?) set)))
 
-#_(defn src-resources
-  "Returns a seq of urls corresponding to resources in jars on the classpath.
-  Regexes can be (optionally) provided to restrict the set to jar dependencies
-  whose group-id/artifact-id symbol matches one of the regexes."
-  [& regexes]
-  (pod/call-worker
-    `(boot.aether/jar-entries-in-dep-order ~(get-env) ~@regexes)))
-
-(defn newer?
+#_(defn newer?
   "Given a seq of source file objects `srcs` and a number of `artifact-dirs`
   directory file objects, returns truthy when any file in `srcs` is newer than
   any file in any of the `artifact-dirs`."
@@ -402,7 +408,7 @@
 (defn relative-path
   "Get the path of a source file relative to the source directory it's in."
   [f]
-  (->> (get-env :src-paths)
+  (->> (concat (get-env :src-paths) (get-env :rsc-paths))
     (map #(.getPath (file/relative-to (io/file %) f)))
     (some #(and (not= f (io/file %)) (util/guard (io/as-relative-path %)) %))))
 

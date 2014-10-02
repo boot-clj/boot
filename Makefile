@@ -1,4 +1,4 @@
-.PHONY: help install deploy test clean basejar
+.PHONY: help deps install deploy test clean
 
 version    = $(shell grep ^version version.properties |sed 's/.*=//')
 verfile    = version.properties
@@ -17,7 +17,7 @@ alljars    = $(podjar) $(aetherjar) $(workerjar) $(corejar) $(baseuber) $(bootja
 
 help:
 	@echo "version =" $(version)
-	@echo "Usage: make {help|install|deploy|test}" 1>&2 && false
+	@echo "Usage: make {help|deps|install|deploy|test|clean}" 1>&2 && false
 
 clean:
 	(cd boot/base && mvn -q clean)
@@ -31,13 +31,16 @@ bin/lein:
 	wget https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein -O bin/lein
 	chmod 755 bin/lein
 
+deps: bin/lein
+
 $(bootjar): $(verfile) boot/boot/project.clj
 	(cd boot/boot && lein install)
 
-$(basejar): $(verfile) boot/base/pom.in.xml $(shell find boot/base/src/main/java)
-	(cd boot/base && cat pom.in.xml |sed 's/__VERSION__/$(version)/' > pom.xml && mvn -q install)
+boot/base/pom.xml: $(verfile) boot/base/pom.in.xml
+	(cd boot/base && cat pom.in.xml |sed 's/__VERSION__/$(version)/' > pom.xml)
 
-basejar: $(basejar)
+$(basejar): boot/base/pom.xml $(shell find boot/base/src/main/java)
+	(cd boot/base && mvn -q install)
 
 $(podjar): $(verfile) boot/pod/project.clj $(shell find boot/pod/src)
 	(cd boot/pod && lein install)
@@ -53,7 +56,7 @@ $(workerjar): $(verfile) boot/worker/project.clj $(shell find boot/worker/src)
 $(corejar): $(verfile) boot/core/project.clj $(shell find boot/core/src)
 	(cd boot/core && lein install)
 
-$(baseuber): $(basejar) $(shell find boot/base/src/main)
+$(baseuber): boot/base/pom.xml $(shell find boot/base/src/main)
 	(cd boot/base && mvn -q assembly:assembly -DdescriptorId=jar-with-dependencies)
 
 $(bootbin): $(baseuber)

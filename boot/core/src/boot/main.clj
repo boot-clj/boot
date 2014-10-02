@@ -19,6 +19,7 @@
                  (update-in %1 [%2] (fnil assoc {}) (keyword k) v))]
    ["-h" "--help"                "Print basic usage and help info."]
    ["-P" "--no-profile"          "Skip loading of profile.boot script."]
+   ["-r" "--rsc-paths PATH"      "Add PATH to set of resource directories."]
    ["-s" "--src-paths PATH"      "Add PATH to set of source directories."
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
    ["-t" "--tgt-path PATH"       "Set the target directory to PATH."]
@@ -84,7 +85,6 @@
 
           (swap! util/verbose-exceptions + (or (:verbose opts) 0))
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
-          (when (:version opts) (util/exit-ok (println core/*boot-version*)))
 
           (reset! (var-get #'core/tmpregistry)
             (tmp/init! (tmp/registry (io/file ".boot" "tmp"))))

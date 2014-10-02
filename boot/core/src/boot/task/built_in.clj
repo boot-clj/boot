@@ -119,7 +119,7 @@
     (if (zero? (or time 0)) @(promise) (Thread/sleep time))))
 
 (core/deftask watch
-  "Call the next handler whenever source files change.
+  "Call the next handler whenever source and/or resource files change.
 
   Debouncing time is 10ms by default."
 
@@ -127,7 +127,9 @@
 
   (pod/require-in-pod @pod/worker-pod "boot.watcher")
   (let [q        (LinkedBlockingQueue.)
-        srcdirs  (->> (core/get-env :src-paths) (remove core/tmpfile?))
+        srcdirs  (->> (core/get-env :src-paths)
+                   (concat (core/get-env :rsc-paths))
+                   (remove core/tmpfile?))
         watchers (map file/make-watcher srcdirs)
         paths    (into-array String srcdirs)
         k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)
@@ -135,7 +137,7 @@
         ]
     (fn [continue]
       (fn [event]
-        (util/info "Starting file watcher (CTRL-C to quit)...\n")
+        (util/info "Starting file watcher (CTRL-C to quit)...\n\n")
         (loop [ret (util/guard [(.take q)])]
           (when ret
             (if-let [more (.poll q (or debounce 10) TimeUnit/MILLISECONDS)]
@@ -217,27 +219,6 @@
           (pod/call-worker
             `(boot.pom/spit-pom! ~(.getPath xmlfile) ~(.getPath propfile) ~opts)))))))
 
-(core/deftask add-dir
-  "Add files in resource directories to fileset.
-
-  The include and exclude options specify sets of regular expressions (strings)
-  that will be used to filter the source files. If no filters are specified then
-  all files are added to the fileset."
-
-  [d dirs PATH     #{str} "The set of resource directories."
-   i include REGEX #{str} "The set of regexes that paths must match."
-   x exclude REGEX #{str} "The set of regexes that paths must not match."]
-
-  (let [tgt  (core/mktgtdir!)
-        ign? (git/make-gitignore-matcher (core/get-env :src-paths))]
-    (core/with-pre-wrap
-      (when (seq dirs)
-        (util/info "Adding resource files...\n")
-        (binding [file/*ignore*  ign?
-                  file/*include* (mapv re-pattern include)
-                  file/*exclude* (mapv re-pattern exclude)]
-          (apply file/sync :time tgt dirs))))))
-
 (core/deftask add-src
   "Add source files to fileset.
 
@@ -248,60 +229,66 @@
   [i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
-  (let [dirs (remove core/tmpfile? (core/get-env :src-paths))]
-    (add-dir :dirs dirs :include include :exclude exclude)))
-
-(core/deftask map-fileset
-  "Transform current fileset with given mapping fn.
-
-  The mapping function will be called with the relative path of each file in the
-  current fileset. The function should return the relative path desired for that
-  file in the result fileset. If the function returns nil then that file will be
-  removed from the result fileset."
-  
-  [f map-fn CODE code "The mapping function."]
-  
-  (let [tgt  (core/mktgtdir!)]
+  (let [tgt (core/mkrscdir!)]
     (core/with-pre-wrap
-      (when map-fn
-        (doseq [f (core/tgt-files) :let [p (core/relative-path f)]]
-          (when-let [p (map-fn p)]
-            (file/copy-with-lastmod f (io/file tgt p)))
-          (core/consume-file! f))))))
+      (let [dirs (remove core/tmpfile? (core/get-env :src-paths))
+            ign? (git/make-gitignore-matcher dirs)]
+        (util/info "Adding source files...\n")
+        (binding [file/*ignore*  ign?
+                  file/*include* (mapv re-pattern include)
+                  file/*exclude* (mapv re-pattern exclude)]
+          (apply file/sync :time tgt dirs))))))
 
 (core/deftask uber
   "Add jar entries from dependencies to fileset.
 
+  Use this task before the packaging task (jar, war, etc.) to create uberjars,
+  uberwars, etc. This provides the means to package the project with all of its
+  dependencies included.
+
   By default, entries from dependencies with the following scopes will be copied
-  to the fileset: compile, runtime, and provided. The exclude option may be used
-  to exclude dependencies with the given scope(s).
+  to the fileset: compile, runtime, and provided. The include-scope and exclude-
+  scope options may be used to add or remove scope(s) from this set.
+
+  The as-jars option pulls in dependency jars without exploding them, such that
+  the jarfiles themselves are copied into the fileset.
 
   The include and exclude options specify sets of regular expressions (strings)
-  that will be used to filter the entries. If no filters are specified then all
-  entries are added to the fileset."
+  that will be used to filter the entries (or jar files if the as-jars option
+  was specified). If no filters are specified then all entries (or jar files)
+  are added to the fileset."
 
-  [S exclude-scope SCOPE #{str} "The set of excluded scopes."
+  [j as-jars             bool   "Copy entire jar files instead of exploding them."
+   s include-scope SCOPE #{str} "The set of scopes to add."
+   S exclude-scope SCOPE #{str} "The set of scopes to remove."
    i include REGEX       #{str} "The set of regexes that paths must match."
-   x exclude REGEX       #{str} "The set of regexes that paths must not match."
-   ]
+   x exclude REGEX       #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt        (core/mktgtdir!)
+  (let [tgt        (core/mkrscdir!)
         dfl-scopes #{"compile" "runtime" "provided"}
-        scopes     (set/difference dfl-scopes exclude-scope)
+        scopes     (-> dfl-scopes
+                     (set/union include-scope)
+                     (set/difference exclude-scope))
         include    (map re-pattern include)
-        exclude    (map re-pattern exclude)]
-    (core/with-pre-wrap
-      (let [scope? #(contains? scopes (:scope (util/dep-as-map %)))
-            urls   (-> (core/get-env)
+        exclude    (map re-pattern exclude)
+        scope?     #(contains? scopes (:scope (util/dep-as-map %)))
+        jars       (-> (core/get-env)
                      (update-in [:dependencies] (partial filter scope?))
-                     pod/jar-entries-in-dep-order)]
-        (util/info "Adding uberjar entries...\n")
-        (doseq [[relpath url-str] urls :let [f (io/file relpath)]]
-          (when (file/keep-filters? include exclude f)
-            (let [segs    (file/split-path relpath)
-                  outfile (apply io/file tgt segs)]
-              (when-not (or (.exists outfile) (= "META-INF" (first segs)))
-                (pod/copy-url url-str outfile)))))))))
+                     pod/resolve-dependency-jars)
+        add-uber   (delay
+                     (util/info "Adding uberjar entries...\n")
+                     (doseq [jar jars]
+                       (if as-jars
+                         (when (file/keep-filters? include exclude jar)
+                           (file/copy-with-lastmod jar (io/file tgt (.getName jar))))
+                         (doseq [[relpath url-str] (pod/jar-entries jar)
+                                 :let [f (io/file relpath)]]
+                           (when (file/keep-filters? include exclude f)
+                             (let [segs    (file/split-path relpath)
+                                   outfile (apply io/file tgt segs)]
+                               (when-not (or (.exists outfile) (= "META-INF" (first segs)))
+                                 (pod/copy-url url-str outfile))))))))]
+    (core/with-pre-wrap @add-uber)))
 
 (core/deftask web
   "Create project web.xml file.
@@ -399,7 +386,7 @@
             jarname (or file (and aid v (str aid "-" v ".jar")) "project.jar")
             jarfile (io/file tgt jarname)]
         (when-not (.exists jarfile)
-          (let [index (->> (core/tgt-files)
+          (let [index (->> (concat (core/tgt-files) (core/rsc-files))
                         (filter (partial file/keep-filters? include exclude))
                         (map (juxt core/relative-path (memfn getPath))))]
             (util/info "Writing %s...\n" (.getName jarfile))
@@ -421,16 +408,19 @@
   (let [tgt (core/mktgtdir!)]
     (core/with-pre-wrap
       (let [warname (or file "project.war")
-            warfile (io/file tgt warname)]
+            warfile (io/file tgt warname)
+            inf?    #(contains? #{"META-INF" "WEB-INF"} %)]
         (when-not (.exists warfile)
-          (let [->war #(let [r  (core/relative-path %)
-                             r' (file/split-path r)]
-                         (if (contains? #{"META-INF" "WEB-INF"} (first r'))
-                           r
-                           (.getPath (apply io/file "WEB-INF" "classes" r'))))
-                index (->> (core/tgt-files)
+          (let [->war #(let [r    (core/relative-path %)
+                             r'   (file/split-path r)
+                             path (into ["WEB-INF"]
+                                    (if (.endsWith r ".jar")
+                                      ["lib" (last r')]
+                                      (into ["classes"] r')))]
+                         (if (inf? (first r')) r (.getPath (apply io/file path))))
+                index (->> (concat (core/tgt-files) (core/rsc-files))
                         (filter (partial file/keep-filters? include exclude))
-                        (map (juxt ->war (memfn getPath))))]
+                        (mapv (juxt ->war (memfn getPath))))]
             (util/info "Writing %s...\n" (.getName warfile))
             (pod/call-worker
               `(boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))

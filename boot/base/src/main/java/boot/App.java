@@ -61,30 +61,33 @@ public class App {
         if (c == null) c = "1.6.0";
         
         if (bootversion != null) 
-            p.setProperty("bootVersion", bootversion);
+            p.setProperty("BOOT_VERSION", bootversion);
         else
             for (File x : resolveDepJars(a, "boot", channel, c))
                 if (null != (t = jarVersion(x, "boot-")))
-                    p.setProperty("bootVersion", t);
+                    p.setProperty("BOOT_VERSION", t);
 
-        p.setProperty("clojureVersion", c);
+        p.setProperty("BOOT_CLOJURE_VERSION", c);
 
-        p.store(new FileOutputStream(f), "---boot version settings---");
+        try (FileOutputStream file = new FileOutputStream(f)) {
+                p.store(file, "boot: https://github.com/tailrecursion/boot"); }
         
         return p; }
     
     private static Properties
     readProps(File f, boolean create) throws Exception {
+        FileLock lock = (new RandomAccessFile(f, "rw")).getChannel().lock();
         Properties p = new Properties();
         try {
             p.load(new FileInputStream(f));
-            if (p.getProperty("clojureVersion") == null
-                || p.getProperty("bootVersion") == null)
+            if (p.getProperty("BOOT_CLOJURE_VERSION") == null
+                || p.getProperty("BOOT_VERSION") == null)
                 throw new Exception("missing info");
             return p; }
         catch (Throwable e) {
             if (! create) return null;
-            else return writeProps(f); }}
+            else return writeProps(f); }
+        finally { lock.release(); }}
         
     private static HashMap<String, File[]>
     seedCache() throws Exception {
@@ -110,9 +113,8 @@ public class App {
 
     private static Object
     writeCache(File f, Object m) throws Exception {
-        FileOutputStream file = new FileOutputStream(f);
-        try { (new ObjectOutputStream(file)).writeObject(m); }
-        finally { file.close(); }
+        try (FileOutputStream file = new FileOutputStream(f)) {
+                (new ObjectOutputStream(file)).writeObject(m); }
         return m; }
     
     private static Object
@@ -253,32 +255,32 @@ public class App {
         
         File projectprops = new File("boot.properties");
         File bootprops    = new File(bootdir, "boot.properties");
-
-        File jardir    = new File(new File(bootdir, "lib"), appversion);
-        aetherfile     = new File(jardir, aetherjar);
+        File jardir       = new File(new File(bootdir, "lib"), appversion);
+        aetherfile        = new File(jardir, aetherjar);
 
         jardir.mkdirs();
 
         if (args.length > 0
             && ((args[0]).equals("-u")
                 || (args[0]).equals("--update"))) {
-            Properties q = readProps(bootprops, false);
-            q = (q != null) ? q : new Properties();
             Properties p = writeProps(bootprops);
-            System.out.printf("Lib version %s -> %s\n", q.getProperty("bootVersion"), p.getProperty("bootVersion"));
-            System.out.printf("Clj version %s -> %s\n", q.getProperty("clojureVersion"), p.getProperty("clojureVersion"));
+            p.store(System.out, "boot: https://github.com/tailrecursion/boot");
             System.exit(0); }
 
         if (cljversion == null || bootversion == null) {
+            Properties q = readProps(bootprops, true);
             Properties p = readProps(projectprops, false);
-            if (p == null) p = readProps(bootprops, true);
-            if (cljversion == null) cljversion = p.getProperty("clojureVersion");
-            if (bootversion == null) bootversion = p.getProperty("bootVersion"); }
+            p = (p == null) ? q : p;
+            if (cljversion == null) cljversion = p.getProperty("BOOT_CLOJURE_VERSION");
+            if (bootversion == null) bootversion = p.getProperty("BOOT_VERSION"); }
         
         if (args.length > 0
             && ((args[0]).equals("-V")
                 || (args[0]).equals("--version"))) {
-            usage();
+            Properties p = new Properties();
+            p.setProperty("BOOT_VERSION", bootversion);
+            p.setProperty("BOOT_CLOJURE_VERSION", cljversion);
+            p.store(System.out, "boot: https://github.com/tailrecursion/boot");
             System.exit(0); }
 
         File cachedir  = new File(new File(new File(new File(bootdir, "cache"), dir_l), cljversion), bootversion);
