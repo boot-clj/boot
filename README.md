@@ -185,9 +185,9 @@ boot.user=> (set-env!
        #_=>   :dependencies '[[me.raynes/conch "0.8.0"]])
 ```
 
-This was given on the command line as the `-s` or `--src-paths` argument to
-boot itself. In general arguments to boot correspond to calls to `set-env!` in
-the REPL or in a script. Note that the keyword always corresponds to the long
+This was specified on the command line as the `-s` or `--src-paths` and `-d` or
+`--dependencies` arguments to boot itself. These correspond to calls to `set-env!`
+in the REPL or in a script. Note that the keyword always corresponds to the long
 option from the command line.
 
 Now that boot environment is set up we can build the project:
@@ -218,7 +218,7 @@ boot.user=> (task-options!
 ```
 
 Now we can build the project without specifying these options, because the
-task functions have been "curried":
+task functions have been replaced with curried versions of themselves:
 
 ```clojure
 boot.user=> (boot (pom) (jar) (install))
@@ -232,7 +232,10 @@ a different version number, for example:
 boot.user=> (boot (pom :version "0.1.1") (jar) (install))
 ```
 
-Pretty simple, right?
+Pretty simple, right? This way of setting options requires no participation by
+the tasks themselves. There is no global configuration map or anything like
+that. It works because tasks accept only [keyword arguments][9], so partial
+application is idempotent and last setting wins.
 
 ### Write a Build Script
 
@@ -381,6 +384,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [6]: https://drone.io/github.com/tailrecursion/boot/latest
 [7]: http://clojure.org/transducers
 [8]: http://drtom.ch/posts/2012-12-10/An_Introduction_to_Webprogramming_in_Clojure_-_Ring_and_Middleware/#ring-middleware
+[9]: https://clojurefun.wordpress.com/2012/08/13/keyword-arguments-in-clojure/comment-page-1/
 
 [20]: doc/clojure-scripting-with-boot.md
 [21]: doc/overview-of-the-boot-workflow.md
