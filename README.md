@@ -376,7 +376,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [53]: https://github.com/tebeka/clj-digest
 [54]: https://github.com/cldwalker/table
 [55]: https://github.com/clojure/tools.cli
-[56]: https://github.com/bbloom/backtick
+[56]: https://github.com/brandonbloom/backtick
 [57]: https://github.com/AvisoNovate/pretty
 [58]: https://github.com/google/hesokuri
 [59]: https://code.google.com/p/barbarywatchservice/
