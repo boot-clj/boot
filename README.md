@@ -180,7 +180,9 @@ the command line.
 First we'll set some global boot options–the source directories, for instance:
 
 ```clojure
-boot.user=> (set-env! :src-paths #{"src"} :dependencies '[[me.raynes/conch "0.8.0"]])
+boot.user=> (set-env! 
+       #_=>   :src-paths #{"src"}
+       #_=>   :dependencies '[[me.raynes/conch "0.8.0"]])
 ```
 
 This was given on the command line as the `-s` or `--src-paths` argument to
