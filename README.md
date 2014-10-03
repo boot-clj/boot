@@ -232,13 +232,17 @@ contents:
 
 ```clojure
 (set-env!
-  :src-paths #{"src"})
+  :src-paths #{"src"}
+  :dependencies '[[me.raynes/conch "0.8.0"]])
 
 (task-options!
   pom [:project 'my-project
        :version "0.1.0"]
   jar [:manifest {"Foo" "bar"}])
 ```
+
+This `build.boot` also includes an example of specifying a Maven
+dependency, in this case `me.raynes/conch`, from Clojars.
 
 Now we can build the project without specifying the options for each task on
 the command line–we only need to specify the tasks to create the pipeline.
