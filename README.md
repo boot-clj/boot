@@ -177,7 +177,8 @@ The default namespace is `boot.user`, which is the namespace given to the build
 script. Building the project in the REPL is almost identical to what we did on
 the command line.
 
-First we'll set some global boot options–the source directories, for instance:
+First we'll set some global boot options–we'll set the source directory and add
+the `conch` dependency to the build environment:
 
 ```clojure
 boot.user=> (set-env! 
@@ -186,7 +187,7 @@ boot.user=> (set-env!
 ```
 
 This was specified on the command line as the `-s` or `--src-paths` and `-d` or
-`--dependencies` arguments to boot itself. These correspond to calls to `set-env!`
+`--dependencies` arguments to boot itself. These translate to calls to `set-env!`
 in the REPL or in a script. Note that the keyword always corresponds to the long
 option from the command line.
 
