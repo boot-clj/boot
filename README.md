@@ -160,7 +160,9 @@ This sets up the build environment. Then we constructed a pipeline of tasks:
 manifest with value `bar`,
 * And finally the `install` task with no options.
 
-Boot composes the pipeline and runs it, building your project. There should be a jar file in the `target` directory–the fruits of your labors. 
+Boot composes the pipeline and runs it, building your project. Your local
+Maven repository will now contain `my-project-0.1.0.jar`. The jar file will
+also be found in the default output directory: `target`.
 
 ### Build From the REPL
 
