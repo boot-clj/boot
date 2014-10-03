@@ -181,7 +181,7 @@ Now that boot environment is set up we can build the project:
 
 ```clojure
 boot.user=> (boot (pom :project 'my-project :version "0.1.0")
-       #_=>       (jar :manifest {:Foo "bar"})
+       #_=>       (jar :manifest {"Foo" "bar"})
        #_=>       (install))
 ```
 
@@ -201,7 +201,7 @@ The `task-options!` macro does this. Continuing in the REPL:
 boot.user=> (task-options!
        #_=>   pom [:project 'my-project
        #_=>        :version "0.1.0"]
-       #_=>   jar [:manifest {:Foo "bar"}])
+       #_=>   jar [:manifest {"Foo" "bar"}])
 ```
 
 Now we can build the project without specifying these options, because the
@@ -237,7 +237,7 @@ contents:
 (task-options!
   pom [:project 'my-project
        :version "0.1.0"]
-  jar [:manifest {:Foo "bar"}])
+  jar [:manifest {"Foo" "bar"}])
 ```
 
 Now we can build the project without specifying the options for each task on
@@ -283,7 +283,7 @@ it `build`. We'll modify `build.boot` such that it contains the following:
 (task-options!
   pom [:project 'my-project
        :version "0.1.0"]
-  jar [:manifest {:Foo "bar"}])
+  jar [:manifest {"Foo" "bar"}])
 
 (deftask build
   "Build my project."
