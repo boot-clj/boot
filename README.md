@@ -282,7 +282,8 @@ it `build`. We'll modify `build.boot` such that it contains the following:
 
 ```clojure
 (set-env!
-  :src-paths #{"src"})
+  :src-paths #{"src"}
+  :dependencies '[[me.raynes/conch "0.8.0"]])
 
 (task-options!
   pom [:project 'my-project
