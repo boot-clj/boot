@@ -144,14 +144,23 @@ from the command line:
 
 ```
 # The -- args below are optional. We use them here to visually separate the tasks.
-$ boot -s src -- pom -p my-project -v 0.1.0 -- jar -M Foo=bar -- install
+$ boot -s src -d me.raynes/conch:0.8.0 -- pom -p my-project -v 0.1.0 -- jar -M Foo=bar -- install
 ```
 
 What we did here was we built a pipeline on the command line and ran it to
-build our project. We specified the source directory via boot's `-s` option
-first. Then we added the `pom` task with options to set the project ID and
-version string, the `jar` task with options to add a `Foo` key to the jar
-manifest with value `bar`, and finally the `install` task with no options.
+build our project. 
+
+* We specified the source directory via boot's `-s` option.
+* We added the `conch` dependency via boot's `-d` option.
+
+This sets up the build environment. Then we constructed a pipeline of tasks:
+
+* The `pom` task with options to set the project ID and version,
+* The `jar` task with options to add a `Foo` key to the jar,
+manifest with value `bar`,
+* And finally the `install` task with no options.
+
+Boot composes the pipeline and runs it, building your project. There should be a jar file in the `target` directory–the fruits of your labors. 
 
 ### Build From the REPL
 
@@ -169,7 +178,7 @@ the command line.
 First we'll set some global boot options–the source directories, for instance:
 
 ```clojure
-boot.user=> (set-env! :src-paths #{"src"})
+boot.user=> (set-env! :src-paths #{"src"} :dependencies '[[me.raynes/conch "0.8.0"]])
 ```
 
 This was given on the command line as the `-s` or `--src-paths` argument to
