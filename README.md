@@ -80,7 +80,7 @@ operating system (note: boot requires the Java Development Kit (JDK) version
 * ~~[The Boot Task Writer's Guide][22]~~
 * ~~[Boot API Documentation][23]~~
 
-## Getting Help
+## Getting Started
 
 Once boot is installed (see [Install][4] above) do this in a terminal:
 
@@ -118,7 +118,7 @@ boot.user=> (doc repl)
 The output will be slightly different from the command line help info. We'll see
 why this is so a little later.
 
-## Build a Simple Project
+### Build From the Command Line
 
 Let's build a simple project to get our feet wet. We'll create a new directory,
 say `my-project`, and a source directory in there named `src` with a source
@@ -325,6 +325,8 @@ the definition of `build` are, in fact, the same functions that were called
 when we used them on the command line before. Boot's command line parsing
 implicitly composes them; in our task we compose them using Clojure's `comp`
 function.
+
+...
 
 ## Hacking Boot
 
