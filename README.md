@@ -42,6 +42,14 @@ Turing-complete build specification.
   on the command line.
 * Artifacts can never be stale–there is no need for a `clean` task.
 
+## Documentation
+
+* [Boot / Clojure Version Howto][24]
+* ~~[Clojure Scripting With Boot][20]~~
+* ~~[Overview of the Boot Workflow][21]~~
+* ~~[The Boot Task Writer's Guide][22]~~
+* ~~[Boot API Documentation][23]~~
+
 ## Install
 
 Binaries in executable format are available. Follow the instructions for your
@@ -71,14 +79,6 @@ operating system (note: boot requires the Java Development Kit (JDK) version
   ```
   C:\> move boot.exe C:\Windows\System32
   ```
-
-## Documentation
-
-* [Boot / Clojure Version Howto][24]
-* ~~[Clojure Scripting With Boot][20]~~
-* ~~[Overview of the Boot Workflow][21]~~
-* ~~[The Boot Task Writer's Guide][22]~~
-* ~~[Boot API Documentation][23]~~
 
 ## Getting Started
 
