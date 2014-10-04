@@ -58,23 +58,17 @@ operating system (note: boot requires the Java Development Kit (JDK) version
 
 #### Unix, Linux, OSX
 
-* Download [boot.sh][2]
-* Rename `boot.sh` to `boot` and make it executable:
+* Download [boot.sh][2], then:
 
   ```
-  $ mv boot.sh boot && chmod a+x boot
-  ```
-
-* Put `boot` in a directory that's in your `$PATH`:
-
-  ```
+  $ mv boot.sh boot
+  $ chmod a+x boot
   $ sudo mv boot /usr/local/bin
   ```
   
 #### Windows
 
-* Download [boot.exe][3]
-* Put `boot.exe` in a directory that's in your `%PATH%`:
+* Download [boot.exe][3], then:
 
   ```
   C:\> move boot.exe C:\Windows\System32
