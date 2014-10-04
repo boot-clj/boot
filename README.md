@@ -44,11 +44,16 @@ Turing-complete build specification.
 
 ### Documentation
 
+* [Install](#install)
+* [Getting Started](#getting-started)
 * [Boot / Clojure Version Howto][24]
 * ~~[Clojure Scripting With Boot][20]~~
 * ~~[Overview of the Boot Workflow][21]~~
 * ~~[The Boot Task Writer's Guide][22]~~
 * ~~[Boot API Documentation][23]~~
+* [Hacking Boot](#hacking-boot)
+* [Attribution](#attribution)
+* [License](#license)
 
 ### Install
 
