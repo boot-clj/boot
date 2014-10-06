@@ -76,7 +76,9 @@ public class App {
     
     private static Properties
     readProps(File f, boolean create) throws Exception {
-        FileLock lock = (new RandomAccessFile(f, "rw")).getChannel().lock();
+        FileLock lock = null;
+        if (f.exists())
+            lock = (new RandomAccessFile(f, "rw")).getChannel().lock();
         Properties p = new Properties();
         try {
             p.load(new FileInputStream(f));
@@ -87,7 +89,7 @@ public class App {
         catch (Throwable e) {
             if (! create) return null;
             else return writeProps(f); }
-        finally { lock.release(); }}
+        finally { if (lock != null) lock.release(); }}
         
     private static HashMap<String, File[]>
     seedCache() throws Exception {

@@ -133,8 +133,7 @@
         watchers (map file/make-watcher srcdirs)
         paths    (into-array String srcdirs)
         k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)
-        ign?     (git/make-gitignore-matcher (core/get-env :src-paths))
-        ]
+        ign?     (git/make-gitignore-matcher (core/get-env :src-paths))]
     (fn [continue]
       (fn [event]
         (util/info "Starting file watcher (CTRL-C to quit)...\n\n")
