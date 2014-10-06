@@ -42,7 +42,20 @@ Turing-complete build specification.
   on the command line.
 * Artifacts can never be stale–there is no need for a `clean` task.
 
-## Install
+### Documentation
+
+* [Install](#install)
+* [Getting Started](#getting-started)
+* [Boot / Clojure Version Howto][24]
+* ~~[Clojure Scripting With Boot][20]~~
+* ~~[Overview of the Boot Workflow][21]~~
+* ~~[The Boot Task Writer's Guide][22]~~
+* ~~[Boot API Documentation][23]~~
+* [Hacking Boot](#hacking-boot)
+* [Attribution](#attribution)
+* [License](#license)
+
+### Install
 
 Binaries in executable format are available. Follow the instructions for your
 operating system (note: boot requires the Java Development Kit (JDK) version
@@ -50,37 +63,23 @@ operating system (note: boot requires the Java Development Kit (JDK) version
 
 #### Unix, Linux, OSX
 
-* Download [boot.sh][2]
-* Rename `boot.sh` to `boot` and make it executable:
+* Download [boot.sh][2], then:
 
   ```
-  $ mv boot.sh boot && chmod a+x boot
-  ```
-
-* Put `boot` in a directory that's in your `$PATH`:
-
-  ```
+  $ mv boot.sh boot
+  $ chmod a+x boot
   $ sudo mv boot /usr/local/bin
   ```
   
 #### Windows
 
-* Download [boot.exe][3]
-* Put `boot.exe` in a directory that's in your `%PATH%`:
+* Download [boot.exe][3], then:
 
   ```
   C:\> move boot.exe C:\Windows\System32
   ```
 
-## Documentation
-
-* [Boot / Clojure Version Howto][24]
-* ~~[Clojure Scripting With Boot][20]~~
-* ~~[Overview of the Boot Workflow][21]~~
-* ~~[The Boot Task Writer's Guide][22]~~
-* ~~[Boot API Documentation][23]~~
-
-## Getting Help
+## Getting Started
 
 Once boot is installed (see [Install][4] above) do this in a terminal:
 
@@ -118,7 +117,7 @@ boot.user=> (doc repl)
 The output will be slightly different from the command line help info. We'll see
 why this is so a little later.
 
-## Build a Simple Project
+### Build From the Command Line
 
 Let's build a simple project to get our feet wet. We'll create a new directory,
 say `my-project`, and a source directory in there named `src` with a source
@@ -144,14 +143,25 @@ from the command line:
 
 ```
 # The -- args below are optional. We use them here to visually separate the tasks.
-$ boot -s src -- pom -p my-project -v 0.1.0 -- jar -M Foo=bar -- install
+$ boot -s src -d me.raynes/conch:0.8.0 -- pom -p my-project -v 0.1.0 -- jar -M Foo=bar -- install
 ```
 
 What we did here was we built a pipeline on the command line and ran it to
-build our project. We specified the source directory via boot's `-s` option
-first. Then we added the `pom` task with options to set the project ID and
-version string, the `jar` task with options to add a `Foo` key to the jar
-manifest with value `bar`, and finally the `install` task with no options.
+build our project. 
+
+* We specified the source directory via boot's `-s` option.
+* We added the `conch` dependency via boot's `-d` option.
+
+This sets up the build environment. Then we constructed a pipeline of tasks:
+
+* The `pom` task with options to set the project ID and version,
+* The `jar` task with options to add a `Foo` key to the jar,
+manifest with value `bar`,
+* And finally the `install` task with no options.
+
+Boot composes the pipeline and runs it, building your project. Your local
+Maven repository will now contain `my-project-0.1.0.jar`. The jar file will
+also be found in the default output directory: `target`.
 
 ### Build From the REPL
 
@@ -166,22 +176,25 @@ The default namespace is `boot.user`, which is the namespace given to the build
 script. Building the project in the REPL is almost identical to what we did on
 the command line.
 
-First we'll set some global boot options–the source directories, for instance:
+First we'll set some global boot options–we'll set the source directory and add
+the `conch` dependency to the build environment:
 
 ```clojure
-boot.user=> (set-env! :src-paths #{"src"})
+boot.user=> (set-env! 
+       #_=>   :src-paths #{"src"}
+       #_=>   :dependencies '[[me.raynes/conch "0.8.0"]])
 ```
 
-This was given on the command line as the `-s` or `--src-paths` argument to
-boot itself. In general arguments to boot correspond to calls to `set-env!` in
-the REPL or in a script. Note that the keyword always corresponds to the long
+This was specified on the command line as the `-s` or `--src-paths` and `-d` or
+`--dependencies` arguments to boot itself. These translate to calls to `set-env!`
+in the REPL or in a script. Note that the keyword always corresponds to the long
 option from the command line.
 
 Now that boot environment is set up we can build the project:
 
 ```clojure
 boot.user=> (boot (pom :project 'my-project :version "0.1.0")
-       #_=>       (jar :manifest {:Foo "bar"})
+       #_=>       (jar :manifest {"Foo" "bar"})
        #_=>       (install))
 ```
 
@@ -201,11 +214,11 @@ The `task-options!` macro does this. Continuing in the REPL:
 boot.user=> (task-options!
        #_=>   pom [:project 'my-project
        #_=>        :version "0.1.0"]
-       #_=>   jar [:manifest {:Foo "bar"}])
+       #_=>   jar [:manifest {"Foo" "bar"}])
 ```
 
 Now we can build the project without specifying these options, because the
-task functions have been "curried":
+task functions have been replaced with curried versions of themselves:
 
 ```clojure
 boot.user=> (boot (pom) (jar) (install))
@@ -219,7 +232,10 @@ a different version number, for example:
 boot.user=> (boot (pom :version "0.1.1") (jar) (install))
 ```
 
-Pretty simple, right?
+Pretty simple, right? This way of setting options requires no participation by
+the tasks themselves. There is no global configuration map or anything like
+that. It works because tasks accept only [keyword arguments][9], so partial
+application is idempotent and last setting wins.
 
 ### Write a Build Script
 
@@ -232,12 +248,13 @@ contents:
 
 ```clojure
 (set-env!
-  :src-paths #{"src"})
+  :src-paths #{"src"}
+  :dependencies '[[me.raynes/conch "0.8.0"]])
 
 (task-options!
   pom [:project 'my-project
        :version "0.1.0"]
-  jar [:manifest {:Foo "bar"}])
+  jar [:manifest {"Foo" "bar"}])
 ```
 
 Now we can build the project without specifying the options for each task on
@@ -278,12 +295,13 @@ it `build`. We'll modify `build.boot` such that it contains the following:
 
 ```clojure
 (set-env!
-  :src-paths #{"src"})
+  :src-paths #{"src"}
+  :dependencies '[[me.raynes/conch "0.8.0"]])
 
 (task-options!
   pom [:project 'my-project
        :version "0.1.0"]
-  jar [:manifest {:Foo "bar"}])
+  jar [:manifest {"Foo" "bar"}])
 
 (deftask build
   "Build my project."
@@ -306,6 +324,8 @@ the definition of `build` are, in fact, the same functions that were called
 when we used them on the command line before. Boot's command line parsing
 implicitly composes them; in our task we compose them using Clojure's `comp`
 function.
+
+...
 
 ## Hacking Boot
 
@@ -363,6 +383,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [6]: https://drone.io/github.com/tailrecursion/boot/latest
 [7]: http://clojure.org/transducers
 [8]: http://drtom.ch/posts/2012-12-10/An_Introduction_to_Webprogramming_in_Clojure_-_Ring_and_Middleware/#ring-middleware
+[9]: https://clojurefun.wordpress.com/2012/08/13/keyword-arguments-in-clojure/comment-page-1/
 
 [20]: doc/clojure-scripting-with-boot.md
 [21]: doc/overview-of-the-boot-workflow.md
@@ -376,7 +397,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [53]: https://github.com/tebeka/clj-digest
 [54]: https://github.com/cldwalker/table
 [55]: https://github.com/clojure/tools.cli
-[56]: https://github.com/bbloom/backtick
+[56]: https://github.com/brandonbloom/backtick
 [57]: https://github.com/AvisoNovate/pretty
 [58]: https://github.com/google/hesokuri
 [59]: https://code.google.com/p/barbarywatchservice/
