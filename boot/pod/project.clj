@@ -9,6 +9,7 @@
   :description  "Boot pod module–this is included with all pods."
   :url          "http://github.com/tailrecursion/boot"
   :scm          {:url "https://github.com/tailrecursion/boot.git" :dir "../../"}
+  :repositories [["clojars"  {:url "https://clojars.org/repo" :creds :gpg}]]
   :license      {:name "Eclipse Public License"
                  :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[boot/base                               ~version :scope "provided"]
