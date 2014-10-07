@@ -59,7 +59,7 @@ $(corejar): $(verfile) boot/core/project.clj $(shell find boot/core/src)
 $(baseuber): boot/base/pom.xml $(shell find boot/base/src/main)
 	(cd boot/base && mvn -q assembly:assembly -DdescriptorId=jar-with-dependencies)
 
-$(bootbin): $(baseuber)
+$(bootbin): head.sh $(baseuber)
 	mkdir -p bin
 	cat head.sh $(baseuber) > $(bootbin)
 	chmod 0755 $(bootbin)

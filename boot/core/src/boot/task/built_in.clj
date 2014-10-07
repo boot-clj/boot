@@ -447,17 +447,20 @@
 (core/deftask push
   "Deploy jar file to a Maven repository.
 
-  Both the file and repo options are required. The jar file must contain a
-  pom.xml entry."
+  The repo option is required. If the file option is not specified the task will
+  look for jar files created by the build pipeline. The jar file(s) must contain
+  pom.xml entries."
 
   [f file PATH  str "The jar file to deploy."
    r repo ALIAS str "The alias of the deploy repository."]
 
   (core/with-pre-wrap
-    (let [f (io/file file)
-          r (-> (->> (core/get-env :repositories) (into {})) (get repo))]
-      (when-not (and r (.exists f))
+    (let [jarfiles (or (and file [(io/file file)])
+                     (->> (core/tgt-files) (core/by-ext [".jar"])))
+          r        (-> (->> (core/get-env :repositories) (into {})) (get repo))]
+      (when-not (and r (seq jarfiles))
         (throw (Exception. "missing jar file or repo alias option")))
-      (util/info "Deploying %s...\n" (.getName f))
-      (pod/call-worker
-        `(boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f))))))
+      (doseq [f jarfiles]
+        (util/info "Deploying %s...\n" (.getName f))
+        (pod/call-worker
+          `(boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f)))))))
