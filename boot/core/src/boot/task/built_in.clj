@@ -168,24 +168,30 @@
   [s server         bool   "Start REPL server only."
    c client         bool   "Start REPL client only."
    C no-color       bool   "Disable ANSI color output in client."
+   e eval EXPR      any    "The form the client will evaluate in the boot.user ns."
    b bind ADDR      str    "The address server listens on."
    H host HOST      str    "The host client connects to."
+   i init PATH      str    "The file to evaluate in the boot.user ns."
+   I skip-init      bool   "Skip default client initialization code."
    p port PORT      int    "The port to listen on and/or connect to."
-   n init-ns NS     str    "The initial REPL namespace."
+   n init-ns NS     sym    "The initial REPL namespace."
    m middleware SYM [code] "The REPL middleware vector."]
 
   (let [srv-opts (select-keys *opts* [:bind :port :init-ns :middleware])
         cli-opts (-> *opts*
                    (select-keys [:host :port :history])
-                   (assoc :color (not no-color)))]
+                   (assoc :color (not no-color)
+                          :custom-eval eval
+                          :custom-init init
+                          :skip-default-init skip-init))]
     (core/with-pre-wrap
       (when (or server (not client))
         (future
           (try (require 'clojure.tools.nrepl.server)
                (catch Throwable _
                  (pod/add-dependencies
-                   (assoc (core/get-env)
-                     :dependencies '[[org.clojure/tools.nrepl "0.2.4"]]))))
+                   (update-in (core/get-env) [:dependencies]
+                     conj '[org.clojure/tools.nrepl "0.2.4"]))))
           (require 'boot.repl-server)
           ((resolve 'boot.repl-server/start-server) srv-opts)))
       (when (or client (not server))
