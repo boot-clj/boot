@@ -25,10 +25,12 @@
 (def ^:private tmpregistry  (atom nil))
 
 (defn- printable-readable?
+  "FIXME: document"
   [form]
   (try (read-string (pr-str form)) (catch Throwable _)))
 
 (defn- rm-clojure-dep
+  "FIXME: document"
   [deps]
   (vec (remove (comp (partial = 'org.clojure/clojure) first) deps)))
 
@@ -65,9 +67,20 @@
      new))
 
 (defn- order-set-env-keys
+  "FIXME: document"
   [kvs]
   (let [dk :dependencies]
     (->> kvs (sort-by first #(cond (= %1 dk) 1 (= %2 dk) -1 :else 0)))))
+
+(defn- parse-task-opts
+  "FIXME: document"
+  [argv spec]
+  (loop [opts [] [car & cdr :as argv] argv]
+    (if-not car
+      [opts argv]
+      (let [opts* (conj opts car)
+            parsd (cli/parse-opts opts* spec :in-order true)]
+        (if (seq (:arguments parsd)) [opts argv] (recur opts* cdr))))))
 
 ;; ## Boot Environment
 ;;
@@ -271,7 +284,8 @@
               parsed (cli/parse-opts args spec :in-order true)]
           (when (seq (:errors parsed))
             (throw (IllegalArgumentException. (string/join "\n" (:errors parsed)))))
-          (recur (conj ret (apply (var-get op) args)) (:arguments parsed)))))))
+          (let [[opts argv] (parse-task-opts args spec)]
+            (recur (conj ret (apply (var-get op) opts)) argv)))))))
 
 (def ^:dynamic *warnings* nil)
 
