@@ -181,19 +181,19 @@
         cli-opts (-> *opts*
                    (select-keys [:host :port :history])
                    (assoc :color (not no-color)
+                          :standalone true
                           :custom-eval eval
                           :custom-init init
                           :skip-default-init skip-init))]
     (core/with-pre-wrap
       (when (or server (not client))
-        (future
-          (try (require 'clojure.tools.nrepl.server)
-               (catch Throwable _
-                 (pod/add-dependencies
-                   (update-in (core/get-env) [:dependencies]
-                     conj '[org.clojure/tools.nrepl "0.2.4"]))))
-          (require 'boot.repl-server)
-          ((resolve 'boot.repl-server/start-server) srv-opts)))
+        (try (require 'clojure.tools.nrepl.server)
+             (catch Throwable _
+               (pod/add-dependencies
+                 (update-in (core/get-env) [:dependencies]
+                   conj '[org.clojure/tools.nrepl "0.2.4"]))))
+        (require 'boot.repl-server)
+        ((resolve 'boot.repl-server/start-server) srv-opts))
       (when (or client (not server))
         (pod/call-worker
           `(boot.repl-client/client ~cli-opts))))))
