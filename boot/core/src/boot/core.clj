@@ -385,6 +385,30 @@
 
 ;; ## Public Utility Functions
 
+(defn json-generate
+  "Same as cheshire.core/generate-string."
+  [x & [opt-map]]
+  (pod/call-worker
+    `(cheshire.core/generate-string ~x ~opt-map)))
+
+(defn json-parse
+  "Same as cheshire.core/parse-string."
+  [x & [key-fn]]
+  (pod/call-worker
+    `(cheshire.core/parse-string ~x ~key-fn)))
+
+(defn yaml-generate
+  "Same as clj-yaml.core/generate-string."
+  [x]
+  (pod/call-worker
+    `(clj-yaml.core/generate-string ~x)))
+
+(defn yaml-parse
+  "Same as clj-yaml.core/parse-string."
+  [x]
+  (pod/call-worker
+    `(clj-yaml.core/parse-string ~x)))
+
 (defn git-files [& {:keys [untracked]}]
   (pod/call-worker
     `(boot.git/ls-files :untracked ~untracked)))

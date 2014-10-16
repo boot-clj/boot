@@ -21,4 +21,6 @@
                  [alandipert/desiderata "1.0.2"  :scope "compile"]
                  [org.clojure/data.xml  "0.0.7"  :scope "compile"]
                  [javazoom/jlayer       "1.0.1"  :scope "compile"]
-                 [clj-jgit              "0.8.0"  :scope "compile"]])
+                 [clj-jgit              "0.8.0"  :scope "compile"]
+                 [cheshire              "5.3.1"  :scope "compile"]
+                 [clj-yaml              "0.4.0"  :scope "compile"]])

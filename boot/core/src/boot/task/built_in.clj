@@ -244,6 +244,27 @@
                   file/*exclude* (mapv re-pattern exclude)]
           (apply file/sync :time tgt dirs))))))
 
+(core/deftask add-repo
+  "Add all files in project git repo to fileset.
+
+  The ref option (default HEAD) facilitates pulling files from tags or specific
+  commits.
+
+  The include and exclude options specify sets of regular expressions (strings)
+  that will be used to filter the source files. If no filters are specified then
+  all files are added to the fileset."
+
+  [u untracked     bool   "Add untracked (but not ignored) files."
+   r ref REF       str    "The git reference for the desired file tree."
+   i include REGEX #{str} "The set of regexes that paths must match."
+   x exclude REGEX #{str} "The set of regexes that paths must not match."]
+
+  (let [tgt (core/mktgtdir!)]
+    (core/with-pre-wrap
+      (util/info "Adding repo files...\n")
+      (doseq [p (core/git-files :ref ref :untracked untracked) :let [f (io/file p)]]
+        (file/copy-with-lastmod f (io/file tgt p))))))
+
 (core/deftask uber
   "Add jar entries from dependencies to fileset.
 
@@ -378,7 +399,7 @@
   entries are added to the jar file.
 "
 
-  [f file PATH        str       "The target jar file."
+  [f file PATH        str       "The target jar file name."
    M manifest KEY=VAL {str str} "The jar manifest map."
    m main MAIN        sym       "The namespace containing the -main function."
    i include REGEX       #{str} "The set of regexes that paths must match."
@@ -406,7 +427,7 @@
   that will be used to filter the entries. If no filters are specified then all
   entries are added to the war file."
 
-  [f file PATH     str    "The target war file."
+  [f file PATH     str    "The target war file name."
    i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
@@ -429,6 +450,30 @@
             (util/info "Writing %s...\n" (.getName warfile))
             (pod/call-worker
               `(boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))
+            (doseq [[_ f] index] (core/consume-file! (io/file f)))))))))
+
+(core/deftask zip
+  "Build a zip file for the project.
+
+  The include and exclude options specify sets of regular expressions (strings)
+  that will be used to filter the entries. If no filters are specified then all
+  entries are added to the zip file."
+
+  [f file PATH        str       "The target zip file name."
+   i include REGEX       #{str} "The set of regexes that paths must match."
+   x exclude REGEX       #{str} "The set of regexes that paths must not match."]
+
+  (let [tgt (core/mktgtdir!)]
+    (core/with-pre-wrap
+      (let [zipname (or file "project.zip")
+            zipfile (io/file tgt zipname)]
+        (when-not (.exists zipfile)
+          (let [index (->> (concat (core/tgt-files) (core/rsc-files))
+                        (filter (partial file/keep-filters? include exclude))
+                        (map (juxt core/relative-path (memfn getPath))))]
+            (util/info "Writing %s...\n" (.getName zipfile))
+            (pod/call-worker
+              `(boot.jar/spit-zip! ~(.getPath zipfile) ~index))
             (doseq [[_ f] index] (core/consume-file! (io/file f)))))))))
 
 (core/deftask install
