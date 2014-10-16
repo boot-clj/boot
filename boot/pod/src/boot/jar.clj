@@ -6,8 +6,8 @@
    [boot.util       :as util])
   (:import
    [java.io File]
-   [java.util.zip ZipException]
-   [java.util.jar JarFile JarEntry JarOutputStream Manifest Attributes$Name]))
+   [java.util.zip ZipEntry ZipOutputStream ZipException]
+   [java.util.jar JarEntry JarOutputStream Manifest Attributes$Name]))
 
 (def ^:private dfl-attr
   {"Created-By" "Tailrecursion Boot Build Tool"
@@ -32,6 +32,10 @@
           (.write stream buf 0 n)
           (recur (.read in buf)))))))
 
+(defn dupe? [t]
+  (and (instance? ZipException t)
+       (.startsWith (.getMessage t) "duplicate entry:")))
+
 (defn spit-jar! [jarpath files attr main]
   (let [manifest  (create-manifest main attr)
         jarfile   (io/file jarpath)]
@@ -42,7 +46,16 @@
           (try
             (doto s (.putNextEntry entry) (write! (io/input-stream srcpath)) .closeEntry)
             (catch Throwable t
-              (if-not (and (instance? ZipException t)
-                        (.startsWith (.getMessage t) "duplicate entry:"))
-                (throw t)
-                (util/warn "%s\n" (.getMessage t))))))))))
+              (if-not (dupe? t) (throw t) (util/warn "%s\n" (.getMessage t))))))))))
+
+(defn spit-zip! [zippath files]
+  (let [zipfile (io/file zippath)]
+    (io/make-parents zipfile)
+    (with-open [s (ZipOutputStream. (io/output-stream zipfile))]
+      (doseq [[zippath srcpath] files :let [f (io/file srcpath)]]
+        (when-not (.isDirectory f)
+          (let [entry (doto (ZipEntry. zippath) (.setTime (.lastModified f)))]
+            (try
+              (doto s (.putNextEntry entry) (write! (io/input-stream srcpath)) .closeEntry)
+              (catch Throwable t
+                (if-not (dupe? t) (throw t) (util/warn "%s\n" (.getMessage t)))))))))))

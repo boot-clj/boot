@@ -385,6 +385,10 @@
 
 ;; ## Public Utility Functions
 
+(defn git-files [& {:keys [untracked]}]
+  (pod/call-worker
+    `(boot.git/ls-files :untracked ~untracked)))
+
 (defn src-files
   "Returns a seq of `java.io.File` objects--the contents of directories in the
   :src-paths boot environment. Note that this includes the `tgt-files` below."
