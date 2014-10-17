@@ -42,7 +42,7 @@ Turing-complete build specification.
   on the command line.
 * Artifacts can never be stale–there is no need for a `clean` task.
 
-### Install
+## Install
 
 Binaries in executable format are available. Follow the instructions for your
 operating system (note: boot requires the Java Development Kit (JDK) version
