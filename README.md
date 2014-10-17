@@ -46,14 +46,10 @@ Turing-complete build specification.
 
 * [Install](#install)
 * [Getting Started](#getting-started)
-* [Boot / Clojure Version Howto][24]
-* ~~[Clojure Scripting With Boot][20]~~
-* ~~[Overview of the Boot Workflow][21]~~
-* ~~[The Boot Task Writer's Guide][22]~~
-* ~~[Boot API Documentation][23]~~
-* [Hacking Boot](#hacking-boot)
 * [Attribution](#attribution)
 * [License](#license)
+
+Check out the [wiki] for the remaining documentation.
 
 ### Install
 
@@ -63,21 +59,21 @@ operating system (note: boot requires the Java Development Kit (JDK) version
 
 #### Unix, Linux, OSX
 
-* Download [boot.sh][2], then:
+Download [boot.sh][2], then:
 
-  ```
-  $ mv boot.sh boot
-  $ chmod a+x boot
-  $ sudo mv boot /usr/local/bin
-  ```
+```
+$ mv boot.sh boot
+$ chmod a+x boot
+$ sudo mv boot /usr/local/bin
+```
   
 #### Windows
 
-* Download [boot.exe][3], then:
+Download [boot.exe][3], then:
 
-  ```
-  C:\> move boot.exe C:\Windows\System32
-  ```
+```
+C:\> move boot.exe C:\Windows\System32
+```
 
 ## Getting Started
 
@@ -390,6 +386,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [22]: doc/boot-task-writers-guide.md
 [23]: https://tailrecursion.github.io/boot
 [24]: doc/boot-clojure-version-howto.md
+[25]: https://github.com/tailrecursion/boot/wiki
 
 [50]: https://github.com/technomancy/leiningen
 [51]: https://github.com/cemerick/pomegranate
