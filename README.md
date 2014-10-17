@@ -49,7 +49,7 @@ Turing-complete build specification.
 * [Attribution](#attribution)
 * [License](#license)
 
-Check out the [wiki] for the remaining documentation.
+Check out the [wiki][25] for the remaining documentation.
 
 ### Install
 
