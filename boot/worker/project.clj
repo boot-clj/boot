@@ -24,4 +24,5 @@
                  [clj-jgit              "0.8.0"  :scope "compile"]
                  [cheshire              "5.3.1"  :scope "compile"]
                  [org.clojure/data.zip  "0.1.1"  :scope "compile"]
+                 [mvxcvi/clj-pgp        "0.5.4"  :scope "compile"]
                  [clj-yaml              "0.4.0"  :scope "compile"]])

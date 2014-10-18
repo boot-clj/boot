@@ -158,17 +158,18 @@
       :local-repo  (or (:local-repo env) @local-repo nil))))
 
 (defn deploy
-  [env repo jarfile]
+  [env repo jarfile & [artifact-map]]
   (let [{:keys [project version]}
         (-> jarfile pod/pom-properties pod/pom-properties-map)
         pomfile (doto (File/createTempFile "pom" ".xml")
                   .deleteOnExit (spit (pod/pom-xml jarfile)))]
     (aether/deploy
-      :coordinates [project version]
-      :jar-file    (io/file jarfile)
-      :pom-file    (io/file pomfile)
-      :repository  [repo]
-      :local-repo  (or (:local-repo env) @local-repo nil))))
+      :coordinates  [project version]
+      :jar-file     (io/file jarfile)
+      :pom-file     (io/file pomfile)
+      :artifact-map artifact-map
+      :repository   [repo]
+      :local-repo   (or (:local-repo env) @local-repo nil))))
 
 (def ^:private wagon-files (atom #{}))
 

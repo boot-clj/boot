@@ -60,6 +60,22 @@
 (def ^:private add-shutdown!
   (delay (pod/add-shutdown-hook! #(doseq [job @bgs] (future-cancel job)))))
 
+(defn read-pass
+  [prompt]
+  (String/valueOf (.readPassword (System/console) prompt nil)))
+
+(defn sign-jar [out jar pass keyring user-id]
+  (let [prompt (pod/call-worker
+                 `(boot.pgp/prompt-for ~keyring ~user-id))
+        pass   (or pass (read-pass prompt))]
+    (pod/call-worker
+      `(boot.pgp/sign-jar
+         ~(.getPath out)
+         ~(.getPath jar)
+         ~pass
+         :keyring ~keyring
+         :user-id ~user-id))))
+
 ;; Task helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn once
