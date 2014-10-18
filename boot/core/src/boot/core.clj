@@ -7,6 +7,7 @@
    [clojure.repl                :as repl]
    [clojure.string              :as string]
    [boot.pod                    :as pod]
+   [boot.git                    :as git]
    [boot.cli                    :as cli2]
    [boot.file                   :as file]
    [boot.tmpregistry            :as tmp]
@@ -174,34 +175,6 @@
 
 ;; ## Task helpers – managed temp files
 
-(def ^:private consumed-files (atom #{}))
-
-(defn consume-file!
-  "FIXME: document"
-  [& fs]
-  (swap! consumed-files into fs))
-
-(defn sync!
-  "When called with no arguments it triggers the syncing of directories added
-  via `add-sync!`. This is used internally by boot. When called with `dest` dir
-  and a number of `srcs` directories it syncs files from the src dirs to the
-  dest dir, overlaying them on top of each other.
-
-  When called with no arguments directories will be synced only if there are
-  artifacts in target directories to sync. If there are none `sync!` does
-  nothing."
-  ([]
-     (let [tgtfiles (tgt-files)
-           tgt      (io/file (get-env :tgt-path))]
-       (when-not (empty? tgtfiles)
-         (tmp/sync! @tmpregistry)
-         (doseq [f @consumed-files :let [g (io/file tgt (relative-path f))]]
-           (when (.exists g) (.delete g)))
-         (doseq [d (->> tgt file-seq reverse)]
-           (when (and (.isDirectory d) (not (seq (.listFiles d)))) (.delete d))))))
-  ([dest & srcs]
-     (apply file/sync :hash dest srcs)))
-
 (defn tmpfile?
   "Returns truthy if the file f is a tmpfile managed by the tmpregistry."
   [f]
@@ -251,6 +224,42 @@
   ([key] (util/with-let [f (mktmpdir! key)]
            (set-env! :rsc-paths #(conj % (.getPath f)))
            (add-sync! (get-env :tgt-path) #{(.getPath f)}))))
+
+(def ^:private consumed-files (atom #{}))
+
+(defn consume-file!
+  "FIXME: document this"
+  [& fs]
+  (->> fs
+    (map #(.getCanonicalFile (io/file %)))
+    (remove tmpfile?)
+    (swap! consumed-files into)))
+
+(defn consumed-file?
+  "FIXME: document this"
+  [f]
+  (contains? @consumed-files (.getCanonicalFile (io/file f))))
+
+(defn sync!
+  "When called with no arguments it triggers the syncing of directories added
+  via `add-sync!`. This is used internally by boot. When called with `dest` dir
+  and a number of `srcs` directories it syncs files from the src dirs to the
+  dest dir, overlaying them on top of each other.
+
+  When called with no arguments directories will be synced only if there are
+  artifacts in target directories to sync. If there are none `sync!` does
+  nothing."
+  ([]
+     (let [tgtfiles (tgt-files)
+           tgt      (io/file (get-env :tgt-path))]
+       (when-not (empty? tgtfiles)
+         (tmp/sync! @tmpregistry)
+         (doseq [f @consumed-files :let [g (io/file tgt (relative-path f))]]
+           (when (.exists g) (.delete g)))
+         (doseq [d (->> tgt file-seq reverse)]
+           (when (and (.isDirectory d) (not (seq (.listFiles d)))) (.delete d))))))
+  ([dest & srcs]
+     (apply file/sync :hash dest srcs)))
 
 (defmacro deftask
   "Define a boot task."
@@ -410,14 +419,13 @@
     `(clj-yaml.core/parse-string ~x)))
 
 (defn git-files [& {:keys [untracked]}]
-  (pod/call-worker
-    `(boot.git/ls-files :untracked ~untracked)))
+  (git/ls-files :untracked untracked))
 
 (defn src-files
   "Returns a seq of `java.io.File` objects--the contents of directories in the
   :src-paths boot environment. Note that this includes the `tgt-files` below."
   []
-  (let [want? #(and (.isFile %) (not (contains? @consumed-files %)))]
+  (let [want? #(and (.isFile %) (not (consumed-file? %)))]
     (->> :src-paths get-env (map io/file) (mapcat file-seq) (filter want?) set)))
 
 (defn rsc-files
@@ -425,14 +433,14 @@
   :rsc-paths boot environment. Note that this includes directories created by
   tasks via the `mkrscdir!` function above."
   []
-  (let [want? #(and (.isFile %) (not (contains? @consumed-files %)))]
+  (let [want? #(and (.isFile %) (not (consumed-file? %)))]
     (->> :rsc-paths get-env (map io/file) (mapcat file-seq) (filter want?) set)))
 
 (defn tgt-files
   "Returns a seq of `java.io.File` objects--the contents of directories created
   by tasks via the `mktgtdir!` function above."
   []
-  (let [want? #(and (.isFile %) (not (contains? @consumed-files %)))]
+  (let [want? #(and (.isFile %) (not (consumed-file? %)))]
     (->> @tgtdirs (mapcat file-seq) (filter want?) set)))
 
 #_(defn newer?

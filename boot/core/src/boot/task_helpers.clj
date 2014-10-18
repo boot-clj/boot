@@ -45,6 +45,12 @@
     (future (conch/stream-to-out proc :out))
     #(.waitFor (:process proc))))
 
+(defn dosh [& args]
+  (let [status ((apply sh args))]
+    (when-not (= 0 status)
+      (throw (Exception. (-> "%s: non-zero exit status (%d)"
+                           (format (first args) status)))))))
+
 (def ^:private bgs
   "List of tasks running in other threads that will need to be cleaned up before
   boot can exit."

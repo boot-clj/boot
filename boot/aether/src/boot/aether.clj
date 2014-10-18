@@ -106,25 +106,23 @@
      (->> {:dependencies [['org.clojure/clojure cljversion] [(symbol sym-str) version]]}
        resolve-dependencies (map (comp io/file :jar)) (into-array java.io.File))))
 
-(def jar-entries-in-dep-order
-  "Given an env map and optional regexes, returns a list of jar entries above
-  for all jars (including transitive dependencies). If regexes are provided
-  the list of jars to search is filtered by removing jars whose group and 
-  artifact id symbol don't match at least one regex. The entries are returned
-  in dependency order, eg. if jar B depends on jar A then jar A's entries will
-  appear before jar B's in the returned list."
+(def jars-in-dep-order
+  "Given an env map, returns a list of all jar files on on the classpath in
+  dependency order. Dependency order means, eg. if jar B depends on jar A then
+  jar A will appear before jar B in the returned list."
   (memoize
     (fn [env & regexes]
       (let [resol  resolve-dependencies-memoized*
             resol' #(->> % (assoc env :dependencies) resol)
-            match  #(or (empty? regexes) (reduce (fn [xs x] (or xs (re-find x %))) nil regexes))
-            deps   (->> env resol keys (filter (comp match str first)))
-            jars   (->> deps (reduce (fn [xs [k & _ :as x]] (assoc xs k (dep->path x))) {}))]
+            deps   (->> env resol keys)
+            jars   (-> (fn [xs [k & _ :as x]]
+                         (assoc xs k (dep->path x)))
+                     (reduce {} deps))]
         (->> deps
           (pmap #(vector % (get (resol' (vector %)) %)))
           (map (fn [[[k & _] v]] [k (set (map first v))]))
           ((comp reverse ksort/topo-sort (partial into {})))
-          (mapcat (comp pod/jar-entries jars)))))))
+          (map jars))))))
 
 (defn- print-tree
   [tree & [prefixes]]

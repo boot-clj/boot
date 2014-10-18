@@ -222,9 +222,9 @@
                            [name (->> (io/file (io/file (str path "!")) name)
                                    .toURI .toURL .toString (str "jar:"))])))))))))))
 
-(defn jar-entries-in-dep-order
+(defn jars-in-dep-order
   [env]
-  (call-worker `(boot.aether/jar-entries-in-dep-order ~env)))
+  (map io/file (call-worker `(boot.aether/jars-in-dep-order ~env))))
 
 (defn copy-dependency-jar-entries
   [env outdir coord & regexes]

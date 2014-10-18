@@ -9,7 +9,8 @@
    [boot.core                :as core]
    [boot.main                :as main]
    [boot.util                :as util]
-   [boot.gitignore           :as git]
+   [boot.git                 :as git]
+   [boot.gitignore           :as ign]
    [boot.task-helpers        :as helpers]
    [boot.from.table.core     :as table])
   (:import
@@ -133,7 +134,7 @@
         watchers (map file/make-watcher srcdirs)
         paths    (into-array String srcdirs)
         k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)
-        ign?     (git/make-gitignore-matcher (core/get-env :src-paths))]
+        ign?     (ign/make-gitignore-matcher (core/get-env :src-paths))]
     (fn [continue]
       (fn [event]
         (util/info "Starting file watcher (CTRL-C to quit)...\n\n")
@@ -211,7 +212,8 @@
    s scm KEY=VAL      {kw str} "The project scm map (KEY in url, tag)."]
 
   (let [tgt  (core/mktgtdir!)
-        opts (assoc *opts* :dependencies (:dependencies (core/get-env)))]
+        scm  (when scm (if (:tag scm) scm (assoc scm :tag (git/last-commit))))
+        opts (assoc *opts* :scm scm :dependencies (:dependencies (core/get-env)))]
     (core/with-pre-wrap
       (when-not (and project version)
         (throw (Exception. "need project and version to create pom.xml")))
@@ -237,7 +239,7 @@
   (let [tgt (core/mkrscdir!)]
     (core/with-pre-wrap
       (let [dirs (remove core/tmpfile? (core/get-env :src-paths))
-            ign? (git/make-gitignore-matcher dirs)]
+            ign? (ign/make-gitignore-matcher dirs)]
         (util/info "Adding source files...\n")
         (binding [file/*ignore*  ign?
                   file/*include* (mapv re-pattern include)
@@ -502,8 +504,15 @@
   look for jar files created by the build pipeline. The jar file(s) must contain
   pom.xml entries."
 
-  [f file PATH  str "The jar file to deploy."
-   r repo ALIAS str "The alias of the deploy repository."]
+  [f file PATH            str  "The jar file to deploy."
+   r repo ALIAS           str  "The alias of the deploy repository."
+   t tag                  bool "Create git tag for this version."
+   B ensure-branch BRANCH str  "The required current git branch."
+   C ensure-clean         bool "Ensure that the project git repo is clean."
+   R ensure-release       bool "Ensure that the current version is not a snapshot."
+   S ensure-snapshot      bool "Ensure that the current version is a snapshot."
+   T ensure-tag TAG       str  "The SHA1 of the commit the pom's scm tag must contain."
+   V ensure-version VER   str  "The version the jar's pom must contain."]
 
   (core/with-pre-wrap
     (let [jarfiles (or (and file [(io/file file)])
@@ -513,5 +522,25 @@
         (throw (Exception. "missing jar file or repo alias option")))
       (doseq [f jarfiles]
         (util/info "Deploying %s...\n" (.getName f))
-        (pod/call-worker
-          `(boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f)))))))
+        (let [{{t :tag} :scm
+               v :version} (pod/call-worker `(boot.pom/pom-xml-parse ~(.getPath f)))
+               b           (util/guard (git/branch-current))
+               clean?      (util/guard (git/clean?))
+               snapshot?   (.endsWith v "-SNAPSHOT")]
+          (assert (or (not ensure-branch) (= b ensure-branch))
+            (format "current git branch is %s but must be %s" b ensure-branch))
+          (assert (or (not ensure-clean) clean?)
+            "project repo is not clean")
+          (assert (or (not ensure-release) (not snapshot?))
+            (format "not a release version (%s)" v))
+          (assert (or (not ensure-snapshot) snapshot?)
+            (format "not a snapshot version (%s)" v))
+          (assert (or (not ensure-tag) (= t ensure-tag))
+            (format "scm tag in pom doesn't match (%s, %s)" t ensure-tag))
+          (assert (or (not ensure-version) (= v ensure-version))
+            (format "jar version doesn't match project version (%s, %s)" v ensure-version))
+          (when tag
+            (util/info "Creating tag %s...\n" v)
+            (git/tag v "release"))
+          (pod/call-worker
+            `(boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f))))))))

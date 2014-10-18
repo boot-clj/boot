@@ -1,14 +1,18 @@
 (ns boot.pom
   (:refer-clojure :exclude [name])
   (:require 
-    [clojure.java.io :as io]
-    [boot.pod        :as pod]
-    [boot.file       :as file]
-    [boot.util       :as util]
-    [boot.xml        :as xml])
+   [clojure.java.io      :as io]
+   [boot.pod             :as pod]
+   [boot.file            :as file]
+   [boot.util            :as util]
+   [boot.xml             :as xml]
+   [clojure.xml          :refer [parse]]
+   [clojure.zip          :refer [xml-zip]]
+   [clojure.data.zip.xml :refer [attr text xml-> xml1->]])
   (:import
-    [java.util     Properties]
-    [java.util.jar JarEntry JarOutputStream]))
+   [java.util     Properties]
+   [java.io       StringBufferInputStream]
+   [java.util.jar JarEntry JarOutputStream]))
 
 ;;; elements ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -18,6 +22,17 @@
   modelVersion name project scope tag url scm version comments)
 
 ;;; private ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn pom-xml-parse [jarfile]
+  (let [z   (-> jarfile pod/pom-xml StringBufferInputStream. parse xml-zip)
+        gid (util/guard (xml1-> z :groupId text))
+        aid (util/guard (xml1-> z :artifactId text))]
+    {:project     (util/guard (if (= gid aid) (symbol aid) (symbol gid aid)))
+     :version     (util/guard (xml1-> z :version text))
+     :description (util/guard (xml1-> z :description text))
+     :url         (util/guard (xml1-> z :url text))
+     :scm         {:url (util/guard (xml1-> z :scm :url text))
+                   :tag (util/guard (xml1-> z :scm :tag text))}}))
 
 (defn pom-xml [{p :project v :version d :description l :license
                 {su :url st :tag} :scm u :url deps :dependencies :as env}]
