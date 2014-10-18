@@ -42,20 +42,7 @@ Turing-complete build specification.
   on the command line.
 * Artifacts can never be stale–there is no need for a `clean` task.
 
-### Documentation
-
-* [Install](#install)
-* [Getting Started](#getting-started)
-* [Boot / Clojure Version Howto][24]
-* ~~[Clojure Scripting With Boot][20]~~
-* ~~[Overview of the Boot Workflow][21]~~
-* ~~[The Boot Task Writer's Guide][22]~~
-* ~~[Boot API Documentation][23]~~
-* [Hacking Boot](#hacking-boot)
-* [Attribution](#attribution)
-* [License](#license)
-
-### Install
+## Install
 
 Binaries in executable format are available. Follow the instructions for your
 operating system (note: boot requires the Java Development Kit (JDK) version
@@ -63,21 +50,19 @@ operating system (note: boot requires the Java Development Kit (JDK) version
 
 #### Unix, Linux, OSX
 
-* Download [boot.sh][2], then:
+Download [boot.sh][2], then:
 
-  ```
-  $ mv boot.sh boot
-  $ chmod a+x boot
-  $ sudo mv boot /usr/local/bin
-  ```
+```
+$ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
+```
   
 #### Windows
 
-* Download [boot.exe][3], then:
+Download [boot.exe][3], then:
 
-  ```
-  C:\> move boot.exe C:\Windows\System32
-  ```
+```
+C:\> move boot.exe C:\Windows\System32
+```
 
 ## Getting Started
 
@@ -143,7 +128,7 @@ from the command line:
 
 ```
 # The -- args below are optional. We use them here to visually separate the tasks.
-$ boot -s src -d me.raynes/conch:0.8.0 -- pom -p my-project -v 0.1.0 -- jar -M Foo=bar -- install
+$ boot -s src -d me.raynes/conch:0.8.0 -- pom -p my-project -v 0.1.0 -- add-src -- jar -M Foo=bar -- install
 ```
 
 What we did here was we built a pipeline on the command line and ran it to
@@ -155,6 +140,8 @@ build our project.
 This sets up the build environment. Then we constructed a pipeline of tasks:
 
 * The `pom` task with options to set the project ID and version,
+* The `add-src` task to add files from the `src` directory to the fileset
+  (by default only compiled artifacts end up in the fileset),
 * The `jar` task with options to add a `Foo` key to the jar,
 manifest with value `bar`,
 * And finally the `install` task with no options.
@@ -194,6 +181,7 @@ Now that boot environment is set up we can build the project:
 
 ```clojure
 boot.user=> (boot (pom :project 'my-project :version "0.1.0")
+       #_=>       (add-src)
        #_=>       (jar :manifest {"Foo" "bar"})
        #_=>       (install))
 ```
@@ -221,7 +209,7 @@ Now we can build the project without specifying these options, because the
 task functions have been replaced with curried versions of themselves:
 
 ```clojure
-boot.user=> (boot (pom) (jar) (install))
+boot.user=> (boot (pom) (add-src) (jar) (install))
 ```
 
 Individual options can still be set by providing arguments to the tasks such
@@ -229,7 +217,7 @@ that they override those set with `task-options!`. Let's build our project with
 a different version number, for example:
 
 ```clojure
-boot.user=> (boot (pom :version "0.1.1") (jar) (install))
+boot.user=> (boot (pom :version "0.1.1") (add-src) (jar) (install))
 ```
 
 Pretty simple, right? This way of setting options requires no participation by
@@ -261,13 +249,13 @@ Now we can build the project without specifying the options for each task on
 the command line–we only need to specify the tasks to create the pipeline.
 
 ```
-$ boot pom jar install
+$ boot pom add-src jar install
 ```
 
 And we can override these options on the command line as we did in the REPL:
 
 ```
-$ boot -- pom -v 0.1.1 -- jar -- install
+$ boot -- pom -v 0.1.1 -- add-src -- jar -- install
 ```
 
 Notice how we did not need a `(boot ...)` expression in the `build.boot` script.
@@ -277,7 +265,7 @@ You can start a REPL in the context of the boot script (compiled as the
 `boot.user` namespace), and build interactively too:
 
 ```clojure
-boot.user=> (boot (pom) (jar) (install))
+boot.user=> (boot (pom) (add-src) (jar) (install))
 ```
 
 When boot is run from the command line it actually generates a `boot` expression
@@ -306,7 +294,7 @@ it `build`. We'll modify `build.boot` such that it contains the following:
 (deftask build
   "Build my project."
   []
-  (comp (pom) (jar) (install)))
+  (comp (pom) (add-src) (jar) (install)))
 ```
 
 Now we should be able to see the `build` task listed among the available tasks
@@ -390,6 +378,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [22]: doc/boot-task-writers-guide.md
 [23]: https://tailrecursion.github.io/boot
 [24]: doc/boot-clojure-version-howto.md
+[25]: https://github.com/tailrecursion/boot/wiki
 
 [50]: https://github.com/technomancy/leiningen
 [51]: https://github.com/cemerick/pomegranate
