@@ -202,6 +202,18 @@
       (filter (comp (partial = jarname) (memfn getName)))
       first)))
 
+(defn outdated
+  [env & {:keys [snapshots]}]
+  (let [vers (if snapshots "(0,)" "RELEASE")
+        olds (->> env :dependencies
+               (map (comp vec (partial take 2))))
+        syms (->> olds (map first) set)
+        sym? #(contains? syms (first %))
+        deps (->> olds (map (comp #(conj % vers) vector first)))]
+    (->> deps (assoc env :dependencies) resolve-dependencies
+      (map :dep) (filter #(and (contains? syms (first %))
+                            (not (contains? (set olds) %)))))))
+
 (defn add-dependencies
   [env]
   (doseq [jar (resolve-dependency-jars env)] (add-classpath jar)))

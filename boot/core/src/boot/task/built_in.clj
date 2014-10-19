@@ -100,14 +100,17 @@
 (core/deftask show
   "Print project/build info (e.g. dependency graph, etc)."
 
-  [d deps  bool "Print project dependency graph."
-   e env   bool "Print the boot env map."
-   E event bool "Print the build event data."]
+  [d deps      bool "Print project dependency graph."
+   e env       bool "Print the boot env map."
+   E event     bool "Print the build event data."
+   u updates   bool "Print newer releases of outdated dependencies."
+   s snapshots bool "Include snapshot versions in updates searches."]
 
   (core/with-pre-wrap
-    (when deps  (print (pod/call-worker `(boot.aether/dep-tree ~(core/get-env)))))
-    (when env   (println (pr-str (core/get-env))))
-    (when event (println (pr-str core/*event*)))))
+    (when deps    (print (pod/call-worker `(boot.aether/dep-tree ~(core/get-env)))))
+    (when env     (println (pr-str (core/get-env))))
+    (when event   (println (pr-str core/*event*)))
+    (when updates (mapv prn (pod/outdated (core/get-env) :snapshots snapshots)))))
 
 (core/deftask wait
   "Wait before calling the next handler.
