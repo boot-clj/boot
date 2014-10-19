@@ -506,7 +506,7 @@
 
   [f file PATH            str  "The jar file to deploy."
    g gpg-sign             bool "Sign jar using GPG private key."
-   k gpg-key NAME         str  "The name used to find the GPG key."
+   k gpg-user-id NAME     str  "The name used to find the GPG key."
    K gpg-keyring PATH     str  "The path to secring.gpg file to use for signing."
    p gpg-passphrase PASS  str  "The passphrase to unlock GPG signing key."
    r repo ALIAS           str  "The alias of the deploy repository."
@@ -533,7 +533,7 @@
                  snapshot?    (.endsWith v "-SNAPSHOT")
                  artifact-map (when gpg-sign
                                 (util/info "Signing %s...\n" (.getName f))
-                                (helpers/sign-jar tgt f gpg-passphrase gpg-keyring gpg-key))]
+                                (helpers/sign-jar tgt f gpg-passphrase gpg-keyring gpg-user-id))]
             (assert (or (not ensure-branch) (= b ensure-branch))
               (format "current git branch is %s but must be %s" b ensure-branch))
             (assert (or (not ensure-clean) clean?)
