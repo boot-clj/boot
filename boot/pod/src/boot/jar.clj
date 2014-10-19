@@ -38,12 +38,20 @@
 
 (defn spit-jar! [jarpath files attr main]
   (let [manifest  (create-manifest main attr)
-        jarfile   (io/file jarpath)]
+        jarfile   (io/file jarpath)
+        dirs      (atom #{})
+        parents*  #(iterate (comp (memfn getParent) io/file) %)
+        parents   #(->> % parents* (drop 1)
+                     (take-while (complement empty?))
+                     (remove (partial contains? @dirs)))]
     (io/make-parents jarfile)
     (with-open [s (JarOutputStream. (io/output-stream jarfile) manifest)]
       (doseq [[jarpath srcpath] files :let [f (io/file srcpath)]]
         (let [entry (doto (JarEntry. jarpath) (.setTime (.lastModified f)))]
           (try
+            (doseq [d (parents jarpath)]
+              (swap! dirs conj d)
+              (doto s (.putNextEntry (JarEntry. d)) .closeEntry))
             (doto s (.putNextEntry entry) (write! (io/input-stream srcpath)) .closeEntry)
             (catch Throwable t
               (if-not (dupe? t) (throw t) (util/warn "%s\n" (.getMessage t))))))))))

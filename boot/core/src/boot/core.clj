@@ -459,8 +459,13 @@
   "Get the path of a source file relative to the source directory it's in."
   [f]
   (->> (concat (get-env :src-paths) (get-env :rsc-paths))
-    (map #(.getPath (file/relative-to (io/file %) f)))
+    (map #(.getPath (file/relative-to (io/file %) (io/file f))))
     (some #(and (not= f (io/file %)) (util/guard (io/as-relative-path %)) %))))
+
+(defn resource-path
+  "FIXME: document this"
+  [f]
+  (->> f relative-path file/split-path (string/join "/")))
 
 (defn file-filter
   "A file filtering function factory. FIXME: more documenting here."
