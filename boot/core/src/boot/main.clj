@@ -81,10 +81,11 @@
   (let [dotboot?         #(.endsWith (.getName (io/file %)) ".boot")
         script?          #(when (and % (.isFile (io/file %)) (dotboot? %)) %)
         bootscript       (io/file "build.boot")
+        have-bootscript? (script? bootscript)
         [arg0 args]      (cond
-                           (script? arg0)       [arg0 args]
-                           (script? bootscript) [bootscript args*]
-                           :else                [nil args*])
+                           (script? arg0)   [arg0 args]
+                           have-bootscript? [bootscript args*]
+                           :else            [nil args*])
         boot?            (contains? #{nil bootscript} arg0)
         [errs opts args] (if-not boot? [nil {} args] (parse-cli-opts args))]
     
@@ -102,9 +103,13 @@
               profile?    (not (:no-profile opts))
               bootforms   (some->> arg0 slurp util/read-string-all)
               userforms   (when profile? (some->> userscript slurp util/read-string-all))
+              update-env  #(let [keep? (or have-bootscript? (contains? %3 %1))]
+                             (if keep? %3 (assoc %3 %1 %2)))
               initial-env (->> [:src-paths :tgt-path :dependencies]
-                             (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
-                             (merge {} (:set-env opts)))
+                            (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
+                            (merge {} (:set-env opts))
+                            (update-env :tgt-path ".")
+                            (update-env :src-paths #{"."}))
               import-ns   (export-task-namespaces initial-env)
               scriptforms (emit boot? args userforms bootforms import-ns)
               scriptstr   (str (string/join "\n\n" (map pr-str scriptforms)) "\n")]

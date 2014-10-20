@@ -9,6 +9,11 @@
    [java.lang.management ManagementFactory])
   (:refer-clojure :exclude [sync name file-seq]))
 
+(def ^:dynamic *include*     nil)
+(def ^:dynamic *exclude*     nil)
+(def ^:dynamic *ignore*      nil)
+(def ^:dynamic *sync-delete* true)
+
 (defn file? [f] (when (try (.isFile (file f)) (catch Throwable _)) f))
 (defn dir? [f] (when (try (.isDirectory (file f)) (catch Throwable _)) f))
 (defn exists? [f] (when (try (.exists (file f)) (catch Throwable _)) f))
@@ -83,10 +88,6 @@
 (defn select-keys-by [m pred?]
   (select-keys m (filter pred? (keys m))))
 
-(def ^:dynamic *include* nil)
-(def ^:dynamic *exclude* nil)
-(def ^:dynamic *ignore* nil)
-
 (defn dir-set 
   ([dir] 
    (let [info (juxt #(relative-to dir %) #(.lastModified %))
@@ -140,7 +141,7 @@
 
 (defn sync*
   [ops]
-  (let [opfn {:rm #(.delete (nth % 1))
+  (let [opfn {:rm #(when *sync-delete* (.delete (nth % 1)))
               :cp #(when (and (keep-filters? *include* *exclude* (nth % 2))
                            (or (not *ignore*) (not (*ignore* (nth % 1)))))
                      (copy-with-lastmod (nth % 1) (nth % 2)))}]

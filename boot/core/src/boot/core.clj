@@ -28,7 +28,7 @@
 (defn- printable-readable?
   "FIXME: document"
   [form]
-  (try (read-string (pr-str form)) (catch Throwable _)))
+  (or (nil? form) (false? form) (try (read-string (pr-str form)) (catch Throwable _))))
 
 (defn- rm-clojure-dep
   "FIXME: document"
@@ -105,8 +105,8 @@
     (reset!
       (->> (apply hash-map kvs)
         (merge {:dependencies []
-                :src-paths    #{"src"}
-                :rsc-paths    #{"assets"}
+                :src-paths    #{}
+                :rsc-paths    #{}
                 :tgt-path     "target"
                 :repositories [["clojars"       "http://clojars.org/repo/"]
                                ["maven-central" "http://repo1.maven.org/maven2/"]]})))
@@ -156,7 +156,8 @@
   [& kvs]
   (doseq [[k v] (order-set-env-keys (partition 2 kvs))]
     (let [v (if-not (fn? v) v (v (get-env k)))]
-      (assert (printable-readable? v) "value not readable by Clojure reader")
+      (assert (printable-readable? v)
+        (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v)))
       (swap! boot-env update-in [k] (partial merge-env! k) v @boot-env))))
 
 (defn add-sync!
@@ -251,13 +252,18 @@
   nothing."
   ([]
      (let [tgtfiles (tgt-files)
-           tgt      (io/file (get-env :tgt-path))]
+           tgtpath  (get-env :tgt-path)
+           tgt      (io/file tgtpath)
+           delete?  (not-any? #(= tgtpath %) (get-env :src-paths))
+           consume? #(or delete? (tmpfile? %))]
        (when-not (empty? tgtfiles)
-         (tmp/sync! @tmpregistry)
+         (binding [file/*sync-delete* delete?]
+           (tmp/sync! @tmpregistry))
          (doseq [f @consumed-files :let [g (io/file tgt (relative-path f))]]
-           (when (.exists g) (.delete g)))
+           (when (and (consume? g) (.exists g)) (.delete g)))
          (doseq [d (->> tgt file-seq reverse)]
-           (when (and (.isDirectory d) (not (seq (.listFiles d)))) (.delete d))))))
+           (when (and (.isDirectory d) (not (seq (.listFiles d))))
+             (.delete d))))))
   ([dest & srcs]
      (apply file/sync :hash dest srcs)))
 
