@@ -107,8 +107,7 @@
                              (merge {} (:set-env opts)))
               import-ns   (export-task-namespaces initial-env)
               scriptforms (emit boot? args userforms bootforms import-ns)
-              scriptstr   (str (string/join "\n\n" (map pr-str scriptforms)) "\n")
-              ]
+              scriptstr   (str (string/join "\n\n" (map pr-str scriptforms)) "\n")]
 
           (swap! util/verbose-exceptions + (or (:verbose opts) 0))
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))

@@ -105,8 +105,8 @@
     (reset!
       (->> (apply hash-map kvs)
         (merge {:dependencies []
-                :src-paths    #{}
-                :rsc-paths    #{}
+                :src-paths    #{"src"}
+                :rsc-paths    #{"assets"}
                 :tgt-path     "target"
                 :repositories [["clojars"       "http://clojars.org/repo/"]
                                ["maven-central" "http://repo1.maven.org/maven2/"]]})))
