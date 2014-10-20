@@ -103,13 +103,11 @@
               profile?    (not (:no-profile opts))
               bootforms   (some->> arg0 slurp util/read-string-all)
               userforms   (when profile? (some->> userscript slurp util/read-string-all))
-              update-env  #(let [keep? (or have-bootscript? (contains? %3 %1))]
-                             (if keep? %3 (assoc %3 %1 %2)))
               initial-env (->> [:src-paths :tgt-path :dependencies]
                             (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
                             (merge {} (:set-env opts))
-                            (update-env :tgt-path ".")
-                            (update-env :src-paths #{"."}))
+                            (#(let [done? (or have-bootscript? (% :tgt-path) (% :src-paths))]
+                                 (if done? % (assoc % :tgt-path "." :src-paths #{"."})))))
               import-ns   (export-task-namespaces initial-env)
               scriptforms (emit boot? args userforms bootforms import-ns)
               scriptstr   (str (string/join "\n\n" (map pr-str scriptforms)) "\n")]
