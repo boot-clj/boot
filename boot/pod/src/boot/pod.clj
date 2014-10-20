@@ -157,20 +157,26 @@
 
 (defn call-in
   ([expr]
-     (pr-str (eval-fn-call (read-string expr))))
+     (let [{:keys [meta? expr]} (read-string expr)]
+       (binding [*print-meta* meta?]
+         (pr-str (eval-fn-call expr)))))
   ([pod expr]
-     (let [ret (.invoke pod "boot.pod/call-in" (pr-str expr))]
-      (util/guard (read-string ret)))))
+     (let [ret (.invoke pod "boot.pod/call-in"
+                 (pr-str {:meta? *print-meta* :expr expr}))]
+       (util/guard (read-string ret)))))
 
 (defn call-worker
   [expr]
   (if @worker-pod (call-in @worker-pod expr) (eval-fn-call expr)))
 
 (defn eval-in*
-  ([expr-str]
-     (->> expr-str read-string eval pr-str))
+  ([expr]
+     (let [{:keys [meta? expr]} (read-string expr)]
+       (binding [*print-meta* meta?]
+         (pr-str (eval expr)))))
   ([pod expr]
-     (let [ret (.invoke pod "boot.pod/eval-in*" (pr-str expr))]
+     (let [ret (.invoke pod "boot.pod/eval-in*"
+                 (pr-str {:meta? *print-meta* :expr expr}))]
        (util/guard (read-string ret)))))
 
 (defmacro eval-in
@@ -194,13 +200,9 @@
   (->> env resolve-dependencies (map (comp io/file :jar))))
 
 (defn resolve-dependency-jar
-  [env [project version]]
-  (let [jarname (format "%s-%s.jar" (name project) version)]
-    (->> [[project version]]
-      (assoc env :dependencies)
-      resolve-dependency-jars
-      (filter (comp (partial = jarname) (memfn getName)))
-      first)))
+  [env coords]
+  (->> [coords] (assoc env :dependencies) resolve-dependencies
+    (filter #(= (first coords) (first (:dep %)))) first :jar))
 
 (defn outdated
   [env & {:keys [snapshots]}]

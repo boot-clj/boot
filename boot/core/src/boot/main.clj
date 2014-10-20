@@ -11,9 +11,9 @@
 
 (def cli-opts
   [["-b" "--boot-script"         "Print generated boot script for debugging."]
-   ["-d" "--dependencies ID:VER" "Add dependency to project (eg. -d riddley:0.1.7)."
+   ["-d" "--dependencies ID:VER" "Add dependency to project (eg. -d foo/bar:1.2.3)."
     :assoc-fn #(let [[p v] (string/split %3 #":" 2)]
-                 (update-in %1 [%2] (fnil conj []) [(read-string p) v]))]
+                 (update-in %1 [%2] (fnil conj []) [(read-string p) (or v "RELEASE")]))]
    ["-e" "--set-env KEY=VAL"     "Add KEY => VAL to project env map."
     :assoc-fn #(let [[k v] (string/split %3 #"=" 2)]
                  (update-in %1 [%2] (fnil assoc {}) (keyword k) v))]
@@ -28,6 +28,28 @@
     :assoc-fn (fn [x y _] (update-in x [y] (fnil inc 0)))]
    ["-V" "--version"             "Print boot version info."]])
 
+(defn- dep-ns-decls
+  [jar]
+  (binding [*print-meta* true]
+    (pod/eval-worker
+      (require '[clojure.tools.namespace.find :as nsf])
+      (->> ~(.getPath (io/file jar))
+        java.util.jar.JarFile. nsf/find-ns-decls-in-jarfile))))
+
+(defn- export-tasks?
+  [[_ name docstring? attr-map?]]
+  (->> [docstring? attr-map?]
+    (filter map?)
+    first
+    (merge (meta name))
+    :boot/export-tasks))
+
+(defn- export-task-namespaces
+  [env]
+  (-> #(->> (pod/resolve-dependency-jar env %)
+         dep-ns-decls (filter export-tasks?) (map second))
+    (mapcat (:dependencies env))))
+
 (defn- parse-cli-opts [args]
   ((juxt :errors :options :arguments)
    (cli/parse-opts args cli-opts :in-order true)))
@@ -38,15 +60,18 @@
     forms
     [`(comment ~(format "end %s" tag))]))
 
-(defn emit [boot? argv userscript bootscript]
-  `(~'(ns boot.user
-        (:use boot.core boot.util boot.repl boot.task.built-in))
-    ~@(when userscript (with-comments "profile" userscript))
-    ~@(with-comments "boot script" bootscript)
-    (let [boot?# ~boot?]
-      (if-not boot?#
-        (when-let [main# (resolve 'boot.user/-main)] (main# ~@argv))
-        (core/boot ~@(or (seq argv) ["boot.task.built-in/help"]))))))
+(defn emit [boot? argv userscript bootscript import-ns]
+  (let [boot-use '[boot.core boot.util boot.repl boot.task.built-in]]
+    `(~(list 'ns 'boot.user
+         (list* :use (concat boot-use import-ns)))
+      '(ns boot.user
+         (:use boot.core boot.util boot.repl boot.task.built-in))
+      ~@(when userscript (with-comments "profile" userscript))
+      ~@(with-comments "boot script" bootscript)
+      (let [boot?# ~boot?]
+        (if-not boot?#
+          (when-let [main# (resolve 'boot.user/-main)] (main# ~@argv))
+          (core/boot ~@(or (seq argv) ["boot.task.built-in/help"])))))))
 
 (defn -main [pod-id worker-pod shutdown-hooks [arg0 & args :as args*]]
   (reset! pod/pod-id pod-id)
@@ -77,11 +102,13 @@
               profile?    (not (:no-profile opts))
               bootforms   (some->> arg0 slurp util/read-string-all)
               userforms   (when profile? (some->> userscript slurp util/read-string-all))
-              scriptforms (emit boot? args userforms bootforms)
-              scriptstr   (str (string/join "\n\n" (map pr-str scriptforms)) "\n")
               initial-env (->> [:src-paths :tgt-path :dependencies]
                              (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
-                             (merge {} (:set-env opts)))]
+                             (merge {} (:set-env opts)))
+              import-ns   (export-task-namespaces initial-env)
+              scriptforms (emit boot? args userforms bootforms import-ns)
+              scriptstr   (str (string/join "\n\n" (map pr-str scriptforms)) "\n")
+              ]
 
           (swap! util/verbose-exceptions + (or (:verbose opts) 0))
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
