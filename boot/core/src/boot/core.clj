@@ -17,7 +17,7 @@
    [java.net URLClassLoader URL]
    java.lang.management.ManagementFactory))
 
-(declare get-env set-env! boot-env on-env! merge-env! tgt-files relative-path)
+(declare get-env set-env! add-sync! boot-env on-env! merge-env! tgt-files relative-path)
 
 ;; ## Utility Functions
 ;;
@@ -121,6 +121,7 @@
 
 (defmethod on-env! ::default  [key old new env] nil)
 (defmethod on-env! :src-paths [key old new env] (add-directories! (set/difference new old)))
+(defmethod on-env! :rsc-paths [key old new env] (add-sync! (get-env :tgt-path) (set/difference new old)))
 
 (defmulti merge-env!
   "This function is used to modify how new values are merged into the boot atom
