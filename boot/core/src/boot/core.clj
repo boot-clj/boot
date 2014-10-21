@@ -91,6 +91,7 @@
 (declare ^{:dynamic true :doc "The running version of boot app."}      *app-version*)
 (declare ^{:dynamic true :doc "The running version of boot core."}     *boot-version*)
 (declare ^{:dynamic true :doc "Command line options for boot itself."} *boot-opts*)
+(declare ^{:dynamic true :doc "Count of warnings during build."}       *warnings*)
 
 (def ^:private boot-env
   "Atom containing environment key/value pairs. Do not manipulate this atom
@@ -302,8 +303,6 @@
             (throw (IllegalArgumentException. (string/join "\n" (:errors parsed)))))
           (let [[opts argv] (parse-task-opts args spec)]
             (recur (conj ret (apply (var-get op) opts)) argv)))))))
-
-(def ^:dynamic *warnings* nil)
 
 (defn run-tasks
   "FIXME: document"
