@@ -17,7 +17,8 @@
    [java.net URLClassLoader URL]
    java.lang.management.ManagementFactory))
 
-(declare get-env set-env! add-sync! boot-env on-env! merge-env! tgt-files relative-path)
+(declare get-env set-env! add-sync! boot-env on-env! merge-env!
+  tgt-files rsc-files relative-path)
 
 ;; ## Utility Functions
 ;;
@@ -258,7 +259,7 @@
            tgt      (io/file tgtpath)
            delete?  (not-any? #(= tgtpath %) (get-env :src-paths))
            consume? #(or delete? (tmpfile? %))]
-       (when-not (empty? tgtfiles)
+       (when-not (empty? (concat tgtfiles (rsc-files)))
          (binding [file/*sync-delete* delete?]
            (tmp/sync! @tmpregistry))
          (doseq [f @consumed-files :let [g (io/file tgt (relative-path f))]]
@@ -285,6 +286,7 @@
   "FIXME: document"
   [& args]
   (doseq [f @tgtdirs] (tmp/make-file! ::tmp/dir f))
+  (reset! *warnings* 0)
   (reset! consumed-files #{})
   (apply make-event args))
 

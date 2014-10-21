@@ -220,6 +220,15 @@
   [env]
   (doseq [jar (resolve-dependency-jars env)] (add-classpath jar)))
 
+(defn add-dependencies-in
+  [pod env]
+  (call-in pod
+    `(boot.pod/add-dependencies ~env)))
+
+(defn add-dependencies-worker
+  [env]
+  (add-dependencies-in @worker-pod env))
+
 (def jar-entries
   "Given a path to a jar file, returns a list of [resource-path, resource-url]
   string pairs corresponding to all entries contained the jar contains."
