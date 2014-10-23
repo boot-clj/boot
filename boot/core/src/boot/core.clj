@@ -426,6 +426,11 @@
   (pod/call-worker
     `(clj-yaml.core/parse-string ~x)))
 
+(defn touch
+  "Same as the Unix touch(1) program."
+  [f]
+  (.setLastModified f (System/currentTimeMillis)))
+
 (defn git-files [& {:keys [untracked]}]
   (git/ls-files :untracked untracked))
 
