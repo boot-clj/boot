@@ -188,19 +188,18 @@
                           :standalone true
                           :custom-eval eval
                           :custom-init init
-                          :skip-default-init skip-init))]
+                          :skip-default-init skip-init))
+        repl-svr (delay (try (require 'clojure.tools.nrepl.server)
+                             (catch Throwable _
+                               (pod/add-dependencies
+                                 (update-in (core/get-env) [:dependencies]
+                                   conj '[org.clojure/tools.nrepl "0.2.4"]))))
+                   (require 'boot.repl-server)
+                   ((resolve 'boot.repl-server/start-server) srv-opts))
+        repl-cli (delay (pod/call-worker `(boot.repl-client/client ~cli-opts)))]
     (core/with-pre-wrap
-      (when (or server (not client))
-        (try (require 'clojure.tools.nrepl.server)
-             (catch Throwable _
-               (pod/add-dependencies
-                 (update-in (core/get-env) [:dependencies]
-                   conj '[org.clojure/tools.nrepl "0.2.4"]))))
-        (require 'boot.repl-server)
-        ((resolve 'boot.repl-server/start-server) srv-opts))
-      (when (or client (not server))
-        (pod/call-worker
-          `(boot.repl-client/client ~cli-opts))))))
+      (when (or server (not client)) @repl-svr)
+      (when (or client (not server)) @repl-cli))))
 
 (core/deftask pom
   "Create project pom.xml file.
