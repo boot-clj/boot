@@ -18,3 +18,10 @@
   [name message]
   (pod/call-worker
     `(boot.jgit/tag ~name ~message)))
+
+(defn make-gitignore-matcher
+  []
+  (let [fs (util/guard (ls-files :untracked true))]
+    (prn :make fs)
+    (if-not fs (constantly false) #(do (prn :f % :p (.getPath %)) (prn :m (not (contains? fs (.getPath %)))) (prn :fs fs)
+                                       (not (contains? fs (.getPath %)))))))

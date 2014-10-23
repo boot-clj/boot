@@ -67,6 +67,8 @@ $(bootbin): head.sh $(baseuber)
 
 $(bootexe): $(baseuber)
 	@if [ -z $$RUNNING_IN_CI ] && which launch4j; then \
+		sed -e "s@__VERSION__@`cat version.properties |sed 's/.*=//'`@" \
+			launch4j-config.in.xml > launch4j-config.xml; \
 		launch4j launch4j-config.xml; \
 		echo "*** Created boot executable: $(bootexe) ***"; \
 		[ -e $(bootexe) ] && touch $(bootexe); \

@@ -6,7 +6,6 @@
    [boot.pod                  :as pod]
    [boot.core                 :as core]
    [boot.file                 :as file]
-   [boot.gitignore            :as git]
    [boot.from.me.raynes.conch :as conch]))
 
 (defn- first-line [s] (when s (first (string/split s #"\n"))))

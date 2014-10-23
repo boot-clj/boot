@@ -1,7 +1,7 @@
 <launch4jConfig>
   <headerType>console</headerType>
   <outfile>bin/boot.exe</outfile>
-  <jar>boot/base/target/base-2.0.0-SNAPSHOT-jar-with-dependencies.jar</jar>
+  <jar>boot/base/target/base-__VERSION__-jar-with-dependencies.jar</jar>
   <classPath>
     <mainClass>boot.App</mainClass>
   </classPath>

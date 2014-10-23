@@ -30,15 +30,20 @@
     (->> (jgit/git-log repo) first .getName)))
 
 (defn ls-files
-  [& {:keys [ref untracked] :or {ref "HEAD"}}]
+  [& {:keys [ref untracked]}]
   (jgit/with-repo "."
     (let [r      (.getRepository repo)
           walk   (RevWalk. r)
-          head   (.getRef r ref)
+          head   (.getRef r (or ref "HEAD"))
           commit (.parseCommit walk (.getObjectId head))
           tree   (.getTree commit)
           twalk  (doto (TreeWalk. r) (.addTree tree) (.setRecursive true))
-          files  (set (when untracked (:untracked (jgit/git-status repo))))]
+          files  (when untracked
+                   (->> (jgit/git-status repo)
+                     ((juxt :untracked :added))
+                     (apply into)))
+          files  (let [{a :added u :untracked} (jgit/git-status repo)]
+                   (into a (when untracked u)))]
       (->> (loop [go? (.next twalk) files files]
              (if-not go?
                files

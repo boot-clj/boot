@@ -10,7 +10,6 @@
    [boot.main                :as main]
    [boot.util                :as util]
    [boot.git                 :as git]
-   [boot.gitignore           :as ign]
    [boot.task-helpers        :as helpers]
    [boot.from.table.core     :as table])
   (:import
@@ -136,8 +135,7 @@
                    (remove core/tmpfile?))
         watchers (map file/make-watcher srcdirs)
         paths    (into-array String srcdirs)
-        k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)
-        ign?     (ign/make-gitignore-matcher (core/get-env :src-paths))]
+        k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
     (fn [continue]
       (fn [event]
         (util/info "Starting file watcher (CTRL-C to quit)...\n\n")
@@ -147,6 +145,7 @@
               (recur (conj ret more))
               (let [start   (System/currentTimeMillis)
                     etime   #(- (System/currentTimeMillis) start)
+                    ign?    (git/make-gitignore-matcher)
                     changed (->> (map #(%) watchers)
                               (reduce (partial merge-with set/union))
                               :time (remove ign?) set)]
@@ -241,7 +240,7 @@
   (let [tgt (core/mkrscdir!)]
     (core/with-pre-wrap
       (let [dirs (remove core/tmpfile? (core/get-env :src-paths))
-            ign? (ign/make-gitignore-matcher dirs)]
+            ign? (git/make-gitignore-matcher)]
         (util/info "Adding source files...\n")
         (binding [file/*ignore*  ign?
                   file/*include* (mapv re-pattern include)
