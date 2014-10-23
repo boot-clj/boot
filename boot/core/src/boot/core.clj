@@ -203,7 +203,7 @@
 
 (defn mktgtdir!
   "Create a tempdir managed by boot into which tasks can emit artifacts. See
-  https://github.com/tailrecursion/boot#boot-managed-directories for more info."
+  https://github.com/boot-clj/boot#boot-managed-directories for more info."
   ([] (mktgtdir! (keyword (str (gensym)))))
   ([key] (util/with-let [f (mktmpdir! key)]
            (swap! tgtdirs conj f)
@@ -213,7 +213,7 @@
 (defn mksrcdir!
   "Create a tmpdir managed by boot into which tasks can emit artifacts which
   are constructed in order to be intermediate source files but not intended to
-  be synced to the project `:tgt-path`. See https://github.com/tailrecursion/boot#boot-managed-directories
+  be synced to the project `:tgt-path`. See https://github.com/boot-clj/boot#boot-managed-directories
   for more info."
   ([] (mksrcdir! (keyword (str (gensym)))))
   ([key] (util/with-let [f (mktmpdir! key)]

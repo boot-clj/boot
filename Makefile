@@ -4,7 +4,7 @@ version    = $(shell grep ^version version.properties |sed 's/.*=//')
 verfile    = version.properties
 bootbin    = $(PWD)/bin/boot.sh
 bootexe    = $(PWD)/bin/boot.exe
-bootjarurl = https://github.com/tailrecursion/boot/releases/download/p1/boot
+bootjarurl = https://github.com/boot-clj/boot/releases/download/p1/boot
 bootjar    = boot/boot/target/boot-$(version).jar
 podjar     = boot/pod/target/pod-$(version).jar
 aetherjar  = boot/aether/target/aether-$(version).jar

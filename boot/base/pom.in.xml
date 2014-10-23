@@ -6,13 +6,13 @@
   <packaging>jar</packaging>
   <version>__VERSION__</version>
   <name>base</name>
-  <url>https://github.com/tailrecursion/boot</url>
+  <url>https://github.com/boot-clj/boot</url>
   <description>Boot Java application loader and class.</description>
   <scm>
-    <connection>scm:git:git://github.com/tailrecursion/boot.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/tailrecursion/boot.git</developerConnection>
+    <connection>scm:git:git://github.com/boot-clj/boot.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/boot-clj/boot.git</developerConnection>
     <tag>HEAD</tag>
-    <url>https://github.com/tailrecursion/boot.git</url>
+    <url>https://github.com/boot-clj/boot.git</url>
   </scm>
   <licenses>
     <license>

@@ -7,8 +7,8 @@
 (defproject boot/pod version
   :aot :all
   :description  "Boot pod module–this is included with all pods."
-  :url          "http://github.com/tailrecursion/boot"
-  :scm          {:url "https://github.com/tailrecursion/boot.git" :dir "../../"}
+  :url          "http://github.com/boot-clj/boot"
+  :scm          {:url "https://github.com/boot-clj/boot.git" :dir "../../"}
   :repositories [["clojars"  {:url "https://clojars.org/repo" :creds :gpg :sign-releases false}]]
   :license      {:name "Eclipse Public License"
                  :url "http://www.eclipse.org/legal/epl-v10.html"}

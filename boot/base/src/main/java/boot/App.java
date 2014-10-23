@@ -28,6 +28,7 @@ public class App {
     private static String                  localrepo   = null;
     private static String                  appversion  = null;
     private static String                  channel     = "RELEASE";
+    private static String                  booturl     = "https://github.com/boot-clj/boot";
     private static ClojureRuntimeShim      aethershim  = null;
 
     private static final String            aetherjar   = "aether.uber.jar";
@@ -70,7 +71,7 @@ public class App {
         p.setProperty("BOOT_CLOJURE_VERSION", c);
 
         try (FileOutputStream file = new FileOutputStream(f)) {
-                p.store(file, "boot: https://github.com/tailrecursion/boot"); }
+                p.store(file, booturl); }
         
         return p; }
     
@@ -241,10 +242,15 @@ public class App {
         localrepo     = System.getenv("BOOT_LOCAL_REPO");
         String bhome  = System.getenv("BOOT_HOME");
         String homed  = System.getProperty("user.home");
+        String uname  = System.getProperty("user.name");
         String boot_v = System.getenv("BOOT_VERSION");
         String clj_v  = System.getenv("BOOT_CLOJURE_VERSION");
         String chan   = System.getenv("BOOT_CHANNEL");
+        String asroot = System.getenv("BOOT_AS_ROOT");
         
+        if (uname.equals("root") && asroot != null && !asroot.equals("yes"))
+            throw new Exception("refusing to run as root (set BOOT_AS_ROOT=yes env var to force)");
+
         if (chan != null && chan.equals("DEV")) channel = "(0.0.0,)";
 
         String dir_l  = (localrepo == null) ? "default" : String.valueOf(localrepo.hashCode());
@@ -266,7 +272,7 @@ public class App {
             && ((args[0]).equals("-u")
                 || (args[0]).equals("--update"))) {
             Properties p = writeProps(bootprops);
-            p.store(System.out, "boot: https://github.com/tailrecursion/boot");
+            p.store(System.out, booturl);
             System.exit(0); }
 
         if (cljversion == null || bootversion == null) {
@@ -282,7 +288,7 @@ public class App {
             Properties p = new Properties();
             p.setProperty("BOOT_VERSION", bootversion);
             p.setProperty("BOOT_CLOJURE_VERSION", cljversion);
-            p.store(System.out, "boot: https://github.com/tailrecursion/boot");
+            p.store(System.out, booturl);
             System.exit(0); }
 
         File cachedir  = new File(new File(new File(new File(bootdir, "cache"), dir_l), cljversion), bootversion);

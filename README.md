@@ -363,12 +363,11 @@ Copyright © 2013 Alan Dipert and Micha Niskin
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
-[1]: https://raw.githubusercontent.com/tailrecursion/boot/master/img/archimedes-lever.gif
-[2]: https://github.com/tailrecursion/boot/releases/download/v2-r1/boot.sh
-[3]: https://github.com/tailrecursion/boot/releases/download/v2-r1/boot.exe
+[2]: https://github.com/boot-clj/boot/releases/download/v2-r1/boot.sh
+[3]: https://github.com/boot-clj/boot/releases/download/v2-r1/boot.exe
 [4]: #install
-[5]: https://drone.io/github.com/tailrecursion/boot/status.png?cache=1
-[6]: https://drone.io/github.com/tailrecursion/boot/latest
+[5]: https://drone.io/github.com/boot-clj/boot/status.png?cache=1
+[6]: https://drone.io/github.com/boot-clj/boot/latest
 [7]: http://clojure.org/transducers
 [8]: http://drtom.ch/posts/2012-12-10/An_Introduction_to_Webprogramming_in_Clojure_-_Ring_and_Middleware/#ring-middleware
 [9]: https://clojurefun.wordpress.com/2012/08/13/keyword-arguments-in-clojure/comment-page-1/
@@ -376,9 +375,9 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [20]: doc/clojure-scripting-with-boot.md
 [21]: doc/overview-of-the-boot-workflow.md
 [22]: doc/boot-task-writers-guide.md
-[23]: https://tailrecursion.github.io/boot
+[23]: https://boot-clj.github.io/boot
 [24]: doc/boot-clojure-version-howto.md
-[25]: https://github.com/tailrecursion/boot/wiki
+[25]: https://github.com/boot-clj/boot/wiki
 
 [50]: https://github.com/technomancy/leiningen
 [51]: https://github.com/cemerick/pomegranate
