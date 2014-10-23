@@ -72,7 +72,7 @@ $(bootexe): $(baseuber)
 		[ -e $(bootexe) ] && touch $(bootexe); \
 	else true; fi
 
-.installed: $(basejar) $(alljars) $(bootbin) $(bootexe)
+.installed: $(basejar) $(alljars) $(bootbin)
 	date > .installed
 
 install: .installed
