@@ -254,19 +254,12 @@
   artifacts in target directories to sync. If there are none `sync!` does
   nothing."
   ([]
-     (let [tgtfiles (tgt-files)
-           tgtpath  (get-env :tgt-path)
-           tgt      (io/file tgtpath)
-           delete?  (not-any? #(= tgtpath %) (get-env :src-paths))
-           consume? #(or delete? (tmpfile? %))]
-       (when-not (empty? (concat tgtfiles (rsc-files)))
-         (binding [file/*sync-delete* delete?]
-           (tmp/sync! @tmpregistry))
-         (doseq [f @consumed-files :let [g (io/file tgt (relative-path f))]]
-           (when (and (consume? g) (.exists g)) (.delete g)))
-         (doseq [d (->> tgt file-seq reverse)]
-           (when (and (.isDirectory d) (not (seq (.listFiles d))))
-             (.delete d))))))
+     (let [tgtpath  (get-env :tgt-path)
+           delete?  (not-any? #(= tgtpath %) (get-env :src-paths))]
+       (when-not (every? empty? [(tgt-files) (rsc-files)])
+         (binding [file/*sync-delete* delete?
+                   file/*ignore* consumed-file?]
+           (tmp/sync! @tmpregistry)))))
   ([dest & srcs]
      (apply file/sync :hash dest srcs)))
 
@@ -434,12 +427,27 @@
 (defn git-files [& {:keys [untracked]}]
   (git/ls-files :untracked untracked))
 
-(defn src-files
-  "Returns a seq of `java.io.File` objects--the contents of directories in the
-  :src-paths boot environment. Note that this includes the `tgt-files` below."
+(defn tgt-files
+  "Returns a seq of `java.io.File` objects--the contents of directories created
+  by tasks via the `mktgtdir!` function above."
   []
   (let [want? #(and (.isFile %) (not (consumed-file? %)))]
-    (->> :src-paths get-env (map io/file) (mapcat file-seq) (filter want?) set)))
+    (->> @tgtdirs (mapcat file-seq) (filter want?) set)))
+
+(defn src-files
+  "Returns a seq of `java.io.File` objects--the contents of directories in the
+  :src-paths boot environment as specified by the user. Note that this does not
+  include temp files or files that are ignored via .gitignore (when applicable)."
+  []
+  (let [ign?  (git/make-gitignore-matcher)
+        want? #(and (.isFile %) (not (consumed-file? %)) (not (ign? %)))]
+    (->> :src-paths get-env (map io/file) (remove tmpfile?) (mapcat file-seq) (filter want?) set)))
+
+(defn src-files+
+  "Returns a seq of `java.io.File` objects--the concatenation of src-files and
+  tgt-files, as above."
+  []
+  (into (src-files) (tgt-files)))
 
 (defn rsc-files
   "Returns a seq of `java.io.File` objects--the contents of directories in the
@@ -448,13 +456,6 @@
   []
   (let [want? #(and (.isFile %) (not (consumed-file? %)))]
     (->> :rsc-paths get-env (map io/file) (mapcat file-seq) (filter want?) set)))
-
-(defn tgt-files
-  "Returns a seq of `java.io.File` objects--the contents of directories created
-  by tasks via the `mktgtdir!` function above."
-  []
-  (let [want? #(and (.isFile %) (not (consumed-file? %)))]
-    (->> @tgtdirs (mapcat file-seq) (filter want?) set)))
 
 #_(defn newer?
   "Given a seq of source file objects `srcs` and a number of `artifact-dirs`

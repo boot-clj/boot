@@ -352,7 +352,7 @@
   
   (let [tgt (core/mktgtdir!)]
     (core/with-pre-wrap
-      (let [nses (->> (core/src-files)
+      (let [nses (->> (core/src-files+)
                    (map core/relative-path)
                    (filter #(.endsWith % ".clj"))
                    (map util/path->ns)
@@ -375,7 +375,7 @@
             handler   {Diagnostic$Kind/ERROR util/fail
                        Diagnostic$Kind/WARNING util/warn
                        Diagnostic$Kind/MANDATORY_WARNING util/warn}
-            srcs      (some->> (core/src-files)
+            srcs      (some->> (core/src-files+)
                         (core/by-ext [".java"])
                         seq
                         (into-array File)

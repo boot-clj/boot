@@ -22,6 +22,4 @@
 (defn make-gitignore-matcher
   []
   (let [fs (util/guard (ls-files :untracked true))]
-    (prn :make fs)
-    (if-not fs (constantly false) #(do (prn :f % :p (.getPath %)) (prn :m (not (contains? fs (.getPath %)))) (prn :fs fs)
-                                       (not (contains? fs (.getPath %)))))))
+    (if-not fs (constantly false) #(not (contains? fs (.getPath %))))))

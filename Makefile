@@ -1,19 +1,25 @@
 .PHONY: help deps install deploy test clean
 
-version    = $(shell grep ^version version.properties |sed 's/.*=//')
-verfile    = version.properties
-bootbin    = $(PWD)/bin/boot.sh
-bootexe    = $(PWD)/bin/boot.exe
-bootjarurl = https://github.com/boot-clj/boot/releases/download/p1/boot
-bootjar    = boot/boot/target/boot-$(version).jar
-podjar     = boot/pod/target/pod-$(version).jar
-aetherjar  = boot/aether/target/aether-$(version).jar
-aetheruber = aether.uber.jar
-workerjar  = boot/worker/target/worker-$(version).jar
-corejar    = boot/core/target/core-$(version).jar
-basejar    = boot/base/target/base-$(version).jar
-baseuber   = boot/base/target/base-$(version)-jar-with-dependencies.jar
-alljars    = $(podjar) $(aetherjar) $(workerjar) $(corejar) $(baseuber) $(bootjar)
+SHELL       := /bin/bash
+export PATH := bin:$(PATH)
+
+green        = '\e[0;32m'
+nc           = '\e[0m'
+
+version      = $(shell grep ^version version.properties |sed 's/.*=//')
+verfile      = version.properties
+bootbin      = $(PWD)/bin/boot.sh
+bootexe      = $(PWD)/bin/boot.exe
+bootjarurl   = https://github.com/boot-clj/boot/releases/download/p1/boot
+bootjar      = boot/boot/target/boot-$(version).jar
+podjar       = boot/pod/target/pod-$(version).jar
+aetherjar    = boot/aether/target/aether-$(version).jar
+aetheruber   = aether.uber.jar
+workerjar    = boot/worker/target/worker-$(version).jar
+corejar      = boot/core/target/core-$(version).jar
+basejar      = boot/base/target/base-$(version).jar
+baseuber     = boot/base/target/base-$(version)-jar-with-dependencies.jar
+alljars      = $(podjar) $(aetherjar) $(workerjar) $(corejar) $(baseuber) $(bootjar)
 
 help:
 	@echo "version =" $(version)
@@ -25,6 +31,9 @@ clean:
 	(cd boot/aether && lein clean)
 	(cd boot/pod && lein clean)
 	(cd boot/worker && lein clean)
+
+bloop:
+	which lein
 
 bin/lein:
 	mkdir -p bin
@@ -63,18 +72,18 @@ $(bootbin): head.sh $(baseuber)
 	mkdir -p bin
 	cat head.sh $(baseuber) > $(bootbin)
 	chmod 0755 $(bootbin)
-	@echo "*** Created boot executable: $(bootbin) ***"
+	@echo -e "\033[0;32m<< Created boot executable: $(bootbin) >>\033[0m"
 
 $(bootexe): $(baseuber)
 	@if [ -z $$RUNNING_IN_CI ] && which launch4j; then \
 		sed -e "s@__VERSION__@`cat version.properties |sed 's/.*=//'`@" \
 			launch4j-config.in.xml > launch4j-config.xml; \
 		launch4j launch4j-config.xml; \
-		echo "*** Created boot executable: $(bootexe) ***"; \
+		echo -e "\033[0;32m<< Created boot executable: $(bootexe) >>\033[0m"; \
 		[ -e $(bootexe) ] && touch $(bootexe); \
 	else true; fi
 
-.installed: $(basejar) $(alljars) $(bootbin)
+.installed: $(basejar) $(alljars) $(bootbin) $(bootexe)
 	date > .installed
 
 install: .installed
@@ -91,12 +100,4 @@ install: .installed
 deploy: .deployed
 
 test:
-	rm -rf test
-	mkdir -p test/1/boot-project/src
-	echo "hi there" > test/1/boot-project/src/hello.txt
-	(cd test/1/boot-project \
-		&& $(bootbin) -d org.clojure/clojure:1.6.0 -s src -- speak -t ordinance -- pom -p boot-project -v 0.1.0 -- jar -M Foo=bar -- uberjar -- war)# \
-		&& jar tf target/boot-project-0.1.0.jar | grep '^META-INF/MANIFEST.MF$$' \
-		&& unzip -p target/boot-project-0.1.0.jar META-INF/MANIFEST.MF | grep '^Foo: bar' \
-		&& echo TEST 1 OK) \
-		|| (echo TEST 1 FAIL 1>&2; false)
+	echo "<< no tests yet >>"
