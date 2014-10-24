@@ -248,7 +248,7 @@ public class App {
         String chan   = System.getenv("BOOT_CHANNEL");
         String asroot = System.getenv("BOOT_AS_ROOT");
         
-        if (uname.equals("root") && asroot != null && !asroot.equals("yes"))
+        if (uname.equals("root") && (asroot == null || !asroot.equals("yes")))
             throw new Exception("refusing to run as root (set BOOT_AS_ROOT=yes env var to force)");
 
         if (chan != null && chan.equals("DEV")) channel = "(0.0.0,)";
