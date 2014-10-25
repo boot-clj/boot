@@ -21,13 +21,6 @@
 
 (defn- set-title [[[_ & xs] & zs] title] (into [(into [title] xs)] zs))
 
-(defn- version-str []
-  (str
-    (format "App Version:     %s\n" core/*app-version*)
-    (format "Boot Version:    %s\n" core/*boot-version*)
-    (format "Clojure Version: %s\n" (clojure-version))
-    (format "Documentation:   %s"   "http://github.com/boot-clj/boot")))
-
 (defn- available-tasks [sym]
   (let [base  {nil (the-ns sym)}
         task? #(:boot.core/task %)
