@@ -188,7 +188,7 @@
   "Create a temp directory and return its `File` object. If `mktmpdir!` has
   already been called with the given `key` the directory's contents will be
   deleted."
-  ([] (mktmpdir! (keyword (str (gensym)))))
+  ([] (mktmpdir! (keyword "boot.core" (str (gensym)))))
   ([key] (tmp/mkdir! @tmpregistry key)))
 
 (def ^:private tgtdirs
@@ -204,7 +204,7 @@
 (defn mktgtdir!
   "Create a tempdir managed by boot into which tasks can emit artifacts. See
   https://github.com/boot-clj/boot#boot-managed-directories for more info."
-  ([] (mktgtdir! (keyword (str (gensym)))))
+  ([] (mktgtdir! (keyword "boot.core" (str (gensym)))))
   ([key] (util/with-let [f (mktmpdir! key)]
            (swap! tgtdirs conj f)
            (set-env! :src-paths #(conj % (.getPath f)))
@@ -215,7 +215,7 @@
   are constructed in order to be intermediate source files but not intended to
   be synced to the project `:tgt-path`. See https://github.com/boot-clj/boot#boot-managed-directories
   for more info."
-  ([] (mksrcdir! (keyword (str (gensym)))))
+  ([] (mksrcdir! (keyword "boot.core" (str (gensym)))))
   ([key] (util/with-let [f (mktmpdir! key)]
            (set-env! :src-paths #(conj % (.getPath f))))))
 
@@ -224,7 +224,7 @@
   to be resources. Resources are not compiled or processed by build tasks, but
   are included in the final packaged artifact. These resource directories are
   not emptied by boot for each build cycle."
-  ([] (mkrscdir! (keyword (str (gensym)))))
+  ([] (mkrscdir! (keyword "boot.core" (str (gensym)))))
   ([key] (util/with-let [f (mktmpdir! key)]
            (set-env! :rsc-paths #(conj % (.getPath f)))
            (add-sync! (get-env :tgt-path) #{(.getPath f)}))))
@@ -428,34 +428,48 @@
   (git/ls-files :untracked untracked))
 
 (defn tgt-files
-  "Returns a seq of `java.io.File` objects--the contents of directories created
-  by tasks via the `mktgtdir!` function above."
+  "Returns a seq of java.io.File objects--the contents of directories created
+  by tasks via the mktgtdir! function above."
   []
   (let [want? #(and (.isFile %) (not (consumed-file? %)))]
     (->> @tgtdirs (mapcat file-seq) (filter want?) set)))
 
 (defn src-files
-  "Returns a seq of `java.io.File` objects--the contents of directories in the
+  "Returns a set of java.io.File objects--the contents of directories in the
   :src-paths boot environment as specified by the user. Note that this does not
-  include temp files or files that are ignored via .gitignore (when applicable)."
+  include temp files."
   []
-  (let [ign?  (git/make-gitignore-matcher)
-        want? #(and (.isFile %) (not (consumed-file? %)) (not (ign? %)))]
+  (let [want? #(and (.isFile %) (not (consumed-file? %)))]
     (->> :src-paths get-env (map io/file) (remove tmpfile?) (mapcat file-seq) (filter want?) set)))
 
-(defn src-files+
-  "Returns a seq of `java.io.File` objects--the concatenation of src-files and
-  tgt-files, as above."
+(defn src-files*
+  "Returns a set of java.io.File objects--the contents of directories in
+  the :src-paths boot environment other than those specified by the user via
+  set-env!."
   []
-  (into (src-files) (tgt-files)))
+  (let [want? #(and (.isFile %) (not (consumed-file? %)))]
+    (->> :src-paths get-env (map io/file) (filter tmpfile?) (mapcat file-seq) (filter want?) set)))
+
+(defn src-files+
+  "Returns a set of java.io.File objects--the union of (src-files) and 
+  (src-files*)."
+  []
+  (into (src-files) (src-files*)))
 
 (defn rsc-files
-  "Returns a seq of `java.io.File` objects--the contents of directories in the
+  "Returns a set of java.io.File objects--the contents of directories in the
   :rsc-paths boot environment. Note that this includes directories created by
-  tasks via the `mkrscdir!` function above."
+  tasks via the mkrscdir! function above."
   []
   (let [want? #(and (.isFile %) (not (consumed-file? %)))]
     (->> :rsc-paths get-env (map io/file) (mapcat file-seq) (filter want?) set)))
+
+(defn all-files
+  "Returns a set of java.io.File objects--the contents of all directories that
+  have either source or resource files, including both project source and temp
+  files. This is the union of (src-files+) and (rsc-files)."
+  []
+  (into (src-files+) (rsc-files)))
 
 #_(defn newer?
   "Given a seq of source file objects `srcs` and a number of `artifact-dirs`

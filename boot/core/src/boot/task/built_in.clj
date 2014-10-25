@@ -127,7 +127,8 @@
 
   Debouncing time is 10ms by default."
 
-  [d debounce MSEC long "The time to wait (millisec) for filesystem to settle down."]
+  [q quiet         bool "Suppress all output from running jobs."
+   d debounce MSEC long "The time to wait (millisec) for filesystem to settle down."]
 
   (pod/require-in-pod @pod/worker-pod "boot.watcher")
   (let [q        (LinkedBlockingQueue.)
@@ -139,7 +140,8 @@
         k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
     (fn [continue]
       (fn [event]
-        (util/info "Starting file watcher (CTRL-C to quit)...\n\n")
+        (when-not quiet
+          (util/info "Starting file watcher (CTRL-C to quit)...\n\n"))
         (loop [ret (util/guard [(.take q)])]
           (when ret
             (if-let [more (.poll q (or debounce 10) TimeUnit/MILLISECONDS)]
@@ -151,8 +153,10 @@
                               (reduce (partial merge-with set/union))
                               :time (remove ign?) set)]
                 (when-not (empty? changed)
-                  (-> event core/prep-build! (assoc ::watch changed) continue)
-                  (util/info "Elapsed time: %.3f sec\n\n" (float (/ (etime) 1000))))
+                  (binding [*out* (if quiet (new java.io.StringWriter) *out*)
+                            *err* (if quiet (new java.io.StringWriter) *err*)]
+                    (-> event core/prep-build! (assoc ::watch changed) continue)
+                    (util/info "Elapsed time: %.3f sec\n\n" (float (/ (etime) 1000)))))
                 (recur (util/guard [(.take q)]))))))
         (.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)))))
 
