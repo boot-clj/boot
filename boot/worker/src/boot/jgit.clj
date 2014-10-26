@@ -16,15 +16,18 @@
            (loop [d (.getCanonicalFile (io/file "."))]
              (when d (or (repo d) (recur (.getParentFile d))))))))
 
+(defmacro with-repo
+  [& body]
+  `(do (assert @repo-dir "This does not appear to be a git repo.")
+       (jgit/with-repo @repo-dir ~@body)))
+
 (defn status
   []
-  (assert @repo-dir "This does not appear to be a git repo.")
-  (jgit/with-repo @repo-dir (jgit/git-status repo)))
+  (with-repo (jgit/git-status repo)))
 
 (defn branch-current
   []
-  (jgit/with-repo @repo-dir
-    (jgit/git-branch-current repo)))
+  (with-repo (jgit/git-branch-current repo)))
 
 (defn clean?
   []
@@ -32,14 +35,11 @@
 
 (defn last-commit
   []
-  (assert @repo-dir "This does not appear to be a git repo.")
-  (jgit/with-repo @repo-dir
-    (->> (jgit/git-log repo) first .getName)))
+  (with-repo (->> (jgit/git-log repo) first .getName)))
 
 (defn ls-files
   [& {:keys [ref untracked]}]
-  (assert @repo-dir "This does not appear to be a git repo.")
-  (jgit/with-repo @repo-dir
+  (with-repo
     (let [r      (.getRepository repo)
           walk   (RevWalk. r)
           head   (.getRef r (or ref "HEAD"))
@@ -61,7 +61,5 @@
 
 (defn tag
   [name message]
-  (assert @repo-dir "This does not appear to be a git repo.")
-  (jgit/with-repo @repo-dir
-    (.. repo tag (setName name) (setMessage message) call)))
+  (with-repo (.. repo tag (setName name) (setMessage message) call)))
 
