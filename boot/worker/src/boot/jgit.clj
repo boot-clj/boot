@@ -2,7 +2,8 @@
   (:require
    [clojure.set        :as set]
    [clojure.java.io    :as io]
-   [clj-jgit.porcelain :as jgit])
+   [clj-jgit.porcelain :as jgit]
+   [boot.util          :as util])
   (:import
    [org.eclipse.jgit.api          Git]
    [org.eclipse.jgit.treewalk     TreeWalk]
@@ -10,14 +11,19 @@
    [org.eclipse.jgit.revwalk      RevCommit RevTree RevWalk]
    [org.eclipse.jgit.storage.file FileRepositoryBuilder]))
 
+(def repo-dir
+  (delay (let [repo #(and (util/guard (jgit/with-repo % repo)) %)]
+           (loop [d (.getCanonicalFile (io/file "."))]
+             (when d (or (repo d) (recur (.getParentFile d))))))))
+
 (defn status
   []
-  (jgit/with-repo "."
-    (jgit/git-status repo)))
+  (assert @repo-dir "This does not appear to be a git repo.")
+  (jgit/with-repo @repo-dir (jgit/git-status repo)))
 
 (defn branch-current
   []
-  (jgit/with-repo "."
+  (jgit/with-repo @repo-dir
     (jgit/git-branch-current repo)))
 
 (defn clean?
@@ -26,12 +32,14 @@
 
 (defn last-commit
   []
-  (jgit/with-repo "."
+  (assert @repo-dir "This does not appear to be a git repo.")
+  (jgit/with-repo @repo-dir
     (->> (jgit/git-log repo) first .getName)))
 
 (defn ls-files
   [& {:keys [ref untracked]}]
-  (jgit/with-repo "."
+  (assert @repo-dir "This does not appear to be a git repo.")
+  (jgit/with-repo @repo-dir
     (let [r      (.getRepository repo)
           walk   (RevWalk. r)
           head   (.getRef r (or ref "HEAD"))
@@ -53,6 +61,7 @@
 
 (defn tag
   [name message]
-  (jgit/with-repo "."
+  (assert @repo-dir "This does not appear to be a git repo.")
+  (jgit/with-repo @repo-dir
     (.. repo tag (setName name) (setMessage message) call)))
 

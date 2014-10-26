@@ -218,7 +218,8 @@
    s scm KEY=VAL      {kw str} "The project scm map (KEY in url, tag)."]
 
   (let [tgt  (core/mktgtdir!)
-        scm  (when scm (if (:tag scm) scm (assoc scm :tag (git/last-commit))))
+        tag  (or (:tag scm) (util/guard (git/last-commit)) "HEAD")
+        scm  (when scm (assoc scm :tag tag))
         opts (assoc *opts* :scm scm :dependencies (:dependencies (core/get-env)))]
     (core/with-pre-wrap
       (when-not (and project version)
