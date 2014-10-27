@@ -36,6 +36,10 @@
   (and (instance? ZipException t)
        (.startsWith (.getMessage t) "duplicate entry:")))
 
+(defn jarentry [path f & [dir?]]
+  (doto (JarEntry. (str (.replaceAll path "\\\\" "/") (when dir? "/")))
+    (.setTime (.lastModified f))))
+
 (defn spit-jar! [jarpath files attr main]
   (let [manifest  (create-manifest main attr)
         jarfile   (io/file jarpath)
@@ -47,12 +51,12 @@
     (io/make-parents jarfile)
     (with-open [s (JarOutputStream. (io/output-stream jarfile) manifest)]
       (doseq [[jarpath srcpath] files :let [f (io/file srcpath)]]
-        (let [entry (doto (JarEntry. jarpath) (.setTime (.lastModified f)))]
+        (let [e (jarentry jarpath f)]
           (try
-            (doseq [d (parents jarpath)]
+            (doseq [d (parents jarpath) :let [f (io/file d)]]
               (swap! dirs conj d)
-              (doto s (.putNextEntry (JarEntry. d)) .closeEntry))
-            (doto s (.putNextEntry entry) (write! (io/input-stream srcpath)) .closeEntry)
+              (doto s (.putNextEntry (jarentry d f true)) .closeEntry))
+            (doto s (.putNextEntry e) (write! (io/input-stream srcpath)) .closeEntry)
             (catch Throwable t
               (if-not (dupe? t) (throw t) (util/warn "%s\n" (.getMessage t))))))))))
 
