@@ -245,11 +245,9 @@
 
   (let [tgt (core/mkrscdir!)]
     (core/with-pre-wrap
-      (let [dirs (remove core/tmpfile? (core/get-env :src-paths))
-            ign? (git/make-gitignore-matcher)]
+      (let [dirs (remove core/tmpfile? (core/get-env :src-paths))]
         (util/info "Adding source files...\n")
-        (binding [file/*ignore*  ign?
-                  file/*include* (mapv re-pattern include)
+        (binding [file/*include* (mapv re-pattern include)
                   file/*exclude* (mapv re-pattern exclude)]
           (apply file/sync :time tgt dirs))))))
 

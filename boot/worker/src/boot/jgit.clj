@@ -37,6 +37,9 @@
   []
   (with-repo (->> (jgit/git-log repo) first .getName)))
 
+;;; FIXME: handle case where repo is not at ".", need to add ".." for each
+;;;        subdirectory level we are below the repo root, so this is broken
+
 (defn ls-files
   [& {:keys [ref untracked]}]
   (with-repo
