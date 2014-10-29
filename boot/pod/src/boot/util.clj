@@ -29,6 +29,20 @@
   [[binding resource] & body]
   `(let [~binding ~resource] ~@body ~binding))
 
+(defmacro while-let
+  "Repeatedly executes body while test expression is true. Test
+  expression is bound to binding."
+  [[binding test] & body]
+  `(loop [~binding ~test]
+     (when ~binding ~@body (recur ~test))))
+
+(defmacro do-while-let
+  "Like while-let, except that the body is executed at least once."
+  [[binding test] & body]
+  `(loop [~binding ~test]
+     ~@body
+     (when ~binding (recur ~test))))
+
 (defmacro dotoseq
   [obj seq-exprs & body]
   `(let [o# ~obj] (doseq ~seq-exprs (doto o# ~@body)) o#))

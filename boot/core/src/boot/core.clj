@@ -261,7 +261,8 @@
                    file/*ignore* consumed-file?]
            (tmp/sync! @tmpregistry)))))
   ([dest & srcs]
-     (apply file/sync :hash dest srcs)))
+     (binding [file/*ignore* consumed-file?]
+       (apply file/sync :hash dest srcs))))
 
 (defmacro deftask
   "Define a boot task."

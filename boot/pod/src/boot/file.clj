@@ -123,7 +123,10 @@
 (defn diff
   [algo dst src & srcs]
   (let [d (dir-map (file dst))
-        s (apply dir-map (mapv file (cons src srcs)))
+        s (->> (cons src srcs)
+            (map file)
+            (remove #(and *ignore* (*ignore* %)))
+            (apply dir-map))
         [to-cp to-rm] (what-changed d s algo)
         cp (map #(vector :cp (:abs (s %)) (file dst %)) to-cp) 
         rm (map #(vector :rm (file dst %)) to-rm)]

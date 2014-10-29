@@ -9,7 +9,7 @@
    [java.util.jar        JarFile]
    [java.util            Properties]
    [java.net             URL URLClassLoader]
-   [java.util.concurrent ConcurrentLinkedQueue]
+   [java.util.concurrent ConcurrentLinkedQueue LinkedBlockingQueue TimeUnit]
    [java.nio.file        Files])
   (:refer-clojure :exclude [add-classpath]))
 
@@ -266,6 +266,25 @@
     (require-in-pod "boot.pod")
     (.invoke "boot.pod/set-worker-pod!" @worker-pod)))
 
+(defn lifecycle-pool
+  [size create destroy & {:keys [priority]}]
+  (let [run? (atom true)
+        pri  (or priority Thread/NORM_PRIORITY)
+        q    (LinkedBlockingQueue. (int size))
+        poll #(.poll % 1 TimeUnit/SECONDS)
+        putp #(util/with-let [p (promise)] (.put % p))
+        fill #(util/while-let [p (and @run? (putp q))]
+                (deliver p (when @run? (create))))
+        take #(deref (.peek q))
+        swap #(destroy @(.take q))
+        stop #(do (reset! run? false)
+                  (util/while-let [p (poll q)]
+                    (destroy @p)))]
+    (doto (Thread. fill) (.setDaemon true) (.setPriority pri) .start)
+    (fn
+      ([] (take))
+      ([op] (case op :refresh (swap) :shutdown (stop))))))
+
 (defn make-pod
   ([] (set-this-worker-in-pod! (boot.App/newPod)))
   ([{:keys [src-paths] :as env}]
@@ -273,3 +292,13 @@
            jars (resolve-dependency-jars env)]
        (set-this-worker-in-pod!
          (->> (concat dirs jars) (into-array java.io.File) (boot.App/newPod))))))
+
+(defn destroy-pod
+  [pod]
+  (when pod
+    (.invoke pod "clojure.core/shutdown-agents")
+    (.. pod getClassLoader close)))
+
+(defn pod-pool
+  [size env]
+  (lifecycle-pool size #(make-pod env) destroy-pod))
