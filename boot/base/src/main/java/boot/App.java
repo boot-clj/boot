@@ -220,7 +220,8 @@ public class App {
             return (t instanceof Exit) ? Integer.parseInt(t.getMessage()) : -2; }
         finally {
             for (Runnable h : hooks) h.run();
-            core.get().invoke("clojure.core/shutdown-agents"); }}
+            try { core.get().invoke("clojure.core/shutdown-agents"); }
+            catch (InterruptedException ie) {}}}
     
     public static void
     usage() throws Exception {

@@ -155,7 +155,7 @@
                 (when-not (empty? changed)
                   (binding [*out* (if quiet (new java.io.StringWriter) *out*)
                             *err* (if quiet (new java.io.StringWriter) *err*)]
-                    (-> event core/prep-build! (assoc ::watch changed) continue)
+                    (-> event core/prep-build! continue)
                     (util/info "Elapsed time: %.3f sec\n\n" (float (/ (etime) 1000)))))
                 (recur (util/guard [(.take q)]))))))
         (.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)))))

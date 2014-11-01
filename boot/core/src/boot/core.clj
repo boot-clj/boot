@@ -20,11 +20,25 @@
 (declare get-env set-env! add-sync! boot-env on-env! merge-env!
   tgt-files rsc-files relative-path)
 
+(declare ^{:dynamic true :doc "The running version of boot app."}      *app-version*)
+(declare ^{:dynamic true :doc "The running version of boot core."}     *boot-version*)
+(declare ^{:dynamic true :doc "Command line options for boot itself."} *boot-opts*)
+(declare ^{:dynamic true :doc "Count of warnings during build."}       *warnings*)
+
+(def ^:private cleanup-fns
+  "Seq of thunks to call after build."
+  (atom []))
+
 ;; ## Utility Functions
 ;;
 ;; _These functions are used internally by boot and are not part of the public API._
 
 (def ^:private tmpregistry  (atom nil))
+
+(defn- cleanup! [stopper & args]
+  (doseq [f @cleanup-fns] (f))
+  (reset! cleanup-fns [])
+  (when (seq args) (util/guard (apply stopper args))))
 
 (defn- printable-readable?
   "FIXME: document"
@@ -88,11 +102,6 @@
 ;;
 ;; _These functions are used internally by boot and are not part of the public
 ;; API._
-
-(declare ^{:dynamic true :doc "The running version of boot app."}      *app-version*)
-(declare ^{:dynamic true :doc "The running version of boot core."}     *boot-version*)
-(declare ^{:dynamic true :doc "Command line options for boot itself."} *boot-opts*)
-(declare ^{:dynamic true :doc "Count of warnings during build."}       *warnings*)
 
 (def ^:private boot-env
   "Atom containing environment key/value pairs. Do not manipulate this atom
@@ -269,6 +278,13 @@
   [sym doc argspec & body]
   `(cli2/defclifn ~(vary-meta sym assoc ::task true) ~doc ~argspec ~@body))
 
+(defmacro cleanup
+  "Evaluate body after tasks have been run. This macro is meant to be called
+  from inside a task definition, and is provided as a means to shutdown or
+  clean up persistent resources created by the task (eg. threads, files, etc.)"
+  [& body]
+  `(swap! @#'boot.core/cleanup-fns conj (fn [] ~@body)))
+
 (defn make-event
   "Creates a new event map with base info about the build event. If the `event`
   argument is given the new event map is merged into it. This event map is what
@@ -311,9 +327,14 @@
   [& argv]
   (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
         ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
-    `(run-tasks ~(if (every? string? argv)
-                   `(apply construct-tasks [~@argv])
-                   (->app (map ->list argv))))))
+    `(let [cleanup# (partial #'boot.core/cleanup! (repl/thread-stopper))]
+       (cleanup#)
+       (let [stack# ~(if (every? string? argv)
+                       `(apply construct-tasks [~@argv])
+                       (->app (map ->list argv)))]
+         (repl/set-break-handler! cleanup#)
+         (run-tasks stack#)
+         (cleanup#)))))
 
 ;; ## Low-Level Tasks / Task Helpers
 
