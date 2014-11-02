@@ -2,7 +2,6 @@
   (:require
    [clojure.java.io          :as io]
    [clojure.set              :as set]
-   [clojure.pprint           :as pprint]
    [clojure.string           :as string]
    [boot.pod                 :as pod]
    [boot.file                :as file]
