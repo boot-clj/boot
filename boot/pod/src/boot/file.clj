@@ -36,7 +36,7 @@
   (->> p parent-seq reverse (map (memfn getName))))
 
 (defn parent? [parent child]
-  (some (partial = parent) (parent-seq child)))
+  (contains? (set (parent-seq child)) parent))
 
 (defn up-parents
   [f base & parts]

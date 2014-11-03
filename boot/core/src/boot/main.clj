@@ -6,7 +6,6 @@
    [boot.core                   :as core]
    [boot.file                   :as file]
    [boot.util                   :as util]
-   [boot.tmpregistry            :as tmp]
    [boot.from.clojure.tools.cli :as cli]))
 
 (def cli-opts
@@ -19,7 +18,8 @@
                  (update-in %1 [%2] (fnil assoc {}) (keyword k) v))]
    ["-h" "--help"                "Print basic usage and help info."]
    ["-P" "--no-profile"          "Skip loading of profile.boot script."]
-   ["-r" "--rsc-paths PATH"      "Add PATH to set of resource directories."]
+   ["-r" "--rsc-paths PATH"      "Add PATH to set of resource directories."
+    :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
    ["-s" "--src-paths PATH"      "Add PATH to set of source directories."
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
    ["-t" "--tgt-path PATH"       "Set the target directory to PATH."]
@@ -103,20 +103,15 @@
               profile?    (not (:no-profile opts))
               bootforms   (some->> arg0 slurp util/read-string-all)
               userforms   (when profile? (some->> userscript slurp util/read-string-all))
-              initial-env (->> [:src-paths :tgt-path :dependencies]
+              initial-env (->> [:src-paths :rsc-paths :tgt-path :dependencies]
                             (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
-                            (merge {} (:set-env opts))
-                            (#(let [done? (or have-bootscript? (% :tgt-path) (% :src-paths))]
-                                 (if done? % (assoc % :tgt-path "." :src-paths #{"."})))))
+                            (merge {} (:set-env opts)))
               import-ns   (export-task-namespaces initial-env)
               scriptforms (emit boot? args userforms bootforms import-ns)
               scriptstr   (str (string/join "\n\n" (map pr-str scriptforms)) "\n")]
 
           (swap! util/verbose-exceptions + (or (:verbose opts) 0))
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
-
-          (reset! (var-get #'core/tmpregistry)
-            (tmp/init! (tmp/registry (io/file ".boot" "tmp"))))
 
           (#'core/init!)
 
