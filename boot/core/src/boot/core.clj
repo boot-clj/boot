@@ -331,7 +331,6 @@
   (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
         ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
     `(let [cleanup# (partial #'boot.core/cleanup! (repl/thread-stopper))]
-       (cleanup#)
        (let [stack# ~(if (every? string? argv)
                        `(apply construct-tasks [~@argv])
                        (->app (map ->list argv)))]
