@@ -3,7 +3,7 @@
 Boot is a Clojure build framework and ad-hoc Clojure script evaluator. Boot
 provides a runtime environment that includes all of the tools needed to build
 Clojure projects from scripts written in Clojure that run in the context of
-the project.
+the project.  If you have any questions or need help using it, please [visit our Discourse site](http://hoplon.discoursehosting.net/).  You can also find other developers and users in [the `#hoplon` channel on freenode IRC](http://webchat.freenode.net/?channels=hoplon).
 
 ### Another Build Tool?
 
