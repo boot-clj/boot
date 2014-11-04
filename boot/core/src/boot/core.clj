@@ -25,6 +25,8 @@
 (declare ^{:dynamic true :doc "Command line options for boot itself."} *boot-opts*)
 (declare ^{:dynamic true :doc "Count of warnings during build."}       *warnings*)
 
+(def #^{:doc "Delivered when the build is complete."} the-end (promise))
+
 (def ^:private cleanup-fns
   "Seq of thunks to call after build."
   (atom []))
@@ -38,7 +40,8 @@
 (defn- cleanup! [stopper & args]
   (doseq [f @cleanup-fns] (f))
   (reset! cleanup-fns [])
-  (when (seq args) (util/guard (apply stopper args))))
+  (when (seq args) (util/guard (apply stopper args)))
+  (deliver the-end :here))
 
 (defn- printable-readable?
   "FIXME: document"
@@ -328,7 +331,6 @@
   (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
         ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
     `(let [cleanup# (partial #'boot.core/cleanup! (repl/thread-stopper))]
-       (cleanup#)
        (let [stack# ~(if (every? string? argv)
                        `(apply construct-tasks [~@argv])
                        (->app (map ->list argv)))]
