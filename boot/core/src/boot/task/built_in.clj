@@ -1,16 +1,16 @@
 (ns boot.task.built-in
   (:require
-   [clojure.java.io          :as io]
-   [clojure.set              :as set]
-   [clojure.string           :as string]
-   [boot.pod                 :as pod]
-   [boot.file                :as file]
-   [boot.core                :as core]
-   [boot.main                :as main]
-   [boot.util                :as util]
-   [boot.git                 :as git]
-   [boot.task-helpers        :as helpers]
-   [boot.from.table.core     :as table])
+   [clojure.java.io      :as io]
+   [clojure.set          :as set]
+   [clojure.string       :as string]
+   [boot.pod             :as pod]
+   [boot.file            :as file]
+   [boot.core            :as core]
+   [boot.main            :as main]
+   [boot.util            :as util]
+   [boot.git             :as git]
+   [boot.task-helpers    :as helpers]
+   [boot.from.table.core :as table])
   (:import
    [java.io File]
    [java.util Arrays]
@@ -119,7 +119,7 @@
   [t time MSEC int "The interval in milliseconds."]
 
   (core/with-pre-wrap
-    (if (zero? (or time 0)) @core/the-end (Thread/sleep time))))
+    (if (zero? (or time 0)) @core/*the-end* (Thread/sleep time))))
 
 (core/deftask watch
   "Call the next handler whenever source and/or resource files change.

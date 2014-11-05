@@ -24,8 +24,7 @@
 (declare ^{:dynamic true :doc "The running version of boot core."}     *boot-version*)
 (declare ^{:dynamic true :doc "Command line options for boot itself."} *boot-opts*)
 (declare ^{:dynamic true :doc "Count of warnings during build."}       *warnings*)
-
-(def #^{:doc "Delivered when the build is complete."} the-end (promise))
+(declare ^{:dynamic true :doc "Delivered at the end of a build."}      *the-end*)
 
 (def ^:private cleanup-fns
   "Seq of thunks to call after build."
@@ -36,12 +35,6 @@
 ;; _These functions are used internally by boot and are not part of the public API._
 
 (def ^:private tmpregistry  (atom nil))
-
-(defn- cleanup! [stopper & args]
-  (doseq [f @cleanup-fns] (f))
-  (reset! cleanup-fns [])
-  (when (seq args) (util/guard (apply stopper args)))
-  (deliver the-end :here))
 
 (defn- printable-readable?
   "FIXME: document"
@@ -325,15 +318,23 @@
   (binding [*warnings* (atom 0)]
     ((task-stack #(do (sync!) %)) (prep-build!))))
 
+(defn- cleanup! [stopper & args]
+  (doseq [f @cleanup-fns] (f))
+  (reset! cleanup-fns [])
+  (when (seq args) (util/guard (apply stopper args)))
+  (deliver *the-end* :here))
+
 (defmacro boot
   "Builds the project as if `argv` was given on the command line."
   [& argv]
   (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
         ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
-    `(let [cleanup# (partial #'boot.core/cleanup! (repl/thread-stopper))]
-       (let [stack# ~(if (every? string? argv)
-                       `(apply construct-tasks [~@argv])
-                       (->app (map ->list argv)))]
+    `(binding [*the-end* (promise)]
+       (let [cleanup# (bound-fn [& args#]
+                        (apply #'boot.core/cleanup! (repl/thread-stopper) args#))
+             stack# ~(if (every? string? argv)
+                         `(apply construct-tasks [~@argv])
+                         (->app (map ->list argv)))]
          (repl/set-break-handler! cleanup#)
          (run-tasks stack#)
          (cleanup#)))))
