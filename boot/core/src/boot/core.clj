@@ -65,11 +65,10 @@
     (file/sync :time orig backup))
   (reset! backup-dirs {}))
 
-(defn- cleanup!
-  [stopper & args]
-  (doseq [f @cleanup-fns] (f))
-  (reset! cleanup-fns [])
-  (when (seq args) (util/guard (apply stopper args))))
+(defn- do-cleanup!
+  []
+  (doseq [f @cleanup-fns] (util/guard (f)))
+  (reset! cleanup-fns []))
 
 (defn- printable-readable?
   "FIXME: document"
@@ -173,7 +172,8 @@
              :tgt-path     "target"
              :repositories [["clojars"       "http://clojars.org/repo/"]
                             ["maven-central" "http://repo1.maven.org/maven2/"]]})
-    (add-watch ::boot #(configure!* %3 %4))))
+    (add-watch ::boot #(configure!* %3 %4)))
+  (pod/add-shutdown-hook! do-cleanup!))
 
 (defmulti on-env!
   "Event handler called when the boot atom is modified. This handler is for
@@ -327,14 +327,12 @@
   [& argv]
   (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
         ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
-    `(let [cleanup# (partial #'boot.core/cleanup! (repl/thread-stopper))]
-       (cleanup#)
-       (let [stack# ~(if (every? string? argv)
-                       `(apply construct-tasks [~@argv])
-                       (->app (map ->list argv)))]
-         (repl/set-break-handler! cleanup#)
-         (run-tasks stack#)
-         (cleanup#)))))
+    `(try @(future
+             (run-tasks
+               ~(if (every? string? argv)
+                  `(apply construct-tasks [~@argv])
+                  (->app (map ->list argv)))))
+          (finally (#'do-cleanup!)))))
 
 ;; ## Low-Level Tasks / Task Helpers
 
