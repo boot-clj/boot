@@ -119,7 +119,7 @@
   [t time MSEC int "The interval in milliseconds."]
 
   (core/with-pre-wrap
-    (if (zero? (or time 0)) @core/*the-end* (Thread/sleep time))))
+    (if (zero? (or time 0)) @(promise) (Thread/sleep time))))
 
 (core/deftask watch
   "Call the next handler whenever source and/or resource files change.

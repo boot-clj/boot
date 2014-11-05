@@ -24,7 +24,6 @@
 (declare ^{:dynamic true :doc "The running version of boot core."}     *boot-version*)
 (declare ^{:dynamic true :doc "Command line options for boot itself."} *boot-opts*)
 (declare ^{:dynamic true :doc "Count of warnings during build."}       *warnings*)
-(declare ^{:dynamic true :doc "Delivered at the end of a build."}      *the-end*)
 
 (def ^:private cleanup-fns
   "Seq of thunks to call after build."
@@ -318,26 +317,21 @@
   (binding [*warnings* (atom 0)]
     ((task-stack #(do (sync!) %)) (prep-build!))))
 
-(defn- cleanup! [stopper & args]
-  (doseq [f @cleanup-fns] (f))
-  (reset! cleanup-fns [])
-  (when (seq args) (util/guard (apply stopper args)))
-  (deliver *the-end* :here))
-
-(defmacro boot
+(defmacro boot*
   "Builds the project as if `argv` was given on the command line."
   [& argv]
   (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
         ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
-    `(binding [*the-end* (promise)]
-       (let [cleanup# (bound-fn [& args#]
-                        (apply #'boot.core/cleanup! (repl/thread-stopper) args#))
-             stack# ~(if (every? string? argv)
-                         `(apply construct-tasks [~@argv])
-                         (->app (map ->list argv)))]
-         (repl/set-break-handler! cleanup#)
-         (run-tasks stack#)
-         (cleanup#)))))
+    `(run-tasks ~(if (every? string? argv)
+                   `(apply construct-tasks [~@argv])
+                   (->app (map ->list argv))))))
+
+(defmacro boot
+  "Builds the project as if `argv` was given on the command line."
+  [& argv]
+  `(do @(future (boot* ~@argv))
+       (doseq [f# @@#'cleanup-fns] (util/guard (f#)))
+       (reset! @#'cleanup-fns [])))
 
 ;; ## Low-Level Tasks / Task Helpers
 
