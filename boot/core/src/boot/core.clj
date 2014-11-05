@@ -35,6 +35,11 @@
 
 (def ^:private tmpregistry  (atom nil))
 
+(defn- do-cleanup!
+  []
+  (doseq [f @cleanup-fns] (util/guard (f)))
+  (reset! cleanup-fns []))
+
 (defn- printable-readable?
   "FIXME: document"
   [form]
@@ -116,7 +121,8 @@
                 :tgt-path     "target"
                 :repositories [["clojars"       "http://clojars.org/repo/"]
                                ["maven-central" "http://repo1.maven.org/maven2/"]]})))
-    (add-watch ::boot #(configure!* %3 %4))))
+    (add-watch ::boot #(configure!* %3 %4)))
+  (pod/add-shutdown-hook! do-cleanup!))
 
 (defmulti on-env!
   "Event handler called when the boot atom is modified. This handler is for
@@ -317,21 +323,17 @@
   (binding [*warnings* (atom 0)]
     ((task-stack #(do (sync!) %)) (prep-build!))))
 
-(defmacro boot*
+(defmacro boot
   "Builds the project as if `argv` was given on the command line."
   [& argv]
   (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
         ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
-    `(run-tasks ~(if (every? string? argv)
-                   `(apply construct-tasks [~@argv])
-                   (->app (map ->list argv))))))
-
-(defmacro boot
-  "Builds the project as if `argv` was given on the command line."
-  [& argv]
-  `(do @(future (boot* ~@argv))
-       (doseq [f# @@#'cleanup-fns] (util/guard (f#)))
-       (reset! @#'cleanup-fns [])))
+    `(try @(future
+             (run-tasks
+               ~(if (every? string? argv)
+                  `(apply construct-tasks [~@argv])
+                  (->app (map ->list argv)))))
+          (finally (#'do-cleanup!)))))
 
 ;; ## Low-Level Tasks / Task Helpers
 
