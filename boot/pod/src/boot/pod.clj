@@ -191,6 +191,11 @@
   [pod ns]
   (doto pod (.require (into-array String [(str ns)]))))
 
+(defn canonical-coord
+  [[id & more :as coord]]
+  (let [[ns nm] ((juxt namespace name) id)]
+    (assoc-in (vec coord) [0] (if (not= ns nm) id (symbol nm)))))
+
 (defn resolve-dependencies
   [env]
   (call-worker `(boot.aether/resolve-dependencies ~env)))
@@ -200,9 +205,10 @@
   (->> env resolve-dependencies (map (comp io/file :jar))))
 
 (defn resolve-dependency-jar
-  [env coords]
-  (->> [coords] (assoc env :dependencies) resolve-dependencies
-    (filter #(= (first coords) (first (:dep %)))) first :jar))
+  [env coord]
+  (let [coord (canonical-coord coord)]
+    (->> [coord] (assoc env :dependencies) resolve-dependencies
+      (filter #(= (first coord) (first (:dep %)))) first :jar)))
 
 (defn outdated
   [env & {:keys [snapshots]}]
