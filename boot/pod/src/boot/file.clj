@@ -91,8 +91,9 @@
 (defn dir-set 
   ([dir] 
    (let [info (juxt #(relative-to dir %) #(.lastModified %))
-         mapf #(zipmap [:dir :abs :rel :mod] (list* dir % (info %)))]
-     (set (mapv mapf (filter (memfn isFile) (file-seq dir))))))
+         mapf #(zipmap [:dir :abs :rel :mod] (list* dir % (info %)))
+         ign? #(and *ignore* (*ignore* %))]
+     (set (mapv mapf (filter (memfn isFile) (remove ign? (file-seq dir)))))))
   ([dir1 dir2 & dirs]
    (reduce union (map dir-set (list* dir1 dir2 dirs)))))
 
@@ -125,7 +126,6 @@
   (let [d (dir-map (file dst))
         s (->> (cons src srcs)
             (map file)
-            (remove #(and *ignore* (*ignore* %)))
             (apply dir-map))
         [to-cp to-rm] (what-changed d s algo)
         cp (map #(vector :cp (:abs (s %)) (file dst %)) to-cp) 
@@ -145,8 +145,7 @@
 (defn sync*
   [ops]
   (let [opfn {:rm #(when *sync-delete* (.delete (nth % 1)))
-              :cp #(when (and (keep-filters? *include* *exclude* (nth % 2))
-                           (or (not *ignore*) (not (*ignore* (nth % 1)))))
+              :cp #(when (keep-filters? *include* *exclude* (nth % 2))
                      (copy-with-lastmod (nth % 1) (nth % 2)))}]
     (doseq [[op s d :as cmd] ops] ((opfn op) cmd))))
 
