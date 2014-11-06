@@ -145,8 +145,7 @@
 (defn sync*
   [ops]
   (let [opfn {:rm #(when *sync-delete* (.delete (nth % 1)))
-              :cp #(when (and (keep-filters? *include* *exclude* (nth % 2))
-                           (or (not *ignore*) (not (*ignore* (nth % 1)))))
+              :cp #(when (keep-filters? *include* *exclude* (nth % 2))
                      (copy-with-lastmod (nth % 1) (nth % 2)))}]
     (doseq [[op s d :as cmd] ops] ((opfn op) cmd))))
 
