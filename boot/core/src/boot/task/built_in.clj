@@ -70,7 +70,7 @@
    w warning FILE str "The sound file to play when there are warnings reported."
    f failure FILE str "The sound file to play when the build fails."]
 
-  (let [tmp        (core/mktmpdir! ::hear-tmp)
+  (let [tmp        (core/cache-dir! ::hear-tmp)
         resource   #(vector %2 (format "boot/notify/%s_%s.mp3" %1 %2))
         resources  #(map resource (repeat %) ["success" "warning" "failure"])
         themefiles (into {}
@@ -131,9 +131,7 @@
 
   (pod/require-in-pod @pod/worker-pod "boot.watcher")
   (let [q        (LinkedBlockingQueue.)
-        srcdirs  (->> (core/get-env :src-paths)
-                   (concat (core/get-env :rsc-paths))
-                   (remove core/tmpfile?))
+        srcdirs  (map (memfn getPath) (core/user-dirs))
         watchers (map file/make-watcher srcdirs)
         paths    (into-array String srcdirs)
         k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
@@ -147,14 +145,14 @@
               (recur (conj ret more))
               (let [start   (System/currentTimeMillis)
                     etime   #(- (System/currentTimeMillis) start)
-                    ign?    (git/make-gitignore-matcher)
                     changed (->> (map #(%) watchers)
                               (reduce (partial merge-with set/union))
-                              :time (remove ign?) set)]
+                              :time (filter (memfn exists)) set)]
                 (when-not (empty? changed)
                   (binding [*out* (if quiet (new java.io.StringWriter) *out*)
                             *err* (if quiet (new java.io.StringWriter) *err*)]
                     (-> event core/prep-build! continue)
+                    #_(map #(%) watchers)
                     (util/info "Elapsed time: %.3f sec\n\n" (float (/ (etime) 1000)))))
                 (recur (util/guard [(.take q)]))))))
         (.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)))))
@@ -216,7 +214,7 @@
    l license KEY=VAL  {kw str} "The project license map (KEY in name, url)."
    s scm KEY=VAL      {kw str} "The project scm map (KEY in url, tag)."]
 
-  (let [tgt  (core/mktgtdir!)
+  (let [tgt  (core/resource-dir! :scoped)
         tag  (or (:tag scm) (util/guard (git/last-commit)) "HEAD")
         scm  (when scm (assoc scm :tag tag))
         opts (assoc *opts* :scm scm :dependencies (:dependencies (core/get-env)))]
@@ -242,13 +240,13 @@
   [i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt (core/mkrscdir!)]
+  (let [tgt    (core/resource-dir! :scoped)
+        notify (delay (util/info "Adding source files...\n"))]
     (core/with-pre-wrap
-      (let [dirs (remove core/tmpfile? (core/get-env :src-paths))]
-        (util/info "Adding source files...\n")
-        (binding [file/*include* (mapv re-pattern include)
-                  file/*exclude* (mapv re-pattern exclude)]
-          (apply file/sync :time tgt dirs))))))
+      (doseq [f (core/source-files)]
+        @notify
+        (file/copy-with-lastmod f (io/file tgt (core/relative-path f)))
+        (core/delete-file! f)))))
 
 (core/deftask add-repo
   "Add all files in project git repo to fileset.
@@ -265,7 +263,7 @@
    i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt (core/mktgtdir!)]
+  (let [tgt (core/resource-dir! :scoped)]
     (core/with-pre-wrap
       (util/info "Adding repo files...\n")
       (doseq [p (core/git-files :ref ref :untracked untracked) :let [f (io/file p)]]
@@ -296,7 +294,7 @@
    i include REGEX       #{str} "The set of regexes that paths must match."
    x exclude REGEX       #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt        (core/mkrscdir!)
+  (let [tgt        (core/resource-dir!)
         dfl-scopes #{"compile" "runtime" "provided"}
         scopes     (-> dfl-scopes
                      (set/union include-scope)
@@ -331,7 +329,7 @@
    c create SYM       sym "The 'create' callback function."
    d destroy SYM      sym "The 'destroy' callback function."]
 
-  (let [tgt      (core/mktgtdir!)
+  (let [tgt      (core/resource-dir! :scoped)
         xmlfile  (io/file tgt "WEB-INF" "web.xml")
         implp    'tailrecursion/clojure-adapter-servlet
         implv    "0.1.0-SNAPSHOT"]
@@ -352,9 +350,9 @@
   [a all          bool   "Compile all namespaces."
    n namespace NS #{sym} "The set of namespaces to compile."]
   
-  (let [tgt (core/mktgtdir!)]
+  (let [tgt (core/resource-dir! :scoped)]
     (core/with-pre-wrap
-      (let [nses (->> (core/src-files+)
+      (let [nses (->> (core/source-files)
                    (map core/relative-path)
                    (filter #(.endsWith % ".clj"))
                    (map util/path->ns)
@@ -367,7 +365,7 @@
 (core/deftask javac
   "Compile java sources."
   []
-  (let [tgt (core/mktgtdir!)]
+  (let [tgt (core/resource-dir! :scoped)]
     (core/with-pre-wrap
       (let [throw?    (atom nil)
             diag-coll (DiagnosticCollector.)
@@ -377,7 +375,7 @@
             handler   {Diagnostic$Kind/ERROR util/fail
                        Diagnostic$Kind/WARNING util/warn
                        Diagnostic$Kind/MANDATORY_WARNING util/warn}
-            srcs      (some->> (core/src-files+)
+            srcs      (some->> (core/source-files)
                         (core/by-ext [".java"])
                         seq
                         (into-array File)
@@ -411,20 +409,20 @@
    i include REGEX       #{str} "The set of regexes that paths must match."
    x exclude REGEX       #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt (core/mktgtdir!)]
+  (let [tgt (core/resource-dir! :scoped)]
     (core/with-pre-wrap
-      (let [pomprop (->> (core/tgt-files) (core/by-name ["pom.properties"]) first)
+      (let [pomprop (->> (core/resource-files) (core/by-name ["pom.properties"]) first)
             [aid v] (some->> pomprop pod/pom-properties-map ((juxt :artifact-id :version)))
             jarname (or file (and aid v (str aid "-" v ".jar")) "project.jar")
             jarfile (io/file tgt jarname)]
         (when-not (.exists jarfile)
-          (let [index (->> (concat (core/tgt-files) (core/rsc-files))
+          (let [index (->> (core/resource-files)
                         (filter (partial file/keep-filters? include exclude))
                         (map (juxt core/relative-path (memfn getPath))))]
             (util/info "Writing %s...\n" (.getName jarfile))
             (pod/call-worker
               `(boot.jar/spit-jar! ~(.getPath jarfile) ~index ~manifest ~main))
-            (doseq [[_ f] index] (core/consume-file! (io/file f)))))))))
+            (doseq [[_ f] index] (core/delete-file! (io/file f)))))))))
 
 (core/deftask war
   "Create war file for web deployment.
@@ -437,7 +435,7 @@
    i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt (core/mktgtdir!)]
+  (let [tgt (core/resource-dir! :scoped)]
     (core/with-pre-wrap
       (let [warname (or file "project.war")
             warfile (io/file tgt warname)
@@ -450,13 +448,13 @@
                                       ["lib" (last r')]
                                       (into ["classes"] r')))]
                          (if (inf? (first r')) r (.getPath (apply io/file path))))
-                index (->> (concat (core/tgt-files) (core/rsc-files))
+                index (->> (core/resource-files)
                         (filter (partial file/keep-filters? include exclude))
                         (mapv (juxt ->war (memfn getPath))))]
             (util/info "Writing %s...\n" (.getName warfile))
             (pod/call-worker
               `(boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))
-            (doseq [[_ f] index] (core/consume-file! (io/file f)))))))))
+            (doseq [[_ f] index] (core/delete-file! (io/file f)))))))))
 
 (core/deftask zip
   "Build a zip file for the project.
@@ -469,18 +467,18 @@
    i include REGEX       #{str} "The set of regexes that paths must match."
    x exclude REGEX       #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt (core/mktgtdir!)]
+  (let [tgt (core/resource-dir! :scoped)]
     (core/with-pre-wrap
       (let [zipname (or file "project.zip")
             zipfile (io/file tgt zipname)]
         (when-not (.exists zipfile)
-          (let [index (->> (concat (core/tgt-files) (core/rsc-files))
+          (let [index (->> (core/resource-files)
                         (filter (partial file/keep-filters? include exclude))
                         (map (juxt core/relative-path (memfn getPath))))]
             (util/info "Writing %s...\n" (.getName zipfile))
             (pod/call-worker
               `(boot.jar/spit-zip! ~(.getPath zipfile) ~index))
-            (doseq [[_ f] index] (core/consume-file! (io/file f)))))))))
+            (doseq [[_ f] index] (core/delete-file! (io/file f)))))))))
 
 (core/deftask install
   "Install project jar to local Maven repository.
@@ -494,7 +492,7 @@
 
   (core/with-pre-wrap
     (let [jarfiles (or (and file [(io/file file)])
-                     (->> (core/tgt-files) (core/by-ext [".jar"])))]
+                     (->> (core/resource-files) (core/by-ext [".jar"])))]
       (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
       (doseq [jarfile jarfiles]
         (util/info "Installing %s...\n" (.getName jarfile))
@@ -522,10 +520,10 @@
    T ensure-tag TAG       str  "The SHA1 of the commit the pom's scm tag must contain."
    V ensure-version VER   str  "The version the jar's pom must contain."]
 
-  (let [tgt (core/mktgtdir!)]
+  (let [tgt (core/resource-dir! :scoped)]
     (core/with-pre-wrap
       (let [jarfiles (or (and file [(io/file file)])
-                       (->> (core/tgt-files) (core/by-ext [".jar"])))
+                       (->> (core/resource-files) (core/by-ext [".jar"])))
             r        (-> (->> (core/get-env :repositories) (into {})) (get repo))]
         (when-not (and r (seq jarfiles))
           (throw (Exception. "missing jar file or repo not found")))

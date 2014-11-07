@@ -293,8 +293,8 @@
 
 (defn make-pod
   ([] (set-this-worker-in-pod! (boot.App/newPod)))
-  ([{:keys [src-paths] :as env}]
-     (let [dirs (map io/file src-paths)
+  ([{:keys [directories] :as env}]
+     (let [dirs (map io/file directories)
            jars (resolve-dependency-jars env)]
        (set-this-worker-in-pod!
          (->> (concat dirs jars) (into-array java.io.File) (boot.App/newPod))))))

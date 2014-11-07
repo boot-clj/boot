@@ -18,52 +18,74 @@
    java.lang.management.ManagementFactory
    [java.util.concurrent LinkedBlockingQueue TimeUnit]))
 
-(declare get-env set-env! boot-env on-env! merge-env!
-  tgt-files rsc-files relative-path watch-dirs mksrcdir! mkrscdir!)
+(declare temp-dir watch-dirs sync! on-env! get-env set-env!)
 
 (declare ^{:dynamic true :doc "The running version of boot app."}      *app-version*)
 (declare ^{:dynamic true :doc "The running version of boot core."}     *boot-version*)
 (declare ^{:dynamic true :doc "Command line options for boot itself."} *boot-opts*)
 (declare ^{:dynamic true :doc "Count of warnings during build."}       *warnings*)
 
-;; ## Utility Functions
-;;
-;; _These functions are used internally by boot and are not part of the public API._
+;; Internal helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ^:private tmpregistry    (atom nil))
-(def ^:private cleanup-fns    (atom []))
-(def ^:private boot-env       (atom nil))
-(def ^:private tgtdirs        (atom []))
-(def ^:private consumed-files (atom #{}))
+(def ^:private tmpregistry       (atom nil))
+(def ^:private cleanup-fns       (atom []))
+(def ^:private boot-env          (atom nil))
 
-(def ^:private src-watcher    (atom (constantly nil)))
-(def ^:private user-src-paths (atom #{}))
-(def ^:private user-rsc-paths (atom #{}))
+(def ^:private src-watcher       (atom (constantly nil)))
+(def ^:private user-src-paths    (atom #{}))
+(def ^:private user-rsc-paths    (atom #{}))
 
-(def ^:private user-src-dir   (atom nil))
-(def ^:private user-rsc-dir   (atom nil))
-(def ^:private tmp-src-dirs   (atom #{}))
-(def ^:private tmp-dat-dirs   (atom #{}))
-(def ^:private tmp-rsc-dirs   (atom #{}))
-(def ^:private tmp-tgt-dirs   (atom #{}))
-(def ^:private tmp-tmp-dirs   (atom #{}))
+(def ^:private tmp-user-src-dir  (atom nil))
+(def ^:private tmp-user-rsc-dir  (atom nil))
+(def ^:private tmp-src-dirs      (atom #{}))
+(def ^:private tmp-rsc-dirs      (atom #{}))
+(def ^:private tmp-scoped-dirs   (atom #{}))
+(def ^:private tmp-restored-dirs (atom #{}))
+(def ^:private tmp-cache-dirs    (atom #{}))
 
-(def ^:private backup-dirs    (atom {}))
+(def ^:private backup-dirs       (atom {}))
+
+(defn- temp-dir!
+  [& [key]]
+  (tmp/mkdir! @tmpregistry (or key (keyword "boot.core" (str (gensym))))))
+
+(defn- sync-user-dirs!
+  []
+  (when-not (empty? @user-src-paths)
+    (apply file/sync :time @tmp-user-src-dir @user-src-paths))
+  (when-not (empty? @user-rsc-paths)
+    (apply file/sync :time @tmp-user-rsc-dir @user-rsc-paths)))
 
 (defn- set-user-dirs!
   [type dirs]
   (@src-watcher)
-  (-> (case type :src user-src-paths :rsc user-rsc-paths) (swap! into dirs))
-  (reset! src-watcher
-    (->> (fn [_]
-           (apply file/sync :time @user-src-dir @user-src-paths)
-           (apply file/sync :time @user-rsc-dir @user-rsc-paths))
-      (watch-dirs (set/union user-src-paths user-rsc-paths)))))
+  (-> (case type
+        :src user-src-paths
+        :rsc user-rsc-paths)
+    (swap! into dirs))
+  (sync-user-dirs!)
+  (->> (set/union @user-src-paths @user-rsc-paths)
+    (watch-dirs (fn [_] (sync-user-dirs!)))
+    (reset! src-watcher)))
+
+(defn- backup-key
+  [dir]
+  (->> dir .getPath munge keyword))
+
+(defn- backup-dir!
+  [dir]
+  (when-not (get @backup-dirs dir)
+    (let [key (backup-key dir)
+          bak (or (temp-dir key) (temp-dir! key))]
+      (sync! bak dir)
+      (swap! backup-dirs assoc dir bak))))
 
 (defn- restore-backups!
+  []
   (doseq [[orig backup] @backup-dirs]
     (file/sync :time orig backup))
-  (reset! backup-dirs {}))
+  (reset! backup-dirs {})
+  (sync-user-dirs!))
 
 (defn- do-cleanup!
   []
@@ -128,6 +150,114 @@
             parsd (cli/parse-opts opts* spec :in-order true)]
         (if (seq (:arguments parsd)) [opts argv] (recur opts* cdr))))))
 
+(defmacro ^:private daemon
+  [& body]
+  `(doto (Thread. (fn [] ~@body)) (.setDaemon true) .start))
+
+(defn- temp-dir-for
+  [dir-or-file & dirsets]
+  (->> dirsets
+    (apply set/union)
+    (some #(and (file/parent? (io/file %) (io/file dir-or-file)) %))))
+
+(defn- temp-files-for
+  [& dirsets]
+  (->> dirsets
+    (apply set/union)
+    (mapcat file-seq)
+    (filter (memfn isFile))))
+
+;; Public API, temp dirs ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn tmpfile?
+  "Returns truthy if the file f is a tmpfile managed by the tmpregistry."
+  [f]
+  (tmp/tmpfile? @tmpregistry f))
+
+(defn user-dirs      []            #{@tmp-user-rsc-dir @tmp-user-src-dir})
+(defn source-dirs    []            (conj @tmp-src-dirs @tmp-user-src-dir))
+(defn resource-dirs  []            (conj @tmp-rsc-dirs @tmp-user-rsc-dir))
+(defn scoped-dirs    []            @tmp-scoped-dirs)
+(defn restored-dirs  []            @tmp-restored-dirs)
+(defn source-dir?    [dir-or-file] (temp-dir-for dir-or-file (source-dirs)))
+(defn resource-dir?  [dir-or-file] (temp-dir-for dir-or-file (resource-dirs)))
+(defn scoped-dir?    [dir-or-file] (temp-dir-for dir-or-file (scoped-dirs)))
+(defn restored-dir?  [dir-or-file] (temp-dir-for dir-or-file (restored-dirs)))
+(defn source-files   []            (temp-files-for (source-dirs)))
+(defn resource-files []            (temp-files-for (resource-dirs)))
+(defn scoped-files   []            (temp-files-for (scoped-dirs)))
+(defn restored-files []            (temp-files-for (restored-dirs)))
+
+(defn temp-dir
+  "Given a key, returns the associated temp dir if one already exists."
+  [key]
+  (let [d (tmp/get @tmpregistry key)]
+    (when (.exists d) d)))
+
+(defn cache-dir!
+  "Create a temp dir that is not on the classpath and is neither scoped nor
+  restored. The files in these directories will not be part of the final
+  product of the build. These directories are for tasks to use as private
+  cache and should not be exposed to other tasks."
+  [& [key]]
+  (util/with-let [f (temp-dir! key)]
+    (swap! tmp-cache-dirs conj f)))
+
+(defn source-dir!
+  "Create a temp dir that is on the classpath and is either scoped or restored
+  according to the scoped? argument. The files in these directories will not
+  be part of the final product of the build; they are intended ONLY as input
+  for further processing."
+  [& [scoped? key]]
+  (util/with-let [f (temp-dir! key)]
+    (swap! tmp-src-dirs conj f)
+    (swap! (if scoped? tmp-scoped-dirs tmp-restored-dirs) conj f)
+    (set-env! :directories #(conj % (.getPath f)))))
+
+(defn resource-dir!
+  "Create a temp dir that is on the classpath and is either scoped or restored
+  according to the scoped? argument. The files in these directories will be
+  part of the final product of the build; they MAY also be used as input for
+  further processing."
+  [& [scoped? key]]
+  (util/with-let [f (temp-dir! key)]
+    (swap! tmp-rsc-dirs conj f)
+    (swap! (if scoped? tmp-scoped-dirs tmp-restored-dirs) conj f)
+    (set-env! :directories #(conj % (.getPath f)))))
+
+(defn delete-file!
+  "Remove the given Files, fs, from the build fileset. The files must be temp
+  files managed by boot. The difference between this and just using the .delete
+  method of the File object is that this function correctly handles backing up
+  temp dirs which were marked by their owner as being immutable."
+  [& fs]
+  (doseq [f fs]
+    (assert (tmpfile? f) (format "can only delete temp files (%s)" f))
+    (when-let [d (restored-dir? f)] (backup-dir! d))
+    (.delete f)))
+
+(defn relative-path
+  "Get the path of a source file relative to the source directory it's in."
+  [f]
+  (->> (set/union @tmp-src-dirs @tmp-rsc-dirs)
+    (map #(.getPath (file/relative-to (io/file %) (io/file f))))
+    (some #(and (not= f (io/file %)) (util/guard (io/as-relative-path %)) %))))
+
+(defn resource-path
+  "Like relative-path but with forward slash (/) as path separator."
+  [f]
+  (->> f relative-path file/split-path (string/join "/")))
+
+(defn sync!
+  "Given a dest directory and one or more srcs directories, overlays srcs on
+  dest, removing files in dest that are not in srcs. Uses file modification
+  timestamps to decide which version of files to emit to dest. Uses hardlinks
+  instead of copying file contents. File modification times are preserved.
+
+  The zero-arg arity is used internally by boot."
+  ([dest & srcs] (apply file/sync :time dest srcs))
+  ([] (apply file/sync :time (get-env :tgt-path) (resource-dirs))))
+
 ;; ## Boot Environment
 ;;
 ;; _These functions are used internally by boot and are not part of the public
@@ -142,37 +272,40 @@
   debounce option is provided (in ms, default 10) which can be used to
   tune the watcher sensitivity."
   [callback dirs & {:keys [debounce]}]
-  (pod/require-in-pod @pod/worker-pod "boot.watcher")
-  (let [q        (LinkedBlockingQueue.)
-        watchers (map file/make-watcher dirs)
-        paths    (into-array String dirs)
-        k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
-    (future
-      (loop [ret (util/guard [(.take q)])]
-        (when ret
-          (if-let [more (.poll q (or debounce 10) TimeUnit/MILLISECONDS)]
-            (recur (conj ret more))
-            (let [changed (->> (map #(%) watchers)
-                            (reduce (partial merge-with set/union)) :time set)]
-              (when-not (empty? changed) (callback changed))
-              (recur (util/guard [(.take q)])))))))
-    #(.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)))
+  (if (empty? dirs)
+    (constantly true)
+    (do (pod/require-in-pod @pod/worker-pod "boot.watcher")
+        (let [q        (LinkedBlockingQueue.)
+              watchers (map file/make-watcher dirs)
+              paths    (into-array String dirs)
+              k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
+          (daemon
+            (loop [ret (util/guard [(.take q)])]
+              (when ret
+                (if-let [more (.poll q (or debounce 10) TimeUnit/MILLISECONDS)]
+                  (recur (conj ret more))
+                  (let [changed (->> (map #(%) watchers)
+                                  (reduce (partial merge-with set/union)) :time set)]
+                    (when-not (empty? changed) (callback changed))
+                    (recur (util/guard [(.take q)])))))))
+          #(.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)))))
 
 (defn init!
-  "Initialize the boot environment. This is normally run once by boot at startup.
-  There should be no need to call this function directly."
+  "Initialize the boot environment. This is normally run once by boot at
+  startup. There should be no need to call this function directly."
   []
-  (reset! tmpregistry  (tmp/init! (tmp/registry (io/file ".boot" "tmp"))))
-  (reset! user-src-dir (mksrcdir!))
-  (reset! user-rsc-dir (mkrscdir!))
+  (->> (io/file ".boot" "tmp") tmp/registry tmp/init! (reset! tmpregistry))
   (doto boot-env
     (reset! {:dependencies []
+             :directories  #{}
              :src-paths    #{}
              :rsc-paths    #{}
              :tgt-path     "target"
              :repositories [["clojars"       "http://clojars.org/repo/"]
                             ["maven-central" "http://repo1.maven.org/maven2/"]]})
     (add-watch ::boot #(configure!* %3 %4)))
+  (reset! tmp-user-src-dir (source-dir! false))
+  (reset! tmp-user-rsc-dir (resource-dir! false))
   (pod/add-shutdown-hook! do-cleanup!))
 
 (defmulti on-env!
@@ -182,9 +315,10 @@
   the new directories to the classpath."
   (fn [key old-value new-value env] key) :default ::default)
 
-(defmethod on-env! ::default  [key old new env] nil)
-(defmethod on-env! :src-paths [key old new env] (add-directories! (set/difference new old)))
-(defmethod on-env! :rsc-paths [key old new env] (add-sync! (get-env :tgt-path) (set/difference new old)))
+(defmethod on-env! ::default    [key old new env] nil)
+(defmethod on-env! :directories [key old new env] (add-directories! new))
+(defmethod on-env! :src-paths   [key old new env] (set-user-dirs! :src new))
+(defmethod on-env! :rsc-paths   [key old new env] (set-user-dirs! :rsc new))
 
 (defmulti merge-env!
   "This function is used to modify how new values are merged into the boot atom
@@ -193,9 +327,9 @@
   (fn [key old-value new-value env] key) :default ::default)
 
 (defmethod merge-env! ::default     [key old new env] new)
-(defmethod merge-env! :src-paths    [key old new env] (into (or old #{}) new))
-(defmethod merge-env! :dependencies [key old new env] (add-dependencies! old new env))
+(defmethod merge-env! :directories  [key old new env] (set/union old new))
 (defmethod merge-env! :wagons       [key old new env] (add-wagon! old new env))
+(defmethod merge-env! :dependencies [key old new env] (add-dependencies! old new env))
 
 ;; ## Boot API Functions
 ;;
@@ -224,60 +358,14 @@
         (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v)))
       (swap! boot-env update-in [k] (partial merge-env! k) v @boot-env))))
 
-;; ## Task helpers – managed temp files
-
-(defn tmpfile?
-  "Returns truthy if the file f is a tmpfile managed by the tmpregistry."
-  [f]
-  (tmp/tmpfile? @tmpregistry f))
-
-(defn mktmpdir!
-  [& [key]]
-  (tmp/mkdir! @tmpregistry (or key (keyword "boot.core" (str (gensym))))))
-
-(defn mktgtdir!
-  [& [key]]
-  (util/with-let [f (mktmpdir! key)]
-    (swap! tmp-tgt-dirs conj f)
-    (set-env! :directories #(conj % (.getPath f)))))
-
-(defn mksrcdir!
-  [& [key]]
-  (util/with-let [f (mktmpdir! key)]
-    (swap! tmp-src-dirs conj f)
-    (set-env! :directories #(conj % (.getPath f)))))
-
-(defn mkdatdir!
-  [& [key]]
-  (util/with-let [f (mktmpdir! key)]
-    (swap! tmp-dat-dirs conj f)
-    (set-env! :directories #(conj % (.getPath f)))))
-
-(defn mkrscdir!
-  [& [key]]
-  (util/with-let [f (mktmpdir! key)]
-    (swap! tmp-rsc-dirs conj f)
-    (set-env! :directories #(conj % (.getPath f)))))
-
-(defn delete-file!
-  "FIXME: document this"
-  [& fs]
-  (->> fs
-    (map #(.getCanonicalFile (io/file %)))
-    (remove tmpfile?)
-    (swap! consumed-files into)))
-
-(defn sync!
-  "FIXME: document this."
-  ([] (apply file/sync :time
-        (get-env :tgt-path)
-        (set/union #{@user-rsc-dir} @tmp-rsc-dirs @tmp-tgt-dirs)))
-  ([dest & srcs] (apply file/sync :time dest srcs)))
+;; ## Defining Tasks
 
 (defmacro deftask
   "Define a boot task."
   [sym doc argspec & body]
   `(cli2/defclifn ~(vary-meta sym assoc ::task true) ~doc ~argspec ~@body))
+
+;; ## Boot Lifecycle
 
 (defmacro cleanup
   "Evaluate body after tasks have been run. This macro is meant to be called
@@ -296,8 +384,9 @@
 (defn prep-build!
   "FIXME: document"
   [& args]
-  (doseq [f (scoped-dirs)] (tmp/make-file! ::tmp/dir f))
   (reset! *warnings* 0)
+  (restore-backups!)
+  (doseq [f @tmp-scoped-dirs] (tmp/make-file! ::tmp/dir f)) ; empty scoped dirs
   (apply make-event args))
 
 (defn construct-tasks
@@ -446,83 +535,6 @@
 
 (defn git-files [& {:keys [untracked]}]
   (git/ls-files :untracked untracked))
-
-(defn input-dirs
-  "FIXME: document this."
-  []
-  (set/union #{@user-src-dir @user-rsc-dir} @tmp-src-dirs @tmp-rsc-dirs @tmp-tgt-dirs))
-
-(defn input-dir?
-  "FIXME: document this."
-  [dir]
-  (some #(file/parent? (io/file %) (io/file dir)) (input-dirs)))
-
-(defn output-dirs
-  "FIXME: document this."
-  []
-  (set/union #{@user-rsc-dir} @tmp-rsc-dirs @tmp-tgt-dirs))
-
-(defn output-dir?
-  "FIXME: document this."
-  [dir]
-  (some #(file/parent? (io/file %) (io/file dir)) (output-dirs)))
-
-(defn scoped-dirs
-  "FIXME: document this."
-  []
-  (set/union @tmp-tgt-dirs @tmp-dat-dirs))
-
-(defn scoped-dir?
-  "FIXME: document this."
-  [dir]
-  (some #(file/parent? (io/file %) (io/file dir)) (scoped-dirs)))
-
-(defn restored-dirs
-  "FIXME: document this."
-  []
-  (set/union #{@user-src-dir @user-rsc-dir} @tmp-src-dirs @tmp-rsc-dirs))
-
-(defn restored-dir?
-  "FIXME: document this."
-  [dir]
-  (some #(file/parent? (io/file %) (io/file dir)) (restored-dirs)))
-
-(defn tmp-dirs
-  "FIXME: document this."
-  []
-  @tmp-tmp-dirs)
-
-(defn tmp-dir?
-  "FIXME: document this."
-  [dir]
-  (some #(file/parent? (io/file %) (io/file dir)) (tmp-dirs)))
-
-(defn all-dirs
-  "FIXME: document this."
-  []
-  (set/union (input-dirs) (output-dirs) (tmp-dirs)))
-
-(defn input-files
-  "FIXME: document this."
-  []
-  (->> (input-dirs) (mapcat file-seq) set))
-
-(defn output-files
-  "FIXME: document this."
-  []
-  (->> (output-dirs) (mapcat file-seq) set))
-
-(defn relative-path
-  "Get the path of a source file relative to the source directory it's in."
-  [f]
-  (->> (all-dirs)
-    (map #(.getPath (file/relative-to (io/file %) (io/file f))))
-    (some #(and (not= f (io/file %)) (util/guard (io/as-relative-path %)) %))))
-
-(defn resource-path
-  "FIXME: document this"
-  [f]
-  (->> f relative-path file/split-path (string/join "/")))
 
 (defn file-filter
   "A file filtering function factory. FIXME: more documenting here."
