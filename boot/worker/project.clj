@@ -13,7 +13,7 @@
   :license      {:name "Eclipse Public License"
                  :url "http://www.eclipse.org/legal/epl-v10.html"}
   :java-source-paths ["third_party/barbarywatchservice/src"]
-  :javac-options ["-target" "1.6" "-source" "1.6"]
+  :javac-options ["-target" "1.7" "-source" "1.7"]
   :dependencies [[org.clojure/clojure         "1.6.0"  :scope "provided"]
                  [boot/base                   ~version :scope "provided"]
                  [boot/aether                 ~version :scope "compile"]

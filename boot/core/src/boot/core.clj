@@ -133,7 +133,9 @@
 
 (defmethod on-env! ::default  [key old new env] nil)
 (defmethod on-env! :src-paths [key old new env] (add-directories! (set/difference new old)))
-(defmethod on-env! :rsc-paths [key old new env] (add-sync! (get-env :tgt-path) (set/difference new old)))
+(defmethod on-env! :rsc-paths [key old new env]
+  (add-directories! (set/difference new old))
+  (add-sync! (get-env :tgt-path) (set/difference new old)))
 
 (defmulti merge-env!
   "This function is used to modify how new values are merged into the boot atom
@@ -236,6 +238,7 @@
   not emptied by boot for each build cycle."
   ([] (mkrscdir! (keyword "boot.core" (str (gensym)))))
   ([key] (util/with-let [f (mktmpdir! key)]
+           (set-env! :src-paths #(conj % (.getPath f)))
            (set-env! :rsc-paths #(conj % (.getPath f)))
            (add-sync! (get-env :tgt-path) #{(.getPath f)}))))
 
