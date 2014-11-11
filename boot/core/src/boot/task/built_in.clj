@@ -129,7 +129,7 @@
   [q quiet         bool "Suppress all output from running jobs."
    d debounce MSEC long "The time to wait (millisec) for filesystem to settle down."]
 
-  (pod/require-in-pod @pod/worker-pod "boot.watcher")
+  (pod/require-in @pod/worker-pod "boot.watcher")
   (let [q        (LinkedBlockingQueue.)
         srcdirs  (map (memfn getPath) (core/user-dirs))
         watchers (map file/make-watcher srcdirs)

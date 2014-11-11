@@ -274,7 +274,7 @@
   [callback dirs & {:keys [debounce]}]
   (if (empty? dirs)
     (constantly true)
-    (do (pod/require-in-pod @pod/worker-pod "boot.watcher")
+    (do (pod/require-in @pod/worker-pod "boot.watcher")
         (let [q        (LinkedBlockingQueue.)
               watchers (map file/make-watcher dirs)
               paths    (into-array String dirs)

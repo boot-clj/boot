@@ -187,7 +187,7 @@
   [& body]
   `(eval-in @worker-pod ~@body))
 
-(defn require-in-pod
+(defn require-in
   [pod ns]
   (doto pod (.require (into-array String [(str ns)]))))
 
@@ -269,7 +269,7 @@
 (defn- set-this-worker-in-pod!
   [pod]
   (doto pod
-    (require-in-pod "boot.pod")
+    (require-in "boot.pod")
     (.invoke "boot.pod/set-worker-pod!" @worker-pod)))
 
 (defn lifecycle-pool
