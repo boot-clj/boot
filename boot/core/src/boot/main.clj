@@ -9,7 +9,9 @@
    [boot.from.clojure.tools.cli :as cli]))
 
 (def cli-opts
-  [["-b" "--boot-script"         "Print generated boot script for debugging."]
+  [["-a" "--asset-paths PATH"    "Add PATH to set of asset directories."
+    :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
+   ["-b" "--boot-script"         "Print generated boot script for debugging."]
    ["-d" "--dependencies ID:VER" "Add dependency to project (eg. -d foo/bar:1.2.3)."
     :assoc-fn #(let [[p v] (string/split %3 #":" 2)]
                  (update-in %1 [%2] (fnil conj []) [(read-string p) (or v "RELEASE")]))]
@@ -18,11 +20,11 @@
                  (update-in %1 [%2] (fnil assoc {}) (keyword k) v))]
    ["-h" "--help"                "Print basic usage and help info."]
    ["-P" "--no-profile"          "Skip loading of profile.boot script."]
-   ["-r" "--rsc-paths PATH"      "Add PATH to set of resource directories."
+   ["-r" "--resource-paths PATH" "Add PATH to set of resource directories."
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
-   ["-s" "--src-paths PATH"      "Add PATH to set of source directories."
+   ["-s" "--source-paths PATH"   "Add PATH to set of source directories."
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
-   ["-t" "--tgt-path PATH"       "Set the target directory to PATH."]
+   ["-t" "--target-path PATH"    "Set the target directory to PATH."]
    ["-u" "--update"              "Update boot (see BOOT_CHANNEL env var below)."]
    ["-v" "--verbose"             "More error info (-vv more verbose, etc.)"
     :assoc-fn (fn [x y _] (update-in x [y] (fnil inc 0)))]
@@ -103,7 +105,7 @@
               profile?    (not (:no-profile opts))
               bootforms   (some->> arg0 slurp util/read-string-all)
               userforms   (when profile? (some->> userscript slurp util/read-string-all))
-              initial-env (->> [:src-paths :rsc-paths :tgt-path :dependencies]
+              initial-env (->> [:source-paths :resource-paths :asset-paths :target-path :dependencies]
                             (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
                             (merge {} (:set-env opts)))
               import-ns   (export-task-namespaces initial-env)

@@ -240,13 +240,10 @@
   [i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt    (core/resource-dir! :scoped)
-        notify (delay (util/info "Adding source files...\n"))]
+  (let [tgt (core/asset-dir!)]
     (core/with-pre-wrap
-      (doseq [f (core/source-files)]
-        @notify
-        (file/copy-with-lastmod f (io/file tgt (core/relative-path f)))
-        (core/delete-file! f)))))
+      (util/info "Adding source files...\n")
+      (apply core/sync! tgt (set/difference (core/input-dirs) (core/output-dirs))))))
 
 (core/deftask add-repo
   "Add all files in project git repo to fileset.
@@ -352,7 +349,7 @@
   
   (let [tgt (core/resource-dir! :scoped)]
     (core/with-pre-wrap
-      (let [nses (->> (core/source-files)
+      (let [nses (->> (core/input-files)
                    (map core/relative-path)
                    (filter #(.endsWith % ".clj"))
                    (map util/path->ns)
@@ -375,7 +372,7 @@
             handler   {Diagnostic$Kind/ERROR util/fail
                        Diagnostic$Kind/WARNING util/warn
                        Diagnostic$Kind/MANDATORY_WARNING util/warn}
-            srcs      (some->> (core/source-files)
+            srcs      (some->> (core/input-files)
                         (core/by-ext [".java"])
                         seq
                         (into-array File)
@@ -411,12 +408,12 @@
 
   (let [tgt (core/resource-dir! :scoped)]
     (core/with-pre-wrap
-      (let [pomprop (->> (core/resource-files) (core/by-name ["pom.properties"]) first)
+      (let [pomprop (->> (core/output-files) (core/by-name ["pom.properties"]) first)
             [aid v] (some->> pomprop pod/pom-properties-map ((juxt :artifact-id :version)))
             jarname (or file (and aid v (str aid "-" v ".jar")) "project.jar")
             jarfile (io/file tgt jarname)]
         (when-not (.exists jarfile)
-          (let [index (->> (core/resource-files)
+          (let [index (->> (core/output-files)
                         (filter (partial file/keep-filters? include exclude))
                         (map (juxt core/relative-path (memfn getPath))))]
             (util/info "Writing %s...\n" (.getName jarfile))
@@ -448,7 +445,7 @@
                                       ["lib" (last r')]
                                       (into ["classes"] r')))]
                          (if (inf? (first r')) r (.getPath (apply io/file path))))
-                index (->> (core/resource-files)
+                index (->> (core/output-files)
                         (filter (partial file/keep-filters? include exclude))
                         (mapv (juxt ->war (memfn getPath))))]
             (util/info "Writing %s...\n" (.getName warfile))
@@ -472,7 +469,7 @@
       (let [zipname (or file "project.zip")
             zipfile (io/file tgt zipname)]
         (when-not (.exists zipfile)
-          (let [index (->> (core/resource-files)
+          (let [index (->> (core/output-files)
                         (filter (partial file/keep-filters? include exclude))
                         (map (juxt core/relative-path (memfn getPath))))]
             (util/info "Writing %s...\n" (.getName zipfile))
@@ -492,7 +489,7 @@
 
   (core/with-pre-wrap
     (let [jarfiles (or (and file [(io/file file)])
-                     (->> (core/resource-files) (core/by-ext [".jar"])))]
+                     (->> (core/output-files) (core/by-ext [".jar"])))]
       (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
       (doseq [jarfile jarfiles]
         (util/info "Installing %s...\n" (.getName jarfile))
@@ -523,7 +520,7 @@
   (let [tgt (core/resource-dir! :scoped)]
     (core/with-pre-wrap
       (let [jarfiles (or (and file [(io/file file)])
-                       (->> (core/resource-files) (core/by-ext [".jar"])))
+                       (->> (core/output-files) (core/by-ext [".jar"])))
             r        (-> (->> (core/get-env :repositories) (into {})) (get repo))]
         (when-not (and r (seq jarfiles))
           (throw (Exception. "missing jar file or repo not found")))

@@ -30,41 +30,100 @@
 (def ^:private tmpregistry       (atom nil))
 (def ^:private cleanup-fns       (atom []))
 (def ^:private boot-env          (atom nil))
-
+(def ^:private tempdirs          (atom #{}))
 (def ^:private src-watcher       (atom (constantly nil)))
-(def ^:private user-src-paths    (atom #{}))
-(def ^:private user-rsc-paths    (atom #{}))
-
-(def ^:private tmp-user-src-dir  (atom nil))
-(def ^:private tmp-user-rsc-dir  (atom nil))
-(def ^:private tmp-src-dirs      (atom #{}))
-(def ^:private tmp-rsc-dirs      (atom #{}))
-(def ^:private tmp-scoped-dirs   (atom #{}))
-(def ^:private tmp-restored-dirs (atom #{}))
-(def ^:private tmp-cache-dirs    (atom #{}))
-
 (def ^:private backup-dirs       (atom {}))
 
+(defrecord TempDir [dir user input output scoped restored])
+
+(defn- filter-keys
+  [maps mask]
+  (->> maps (filter #(= mask (select-keys % (keys mask))))))
+
+(def ^:private masks
+  {:user     {:user true}
+   :source   {:input true :output nil}
+   :resource {:input true :output true}
+   :asset    {:input nil :output true}
+   :cache    {:input nil :output nil}
+   :input    {:input true}
+   :output   {:output true}
+   :scoped   {:scoped true}
+   :restored {:restored true}})
+
+(defn- temp-dir*
+  [key]
+  (tmp/mkdir! @tmpregistry key))
+
 (defn- temp-dir!
-  [& [key]]
-  (tmp/mkdir! @tmpregistry (or key (keyword "boot.core" (str (gensym))))))
+  [key & masks+]
+  (let [k (or key (keyword "boot.core" (str (gensym))))
+        m (->> masks+ (map masks) (apply merge))]
+    (util/with-let [t (map->TempDir (assoc m :dir (temp-dir* k)))]
+      (swap! tempdirs conj t)
+      (when (:input t)
+        (set-env! :directories #(conj % (.getPath (:dir t))))))))
+
+(defn- temp-dirs-by
+  [& masks+]
+  (->> masks+ (map masks) (apply merge) (filter-keys @tempdirs) (map :dir) set))
+
+(defn- temp-files-for
+  [dirset]
+  (->> dirset (mapcat file-seq) (filter (memfn isFile))))
+
+(defn- temp-dir-for
+  [dir-or-file dirset]
+  (->> dirset (some #(and (file/parent? (io/file %) (io/file dir-or-file)) %))))
+
+(defn- all-dirs            [] (set (map :dir @tempdirs)))
+(defn- scoped-dirs         [] (temp-dirs-by :scoped))
+(defn- restored-dirs       [] (temp-dirs-by :restored))
+(defn- user-source-dirs    [] (temp-dirs-by :user :source))
+(defn- user-resource-dirs  [] (temp-dirs-by :user :resource))
+(defn- user-asset-dirs     [] (temp-dirs-by :user :asset))
+(defn- source-dirs         [] (temp-dirs-by :source))
+(defn- resource-dirs       [] (temp-dirs-by :resource))
+(defn- asset-dirs          [] (temp-dirs-by :asset))
+(defn- cache-dirs          [] (temp-dirs-by :cache))
+
+(defn- all-files           [] (temp-files-for (all-dirs)))
+(defn- scoped-files        [] (temp-files-for (scoped-dirs)))
+(defn- restored-files      [] (temp-files-for (restored-dirs)))
+(defn- user-source-files   [] (temp-files-for (user-source-dirs)))
+(defn- user-resource-files [] (temp-files-for (user-resource-dirs)))  
+(defn- user-asset-files    [] (temp-files-for (user-asset-dirs)))
+(defn- source-files        [] (temp-files-for (source-dirs)))
+(defn- resource-files      [] (temp-files-for (resource-dirs)))
+(defn- asset-files         [] (temp-files-for (asset-dirs)))
+(defn- cache-files         [] (temp-files-for (cache-dirs)))
+
+(defn- scoped-file?        [f] (temp-dir-for f (scoped-dirs)))
+(defn- restored-file?      [f] (temp-dir-for f (restored-dirs)))
+(defn- user-source-file?   [f] (temp-dir-for f (user-source-dirs)))
+(defn- user-resource-file? [f] (temp-dir-for f (user-resource-dirs)))  
+(defn- user-asset-file?    [f] (temp-dir-for f (user-asset-dirs)))
+(defn- source-file?        [f] (temp-dir-for f (source-dirs)))
+(defn- resource-file?      [f] (temp-dir-for f (resource-dirs)))
+(defn- asset-file?         [f] (temp-dir-for f (asset-dirs)))
+(defn- cache-file?         [f] (temp-dir-for f (cache-dirs)))
 
 (defn- sync-user-dirs!
   []
-  (when-not (empty? @user-src-paths)
-    (apply file/sync :time @tmp-user-src-dir @user-src-paths))
-  (when-not (empty? @user-rsc-paths)
-    (apply file/sync :time @tmp-user-rsc-dir @user-rsc-paths)))
+  (doseq [[k d] {:source-paths   (user-source-dirs)
+                 :resource-paths (user-resource-dirs)
+                 :asset-paths    (user-asset-dirs)}]
+    (let [s (get-env k)]
+      (when-not (empty? s)
+        (apply file/sync :time (first d) s)))))
 
 (defn- set-user-dirs!
-  [type dirs]
+  []
   (@src-watcher)
-  (-> (case type
-        :src user-src-paths
-        :rsc user-rsc-paths)
-    (swap! into dirs))
   (sync-user-dirs!)
-  (->> (set/union @user-src-paths @user-rsc-paths)
+  (->> [:source-paths :resource-paths :asset-paths]
+    (map get-env)
+    (apply set/union)
     (watch-dirs (fn [_] (sync-user-dirs!)))
     (reset! src-watcher)))
 
@@ -76,7 +135,7 @@
   [dir]
   (when-not (get @backup-dirs dir)
     (let [key (backup-key dir)
-          bak (or (temp-dir key) (temp-dir! key))]
+          bak (or (temp-dir key) (temp-dir* key))]
       (sync! bak dir)
       (swap! backup-dirs assoc dir bak))))
 
@@ -95,7 +154,10 @@
 (defn- printable-readable?
   "FIXME: document"
   [form]
-  (or (nil? form) (false? form) (try (read-string (pr-str form)) (catch Throwable _))))
+  (or
+    (nil? form)
+    (false? form)
+    (try (read-string (pr-str form)) (catch Throwable _))))
 
 (defn- rm-clojure-dep
   "FIXME: document"
@@ -154,76 +216,35 @@
   [& body]
   `(doto (Thread. (fn [] ~@body)) (.setDaemon true) .start))
 
-(defn- temp-dir-for
-  [dir-or-file & dirsets]
-  (->> dirsets
-    (apply set/union)
-    (some #(and (file/parent? (io/file %) (io/file dir-or-file)) %))))
-
-(defn- temp-files-for
-  [& dirsets]
-  (->> dirsets
-    (apply set/union)
-    (mapcat file-seq)
-    (filter (memfn isFile))))
-
 ;; Public API, temp dirs ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn cache-dir!    [& [key]]    (temp-dir! key :cache))
+(defn source-dir!   [& [scoped]] (temp-dir! nil :source   (if scoped :scoped :restored)))
+(defn resource-dir! [& [scoped]] (temp-dir! nil :resource (if scoped :scoped :restored)))
+(defn asset-dir!    [& [scoped]] (temp-dir! nil :asset    (if scoped :scoped :restored)))
+
+(defn user-dirs     [] (temp-dirs-by :user))
+(defn input-dirs    [] (temp-dirs-by :input))
+(defn output-dirs   [] (temp-dirs-by :output))
+
+(defn user-files    [] (temp-files-for (user-dirs)))
+(defn input-files   [] (temp-files-for (input-dirs)))
+(defn output-files  [] (temp-files-for (output-dirs)))
+
+(defn user-file?    [f] (temp-dir-for f (user-dirs)))
+(defn input-file?   [f] (temp-dir-for f (input-dirs)))
+(defn output-file?  [f] (temp-dir-for f (output-dirs)))
 
 (defn tmpfile?
   "Returns truthy if the file f is a tmpfile managed by the tmpregistry."
   [f]
   (tmp/tmpfile? @tmpregistry f))
 
-(defn user-dirs      []            #{@tmp-user-rsc-dir @tmp-user-src-dir})
-(defn source-dirs    []            (conj @tmp-src-dirs @tmp-user-src-dir))
-(defn resource-dirs  []            (conj @tmp-rsc-dirs @tmp-user-rsc-dir))
-(defn scoped-dirs    []            @tmp-scoped-dirs)
-(defn restored-dirs  []            @tmp-restored-dirs)
-(defn source-dir?    [dir-or-file] (temp-dir-for dir-or-file (source-dirs)))
-(defn resource-dir?  [dir-or-file] (temp-dir-for dir-or-file (resource-dirs)))
-(defn scoped-dir?    [dir-or-file] (temp-dir-for dir-or-file (scoped-dirs)))
-(defn restored-dir?  [dir-or-file] (temp-dir-for dir-or-file (restored-dirs)))
-(defn source-files   []            (temp-files-for (source-dirs)))
-(defn resource-files []            (temp-files-for (resource-dirs)))
-(defn scoped-files   []            (temp-files-for (scoped-dirs)))
-(defn restored-files []            (temp-files-for (restored-dirs)))
-
 (defn temp-dir
   "Given a key, returns the associated temp dir if one already exists."
   [key]
   (let [d (tmp/get @tmpregistry key)]
     (when (.exists d) d)))
-
-(defn cache-dir!
-  "Create a temp dir that is not on the classpath and is neither scoped nor
-  restored. The files in these directories will not be part of the final
-  product of the build. These directories are for tasks to use as private
-  cache and should not be exposed to other tasks."
-  [& [key]]
-  (util/with-let [f (temp-dir! key)]
-    (swap! tmp-cache-dirs conj f)))
-
-(defn source-dir!
-  "Create a temp dir that is on the classpath and is either scoped or restored
-  according to the scoped? argument. The files in these directories will not
-  be part of the final product of the build; they are intended ONLY as input
-  for further processing."
-  [& [scoped? key]]
-  (util/with-let [f (temp-dir! key)]
-    (swap! tmp-src-dirs conj f)
-    (swap! (if scoped? tmp-scoped-dirs tmp-restored-dirs) conj f)
-    (set-env! :directories #(conj % (.getPath f)))))
-
-(defn resource-dir!
-  "Create a temp dir that is on the classpath and is either scoped or restored
-  according to the scoped? argument. The files in these directories will be
-  part of the final product of the build; they MAY also be used as input for
-  further processing."
-  [& [scoped? key]]
-  (util/with-let [f (temp-dir! key)]
-    (swap! tmp-rsc-dirs conj f)
-    (swap! (if scoped? tmp-scoped-dirs tmp-restored-dirs) conj f)
-    (set-env! :directories #(conj % (.getPath f)))))
 
 (defn delete-file!
   "Remove the given Files, fs, from the build fileset. The files must be temp
@@ -233,13 +254,13 @@
   [& fs]
   (doseq [f fs]
     (assert (tmpfile? f) (format "can only delete temp files (%s)" f))
-    (when-let [d (restored-dir? f)] (backup-dir! d))
+    (when-let [d (restored-file? f)] (backup-dir! d))
     (.delete f)))
 
 (defn relative-path
-  "Get the path of a source file relative to the source directory it's in."
+  "Get the path of a source file relative to the temp directory it's in."
   [f]
-  (->> (set/union @tmp-src-dirs @tmp-rsc-dirs)
+  (->> (all-dirs)
     (map #(.getPath (file/relative-to (io/file %) (io/file f))))
     (some #(and (not= f (io/file %)) (util/guard (io/as-relative-path %)) %))))
 
@@ -256,7 +277,7 @@
 
   The zero-arg arity is used internally by boot."
   ([dest & srcs] (apply file/sync :time dest srcs))
-  ([] (apply file/sync :time (get-env :tgt-path) (resource-dirs))))
+  ([] (apply file/sync :time (get-env :target-path) (output-dirs))))
 
 ;; ## Boot Environment
 ;;
@@ -296,16 +317,18 @@
   []
   (->> (io/file ".boot" "tmp") tmp/registry tmp/init! (reset! tmpregistry))
   (doto boot-env
-    (reset! {:dependencies []
-             :directories  #{}
-             :src-paths    #{}
-             :rsc-paths    #{}
-             :tgt-path     "target"
-             :repositories [["clojars"       "http://clojars.org/repo/"]
-                            ["maven-central" "http://repo1.maven.org/maven2/"]]})
+    (reset! {:dependencies   []
+             :directories    #{}
+             :source-paths   #{}
+             :resource-paths #{}
+             :asset-paths    #{}
+             :target-path    "target"
+             :repositories   [["clojars"       "http://clojars.org/repo/"]
+                              ["maven-central" "http://repo1.maven.org/maven2/"]]})
     (add-watch ::boot #(configure!* %3 %4)))
-  (reset! tmp-user-src-dir (source-dir! false))
-  (reset! tmp-user-rsc-dir (resource-dir! false))
+  (temp-dir! nil :user :asset)
+  (temp-dir! nil :user :source)
+  (temp-dir! nil :user :resource)
   (pod/add-shutdown-hook! do-cleanup!))
 
 (defmulti on-env!
@@ -315,10 +338,11 @@
   the new directories to the classpath."
   (fn [key old-value new-value env] key) :default ::default)
 
-(defmethod on-env! ::default    [key old new env] nil)
-(defmethod on-env! :directories [key old new env] (add-directories! new))
-(defmethod on-env! :src-paths   [key old new env] (set-user-dirs! :src new))
-(defmethod on-env! :rsc-paths   [key old new env] (set-user-dirs! :rsc new))
+(defmethod on-env! ::default       [key old new env] nil)
+(defmethod on-env! :directories    [key old new env] (add-directories! new))
+(defmethod on-env! :source-paths   [key old new env] (set-user-dirs!))
+(defmethod on-env! :resource-paths [key old new env] (set-user-dirs!))
+(defmethod on-env! :asset-paths    [key old new env] (set-user-dirs!))
 
 (defmulti merge-env!
   "This function is used to modify how new values are merged into the boot atom
@@ -386,7 +410,7 @@
   [& args]
   (reset! *warnings* 0)
   (restore-backups!)
-  (doseq [f @tmp-scoped-dirs] (tmp/make-file! ::tmp/dir f)) ; empty scoped dirs
+  (doseq [f (scoped-dirs)] (tmp/make-file! ::tmp/dir f)) ; empty scoped dirs
   (apply make-event args))
 
 (defn construct-tasks
