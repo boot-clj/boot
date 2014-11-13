@@ -78,7 +78,9 @@
         init-ns        (or init-ns 'boot.user)
         init-ns-mw     [(wrap-init-ns init-ns)]
         middleware     (concat init-ns-mw *default-middleware* middleware)
-        handler        (or handler (apply server/default-handler middleware))
+        handler        (if handler
+                         (resolve handler)
+                         (apply server/default-handler middleware))
         opts           (->> (-> (assoc opts :handler handler)
                               (select-keys [:bind :port :handler]))
                          (reduce-kv #(if-not %3 %1 (assoc %1 %2 %3)) {}))
