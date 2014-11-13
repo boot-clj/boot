@@ -182,9 +182,10 @@
    I skip-init      bool   "Skip default client initialization code."
    p port PORT      int    "The port to listen on and/or connect to."
    n init-ns NS     sym    "The initial REPL namespace."
-   m middleware SYM [code] "The REPL middleware vector."]
+   m middleware SYM [code] "The REPL middleware vector."
+   x handler SYM     sym   "The REPL handler, when used middleware option is ignored"]
 
-  (let [srv-opts (select-keys *opts* [:bind :port :init-ns :middleware])
+  (let [srv-opts (select-keys *opts* [:bind :port :init-ns :middleware :handler])
         cli-opts (-> *opts*
                    (select-keys [:host :port :history])
                    (assoc :color (not no-color)
@@ -197,6 +198,7 @@
                                (pod/add-dependencies
                                  (update-in (core/get-env) [:dependencies]
                                    conj '[org.clojure/tools.nrepl "0.2.4"]))))
+                   (if handler (require (symbol (namespace handler))))
                    (require 'boot.repl-server)
                    ((resolve 'boot.repl-server/start-server) srv-opts))
         repl-cli (delay (pod/call-worker `(boot.repl-client/client ~cli-opts)))]
