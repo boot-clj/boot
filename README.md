@@ -5,7 +5,7 @@ provides a runtime environment that includes all of the tools needed to build
 Clojure projects from scripts written in Clojure that run in the context of
 the project.  
 
->If you have questions or need help, please [visit our Discourse site](http://hoplon.discoursehosting.net/).
+> If you have questions or need help, please [visit our Discourse site](http://hoplon.discoursehosting.net/).
 > You can find other developers and users in [the `#hoplon` channel on freenode IRC](http://webchat.freenode.net/?channels=hoplon).
 
 ### Another Build Tool?
