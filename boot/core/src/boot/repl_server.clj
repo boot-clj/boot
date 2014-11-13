@@ -96,10 +96,10 @@
         init-ns        (or init-ns 'boot.user)
         init-ns-mw     [(wrap-init-ns init-ns)]
         user-mw        (->mw-list middleware)
-        middleware     (->> (concat init-ns-mw *default-middleware* user-mw)
-                         (map ->var))
-        handler        (-> (or (->var handler) server/default-handler)
-                         (apply middleware))
+        middleware     (concat init-ns-mw *default-middleware* user-mw)
+        handler        (if handler
+                         (->var handler)
+                         (apply server/default-handler middleware))
         opts           (->> (-> (assoc opts :handler handler)
                               (select-keys [:bind :port :handler]))
                          (reduce-kv #(if-not %3 %1 (assoc %1 %2 %3)) {}))
