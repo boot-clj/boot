@@ -71,14 +71,35 @@
 
 (def ^:dynamic *default-middleware* [#'wrap-flash #'pretty/pretty-middleware])
 
+(defn ->var
+  [thing]
+  (if-not (symbol? thing)
+    thing
+    (do (assert (and (symbol? thing) (namespace thing))
+          (format "expected namespaced symbol (%s)" thing))
+        (require (symbol (namespace thing)))
+        (resolve thing))))
+
+(defn ->mw-list
+  [thing]
+  (when thing
+    (let [thing* (->var thing)
+          thing  (if (var? thing*) @thing* thing*)]
+      (if-not (sequential? thing)
+        [thing*]
+        (mapcat ->mw-list thing)))))
+
 (defn start-server
   [opts]
   (let [{:keys [bind handler middleware init-ns]
          :as opts}     (merge default-opts opts)
         init-ns        (or init-ns 'boot.user)
         init-ns-mw     [(wrap-init-ns init-ns)]
-        middleware     (concat init-ns-mw *default-middleware* middleware)
-        handler        (or handler (apply server/default-handler middleware))
+        user-mw        (->mw-list middleware)
+        middleware     (concat init-ns-mw *default-middleware* user-mw)
+        handler        (if handler
+                         (->var handler)
+                         (apply server/default-handler middleware))
         opts           (->> (-> (assoc opts :handler handler)
                               (select-keys [:bind :port :handler]))
                          (reduce-kv #(if-not %3 %1 (assoc %1 %2 %3)) {}))

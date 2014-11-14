@@ -170,19 +170,20 @@
   default REPL middleware to be included. You may modify this in your build.boot
   file by calling set! or rebinding the var."
 
-  [s server         bool   "Start REPL server only."
-   c client         bool   "Start REPL client only."
-   C no-color       bool   "Disable ANSI color output in client."
-   e eval EXPR      any    "The form the client will evaluate in the boot.user ns."
-   b bind ADDR      str    "The address server listens on."
-   H host HOST      str    "The host client connects to."
-   i init PATH      str    "The file to evaluate in the boot.user ns."
-   I skip-init      bool   "Skip default client initialization code."
-   p port PORT      int    "The port to listen on and/or connect to."
-   n init-ns NS     sym    "The initial REPL namespace."
-   m middleware SYM [code] "The REPL middleware vector."]
+  [s server         bool  "Start REPL server only."
+   c client         bool  "Start REPL client only."
+   C no-color       bool  "Disable ANSI color output in client."
+   e eval EXPR      any   "The form the client will evaluate in the boot.user ns."
+   b bind ADDR      str   "The address server listens on."
+   H host HOST      str   "The host client connects to."
+   i init PATH      str   "The file to evaluate in the boot.user ns."
+   I skip-init      bool  "Skip default client initialization code."
+   p port PORT      int   "The port to listen on and/or connect to."
+   n init-ns NS     sym   "The initial REPL namespace."
+   m middleware SYM [sym] "The REPL middleware vector."
+   x handler SYM    sym   "The REPL handler, when used middleware option is ignored"]
 
-  (let [srv-opts (select-keys *opts* [:bind :port :init-ns :middleware])
+  (let [srv-opts (select-keys *opts* [:bind :port :init-ns :middleware :handler])
         cli-opts (-> *opts*
                    (select-keys [:host :port :history])
                    (assoc :color (not no-color)
