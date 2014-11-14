@@ -59,10 +59,11 @@
   [key & masks+]
   (let [k (or key (keyword "boot.core" (str (gensym))))
         m (->> masks+ (map masks) (apply merge))]
-    (util/with-let [t (map->TempDir (assoc m :dir (temp-dir* k)))]
-      (swap! tempdirs conj t)
-      (when (:input t)
-        (set-env! :directories #(conj % (.getPath (:dir t))))))))
+    (util/with-let [d (temp-dir* k)]
+      (let [t (map->TempDir (assoc m :dir d))]
+        (swap! tempdirs conj t)
+        (when (:input t)
+          (set-env! :directories #(conj % (.getPath (:dir t)))))))))
 
 (defn- temp-dirs-by
   [& masks+]
