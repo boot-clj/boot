@@ -349,10 +349,10 @@
 
 (core/deftask aot
   "Perform AOT compilation of Clojure namespaces."
-  
+
   [a all          bool   "Compile all namespaces."
    n namespace NS #{sym} "The set of namespaces to compile."]
-  
+
   (let [tgt (core/mktgtdir!)]
     (core/with-pre-wrap
       (let [nses (->> (core/src-files+)

@@ -61,7 +61,7 @@
     [`(comment ~(format "end %s" tag))]))
 
 (defn emit [boot? argv userscript bootscript import-ns]
-  (let [boot-use '[boot.core boot.util boot.repl boot.task.built-in]]
+  (let [boot-use '[boot.core boot.util boot.task.built-in]]
     `(~(list 'ns 'boot.user
          (list* :use (concat boot-use import-ns)))
       '(ns boot.user
