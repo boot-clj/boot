@@ -118,8 +118,9 @@
 
   [t time MSEC int "The interval in milliseconds."]
 
-  (core/with-pre-wrap
-    (if (zero? (or time 0)) @(promise) (Thread/sleep time))))
+  (if (zero? (or time 0))
+    (core/with-post-wrap @(promise))
+    (core/with-pre-wrap (Thread/sleep time))))
 
 (core/deftask watch
   "Call the next handler whenever source and/or resource files change.
@@ -187,23 +188,22 @@
 
   (let [srv-opts (select-keys *opts* [:bind :port :init-ns :middleware :handler])
         cli-opts (-> *opts*
-                   (select-keys [:host :port :history])
-                   (assoc :color (not no-color)
-                          :standalone true
-                          :custom-eval eval
-                          :custom-init init
-                          :skip-default-init skip-init))
+                     (select-keys [:host :port :history])
+                     (assoc :color (not no-color)
+                            :standalone true
+                            :custom-eval eval
+                            :custom-init init
+                            :skip-default-init skip-init))
         repl-svr (delay (try (require 'clojure.tools.nrepl.server)
                              (catch Throwable _
                                (pod/add-dependencies
                                  (update-in (core/get-env) [:dependencies]
-                                   conj '[org.clojure/tools.nrepl "0.2.4"]))))
-                   (require 'boot.repl-server)
-                   ((resolve 'boot.repl-server/start-server) srv-opts))
+                                            conj '[org.clojure/tools.nrepl "0.2.4"]))))
+                        (require 'boot.repl-server)
+                        ((resolve 'boot.repl-server/start-server) srv-opts))
         repl-cli (delay (pod/call-worker `(boot.repl-client/client ~cli-opts)))]
-    (core/with-pre-wrap
-      (when (or server (not client)) @repl-svr)
-      (when (or client (not server)) @repl-cli))))
+    (comp (core/with-pre-wrap (when (or server (not client)) @repl-svr))
+          (core/with-post-wrap (when (or client (not server)) @repl-cli)))))
 
 (core/deftask pom
   "Create project pom.xml file.

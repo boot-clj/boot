@@ -1,24 +1,24 @@
 (ns boot.core
   "The boot core API."
   (:require
-   [clojure.java.io             :as io]
-   [clojure.set                 :as set]
-   [clojure.walk                :as walk]
-   [clojure.repl                :as repl]
-   [clojure.string              :as string]
-   [boot.pod                    :as pod]
-   [boot.git                    :as git]
-   [boot.cli                    :as cli2]
-   [boot.file                   :as file]
-   [boot.tmpregistry            :as tmp]
-   [boot.util                   :as util]
-   [boot.from.clojure.tools.cli :as cli])
+    [clojure.java.io             :as io]
+    [clojure.set                 :as set]
+    [clojure.walk                :as walk]
+    [clojure.repl                :as repl]
+    [clojure.string              :as string]
+    [boot.pod                    :as pod]
+    [boot.git                    :as git]
+    [boot.cli                    :as cli2]
+    [boot.file                   :as file]
+    [boot.tmpregistry            :as tmp]
+    [boot.util                   :as util]
+    [boot.from.clojure.tools.cli :as cli])
   (:import
-   [java.net URLClassLoader URL]
-   java.lang.management.ManagementFactory))
+    [java.net URLClassLoader URL]
+    java.lang.management.ManagementFactory))
 
 (declare get-env set-env! add-sync! boot-env on-env! merge-env!
-  tgt-files rsc-files relative-path)
+         tgt-files rsc-files relative-path)
 
 (declare ^{:dynamic true :doc "The running version of boot app."}      *app-version*)
 (declare ^{:dynamic true :doc "The running version of boot core."}     *boot-version*)
@@ -176,7 +176,7 @@
       (swap! boot-env update-in [k] (partial merge-env! k) v @boot-env))))
 
 (defn add-sync!
-  "Specify directories to sync after build event. The `dst` argument is the 
+  "Specify directories to sync after build event. The `dst` argument is the
   destination directory. The `srcs` are an optional list of directories whose
   contents will be copied into `dst`. The `add-sync!` function is associative.
 
@@ -475,7 +475,7 @@
     (->> :src-paths get-env (map io/file) (filter tmpfile?) (mapcat file-seq) (filter want?) set)))
 
 (defn src-files+
-  "Returns a set of java.io.File objects--the union of (src-files) and 
+  "Returns a set of java.io.File objects--the union of (src-files) and
   (src-files*)."
   []
   (into (src-files) (src-files*)))
@@ -528,7 +528,7 @@
 
 (defn by-name
   "This function takes two arguments: `names` and `files`, where `names` is
-  a seq of file name strings like `[\"foo.clj\" \"bar.xml\"]` and `files` is 
+  a seq of file name strings like `[\"foo.clj\" \"bar.xml\"]` and `files` is
   a seq of file objects. Returns a seq of the files in `files` which have file
   names listed in `names`."
   [names files & [negate?]]
