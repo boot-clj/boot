@@ -1,6 +1,7 @@
 (ns boot.repl-server
   (:require
    [boot.core                              :as core]
+   [boot.repl                              :as repl]
    [boot.from.io.aviso.nrepl               :as pretty]
    [clojure.java.io                        :as io]
    [clojure.tools.nrepl.server             :as server]
@@ -38,8 +39,6 @@
   #'pretty/pretty-middleware
   {:requires #{} :expects #{}})
 
-(def ^:dynamic *default-middleware* (atom [#'pretty/pretty-middleware]))
-
 (defn ->var
   [thing]
   (if-not (symbol? thing)
@@ -65,7 +64,8 @@
         init-ns        (or init-ns 'boot.user)
         init-ns-mw     [(wrap-init-ns init-ns)]
         user-mw        (->mw-list middleware)
-        middleware     (concat init-ns-mw *default-middleware* user-mw)
+        default-mw     (->mw-list @repl/*default-middleware*)
+        middleware     (concat init-ns-mw default-mw user-mw)
         handler        (if handler
                          (->var handler)
                          (apply server/default-handler middleware))
