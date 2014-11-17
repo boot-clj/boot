@@ -1,18 +1,18 @@
 (ns boot.core
   "The boot core API."
   (:require
-   [clojure.java.io             :as io]
-   [clojure.set                 :as set]
-   [clojure.walk                :as walk]
-   [clojure.repl                :as repl]
-   [clojure.string              :as string]
-   [boot.pod                    :as pod]
-   [boot.git                    :as git]
-   [boot.cli                    :as cli2]
-   [boot.file                   :as file]
-   [boot.tmpregistry            :as tmp]
-   [boot.util                   :as util]
-   [boot.from.clojure.tools.cli :as cli])
+    [clojure.java.io             :as io]
+    [clojure.set                 :as set]
+    [clojure.walk                :as walk]
+    [clojure.repl                :as repl]
+    [clojure.string              :as string]
+    [boot.pod                    :as pod]
+    [boot.git                    :as git]
+    [boot.cli                    :as cli2]
+    [boot.file                   :as file]
+    [boot.tmpregistry            :as tmp]
+    [boot.util                   :as util]
+    [boot.from.clojure.tools.cli :as cli])
   (:import
    [java.net URLClassLoader URL]
    java.lang.management.ManagementFactory
@@ -570,7 +570,7 @@
 
 (defn by-name
   "This function takes two arguments: `names` and `files`, where `names` is
-  a seq of file name strings like `[\"foo.clj\" \"bar.xml\"]` and `files` is 
+  a seq of file name strings like `[\"foo.clj\" \"bar.xml\"]` and `files` is
   a seq of file objects. Returns a seq of the files in `files` which have file
   names listed in `names`."
   [names files & [negate?]]

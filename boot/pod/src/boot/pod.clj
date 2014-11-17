@@ -103,17 +103,36 @@
                first
                (.getInputStream jarfile))))))
 
-(defn pom-properties-map
-  [prop-or-jarpath]
-  (let [prop (if (instance? Properties prop-or-jarpath)
-               prop-or-jarpath
-               (doto (Properties.) (.load (io/input-stream prop-or-jarpath))))
-        gid  (.getProperty prop "groupId")
-        aid  (.getProperty prop "artifactId")]
+(defn- pom-prop-map
+  [props]
+  (let [gid (.getProperty props "groupId")
+        aid (.getProperty props "artifactId")
+        ver (.getProperty props "version")]
     {:group-id    gid
      :artifact-id aid
      :project     (symbol gid aid)
-     :version     (.getProperty prop "version")}))
+     :version     ver}))
+
+(defn dependency-loaded?
+  [[project & _]]
+  (let [[aid gid] (util/extract-ids project)]
+    (io/resource (format "META-INF/maven/%s/%s/pom.properties" aid gid))))
+
+(defn dependency-pom-properties
+  [coord]
+  (doto (Properties.)
+    (.load (io/input-stream (dependency-loaded? coord)))))
+
+(defn dependency-pom-properties-map
+  [coord]
+  (pom-prop-map (dependency-pom-properties coord)))
+
+(defn pom-properties-map
+  [prop-or-jarpath]
+  (pom-prop-map
+    (if (instance? Properties prop-or-jarpath)
+      prop-or-jarpath
+      (doto (Properties.) (.load (io/input-stream prop-or-jarpath))))))
 
 (defn pom-xml
   [jarpath]

@@ -1,13 +1,12 @@
 (ns boot.repl-server
   (:require
    [boot.core                              :as core]
+   [boot.repl                              :as repl]
    [boot.from.io.aviso.nrepl               :as pretty]
    [clojure.java.io                        :as io]
    [clojure.tools.nrepl.server             :as server]
    [clojure.tools.nrepl.middleware         :as middleware]
-   [clojure.tools.nrepl.middleware.session :as session])
-  (:import
-   [java.util.concurrent ConcurrentLinkedQueue]))
+   [clojure.tools.nrepl.middleware.session :as session]))
 
 (def ^:private default-opts
   {:bind       nil
@@ -40,37 +39,6 @@
   #'pretty/pretty-middleware
   {:requires #{} :expects #{}})
 
-(def ^:private flash           (ConcurrentLinkedQueue.))
-(def ^:private session-flashes (atom {}))
-
-(defn send-flash [msg] (.add flash msg))
-
-(defn wrap-flash
-  [h]
-  (fn [{:keys [session] :as msg}]
-    (let [ret (h msg)]
-      (when-not (@session-flashes session)
-        (swap! session-flashes assoc session (ConcurrentLinkedQueue.)))
-      (loop [msg (.poll flash)]
-        (when msg
-          (doseq [q (vals @session-flashes)]
-            (.add q msg))
-          (recur (.poll flash))))
-      (when-let [session-err
-                 (some-> @@#'session/sessions (get session) deref (get #'*err*))]
-        (binding [*out* session-err]
-          (when-let [flash (get @session-flashes session)]
-            (loop [msg (.poll flash)]
-              (when msg
-                (println msg) (flush)
-                (recur (.poll flash)))))))
-      ret)))
-
-(middleware/set-descriptor! #'wrap-flash
-  {:requires #{} :expects #{} :handles {}})
-
-(def ^:dynamic *default-middleware* [#'wrap-flash #'pretty/pretty-middleware])
-
 (defn ->var
   [thing]
   (if-not (symbol? thing)
@@ -96,7 +64,8 @@
         init-ns        (or init-ns 'boot.user)
         init-ns-mw     [(wrap-init-ns init-ns)]
         user-mw        (->mw-list middleware)
-        middleware     (concat init-ns-mw *default-middleware* user-mw)
+        default-mw     (->mw-list @repl/*default-middleware*)
+        middleware     (concat init-ns-mw default-mw user-mw)
         handler        (if handler
                          (->var handler)
                          (apply server/default-handler middleware))

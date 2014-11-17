@@ -5,6 +5,7 @@
    [clojure.string       :as string]
    [boot.pod             :as pod]
    [boot.file            :as file]
+   [boot.repl            :as repl]
    [boot.core            :as core]
    [boot.main            :as main]
    [boot.util            :as util]
@@ -118,8 +119,9 @@
 
   [t time MSEC int "The interval in milliseconds."]
 
-  (core/with-pre-wrap
-    (if (zero? (or time 0)) @(promise) (Thread/sleep time))))
+  (if (zero? (or time 0))
+    (core/with-post-wrap @(promise))
+    (core/with-pre-wrap (Thread/sleep time))))
 
 (core/deftask watch
   "Call the next handler whenever source and/or resource files change.
@@ -166,9 +168,10 @@
   If no port is specified the server will choose a random one and the client
   will read the .nrepl-port file and use that.
 
-  The #'boot.repl-server/*default-middleware* dynamic var holds a vector of the
-  default REPL middleware to be included. You may modify this in your build.boot
-  file by calling set! or rebinding the var."
+  The *default-middleware* and *default-dependencies* atoms in the boot.repl-server
+  namespace contain vectors of default REPL middleware and REPL dependencies to
+  be loaded when starting the server. You may modify these in your build.boot
+  file."
 
   [s server         bool  "Start REPL server only."
    c client         bool  "Start REPL client only."
@@ -181,27 +184,25 @@
    p port PORT      int   "The port to listen on and/or connect to."
    n init-ns NS     sym   "The initial REPL namespace."
    m middleware SYM [sym] "The REPL middleware vector."
-   x handler SYM    sym   "The REPL handler, when used middleware option is ignored"]
+   x handler SYM    sym   "The REPL handler (overrides middleware options)."]
 
   (let [srv-opts (select-keys *opts* [:bind :port :init-ns :middleware :handler])
         cli-opts (-> *opts*
-                   (select-keys [:host :port :history])
-                   (assoc :color (not no-color)
-                          :standalone true
-                          :custom-eval eval
-                          :custom-init init
-                          :skip-default-init skip-init))
-        repl-svr (delay (try (require 'clojure.tools.nrepl.server)
-                             (catch Throwable _
-                               (pod/add-dependencies
-                                 (update-in (core/get-env) [:dependencies]
-                                   conj '[org.clojure/tools.nrepl "0.2.4"]))))
-                   (require 'boot.repl-server)
-                   ((resolve 'boot.repl-server/start-server) srv-opts))
+                     (select-keys [:host :port :history])
+                     (assoc :color (not no-color)
+                            :standalone true
+                            :custom-eval eval
+                            :custom-init init
+                            :skip-default-init skip-init))
+        deps     (remove pod/dependency-loaded? @repl/*default-dependencies*)
+        repl-svr (delay (when (seq deps)
+                          (pod/add-dependencies
+                            (assoc (core/get-env) :dependencies deps)))
+                        (require 'boot.repl-server)
+                        ((resolve 'boot.repl-server/start-server) srv-opts))
         repl-cli (delay (pod/call-worker `(boot.repl-client/client ~cli-opts)))]
-    (core/with-pre-wrap
-      (when (or server (not client)) @repl-svr)
-      (when (or client (not server)) @repl-cli))))
+    (comp (core/with-pre-wrap (when (or server (not client)) @repl-svr))
+          (core/with-post-wrap (when (or client (not server)) @repl-cli)))))
 
 (core/deftask pom
   "Create project pom.xml file.
@@ -344,7 +345,7 @@
 
 (core/deftask aot
   "Perform AOT compilation of Clojure namespaces."
-  
+
   [a all          bool   "Compile all namespaces."
    n namespace NS #{sym} "The set of namespaces to compile."]
   
