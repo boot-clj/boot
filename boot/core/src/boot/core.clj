@@ -19,8 +19,7 @@
    java.lang.management.ManagementFactory
    [java.util.concurrent LinkedBlockingQueue TimeUnit]))
 
-(declare watch-dirs sync! on-env! get-env set-env!
-         tmpfile tmpdir ls)
+(declare watch-dirs sync! on-env! get-env set-env! tmpfile tmpdir ls)
 
 (declare ^{:dynamic true :doc "The running version of boot app."}      *app-version*)
 (declare ^{:dynamic true :doc "The running version of boot core."}     *boot-version*)
@@ -84,6 +83,10 @@
 (defn- non-user-temp-dirs [] (-> (apply set/union (map :dir @tempdirs))
                                  (set/difference (user-temp-dirs))))
 
+(defn- rm-any-one-file!
+  [dir]
+  (some->> dir file-seq (filter (memfn isFile)) first io/delete-file))
+
 (defn- sync-user-dirs!
   []
   (doseq [[k d] {:source-paths   (user-source-dirs)
@@ -91,12 +94,12 @@
                  :asset-paths    (user-asset-dirs)}]
     (let [s (get-env k)]
       (when-not (empty? s)
-        (apply file/sync :time (first d) s)))))
+        (rm-any-one-file! (first d))
+        (apply file/sync :hash (first d) s)))))
 
 (defn- set-user-dirs!
   []
   (@src-watcher)
-  (sync-user-dirs!)
   (->> [:source-paths :resource-paths :asset-paths]
     (map get-env)
     (apply set/union)

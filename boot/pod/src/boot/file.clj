@@ -75,8 +75,10 @@
         (spit (name (ManagementFactory/getRuntimeMXBean)))))))
 
 (defn tmpfile
-  [prefix postfix]
-  (doto (java.io.File/createTempFile prefix postfix) .deleteOnExit))
+  ([prefix postfix]
+   (doto (java.io.File/createTempFile prefix postfix) .deleteOnExit))
+  ([prefix postfix dir]
+   (doto (java.io.File/createTempFile prefix postfix dir) .deleteOnExit)))
 
 (defn srcdir->outdir
   [fname srcdir outdir]
