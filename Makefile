@@ -57,7 +57,7 @@ $(podjar): $(verfile) boot/pod/project.clj $(shell find boot/pod/src)
 $(aetherjar): $(verfile) boot/aether/project.clj $(podjar) $(shell find boot/aether/src)
 	(cd boot/aether && lein install && lein uberjar && \
 		mkdir -p ../base/src/main/resources && \
-	 	cp target/aether-$(version)-standalone.jar ../base/src/main/resources/$(aetheruber))
+		cp target/aether-$(version)-standalone.jar ../base/src/main/resources/$(aetheruber))
 
 $(workerjar): $(verfile) boot/worker/project.clj $(shell find boot/worker/src)
 	(cd boot/worker && lein install)

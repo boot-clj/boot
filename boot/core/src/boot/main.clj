@@ -66,8 +66,6 @@
   (let [boot-use '[boot.core boot.util boot.task.built-in]]
     `(~(list 'ns 'boot.user
          (list* :use (concat boot-use import-ns)))
-      '(ns boot.user
-         (:use boot.core boot.util boot.repl boot.task.built-in))
       ~@(when userscript (with-comments "profile" userscript))
       ~@(with-comments "boot script" bootscript)
       (let [boot?# ~boot?]

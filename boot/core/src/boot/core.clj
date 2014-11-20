@@ -11,6 +11,7 @@
     [boot.cli                    :as cli2]
     [boot.file                   :as file]
     [boot.tmpregistry            :as tmp]
+    [boot.tmpdir                 :as tmpd]
     [boot.util                   :as util]
     [boot.from.clojure.tools.cli :as cli])
   (:import
@@ -18,7 +19,8 @@
    java.lang.management.ManagementFactory
    [java.util.concurrent LinkedBlockingQueue TimeUnit]))
 
-(declare temp-dir watch-dirs sync! on-env! get-env set-env!)
+(declare watch-dirs sync! on-env! get-env set-env!
+         tmpfile tmpdir ls)
 
 (declare ^{:dynamic true :doc "The running version of boot app."}      *app-version*)
 (declare ^{:dynamic true :doc "The running version of boot core."}     *boot-version*)
@@ -32,82 +34,55 @@
 (def ^:private boot-env          (atom nil))
 (def ^:private tempdirs          (atom #{}))
 (def ^:private src-watcher       (atom (constantly nil)))
-(def ^:private backup-dirs       (atom {}))
-
-(defrecord TempDir [dir user input output scoped restored])
-
-(defn- filter-keys
-  [maps mask]
-  (->> maps (filter #(= mask (select-keys % (keys mask))))))
 
 (def ^:private masks
   {:user     {:user true}
-   :source   {:input true :output nil}
-   :resource {:input true :output true}
-   :asset    {:input nil :output true}
-   :cache    {:input nil :output nil}
    :input    {:input true}
    :output   {:output true}
-   :scoped   {:scoped true}
-   :restored {:restored true}})
+   :cache    {:input nil :output nil}
+   :asset    {:input nil :output true}
+   :source   {:input true :output nil}
+   :resource {:input true :output true}})
+
+(defn- get-dirs [this masks+]
+  (let [dirs        (:dirs this)
+        has-mask?   #(= %1 (select-keys %2 (keys %1)))
+        filter-keys #(->> %1 (filter (partial has-mask? %2)))]
+    (->> masks+ (map masks) (apply merge) (filter-keys dirs) (map tmpfile) set)))
+
+(defn- get-add-dir [this masks+]
+  (let [user?  (contains? masks+ :user)
+        u-dirs (when-not user? (get-dirs this #{:user}))]
+    (-> this (get-dirs masks+) (set/difference u-dirs) first)))
+
+(defn- get-files [this masks+]
+  (let [dirs (get-dirs this masks+)]
+    (->> this ls (filter (comp dirs tmpdir)) set)))
 
 (defn- temp-dir*
   [key]
   (tmp/mkdir! @tmpregistry key))
 
-(defn- temp-dir!
+(defn- temp-dir**
   [key & masks+]
   (let [k (or key (keyword "boot.core" (str (gensym))))
         m (->> masks+ (map masks) (apply merge))]
     (util/with-let [d (temp-dir* k)]
-      (let [t (map->TempDir (assoc m :dir d))]
+      (let [t (tmpd/map->TmpDir (assoc m :dir d))]
         (swap! tempdirs conj t)
         (when (:input t)
           (set-env! :directories #(conj % (.getPath (:dir t)))))))))
 
-(defn- temp-dirs-by
-  [& masks+]
-  (->> masks+ (map masks) (apply merge) (filter-keys @tempdirs) (map :dir) set))
+(defn- add-user-asset!    [fileset dir] (tmpd/add! fileset (get-add-dir fileset #{:user :asset}) dir))
+(defn- add-user-source!   [fileset dir] (tmpd/add! fileset (get-add-dir fileset #{:user :source}) dir))
+(defn- add-user-resource! [fileset dir] (tmpd/add! fileset (get-add-dir fileset #{:user :resource}) dir))
 
-(defn- temp-files-for
-  [dirset]
-  (->> dirset (mapcat file-seq) (filter (memfn isFile))))
-
-(defn- temp-dir-for
-  [dir-or-file dirset]
-  (->> dirset (some #(and (file/parent? (io/file %) (io/file dir-or-file)) %))))
-
-(defn- all-dirs            [] (set (map :dir @tempdirs)))
-(defn- scoped-dirs         [] (temp-dirs-by :scoped))
-(defn- restored-dirs       [] (temp-dirs-by :restored))
-(defn- user-source-dirs    [] (temp-dirs-by :user :source))
-(defn- user-resource-dirs  [] (temp-dirs-by :user :resource))
-(defn- user-asset-dirs     [] (temp-dirs-by :user :asset))
-(defn- source-dirs         [] (temp-dirs-by :source))
-(defn- resource-dirs       [] (temp-dirs-by :resource))
-(defn- asset-dirs          [] (temp-dirs-by :asset))
-(defn- cache-dirs          [] (temp-dirs-by :cache))
-
-(defn- all-files           [] (temp-files-for (all-dirs)))
-(defn- scoped-files        [] (temp-files-for (scoped-dirs)))
-(defn- restored-files      [] (temp-files-for (restored-dirs)))
-(defn- user-source-files   [] (temp-files-for (user-source-dirs)))
-(defn- user-resource-files [] (temp-files-for (user-resource-dirs)))  
-(defn- user-asset-files    [] (temp-files-for (user-asset-dirs)))
-(defn- source-files        [] (temp-files-for (source-dirs)))
-(defn- resource-files      [] (temp-files-for (resource-dirs)))
-(defn- asset-files         [] (temp-files-for (asset-dirs)))
-(defn- cache-files         [] (temp-files-for (cache-dirs)))
-
-(defn- scoped-file?        [f] (temp-dir-for f (scoped-dirs)))
-(defn- restored-file?      [f] (temp-dir-for f (restored-dirs)))
-(defn- user-source-file?   [f] (temp-dir-for f (user-source-dirs)))
-(defn- user-resource-file? [f] (temp-dir-for f (user-resource-dirs)))  
-(defn- user-asset-file?    [f] (temp-dir-for f (user-asset-dirs)))
-(defn- source-file?        [f] (temp-dir-for f (source-dirs)))
-(defn- resource-file?      [f] (temp-dir-for f (resource-dirs)))
-(defn- asset-file?         [f] (temp-dir-for f (asset-dirs)))
-(defn- cache-file?         [f] (temp-dir-for f (cache-dirs)))
+(defn- user-temp-dirs     [] (get-dirs {:dirs @tempdirs} #{:user}))
+(defn- user-asset-dirs    [] (get-dirs {:dirs @tempdirs} #{:user :asset}))
+(defn- user-source-dirs   [] (get-dirs {:dirs @tempdirs} #{:user :source}))
+(defn- user-resource-dirs [] (get-dirs {:dirs @tempdirs} #{:user :resource}))
+(defn- non-user-temp-dirs [] (-> (apply set/union (map :dir @tempdirs))
+                                 (set/difference (user-temp-dirs))))
 
 (defn- sync-user-dirs!
   []
@@ -128,25 +103,6 @@
     (watch-dirs (fn [_] (sync-user-dirs!)))
     (reset! src-watcher)))
 
-(defn- backup-key
-  [dir]
-  (->> dir .getPath munge keyword))
-
-(defn- backup-dir!
-  [dir]
-  (when-not (get @backup-dirs dir)
-    (let [key (backup-key dir)
-          bak (or (temp-dir key) (temp-dir* key))]
-      (sync! bak dir)
-      (swap! backup-dirs assoc dir bak))))
-
-(defn- restore-backups!
-  []
-  (doseq [[orig backup] @backup-dirs]
-    (file/sync :time orig backup))
-  (reset! backup-dirs {})
-  (sync-user-dirs!))
-
 (defn- do-cleanup!
   []
   (doseq [f @cleanup-fns] (util/guard (f)))
@@ -155,10 +111,9 @@
 (defn- printable-readable?
   "FIXME: document"
   [form]
-  (or
-    (nil? form)
-    (false? form)
-    (try (read-string (pr-str form)) (catch Throwable _))))
+  (or (nil? form)
+      (false? form)
+      (try (read-string (pr-str form)) (catch Throwable _))))
 
 (defn- rm-clojure-dep
   "FIXME: document"
@@ -188,14 +143,14 @@
 (defn- add-wagon!
   "FIXME: document this."
   ([maven-coord scheme-map]
-     (add-wagon! nil [maven-coord] (get-env) scheme-map))
+   (add-wagon! nil [maven-coord] (get-env) scheme-map))
   ([old new env]
-     (add-wagon! old new env nil))
+   (add-wagon! old new env nil))
   ([old new env scheme-map]
-     (doseq [maven-coord new]
-       (pod/call-worker
-         `(boot.aether/add-wagon ~env ~maven-coord ~scheme-map)))
-     new))
+   (doseq [maven-coord new]
+     (pod/call-worker
+       `(boot.aether/add-wagon ~env ~maven-coord ~scheme-map)))
+   new))
 
 (defn- order-set-env-keys
   "FIXME: document"
@@ -217,58 +172,86 @@
   [& body]
   `(doto (Thread. (fn [] ~@body)) (.setDaemon true) .start))
 
-;; Public API, temp dirs ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Tempdir and Fileset API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn cache-dir!    [& [key]]    (temp-dir! key :cache))
-(defn source-dir!   [& [scoped]] (temp-dir! nil :source   (if scoped :scoped :restored)))
-(defn resource-dir! [& [scoped]] (temp-dir! nil :resource (if scoped :scoped :restored)))
-(defn asset-dir!    [& [scoped]] (temp-dir! nil :asset    (if scoped :scoped :restored)))
+(defn temp-dir!
+  "Creates a boot-managed temporary directory, returning a java.io.File."
+  []
+  (temp-dir** nil :cache))
 
-(defn user-dirs     [] (temp-dirs-by :user))
-(defn input-dirs    [] (temp-dirs-by :input))
-(defn output-dirs   [] (temp-dirs-by :output))
+;; TmpFile API
 
-(defn user-files    [] (temp-files-for (user-dirs)))
-(defn input-files   [] (temp-files-for (input-dirs)))
-(defn output-files  [] (temp-files-for (output-dirs)))
+(defn tmppath
+  "Returns the tmpfile's path relative to the fileset root."
+  [tmpfile]
+  (tmpd/path tmpfile))
 
-(defn user-file?    [f] (temp-dir-for f (user-dirs)))
-(defn input-file?   [f] (temp-dir-for f (input-dirs)))
-(defn output-file?  [f] (temp-dir-for f (output-dirs)))
+(defn tmpdir
+  "Returns the temporary directory containing the tmpfile."
+  [tmpfile]
+  (tmpd/dir tmpfile))
 
-(defn tmpfile?
-  "Returns truthy if the file f is a tmpfile managed by the tmpregistry."
-  [f]
-  (tmp/tmpfile? @tmpregistry f))
+(defn tmpfile
+  "Returns the java.io.File object for the tmpfile."
+  [tmpfile]
+  (tmpd/file tmpfile))
 
-(defn temp-dir
-  "Given a key, returns the associated temp dir if one already exists."
-  [key]
-  (let [d (tmp/get @tmpregistry key)]
-    (when (.exists d) d)))
+;; TmpFileSet API
 
-(defn delete-file!
-  "Remove the given Files, fs, from the build fileset. The files must be temp
-  files managed by boot. The difference between this and just using the .delete
-  method of the File object is that this function correctly handles backing up
-  temp dirs which were marked by their owner as being immutable."
-  [& fs]
-  (doseq [f fs]
-    (assert (tmpfile? f) (format "can only delete temp files (%s)" f))
-    (when-let [d (restored-file? f)] (backup-dir! d))
-    (.delete f)))
+(defn ls
+  [fileset]
+  (tmpd/ls fileset))
 
-(defn relative-path
-  "Get the path of a source file relative to the temp directory it's in."
-  [f]
-  (->> (all-dirs)
-    (map #(.getPath (file/relative-to (io/file %) (io/file f))))
-    (some #(and (not= f (io/file %)) (util/guard (io/as-relative-path %)) %))))
+(defn commit!
+  [fileset]
+  (tmpd/commit! fileset))
 
-(defn resource-path
-  "Like relative-path but with forward slash (/) as path separator."
-  [f]
-  (->> f relative-path file/split-path (string/join "/")))
+(defn rm!
+  [fileset & files]
+  (tmpd/rm! fileset files))
+
+(defn user-dirs
+  [fileset]
+  (get-dirs fileset #{:user}))
+
+(defn input-dirs
+  [fileset]
+  (get-dirs fileset #{:input}))
+
+(defn output-dirs
+  [fileset]
+  (get-dirs fileset #{:output}))
+
+(defn user-files
+  [fileset]
+  (get-files fileset #{:user}))
+
+(defn input-files
+  [fileset]
+  (get-files fileset #{:input}))
+
+(defn output-files
+  [fileset]
+  (get-files fileset #{:output}))
+
+(defn add-asset!
+  [fileset dir]
+  (tmpd/add! fileset (get-add-dir fileset #{:asset}) dir))
+
+(defn add-source!
+  [fileset dir]
+  (tmpd/add! fileset (get-add-dir fileset #{:source}) dir))
+
+(defn add-resource!
+  [fileset dir] (tmpd/add! fileset (get-add-dir fileset #{:resource}) dir))
+
+;; Tempdir helpers
+
+(defn empty-dir!
+  "For each directory in dirs, recursively deletes all files and subdirectories.
+  The directories in dirs themselves are not deleted."
+  [& dirs]
+  (apply file/empty-dir! dirs))
 
 (defn sync!
   "Given a dest directory and one or more srcs directories, overlays srcs on
@@ -280,10 +263,7 @@
   ([dest & srcs] (apply file/sync :time dest srcs))
   ([] (apply file/sync :time (get-env :target-path) (output-dirs))))
 
-;; ## Boot Environment
-;;
-;; _These functions are used internally by boot and are not part of the public
-;; API._
+;; Boot Environment ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn watch-dirs
   "Watches dirs for changes and calls callback with set of changed files
@@ -327,9 +307,12 @@
              :repositories   [["clojars"       "http://clojars.org/repo/"]
                               ["maven-central" "http://repo1.maven.org/maven2/"]]})
     (add-watch ::boot #(configure!* %3 %4)))
-  (temp-dir! nil :user :asset)
-  (temp-dir! nil :user :source)
-  (temp-dir! nil :user :resource)
+  (temp-dir** nil :asset)
+  (temp-dir** nil :source)
+  (temp-dir** nil :resource)
+  (temp-dir** nil :user :asset)
+  (temp-dir** nil :user :source)
+  (temp-dir** nil :user :resource)
   (pod/add-shutdown-hook! do-cleanup!))
 
 (defmulti on-env!
@@ -356,12 +339,6 @@
 (defmethod merge-env! :wagons       [key old new env] (add-wagon! old new env))
 (defmethod merge-env! :dependencies [key old new env] (add-dependencies! old new env))
 
-;; ## Boot API Functions
-;;
-;; _Functions provided for use in boot tasks._
-
-;; ## Boot Environment Management Functions
-
 (defn get-env
   "Returns the value associated with the key `k` in the boot environment, or
   `not-found` if the environment doesn't contain key `k` and `not-found` was
@@ -383,14 +360,14 @@
         (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v)))
       (swap! boot-env update-in [k] (partial merge-env! k) v @boot-env))))
 
-;; ## Defining Tasks
+;; Defining Tasks ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro deftask
   "Define a boot task."
   [sym doc argspec & body]
   `(cli2/defclifn ~(vary-meta sym assoc ::task true) ~doc ~argspec ~@body))
 
-;; ## Boot Lifecycle
+;; Boot Lifecycle ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro cleanup
   "Evaluate body after tasks have been run. This macro is meant to be called
@@ -399,20 +376,19 @@
   [& body]
   `(swap! @#'boot.core/cleanup-fns conj (fn [] ~@body)))
 
-(defn make-event
-  "Creates a new event map with base info about the build event. If the `event`
-  argument is given the new event map is merged into it. This event map is what
-  is passed down through the handler functions during the build."
-  ([] (make-event {}))
-  ([event] (merge event {:id (gensym) :time (System/currentTimeMillis)})))
+(defn reset-fileset!
+  [fileset]
+  (-> (or fileset (boot.tmpdir.TmpFileSet. @tempdirs {} (temp-dir* ::blob)))
+      (assoc :tree {})
+      (add-user-asset! (first (user-asset-dirs)))
+      (add-user-source! (first (user-source-dirs)))
+      (add-user-resource! (first (user-resource-dirs)))
+      commit!))
 
-(defn prep-build!
+(defn reset-build!
   "FIXME: document"
-  [& args]
-  (reset! *warnings* 0)
-  (restore-backups!)
-  (doseq [f (scoped-dirs)] (tmp/make-file! ::tmp/dir f)) ; empty scoped dirs
-  (apply make-event args))
+  []
+  (reset! *warnings* 0))
 
 (defn construct-tasks
   "FIXME: document"
@@ -433,8 +409,12 @@
 (defn run-tasks
   "FIXME: document"
   [task-stack]
-  (binding [*warnings* (atom 0)]
-    ((task-stack #(do (sync!) %)) (prep-build!))))
+  (let [sync! #(let [tgt (get-env :target-path)]
+                 (apply file/sync :time tgt (output-dirs %))
+                 (file/delete-empty-subdirs! tgt))]
+    (binding [*warnings* (atom 0)]
+      (reset-build!)
+      ((task-stack #(do (sync! %) %)) (reset-fileset! nil)))))
 
 (defmacro boot
   "Builds the project as if `argv` was given on the command line."
@@ -442,53 +422,33 @@
   (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
         ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
     `(try @(future
-             (run-tasks
-               ~(if (every? string? argv)
-                  `(apply construct-tasks [~@argv])
-                  (->app (map ->list argv)))))
+             (util/with-let [_# nil]
+               (run-tasks
+                 ~(if (every? string? argv)
+                    `(apply construct-tasks [~@argv])
+                    (->app (map ->list argv))))))
           (finally (#'do-cleanup!)))))
 
-;; ## Low-Level Tasks / Task Helpers
-
-(def ^:dynamic *event*    nil)
-
-(defn pre-wrap
-  "This task applies `f` to the event map and any `args`, and then passes the
-  result to its continuation."
-  [f & args]
-  (fn [continue]
-    (fn [event]
-      (continue (apply f event args)))))
+;; Low-Level Tasks, Helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro with-pre-wrap
-  "Emits a task wherein `body` expressions are evaluated for side effects before
-  calling the continuation."
-  [& body]
-  `(fn [continue#]
-     (fn [event#]
-       (binding [*event* event#]
-         ~@body)
-       (continue# event#))))
-
-(defn post-wrap
-  "This task calls its continuation and then applies `f` to it and any `args`,
-  returning the result."
-  [f & args]
-  (fn [continue]
-    (fn [event]
-      (apply f (continue event) args))))
+  [bind & body]
+  `(fn [next-task#]
+     (fn [fileset#]
+       (next-task#
+         (let [~bind fileset#]
+           ~@body)))))
 
 (defmacro with-post-wrap
-  "Emits a task wherein `body` expressions are evaluated for side effects after
-  calling the continuation."
-  [& body]
-  `(fn [continue#]
-     (fn [event#]
-       (continue# event#)
-       (binding [*event* event#]
-         ~@body))))
+  [bind & body]
+  `(fn [next-task#]
+     (fn [fileset#]
+       (let [result# (next-task# fileset#)
+             ~bind   result#]
+         ~@body
+         result#))))
 
-;; ## Task Configuration Macros
+;; Task Configuration Macros ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro replace-task!
   "Given a number of binding form and function pairs, this macro alters the
@@ -527,7 +487,7 @@
            `(replace-task! [t# ~task]
               (fn [& xs#] (apply t# (concat ~opts xs#)))))))
 
-;; ## Public Utility Functions
+;; Task Utility Functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn json-generate
   "Same as cheshire.core/generate-string."

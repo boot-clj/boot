@@ -23,7 +23,7 @@
 (core/deftask help
   "Print usage info and list available tasks."
   []
-  (core/with-pre-wrap
+  (core/with-pre-wrap fileset
     (let [tasks (#'helpers/available-tasks 'boot.user)
           opts  (->> main/cli-opts (mapv (fn [[x y z]] ["" (str x " " y) z])))
           envs  [["" "BOOT_AS_ROOT"         "Set to 'yes' to allow boot to run as root."]
@@ -40,17 +40,18 @@
           br    #(conj % ["" "" ""])]
       (boot.App/usage)
       (printf "\n%s\n"
-        (-> [["" ""] ["Usage:" "boot OPTS <task> TASK_OPTS <task> TASK_OPTS ..."]]
-          (table/table :style :none)
-          with-out-str))
+              (-> [["" ""] ["Usage:" "boot OPTS <task> TASK_OPTS <task> TASK_OPTS ..."]]
+                  (table/table :style :none)
+                  with-out-str))
       (printf "%s\nDo `boot <task> -h` to see usage info and TASK_OPTS for <task>.\n"
-        (-> [["" "" ""]]
-          (into (#'helpers/set-title opts "OPTS:")) (br)
-          (into (#'helpers/set-title (#'helpers/tasks-table tasks) "Tasks:")) (br)
-          (into (#'helpers/set-title envs "Env:")) (br)
-          (into (#'helpers/set-title files "Files:"))
-          (table/table :style :none)
-          with-out-str)))))
+              (-> [["" "" ""]]
+                  (into (#'helpers/set-title opts "OPTS:")) (br)
+                  (into (#'helpers/set-title (#'helpers/tasks-table tasks) "Tasks:")) (br)
+                  (into (#'helpers/set-title envs "Env:")) (br)
+                  (into (#'helpers/set-title files "Files:"))
+                  (table/table :style :none)
+                  with-out-str))
+      fileset)))
 
 (core/deftask speak
   "Audible notifications during build.
@@ -71,7 +72,7 @@
    w warning FILE str "The sound file to play when there are warnings reported."
    f failure FILE str "The sound file to play when the build fails."]
 
-  (let [tmp        (core/cache-dir! ::hear-tmp)
+  (let [tmp        (core/temp-dir!)
         resource   #(vector %2 (format "boot/notify/%s_%s.mp3" %1 %2))
         resources  #(map resource (repeat %) ["success" "warning" "failure"])
         themefiles (into {}
@@ -84,10 +85,10 @@
         success    (or success (:success themefiles))
         warning    (or warning (:warning themefiles))
         failure    (or failure (:failure themefiles))]
-    (fn [continue]
-      (fn [event]
+    (fn [next-task]
+      (fn [fileset]
         (try
-          (util/with-let [ret (continue event)]
+          (util/with-let [_ (next-task fileset)]
             (pod/call-worker
               (if (zero? @core/*warnings*)
                 `(boot.notify/success! ~theme ~success)
@@ -102,15 +103,16 @@
 
   [d deps      bool "Print project dependency graph."
    e env       bool "Print the boot env map."
-   E event     bool "Print the build event data."
+   f fileset   bool "Print the build fileset object."
    u updates   bool "Print newer releases of outdated dependencies."
    s snapshots bool "Include snapshot versions in updates searches."]
 
-  (core/with-pre-wrap
+  (core/with-pre-wrap fileset'
     (when deps    (print (pod/call-worker `(boot.aether/dep-tree ~(core/get-env)))))
     (when env     (println (pr-str (core/get-env))))
-    (when event   (println (pr-str core/*event*)))
-    (when updates (mapv prn (pod/outdated (core/get-env) :snapshots snapshots)))))
+    (when fileset (println (pr-str fileset')))
+    (when updates (mapv prn (pod/outdated (core/get-env) :snapshots snapshots)))
+    fileset'))
 
 (core/deftask wait
   "Wait before calling the next handler.
@@ -120,8 +122,8 @@
   [t time MSEC int "The interval in milliseconds."]
 
   (if (zero? (or time 0))
-    (core/with-post-wrap @(promise))
-    (core/with-pre-wrap (Thread/sleep time))))
+    (core/with-post-wrap _ @(promise))
+    (core/with-pre-wrap fileset (Thread/sleep time) fileset)))
 
 (core/deftask watch
   "Call the next handler whenever source and/or resource files change.
@@ -132,13 +134,14 @@
    d debounce MSEC long "The time to wait (millisec) for filesystem to settle down."]
 
   (pod/require-in @pod/worker-pod "boot.watcher")
-  (let [q        (LinkedBlockingQueue.)
-        srcdirs  (map (memfn getPath) (core/user-dirs))
-        watchers (map file/make-watcher srcdirs)
-        paths    (into-array String srcdirs)
-        k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
-    (fn [continue]
-      (fn [event]
+  (fn [next-task]
+    (fn [fileset]
+      (let [q        (LinkedBlockingQueue.)
+            return   (atom fileset)
+            srcdirs  (map (memfn getPath) (core/user-dirs fileset))
+            watchers (map file/make-watcher srcdirs)
+            paths    (into-array String srcdirs)
+            k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
         (when-not quiet
           (util/info "Starting file watcher (CTRL-C to quit)...\n\n"))
         (loop [ret (util/guard [(.take q)])]
@@ -148,16 +151,17 @@
               (let [start   (System/currentTimeMillis)
                     etime   #(- (System/currentTimeMillis) start)
                     changed (->> (map #(%) watchers)
-                              (reduce (partial merge-with set/union))
-                              :time (filter (memfn exists)) set)]
+                                 (reduce (partial merge-with set/union))
+                                 :time (filter (memfn exists)) set)]
                 (when-not (empty? changed)
                   (binding [*out* (if quiet (new java.io.StringWriter) *out*)
                             *err* (if quiet (new java.io.StringWriter) *err*)]
-                    (-> event core/prep-build! continue)
-                    #_(map #(%) watchers)
+                    (core/reset-build!)
+                    (reset! return (-> fileset core/reset-fileset! core/commit! next-task))
                     (util/info "Elapsed time: %.3f sec\n\n" (float (/ (etime) 1000)))))
                 (recur (util/guard [(.take q)]))))))
-        (.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)))))
+        (.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)
+        @return))))
 
 (core/deftask repl
   "Start a REPL session for the current project.
@@ -201,8 +205,12 @@
                         (require 'boot.repl-server)
                         ((resolve 'boot.repl-server/start-server) srv-opts))
         repl-cli (delay (pod/call-worker `(boot.repl-client/client ~cli-opts)))]
-    (comp (core/with-pre-wrap (when (or server (not client)) @repl-svr))
-          (core/with-post-wrap (when (or client (not server)) @repl-cli)))))
+    (comp
+      (core/with-pre-wrap fileset
+        (when (or server (not client)) @repl-svr)
+        fileset)
+      (core/with-post-wrap _
+        (when (or client (not server)) @repl-cli)))))
 
 (core/deftask pom
   "Create project pom.xml file.
@@ -216,21 +224,22 @@
    l license KEY=VAL  {kw str} "The project license map (KEY in name, url)."
    s scm KEY=VAL      {kw str} "The project scm map (KEY in url, tag)."]
 
-  (let [tgt  (core/resource-dir! :scoped)
-        tag  (or (:tag scm) (util/guard (git/last-commit)) "HEAD")
-        scm  (when scm (assoc scm :tag tag))
-        opts (assoc *opts* :scm scm :dependencies (:dependencies (core/get-env)))]
-    (core/with-pre-wrap
+  (let [tgt (core/temp-dir!)]
+    (core/with-pre-wrap fileset
+      (let [tag  (or (:tag scm) (util/guard (git/last-commit)) "HEAD")
+            scm  (when scm (assoc scm :tag tag))
+            opts (assoc *opts* :scm scm :dependencies (:dependencies (core/get-env)))]
+      (core/empty-dir! tgt)
       (when-not (and project version)
         (throw (Exception. "need project and version to create pom.xml")))
       (let [[gid aid] (util/extract-ids project)
             pomdir    (io/file tgt "META-INF" "maven" gid aid)
             xmlfile   (io/file pomdir "pom.xml")
             propfile  (io/file pomdir "pom.properties")]
-        (when-not (and (.exists xmlfile) (.exists propfile))
-          (util/info "Writing %s and %s...\n" (.getName xmlfile) (.getName propfile))
-          (pod/call-worker
-            `(boot.pom/spit-pom! ~(.getPath xmlfile) ~(.getPath propfile) ~opts)))))))
+        (util/info "Writing %s and %s...\n" (.getName xmlfile) (.getName propfile))
+        (pod/call-worker
+          `(boot.pom/spit-pom! ~(.getPath xmlfile) ~(.getPath propfile) ~opts))
+        (-> fileset (core/add-resource! tgt) core/commit!))))))
 
 (core/deftask add-src
   "Add source files to fileset.
@@ -242,10 +251,12 @@
   [i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt (core/asset-dir!)]
-    (core/with-pre-wrap
+  (core/with-pre-wrap fileset
+    (let [in  (core/input-dirs fileset)
+          out (core/output-dirs fileset)
+          src (set/difference in out)]
       (util/info "Adding source files...\n")
-      (apply core/sync! tgt (set/difference (core/input-dirs) (core/output-dirs))))))
+      (-> (reduce core/add-resource! fileset src) core/commit!))))
 
 (core/deftask add-repo
   "Add all files in project git repo to fileset.
@@ -262,11 +273,13 @@
    i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt (core/resource-dir! :scoped)]
-    (core/with-pre-wrap
+  (let [tgt (core/temp-dir!)]
+    (core/with-pre-wrap fileset
+      (core/empty-dir! tgt)
       (util/info "Adding repo files...\n")
-      (doseq [p (core/git-files :ref ref :untracked untracked) :let [f (io/file p)]]
-        (file/copy-with-lastmod f (io/file tgt p))))))
+      (doseq [p (core/git-files :ref ref :untracked untracked)]
+        (file/copy-with-lastmod (io/file p) (io/file tgt p)))
+      (-> fileset (core/add-resource! tgt) core/commit!))))
 
 (core/deftask uber
   "Add jar entries from dependencies to fileset.
@@ -293,17 +306,17 @@
    i include REGEX       #{str} "The set of regexes that paths must match."
    x exclude REGEX       #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt        (core/resource-dir!)
+  (let [tgt        (core/temp-dir!)
         dfl-scopes #{"compile" "runtime" "provided"}
         scopes     (-> dfl-scopes
-                     (set/union include-scope)
-                     (set/difference exclude-scope))
+                       (set/union include-scope)
+                       (set/difference exclude-scope))
         include    (map re-pattern include)
         exclude    (map re-pattern exclude)
         scope?     #(contains? scopes (:scope (util/dep-as-map %)))
         jars       (-> (core/get-env)
-                     (update-in [:dependencies] (partial filter scope?))
-                     pod/resolve-dependency-jars)
+                       (update-in [:dependencies] (partial filter scope?))
+                       pod/resolve-dependency-jars)
         add-uber   (delay
                      (util/info "Adding uberjar entries...\n")
                      (doseq [jar jars]
@@ -317,55 +330,63 @@
                                    outfile (apply io/file tgt segs)]
                                (when-not (or (.exists outfile) (= "META-INF" (first segs)))
                                  (pod/copy-url url-str outfile))))))))]
-    (core/with-pre-wrap @add-uber)))
+    (core/with-pre-wrap fileset
+      @add-uber
+      (-> fileset (core/add-resource! tgt) core/commit!))))
 
 (core/deftask web
   "Create project web.xml file.
 
   The --serve option is required. The others are optional."
 
-  [s serve SYM        sym "The 'serve' callback function."
-   c create SYM       sym "The 'create' callback function."
-   d destroy SYM      sym "The 'destroy' callback function."]
+  [s serve SYM   sym "The 'serve' callback function."
+   c create SYM  sym "The 'create' callback function."
+   d destroy SYM sym "The 'destroy' callback function."]
 
-  (let [tgt      (core/resource-dir! :scoped)
-        xmlfile  (io/file tgt "WEB-INF" "web.xml")
-        implp    'tailrecursion/clojure-adapter-servlet
-        implv    "0.1.0-SNAPSHOT"]
-    (core/with-pre-wrap
-      (when-not (.exists xmlfile)
-        (-> (and (symbol? serve) (namespace serve))
-          (assert "no serve function specified"))
-        (util/info "Adding servlet impl...\n")
-        (pod/copy-dependency-jar-entries
-          (core/get-env) tgt [implp implv] #"^tailrecursion/.*\.(class|clj)$")
-        (util/info "Writing %s...\n" (.getName xmlfile))
-        (pod/call-worker
-          `(boot.web/spit-web! ~(.getPath xmlfile) ~serve ~create ~destroy))))))
+  (let [tgt     (core/temp-dir!)
+        xmlfile (io/file tgt "WEB-INF" "web.xml")
+        implp   'tailrecursion/clojure-adapter-servlet
+        implv   "0.1.0-SNAPSHOT"
+        classes #"^tailrecursion/.*\.(class|clj)$"
+        webxml  (delay
+                  (util/info "Adding servlet impl...\n")
+                  (pod/copy-dependency-jar-entries
+                    (core/get-env) tgt [implp implv] classes)
+                  (util/info "Writing %s...\n" (.getName xmlfile))
+                  (pod/call-worker
+                    `(boot.web/spit-web!
+                       ~(.getPath xmlfile) ~serve ~create ~destroy)))]
+    (core/with-pre-wrap fileset
+      (assert (and (symbol? serve) (namespace serve))
+              (format "serve function must be namespaced symbol (%s)" serve))
+      @webxml
+      (-> fileset (core/add-resource! tgt) core/commit!))))
 
 (core/deftask aot
   "Perform AOT compilation of Clojure namespaces."
 
   [a all          bool   "Compile all namespaces."
    n namespace NS #{sym} "The set of namespaces to compile."]
-  
-  (let [tgt (core/resource-dir! :scoped)]
-    (core/with-pre-wrap
-      (let [nses (->> (core/input-files)
-                   (map core/relative-path)
-                   (filter #(.endsWith % ".clj"))
-                   (map util/path->ns)
-                   (filter (if all (constantly true) #(contains? namespace %))))]
+
+  (let [tgt (core/temp-dir!)]
+    (core/with-pre-wrap fileset
+      (core/empty-dir! tgt)
+      (let [nses (->> (core/input-files fileset)
+                      (map core/tmppath)
+                      (filter #(.endsWith % ".clj"))
+                      (map util/path->ns)
+                      (filter #(or all (contains? namespace %))))]
         (binding [*compile-path* (.getPath tgt)]
           (doseq [ns nses]
             (util/info "Compiling %s...\n" ns)
-            (compile ns)))))))
+            (compile ns))))
+      (-> fileset (core/add-resource! tgt) core/commit!))))
 
 (core/deftask javac
   "Compile java sources."
   []
-  (let [tgt (core/resource-dir! :scoped)]
-    (core/with-pre-wrap
+  (let [tgt (core/temp-dir!)]
+    (core/with-pre-wrap fileset
       (let [throw?    (atom nil)
             diag-coll (DiagnosticCollector.)
             compiler  (ToolProvider/getSystemJavaCompiler)
@@ -374,25 +395,27 @@
             handler   {Diagnostic$Kind/ERROR util/fail
                        Diagnostic$Kind/WARNING util/warn
                        Diagnostic$Kind/MANDATORY_WARNING util/warn}
-            srcs      (some->> (core/input-files)
-                        (core/by-ext [".java"])
-                        seq
-                        (into-array File)
-                        Arrays/asList
-                        (.getJavaFileObjectsFromFiles file-mgr))]
+            srcs      (some->> (core/input-files fileset)
+                               (map core/tmpfile)
+                               (core/by-ext [".java"])
+                               seq
+                               (into-array File)
+                               Arrays/asList
+                               (.getJavaFileObjectsFromFiles file-mgr))]
         (when srcs
           (util/info "Compiling Java classes...\n")
           (-> compiler (.getTask *err* file-mgr diag-coll opts nil srcs) .call)
           (doseq [d (.getDiagnostics diag-coll) :let [k (.getKind d)]]
             (when (= Diagnostic$Kind/ERROR k) (reset! throw? true))
-            ((handler k util/info)
-              "%s: %s, line %d: %s\n"
-              (.toString k)
-              (.. d getSource getName)
-              (.getLineNumber d)
-              (.getMessage d nil)))
+            (let [log (handler k util/info)]
+              (log "%s: %s, line %d: %s\n"
+                   (.toString k)
+                   (.. d getSource getName)
+                   (.getLineNumber d)
+                   (.getMessage d nil))))
           (.close file-mgr)
-          (when @throw? (throw (Exception. "java compiler error"))))))))
+          (when @throw? (throw (Exception. "java compiler error")))))
+      (-> fileset (core/add-resource! tgt) core/commit!))))
 
 (core/deftask jar
   "Build a jar file for the project.
@@ -408,20 +431,25 @@
    i include REGEX       #{str} "The set of regexes that paths must match."
    x exclude REGEX       #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt (core/resource-dir! :scoped)]
-    (core/with-pre-wrap
-      (let [pomprop (->> (core/output-files) (core/by-name ["pom.properties"]) first)
-            [aid v] (some->> pomprop pod/pom-properties-map ((juxt :artifact-id :version)))
+  (let [tgt (core/temp-dir!)]
+    (core/with-pre-wrap fileset
+      (core/empty-dir! tgt)
+      (let [pomprop (->> (core/output-files fileset)
+                         (map core/tmpfile)
+                         (core/by-name ["pom.properties"])
+                         first)
+            [aid v] (some->> pomprop
+                             pod/pom-properties-map
+                             ((juxt :artifact-id :version)))
             jarname (or file (and aid v (str aid "-" v ".jar")) "project.jar")
             jarfile (io/file tgt jarname)]
-        (when-not (.exists jarfile)
-          (let [index (->> (core/output-files)
-                        (filter (partial file/keep-filters? include exclude))
-                        (map (juxt core/relative-path (memfn getPath))))]
-            (util/info "Writing %s...\n" (.getName jarfile))
-            (pod/call-worker
-              `(boot.jar/spit-jar! ~(.getPath jarfile) ~index ~manifest ~main))
-            (doseq [[_ f] index] (core/delete-file! (io/file f)))))))))
+        (let [keep?   (partial file/keep-filters? include exclude)
+              entries (->> (core/output-files fileset) (filter #(keep? (core/tmpfile %))))
+              index   (->> entries (map (juxt core/tmppath #(.getPath (core/tmpfile %)))))]
+          (util/info "Writing %s...\n" (.getName jarfile))
+          (pod/call-worker
+            `(boot.jar/spit-jar! ~(.getPath jarfile) ~index ~manifest ~main))
+          (-> (apply core/rm! fileset entries) (core/add-resource! tgt) core/commit!))))))
 
 (core/deftask war
   "Create war file for web deployment.
@@ -434,26 +462,26 @@
    i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt (core/resource-dir! :scoped)]
-    (core/with-pre-wrap
+  (let [tgt (core/temp-dir!)]
+    (core/with-pre-wrap fileset
+      (core/empty-dir! tgt)
       (let [warname (or file "project.war")
             warfile (io/file tgt warname)
             inf?    #(contains? #{"META-INF" "WEB-INF"} %)]
-        (when-not (.exists warfile)
-          (let [->war #(let [r    (core/relative-path %)
+        (let [->war   #(let [r    (core/tmppath %)
                              r'   (file/split-path r)
-                             path (into ["WEB-INF"]
-                                    (if (.endsWith r ".jar")
-                                      ["lib" (last r')]
-                                      (into ["classes"] r')))]
+                             path (->> (if (.endsWith r ".jar")
+                                         ["lib" (last r')]
+                                         (into ["classes"] r'))
+                                       (into ["WEB-INF"]))]
                          (if (inf? (first r')) r (.getPath (apply io/file path))))
-                index (->> (core/output-files)
-                        (filter (partial file/keep-filters? include exclude))
-                        (mapv (juxt ->war (memfn getPath))))]
-            (util/info "Writing %s...\n" (.getName warfile))
-            (pod/call-worker
-              `(boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))
-            (doseq [[_ f] index] (core/delete-file! (io/file f)))))))))
+              keep?   (partial file/keep-filters? include exclude)
+              entries (->> (core/output-files fileset) (filter (comp keep? core/tmpfile)))
+              index   (->> entries (mapv (juxt ->war #(.getPath (core/tmpfile %)))))]
+          (util/info "Writing %s...\n" (.getName warfile))
+          (pod/call-worker
+            `(boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))
+          (-> (apply fileset core/rm! entries) (core/add-resource! tgt) core/commit!))))))
 
 (core/deftask zip
   "Build a zip file for the project.
@@ -466,18 +494,19 @@
    i include REGEX       #{str} "The set of regexes that paths must match."
    x exclude REGEX       #{str} "The set of regexes that paths must not match."]
 
-  (let [tgt (core/resource-dir! :scoped)]
-    (core/with-pre-wrap
+  (let [tgt (core/temp-dir!)]
+    (core/with-pre-wrap fileset
+      (core/empty-dir! tgt)
       (let [zipname (or file "project.zip")
             zipfile (io/file tgt zipname)]
         (when-not (.exists zipfile)
-          (let [index (->> (core/output-files)
-                        (filter (partial file/keep-filters? include exclude))
-                        (map (juxt core/relative-path (memfn getPath))))]
+          (let [keep?   (partial file/keep-filters? include exclude)
+                entries (->> (core/output-files fileset) (filter (comp keep? core/tmpfile)))
+                index   (->> entries (map (juxt core/tmppath #(.getPath (core/tmpfile %)))))]
             (util/info "Writing %s...\n" (.getName zipfile))
             (pod/call-worker
               `(boot.jar/spit-zip! ~(.getPath zipfile) ~index))
-            (doseq [[_ f] index] (core/delete-file! (io/file f)))))))))
+            (-> (apply fileset core/rm! entries) (core/add-resource! tgt) core/commit!)))))))
 
 (core/deftask install
   "Install project jar to local Maven repository.
@@ -489,14 +518,17 @@
 
   [f file PATH str "The jar file to install."]
 
-  (core/with-pre-wrap
+  (core/with-pre-wrap fileset
     (let [jarfiles (or (and file [(io/file file)])
-                     (->> (core/output-files) (core/by-ext [".jar"])))]
+                       (->> (core/output-files fileset)
+                            (map core/tmpfile)
+                            (core/by-ext [".jar"])))]
       (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
       (doseq [jarfile jarfiles]
         (util/info "Installing %s...\n" (.getName jarfile))
         (pod/call-worker
-          `(boot.aether/install ~(core/get-env) ~(.getPath jarfile)))))))
+          `(boot.aether/install ~(core/get-env) ~(.getPath jarfile)))))
+    fileset))
 
 (core/deftask push
   "Deploy jar file to a Maven repository.
@@ -519,37 +551,42 @@
    T ensure-tag TAG       str  "The SHA1 of the commit the pom's scm tag must contain."
    V ensure-version VER   str  "The version the jar's pom must contain."]
 
-  (let [tgt (core/resource-dir! :scoped)]
-    (core/with-pre-wrap
+  (let [tgt (core/temp-dir!)]
+    (core/with-pre-wrap fileset
+      (core/empty-dir! tgt)
       (let [jarfiles (or (and file [(io/file file)])
-                       (->> (core/output-files) (core/by-ext [".jar"])))
-            r        (-> (->> (core/get-env :repositories) (into {})) (get repo))]
+                         (->> (core/output-files fileset)
+                              (map core/tmpfile)
+                              (core/by-ext [".jar"])))
+            repo-map (->> (core/get-env :repositories) (into {}))
+            r        (get repo-map repo)]
         (when-not (and r (seq jarfiles))
           (throw (Exception. "missing jar file or repo not found")))
         (doseq [f jarfiles]
           (let [{{t :tag} :scm
-                 v :version}  (pod/call-worker `(boot.pom/pom-xml-parse ~(.getPath f)))
-                 b            (util/guard (git/branch-current))
-                 clean?       (util/guard (git/clean?))
-                 snapshot?    (.endsWith v "-SNAPSHOT")
-                 artifact-map (when gpg-sign
-                                (util/info "Signing %s...\n" (.getName f))
-                                (helpers/sign-jar tgt f gpg-passphrase gpg-keyring gpg-user-id))]
+                 v :version} (pod/call-worker `(boot.pom/pom-xml-parse ~(.getPath f)))
+                b            (util/guard (git/branch-current))
+                clean?       (util/guard (git/clean?))
+                snapshot?    (.endsWith v "-SNAPSHOT")
+                artifact-map (when gpg-sign
+                               (util/info "Signing %s...\n" (.getName f))
+                               (helpers/sign-jar tgt f gpg-passphrase gpg-keyring gpg-user-id))]
             (assert (or (not ensure-branch) (= b ensure-branch))
-              (format "current git branch is %s but must be %s" b ensure-branch))
+                    (format "current git branch is %s but must be %s" b ensure-branch))
             (assert (or (not ensure-clean) clean?)
-              "project repo is not clean")
+                    "project repo is not clean")
             (assert (or (not ensure-release) (not snapshot?))
-              (format "not a release version (%s)" v))
+                    (format "not a release version (%s)" v))
             (assert (or (not ensure-snapshot) snapshot?)
-              (format "not a snapshot version (%s)" v))
+                    (format "not a snapshot version (%s)" v))
             (assert (or (not ensure-tag) (= t ensure-tag))
-              (format "scm tag in pom doesn't match (%s, %s)" t ensure-tag))
+                    (format "scm tag in pom doesn't match (%s, %s)" t ensure-tag))
             (assert (or (not ensure-version) (= v ensure-version))
-              (format "jar version doesn't match project version (%s, %s)" v ensure-version))
+                    (format "jar version doesn't match project version (%s, %s)" v ensure-version))
             (when tag
               (util/info "Creating tag %s...\n" v)
               (git/tag v "release"))
             (util/info "Deploying %s...\n" (.getName f))
             (pod/call-worker
-              `(boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f) ~artifact-map))))))))
+              `(boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f) ~artifact-map)))))
+      fileset)))

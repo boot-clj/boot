@@ -1,9 +1,9 @@
 (ns boot.file
   (:require
-   [boot.from.digest :as d]
+   [clojure.java.io  :as io]
+   [clojure.set      :as set]
    [clojure.data     :as data]
-   [clojure.java.io  :refer [copy file delete-file make-parents]]
-   [clojure.set      :refer [union intersection difference]])
+   [boot.from.digest :as digest])
   (:import
    [java.nio.file Files]
    [java.lang.management ManagementFactory])
@@ -14,11 +14,11 @@
 (def ^:dynamic *ignore*      nil)
 (def ^:dynamic *sync-delete* true)
 
-(defn file? [f] (when (try (.isFile (file f)) (catch Throwable _)) f))
-(defn dir? [f] (when (try (.isDirectory (file f)) (catch Throwable _)) f))
-(defn exists? [f] (when (try (.exists (file f)) (catch Throwable _)) f))
-(defn path [f] (.getPath (file f)))
-(defn name [f] (.getName (file f)))
+(defn file? [f] (when (try (.isFile (io/file f)) (catch Throwable _)) f))
+(defn dir? [f] (when (try (.isDirectory (io/file f)) (catch Throwable _)) f))
+(defn exists? [f] (when (try (.exists (io/file f)) (catch Throwable _)) f))
+(defn path [f] (.getPath (io/file f)))
+(defn name [f] (.getName (io/file f)))
 (defn relative-to [base f] (.relativize (.toURI base) (.toURI f)))
 (defn file-seq [dir] (when dir (clojure.core/file-seq dir)))
 
@@ -27,10 +27,25 @@
 
 (defn clean! [& files]
   (doseq [f files]
-    (doall (->> f file file-seq (keep file?) (map #(delete-file % true))))))
+    (doall (->> f io/file file-seq (keep file?) (map #(io/delete-file % true))))))
+
+(defn empty-dir!
+  [& dirs]
+  (let [{files true dirs' false}
+        (->> (map io/file dirs)
+             (mapcat (comp rest file-seq))
+             (group-by (memfn isFile)))
+        to-rm (concat files (reverse dirs'))]
+    (doseq [f to-rm] (io/delete-file f true))))
+
+(defn delete-empty-subdirs!
+  [dir]
+  (let [empty-dir? #(and (.isDirectory %) (empty? (.list %)))
+        empty-subs (->> dir io/file file-seq (filter empty-dir?))]
+    (doseq [f empty-subs] (io/delete-file f true))))
 
 (defn parent-seq [f]
-  (->> f file (iterate #(.getParentFile %)) (take-while identity)))
+  (->> f io/file (iterate #(.getParentFile %)) (take-while identity)))
 
 (defn split-path [p]
   (->> p parent-seq reverse (map (memfn getName))))
@@ -40,20 +55,20 @@
 
 (defn up-parents
   [f base & parts]
-  (->> (file f)
-    (relative-to (file base))
+  (->> (io/file f)
+    (relative-to (io/file base))
     (.getPath)
     parent-seq
     butlast
     (map (constantly ".."))
     (concat (reverse parts))
     reverse
-    (apply file)
+    (apply io/file)
     (.getPath)))
 
 (defn lockfile
   [f]
-  (let [f (file f)]
+  (let [f (io/file f)]
     (when (.createNewFile f)
       (doto f
         .deleteOnExit
@@ -65,25 +80,25 @@
 
 (defn srcdir->outdir
   [fname srcdir outdir]
-  (.getPath (file outdir (.getPath (relative-to (file srcdir) (file fname))))))
+  (.getPath (io/file outdir (.getPath (relative-to (io/file srcdir) (io/file fname))))))
 
 (defn delete-all
   [dir]
   (if (exists? dir)
-    (mapv #(.delete %) (reverse (rest (file-seq (file dir)))))))
+    (mapv #(.delete %) (reverse (rest (file-seq (io/file dir)))))))
 
 (defn copy-with-lastmod
   [src-file dst-file]
-  (make-parents dst-file)
+  (io/make-parents dst-file)
   (when (.exists dst-file) (.delete dst-file))
   (Files/createLink (.toPath dst-file) (.toPath src-file)))
 
 (defn copy-files
   [src dest]
   (if (exists? src)
-    (let [files  (map #(.getPath %) (filter file? (file-seq (file src)))) 
+    (let [files  (map #(.getPath %) (filter file? (file-seq (io/file src)))) 
           outs   (map #(srcdir->outdir % src dest) files)]
-      (mapv copy-with-lastmod (map file files) (map file outs)))))
+      (mapv copy-with-lastmod (map io/file files) (map io/file outs)))))
 
 (defn select-keys-by [m pred?]
   (select-keys m (filter pred? (keys m))))
@@ -95,18 +110,18 @@
          ign? #(and *ignore* (*ignore* %))]
      (set (mapv mapf (filter (memfn isFile) (remove ign? (file-seq dir)))))))
   ([dir1 dir2 & dirs]
-   (reduce union (map dir-set (list* dir1 dir2 dirs)))))
+   (reduce set/union (map dir-set (list* dir1 dir2 dirs)))))
 
 (defn dir-map
   [& dirs]
   (->>
-    (apply dir-set (mapv file dirs))
+    (apply dir-set (mapv io/file dirs))
     (mapv #(vector (.getPath (:rel %)) %))
     (into {})))
 
 (defn dir-map-ext
   [exts & dirs]
-  (let [ext  #(let [f (name (file %))] (subs f (.lastIndexOf f ".")))
+  (let [ext  #(let [f (name (io/file %))] (subs f (.lastIndexOf f ".")))
         ext? #(contains? exts (ext %))]
     (select-keys-by (apply dir-map dirs) ext?)))
 
@@ -115,21 +130,21 @@
   ([dst-map src-map algo] 
    (let [[created deleted modified]
          (data/diff (set (keys src-map)) (set (keys dst-map)))
-         algos {:hash #(not= (d/md5 (:abs (src-map %)))
-                             (d/md5 (:abs (dst-map %)))) 
+         algos {:hash #(not= (digest/md5 (:abs (src-map %)))
+                             (digest/md5 (:abs (dst-map %)))) 
                 :time #(< (:mod (dst-map %)) (:mod (src-map %)))} 
          modified (set (filter (algos algo) modified))]
-     [(union created modified) deleted])))
+     [(set/union created modified) deleted])))
 
 (defn diff
   [algo dst src & srcs]
-  (let [d (dir-map (file dst))
+  (let [d (dir-map (io/file dst))
         s (->> (cons src srcs)
-            (map file)
+            (map io/file)
             (apply dir-map))
         [to-cp to-rm] (what-changed d s algo)
-        cp (map #(vector :cp (:abs (s %)) (file dst %)) to-cp) 
-        rm (map #(vector :rm (file dst %)) to-rm)]
+        cp (map #(vector :cp (:abs (s %)) (io/file dst %)) to-cp) 
+        rm (map #(vector :rm (io/file dst %)) to-rm)]
     (concat cp rm)))
 
 (defn match-filter?
@@ -157,10 +172,10 @@
   (let [prev (atom nil)]
     (fn []
       (let [only-file #(filter file? %)
-            make-info #(guard (vector [% (.lastModified %)] [% (d/md5 %)])) 
+            make-info #(guard (vector [% (.lastModified %)] [% (digest/md5 %)])) 
             file-info #(remove nil? (mapcat make-info %)) 
-            info      (->> dir file file-seq only-file file-info set)
-            mods      (difference (union info @prev) (intersection info @prev))
+            info      (->> dir io/file file-seq only-file file-info set)
+            mods      (set/difference (set/union info @prev) (set/intersection info @prev))
             by        #(->> %2 (filter (comp %1 second)) (map first) set)]
         (reset! prev info)
         {:hash (by string? mods) :time (by number? mods)}))))

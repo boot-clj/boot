@@ -17,17 +17,18 @@
 (defn- ^{:boot/from :technomancy/leiningen} wrap-init-ns
   [init-ns]
   (with-local-vars
-      [wrap-init-ns'
-       (fn [h]
-         ;; this needs to be a var, since it's in the nREPL session
-         (with-local-vars [init-ns-sentinel nil]
-           (fn [{:keys [session] :as msg}]
-             (when-not (@session init-ns-sentinel)
-               (swap! session assoc
-                 init-ns-sentinel true
-                 (var *ns*)       (try (require init-ns) (create-ns init-ns)
-                                       (catch Throwable t (create-ns 'user)))))
-             (h msg))))]
+    [wrap-init-ns'
+     (fn [h]
+       ;; this needs to be a var, since it's in the nREPL session
+       (with-local-vars [init-ns-sentinel nil]
+         (fn [{:keys [session] :as msg}]
+           (when-not (@session init-ns-sentinel)
+             (swap! session assoc
+                    init-ns-sentinel true
+                    (var *ns*)       (try (require init-ns)
+                                          (create-ns init-ns)
+                                          (catch Throwable t (create-ns 'user)))))
+           (h msg))))]
     (doto wrap-init-ns'
       ;; set-descriptor! currently nREPL only accepts a var
       (middleware/set-descriptor!
@@ -44,7 +45,7 @@
   (if-not (symbol? thing)
     thing
     (do (assert (and (symbol? thing) (namespace thing))
-          (format "expected namespaced symbol (%s)" thing))
+                (format "expected namespaced symbol (%s)" thing))
         (require (symbol (namespace thing)))
         (resolve thing))))
 
@@ -70,8 +71,8 @@
                          (->var handler)
                          (apply server/default-handler middleware))
         opts           (->> (-> (assoc opts :handler handler)
-                              (select-keys [:bind :port :handler]))
-                         (reduce-kv #(if-not %3 %1 (assoc %1 %2 %3)) {}))
+                                (select-keys [:bind :port :handler]))
+                            (reduce-kv #(if-not %3 %1 (assoc %1 %2 %3)) {}))
         {:keys [port]} (apply server/start-server (mapcat identity opts))
         bind           (or (:bind opts) "0.0.0.0")]
     (doto (io/file ".nrepl-port") .deleteOnExit (spit port))
