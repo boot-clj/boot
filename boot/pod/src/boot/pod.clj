@@ -231,15 +231,14 @@
 
 (defn outdated
   [env & {:keys [snapshots]}]
-  (let [vers (if snapshots "(0,)" "RELEASE")
-        olds (->> env :dependencies
-               (map (comp vec (partial take 2))))
-        syms (->> olds (map first) set)
-        sym? #(contains? syms (first %))
-        deps (->> olds (map (comp #(conj % vers) vector first)))]
-    (->> deps (assoc env :dependencies) resolve-dependencies
-      (map :dep) (filter #(and (contains? syms (first %))
-                            (not (contains? (set olds) %)))))))
+  (let [v+ (if snapshots "(0,)" "RELEASE")]
+    (->> (for [[p v & _ :as coord] (->> env :dependencies (map canonical-coord))]
+           (util/guard
+             (let [env' (-> env (assoc :dependencies [(assoc coord 1 v+)]))
+                   [p' v' & _ :as coord'] (->> (map :dep (resolve-dependencies env'))
+                                               (filter #(= p (first %))) first)]
+               (and (= p p') (not= v v') coord))))
+         (filter identity))))
 
 (defn add-dependencies
   [env]
