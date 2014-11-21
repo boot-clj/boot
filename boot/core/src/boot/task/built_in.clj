@@ -149,10 +149,8 @@
               (recur (conj ret more))
               (let [start   (System/currentTimeMillis)
                     etime   #(- (System/currentTimeMillis) start)
-                    ign?    (git/make-gitignore-matcher)
                     changed (->> (map #(%) watchers)
-                              (reduce (partial merge-with set/union))
-                              :time (remove ign?) set)]
+                              (reduce (partial merge-with set/union)) :time set)]
                 (when-not (empty? changed)
                   (binding [*out* (if quiet (new java.io.StringWriter) *out*)
                             *err* (if quiet (new java.io.StringWriter) *err*)]
