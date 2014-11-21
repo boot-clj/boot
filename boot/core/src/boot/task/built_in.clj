@@ -396,9 +396,8 @@
                        Diagnostic$Kind/WARNING util/warn
                        Diagnostic$Kind/MANDATORY_WARNING util/warn}
             srcs      (some->> (core/input-files fileset)
-                               (map core/tmpfile)
                                (core/by-ext [".java"])
-                               seq
+                               (map core/tmpfile)
                                (into-array File)
                                Arrays/asList
                                (.getJavaFileObjectsFromFiles file-mgr))]
@@ -449,7 +448,7 @@
           (util/info "Writing %s...\n" (.getName jarfile))
           (pod/call-worker
             `(boot.jar/spit-jar! ~(.getPath jarfile) ~index ~manifest ~main))
-          (-> (apply core/rm! fileset entries) (core/add-resource! tgt) core/commit!))))))
+          (-> fileset (core/rm! entries) (core/add-resource! tgt) core/commit!))))))
 
 (core/deftask war
   "Create war file for web deployment.
@@ -481,7 +480,7 @@
           (util/info "Writing %s...\n" (.getName warfile))
           (pod/call-worker
             `(boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))
-          (-> (apply fileset core/rm! entries) (core/add-resource! tgt) core/commit!))))))
+          (-> fileset (core/rm! entries) (core/add-resource! tgt) core/commit!))))))
 
 (core/deftask zip
   "Build a zip file for the project.
@@ -506,7 +505,7 @@
             (util/info "Writing %s...\n" (.getName zipfile))
             (pod/call-worker
               `(boot.jar/spit-zip! ~(.getPath zipfile) ~index))
-            (-> (apply fileset core/rm! entries) (core/add-resource! tgt) core/commit!)))))))
+            (-> fileset (core/rm! entries) (core/add-resource! tgt) core/commit!)))))))
 
 (core/deftask install
   "Install project jar to local Maven repository.
@@ -521,10 +520,9 @@
   (core/with-pre-wrap fileset
     (let [jarfiles (or (and file [(io/file file)])
                        (->> (core/output-files fileset)
-                            (map core/tmpfile)
                             (core/by-ext [".jar"])))]
       (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
-      (doseq [jarfile jarfiles]
+      (doseq [jarfile (map core/tmpfile jarfiles)]
         (util/info "Installing %s...\n" (.getName jarfile))
         (pod/call-worker
           `(boot.aether/install ~(core/get-env) ~(.getPath jarfile)))))
@@ -556,13 +554,12 @@
       (core/empty-dir! tgt)
       (let [jarfiles (or (and file [(io/file file)])
                          (->> (core/output-files fileset)
-                              (map core/tmpfile)
                               (core/by-ext [".jar"])))
             repo-map (->> (core/get-env :repositories) (into {}))
             r        (get repo-map repo)]
         (when-not (and r (seq jarfiles))
           (throw (Exception. "missing jar file or repo not found")))
-        (doseq [f jarfiles]
+        (doseq [f (map core/tmpfile jarfiles)]
           (let [{{t :tag} :scm
                  v :version} (pod/call-worker `(boot.pom/pom-xml-parse ~(.getPath f)))
                 b            (util/guard (git/branch-current))

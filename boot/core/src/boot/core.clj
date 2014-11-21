@@ -210,7 +210,7 @@
   (tmpd/commit! fileset))
 
 (defn rm!
-  [fileset & files]
+  [fileset files]
   (tmpd/rm! fileset files))
 
 (defn user-dirs
@@ -528,8 +528,10 @@
   "A file filtering function factory. FIXME: more documenting here."
   [mkpred]
   (fn [criteria files & [negate?]]
-    ((if negate? remove filter)
-     #(some identity ((apply juxt (map mkpred criteria)) (io/file %))) files)))
+    (let [tmp?   (partial satisfies? tmpd/ITmpFile)
+          ->file #(if (tmp? %) (tmpd/file %) (io/file %))]
+      ((if negate? remove filter)
+       #(some identity ((apply juxt (map mkpred criteria)) (->file %))) files))))
 
 (defn by-name
   "This function takes two arguments: `names` and `files`, where `names` is
