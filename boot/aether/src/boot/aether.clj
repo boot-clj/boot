@@ -59,13 +59,33 @@
           :password        password
           :non-proxy-hosts (get-non-proxy-hosts)}))))
 
+(defn- ^{:boot/from :technomancy/leiningen} resolve-credential
+       "Resolve key-value pair from result into a credential, updating result."
+       [source-settings result [k v]]
+       (letfn [(resolve [v]
+                        (cond (= :env v)
+                              (System/getenv (str "LEIN_" (clojure.string/upper-case (name k))))
+                              (and (keyword? v) (= "env" (namespace v)))
+                              (System/getenv (clojure.string/upper-case (name v)))
+                              :else v))]
+              (if (#{:username :password :passphrase :private-key-file} k)
+                (assoc result k (resolve v))
+                (assoc result k v))))
+
+(defn ^{:boot/from :technomancy/leiningen} resolve-credentials
+      "Applies credentials from the environment."
+      [settings]
+      (reduce (partial resolve-credential settings)
+              (empty settings)
+              settings))
+
 (defn resolve-dependencies*
   [env]
   (try
     (aether/resolve-dependencies
       :coordinates       (:dependencies env)
       :repositories      (->> (or (:repositories env) (default-repositories))
-                           (map (juxt first (fn [[x y]] (if (map? y) y {:url y}))))
+                           (map (juxt first (fn [[x y]] (if (map? y) (resolve-credentials y) {:url y}))))
                            (map (juxt first (fn [[x y]] (update-in y [:update] #(or % @update?))))))
       :local-repo        (or (:local-repo env) @local-repo nil)
       :offline?          (or @offline? (:offline? env))
@@ -158,7 +178,7 @@
       :local-repo  (or (:local-repo env) @local-repo nil))))
 
 (defn deploy
-  [env repo jarfile & [artifact-map]]
+  [env [repo-id repo-settings] jarfile & [artifact-map]]
   (let [{:keys [project version]}
         (-> jarfile pod/pom-properties pod/pom-properties-map)
         pomfile (doto (File/createTempFile "pom" ".xml")
@@ -168,7 +188,7 @@
       :jar-file     (io/file jarfile)
       :pom-file     (io/file pomfile)
       :artifact-map artifact-map
-      :repository   [repo]
+      :repository [[repo-id (resolve-credentials repo-settings)]]
       :local-repo   (or (:local-repo env) @local-repo nil))))
 
 (def ^:private wagon-files (atom #{}))
