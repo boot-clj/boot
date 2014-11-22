@@ -67,30 +67,17 @@
                               (System/getenv (str "LEIN_" (clojure.string/upper-case (name k))))
                               (and (keyword? v) (= "env" (namespace v)))
                               (System/getenv (clojure.string/upper-case (name v)))
-                              #_(= :gpg v)
-                              #_(get (match-credentials source-settings (credentials)) k)
-                              #_(coll? v) ;; collection of places to look
-                              #_(->> (map resolve v)
-                                   (remove nil?)
-                                   first)
                               :else v))]
               (if (#{:username :password :passphrase :private-key-file} k)
                 (assoc result k (resolve v))
                 (assoc result k v))))
 
 (defn ^{:boot/from :technomancy/leiningen} resolve-credentials
-      "Applies credentials from the environment or ~/.lein/credentials.clj.gpg
-      as they are specified and available."
+      "Applies credentials from the environment."
       [settings]
-      (let [#_gpg-creds #_(if (= :gpg (:creds settings))
-                        (match-credentials settings (credentials)))
-            resolved (reduce (partial resolve-credential settings)
-                             (empty settings)
-                             settings)]
-           #_(if gpg-creds
-             (dissoc (merge gpg-creds resolved) :creds)
-             resolved)
-           resolved))
+      (reduce (partial resolve-credential settings)
+              (empty settings)
+              settings))
 
 (defn resolve-dependencies*
   [env]
