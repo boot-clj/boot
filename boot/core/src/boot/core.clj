@@ -83,18 +83,13 @@
 (defn- non-user-temp-dirs [] (-> (apply set/union (map :dir @tempdirs))
                                  (set/difference (user-temp-dirs))))
 
-(defn- rm-any-one-file!
-  [dir]
-  (some->> dir file-seq (filter (memfn isFile)) first io/delete-file))
-
 (defn- sync-user-dirs!
   []
   (doseq [[k d] {:source-paths   (user-source-dirs)
                  :resource-paths (user-resource-dirs)
                  :asset-paths    (user-asset-dirs)}]
-    (let [s (get-env k)]
-      (when-not (empty? s)
-        (rm-any-one-file! (first d))
+    (when-let [s (seq (get-env k))]
+      (binding [file/*hard-link* false]
         (apply file/sync :hash (first d) s)))))
 
 (defn- set-user-dirs!

@@ -421,8 +421,7 @@
 
   The include and exclude options specify sets of regular expressions (strings)
   that will be used to filter the entries. If no filters are specified then all
-  entries are added to the jar file.
-"
+  entries are added to the jar file."
 
   [f file PATH        str       "The target jar file name."
    M manifest KEY=VAL {str str} "The jar manifest map."
@@ -518,15 +517,15 @@
   [f file PATH str "The jar file to install."]
 
   (core/with-pre-wrap fileset
-    (let [jarfiles (or (and file [(io/file file)])
-                       (->> (core/output-files fileset)
-                            (core/by-ext [".jar"])))]
-      (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
-      (doseq [jarfile (map core/tmpfile jarfiles)]
-        (util/info "Installing %s...\n" (.getName jarfile))
-        (pod/call-worker
-          `(boot.aether/install ~(core/get-env) ~(.getPath jarfile)))))
-    fileset))
+    (util/with-let [_ fileset]
+      (let [jarfiles (or (and file [(io/file file)])
+                         (->> (core/output-files fileset)
+                              (core/by-ext [".jar"])))]
+        (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
+        (doseq [jarfile (map core/tmpfile jarfiles)]
+          (util/info "Installing %s...\n" (.getName jarfile))
+          (pod/call-worker
+            `(boot.aether/install ~(core/get-env) ~(.getPath jarfile))))))))
 
 (core/deftask push
   "Deploy jar file to a Maven repository.
@@ -551,39 +550,39 @@
 
   (let [tgt (core/temp-dir!)]
     (core/with-pre-wrap fileset
-      (core/empty-dir! tgt)
-      (let [jarfiles (or (and file [(io/file file)])
-                         (->> (core/output-files fileset)
-                              (core/by-ext [".jar"])))
-            repo-map (->> (core/get-env :repositories) (into {}))
-            r        (get repo-map repo)]
-        (when-not (and r (seq jarfiles))
-          (throw (Exception. "missing jar file or repo not found")))
-        (doseq [f (map core/tmpfile jarfiles)]
-          (let [{{t :tag} :scm
-                 v :version} (pod/call-worker `(boot.pom/pom-xml-parse ~(.getPath f)))
-                b            (util/guard (git/branch-current))
-                clean?       (util/guard (git/clean?))
-                snapshot?    (.endsWith v "-SNAPSHOT")
-                artifact-map (when gpg-sign
-                               (util/info "Signing %s...\n" (.getName f))
-                               (helpers/sign-jar tgt f gpg-passphrase gpg-keyring gpg-user-id))]
-            (assert (or (not ensure-branch) (= b ensure-branch))
-                    (format "current git branch is %s but must be %s" b ensure-branch))
-            (assert (or (not ensure-clean) clean?)
-                    "project repo is not clean")
-            (assert (or (not ensure-release) (not snapshot?))
-                    (format "not a release version (%s)" v))
-            (assert (or (not ensure-snapshot) snapshot?)
-                    (format "not a snapshot version (%s)" v))
-            (assert (or (not ensure-tag) (= t ensure-tag))
-                    (format "scm tag in pom doesn't match (%s, %s)" t ensure-tag))
-            (assert (or (not ensure-version) (= v ensure-version))
-                    (format "jar version doesn't match project version (%s, %s)" v ensure-version))
-            (when tag
-              (util/info "Creating tag %s...\n" v)
-              (git/tag v "release"))
-            (util/info "Deploying %s...\n" (.getName f))
-            (pod/call-worker
-              `(boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f) ~artifact-map)))))
-      fileset)))
+      (util/with-let [_ fileset]
+        (core/empty-dir! tgt)
+        (let [jarfiles (or (and file [(io/file file)])
+                           (->> (core/output-files fileset)
+                                (core/by-ext [".jar"])))
+              repo-map (->> (core/get-env :repositories) (into {}))
+              r        (get repo-map repo)]
+          (when-not (and r (seq jarfiles))
+            (throw (Exception. "missing jar file or repo not found")))
+          (doseq [f (map core/tmpfile jarfiles)]
+            (let [{{t :tag} :scm
+                   v :version} (pod/call-worker `(boot.pom/pom-xml-parse ~(.getPath f)))
+                  b            (util/guard (git/branch-current))
+                  clean?       (util/guard (git/clean?))
+                  snapshot?    (.endsWith v "-SNAPSHOT")
+                  artifact-map (when gpg-sign
+                                 (util/info "Signing %s...\n" (.getName f))
+                                 (helpers/sign-jar tgt f gpg-passphrase gpg-keyring gpg-user-id))]
+              (assert (or (not ensure-branch) (= b ensure-branch))
+                      (format "current git branch is %s but must be %s" b ensure-branch))
+              (assert (or (not ensure-clean) clean?)
+                      "project repo is not clean")
+              (assert (or (not ensure-release) (not snapshot?))
+                      (format "not a release version (%s)" v))
+              (assert (or (not ensure-snapshot) snapshot?)
+                      (format "not a snapshot version (%s)" v))
+              (assert (or (not ensure-tag) (= t ensure-tag))
+                      (format "scm tag in pom doesn't match (%s, %s)" t ensure-tag))
+              (assert (or (not ensure-version) (= v ensure-version))
+                      (format "jar version doesn't match project version (%s, %s)" v ensure-version))
+              (when tag
+                (util/info "Creating tag %s...\n" v)
+                (git/tag v "release"))
+              (util/info "Deploying %s...\n" (.getName f))
+              (pod/call-worker
+                `(boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f) ~artifact-map)))))))))

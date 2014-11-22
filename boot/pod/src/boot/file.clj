@@ -13,6 +13,7 @@
 (def ^:dynamic *exclude*     nil)
 (def ^:dynamic *ignore*      nil)
 (def ^:dynamic *sync-delete* true)
+(def ^:dynamic *hard-link*   true)
 
 (defn file? [f] (when (try (.isFile (io/file f)) (catch Throwable _)) f))
 (defn dir? [f] (when (try (.isDirectory (io/file f)) (catch Throwable _)) f))
@@ -91,22 +92,25 @@
 
 (defn copy-with-lastmod
   [src-file dst-file]
-  (io/make-parents dst-file)
-  (when (.exists dst-file) (.delete dst-file))
-  (Files/createLink (.toPath dst-file) (.toPath src-file)))
+  (let [last-mod (.lastModified src-file)]
+    (io/make-parents dst-file)
+    (when (.exists dst-file) (.delete dst-file))
+    (if *hard-link*
+      (Files/createLink (.toPath dst-file) (.toPath src-file))
+      (doto dst-file ((partial io/copy src-file)) (.setLastModified last-mod)))))
 
 (defn copy-files
   [src dest]
   (if (exists? src)
-    (let [files  (map #(.getPath %) (filter file? (file-seq (io/file src)))) 
+    (let [files  (map #(.getPath %) (filter file? (file-seq (io/file src))))
           outs   (map #(srcdir->outdir % src dest) files)]
       (mapv copy-with-lastmod (map io/file files) (map io/file outs)))))
 
 (defn select-keys-by [m pred?]
   (select-keys m (filter pred? (keys m))))
 
-(defn dir-set 
-  ([dir] 
+(defn dir-set
+  ([dir]
    (let [info (juxt #(relative-to dir %) #(.lastModified %))
          mapf #(zipmap [:dir :abs :rel :mod] (list* dir % (info %)))
          ign? #(and *ignore* (*ignore* %))]
@@ -129,12 +133,12 @@
 
 (defn what-changed
   ([dst-map src-map] (what-changed dst-map src-map :time))
-  ([dst-map src-map algo] 
+  ([dst-map src-map algo]
    (let [[created deleted modified]
          (data/diff (set (keys src-map)) (set (keys dst-map)))
          algos {:hash #(not= (digest/md5 (:abs (src-map %)))
-                             (digest/md5 (:abs (dst-map %)))) 
-                :time #(< (:mod (dst-map %)) (:mod (src-map %)))} 
+                             (digest/md5 (:abs (dst-map %))))
+                :time #(< (:mod (dst-map %)) (:mod (src-map %)))}
          modified (set (filter (algos algo) modified))]
      [(set/union created modified) deleted])))
 
@@ -145,7 +149,7 @@
             (map io/file)
             (apply dir-map))
         [to-cp to-rm] (what-changed d s algo)
-        cp (map #(vector :cp (:abs (s %)) (io/file dst %)) to-cp) 
+        cp (map #(vector :cp (:abs (s %)) (io/file dst %)) to-cp)
         rm (map #(vector :rm (io/file dst %)) to-rm)]
     (concat cp rm)))
 
@@ -174,8 +178,8 @@
   (let [prev (atom nil)]
     (fn []
       (let [only-file #(filter file? %)
-            make-info #(guard (vector [% (.lastModified %)] [% (digest/md5 %)])) 
-            file-info #(remove nil? (mapcat make-info %)) 
+            make-info #(guard (vector [% (.lastModified %)] [% (digest/md5 %)]))
+            file-info #(remove nil? (mapcat make-info %))
             info      (->> dir io/file file-seq only-file file-info set)
             mods      (set/difference (set/union info @prev) (set/intersection info @prev))
             by        #(->> %2 (filter (comp %1 second)) (map first) set)]
