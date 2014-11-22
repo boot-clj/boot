@@ -157,7 +157,8 @@
                   (binding [*out* (if quiet (new java.io.StringWriter) *out*)
                             *err* (if quiet (new java.io.StringWriter) *err*)]
                     (core/reset-build!)
-                    (reset! return (-> fileset core/reset-fileset! core/commit! next-task))
+                    (try (reset! return (-> fileset core/reset-fileset! core/commit! next-task))
+                         (catch Throwable ex (util/print-ex ex)))
                     (util/info "Elapsed time: %.3f sec\n\n" (float (/ (etime) 1000)))))
                 (recur (util/guard [(.take q)]))))))
         (.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)
