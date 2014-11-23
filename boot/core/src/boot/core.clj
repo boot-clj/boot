@@ -437,16 +437,24 @@
   [bind & body]
   `(fn [next-task#]
      (fn [fileset#]
-       (next-task#
-         (let [~bind fileset#]
-           ~@body)))))
+       (assert (tmpd/tmpfileset? fileset#)
+               "argument to task handler not a fileset")
+       (let [~bind fileset#
+             result# (do ~@body)]
+         (assert (tmpd/tmpfileset? result#)
+                 "task handler must return a fileset")
+         (next-task# result#)))))
 
 (defmacro with-post-wrap
   [bind & body]
   `(fn [next-task#]
      (fn [fileset#]
+       (assert (tmpd/tmpfileset? fileset#)
+               "argument to task handler not a fileset")
        (let [result# (next-task# fileset#)
              ~bind   result#]
+         (assert (tmpd/tmpfileset? result#)
+                 "task handler must return a fileset")
          ~@body
          result#))))
 
