@@ -89,13 +89,11 @@
       (fn [fileset]
         (try
           (util/with-let [_ (next-task fileset)]
-            (pod/call-worker
-              (if (zero? @core/*warnings*)
-                `(boot.notify/success! ~theme ~success)
-                `(boot.notify/warning! ~theme ~(deref core/*warnings*) ~warning))))
+            (if (zero? @core/*warnings*)
+              (pod/with-call-worker (boot.notify/success! ~theme ~success))
+              (pod/with-call-worker (boot.notify/warning! ~theme ~(deref core/*warnings*) ~warning))))
           (catch Throwable t
-            (pod/call-worker
-              `(boot.notify/failure! ~theme ~failure))
+            (pod/with-call-worker (boot.notify/failure! ~theme ~failure))
             (throw t)))))))
 
 (core/deftask show
@@ -108,7 +106,7 @@
    s snapshots bool "Include snapshot versions in updates searches."]
 
   (core/with-pre-wrap fileset'
-    (when deps    (print (pod/call-worker `(boot.aether/dep-tree ~(core/get-env)))))
+    (when deps    (print (pod/with-call-worker (boot.aether/dep-tree ~(core/get-env)))))
     (when env     (println (pr-str (core/get-env))))
     (when fileset (println (pr-str fileset')))
     (when updates (mapv prn (pod/outdated (core/get-env) :snapshots snapshots)))
@@ -205,7 +203,7 @@
                             (assoc (core/get-env) :dependencies deps)))
                         (require 'boot.repl-server)
                         ((resolve 'boot.repl-server/start-server) srv-opts))
-        repl-cli (delay (pod/call-worker `(boot.repl-client/client ~cli-opts)))]
+        repl-cli (delay (pod/with-call-worker (boot.repl-client/client ~cli-opts)))]
     (comp
       (core/with-pre-wrap fileset
         (when (or server (not client)) @repl-svr)
@@ -238,8 +236,8 @@
             xmlfile   (io/file pomdir "pom.xml")
             propfile  (io/file pomdir "pom.properties")]
         (util/info "Writing %s and %s...\n" (.getName xmlfile) (.getName propfile))
-        (pod/call-worker
-          `(boot.pom/spit-pom! ~(.getPath xmlfile) ~(.getPath propfile) ~opts))
+        (pod/with-call-worker
+          (boot.pom/spit-pom! ~(.getPath xmlfile) ~(.getPath propfile) ~opts))
         (-> fileset (core/add-resource! tgt) core/commit!))))))
 
 (core/deftask add-src
@@ -354,9 +352,8 @@
                   (pod/copy-dependency-jar-entries
                     (core/get-env) tgt [implp implv] classes)
                   (util/info "Writing %s...\n" (.getName xmlfile))
-                  (pod/call-worker
-                    `(boot.web/spit-web!
-                       ~(.getPath xmlfile) ~serve ~create ~destroy)))]
+                  (pod/with-call-worker
+                    (boot.web/spit-web!  ~(.getPath xmlfile) ~serve ~create ~destroy)))]
     (core/with-pre-wrap fileset
       (assert (and (symbol? serve) (namespace serve))
               (format "serve function must be namespaced symbol (%s)" serve))
@@ -446,8 +443,8 @@
               entries (->> (core/output-files fileset) (filter #(keep? (core/tmpfile %))))
               index   (->> entries (map (juxt core/tmppath #(.getPath (core/tmpfile %)))))]
           (util/info "Writing %s...\n" (.getName jarfile))
-          (pod/call-worker
-            `(boot.jar/spit-jar! ~(.getPath jarfile) ~index ~manifest ~main))
+          (pod/with-call-worker
+            (boot.jar/spit-jar! ~(.getPath jarfile) ~index ~manifest ~main))
           (-> fileset (core/rm! entries) (core/add-resource! tgt) core/commit!))))))
 
 (core/deftask war
@@ -478,8 +475,8 @@
               entries (->> (core/output-files fileset) (filter (comp keep? core/tmpfile)))
               index   (->> entries (mapv (juxt ->war #(.getPath (core/tmpfile %)))))]
           (util/info "Writing %s...\n" (.getName warfile))
-          (pod/call-worker
-            `(boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))
+          (pod/with-call-worker
+            (boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))
           (-> fileset (core/rm! entries) (core/add-resource! tgt) core/commit!))))))
 
 (core/deftask zip
@@ -503,8 +500,8 @@
                 entries (->> (core/output-files fileset) (filter (comp keep? core/tmpfile)))
                 index   (->> entries (map (juxt core/tmppath #(.getPath (core/tmpfile %)))))]
             (util/info "Writing %s...\n" (.getName zipfile))
-            (pod/call-worker
-              `(boot.jar/spit-zip! ~(.getPath zipfile) ~index))
+            (pod/with-call-worker
+              (boot.jar/spit-zip! ~(.getPath zipfile) ~index))
             (-> fileset (core/rm! entries) (core/add-resource! tgt) core/commit!)))))))
 
 (core/deftask install
@@ -525,8 +522,8 @@
         (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
         (doseq [jarfile (map core/tmpfile jarfiles)]
           (util/info "Installing %s...\n" (.getName jarfile))
-          (pod/call-worker
-            `(boot.aether/install ~(core/get-env) ~(.getPath jarfile))))))))
+          (pod/with-call-worker
+            (boot.aether/install ~(core/get-env) ~(.getPath jarfile))))))))
 
 (core/deftask push
   "Deploy jar file to a Maven repository.
@@ -562,7 +559,7 @@
             (throw (Exception. "missing jar file or repo not found")))
           (doseq [f (map core/tmpfile jarfiles)]
             (let [{{t :tag} :scm
-                   v :version} (pod/call-worker `(boot.pom/pom-xml-parse ~(.getPath f)))
+                   v :version} (pod/with-call-worker (boot.pom/pom-xml-parse ~(.getPath f)))
                   b            (util/guard (git/branch-current))
                   clean?       (util/guard (git/clean?))
                   snapshot?    (.endsWith v "-SNAPSHOT")
@@ -585,5 +582,5 @@
                 (util/info "Creating tag %s...\n" v)
                 (git/tag v "release"))
               (util/info "Deploying %s...\n" (.getName f))
-              (pod/call-worker
-                `(boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f) ~artifact-map)))))))))
+              (pod/with-call-worker
+                (boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f) ~artifact-map)))))))))

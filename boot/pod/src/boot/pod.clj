@@ -167,26 +167,32 @@
     (.offer @shutdown-hooks f)
     (->> f Thread. (.addShutdownHook (Runtime/getRuntime)))))
 
-(defn- eval-fn-call
+(defn eval-fn-call
   [[f & args]]
   (when-let [ns (namespace f)] (require (symbol ns)))
   (if-let [f (resolve f)]
     (apply f args)
     (throw (Exception. (format "can't resolve symbol (%s)" f)))))
 
-(defn call-in
+(defn call-in*
   ([expr]
      (let [{:keys [meta? expr]} (read-string expr)]
        (binding [*print-meta* meta?]
          (pr-str (eval-fn-call expr)))))
   ([pod expr]
-     (let [ret (.invoke pod "boot.pod/call-in"
+     (let [ret (.invoke pod "boot.pod/call-in*"
                  (pr-str {:meta? *print-meta* :expr expr}))]
        (util/guard (read-string ret)))))
 
-(defn call-worker
+(defmacro with-call-in
+  [pod expr]
+  `(if-not ~pod
+     (eval-fn-call (bt/template ~expr))
+     (call-in* ~pod (bt/template ~expr))))
+
+(defmacro with-call-worker
   [expr]
-  (if @worker-pod (call-in @worker-pod expr) (eval-fn-call expr)))
+  `(with-call-in @worker-pod ~expr))
 
 (defn eval-in*
   ([expr]
@@ -198,13 +204,15 @@
                  (pr-str {:meta? *print-meta* :expr expr}))]
        (util/guard (read-string ret)))))
 
-(defmacro eval-in
+(defmacro with-eval-in
   [pod & body]
-  `(eval-in* ~pod (bt/template (do ~@body))))
+  `(if-not ~pod
+     (eval (bt/template (do ~@body)))
+     (eval-in* ~pod (bt/template (do ~@body)))))
 
-(defmacro eval-worker
+(defmacro with-eval-worker
   [& body]
-  `(eval-in @worker-pod ~@body))
+  `(with-eval-in @worker-pod ~@body))
 
 (defn require-in
   [pod ns]
@@ -217,7 +225,7 @@
 
 (defn resolve-dependencies
   [env]
-  (call-worker `(boot.aether/resolve-dependencies ~env)))
+  (with-call-worker (boot.aether/resolve-dependencies ~env)))
 
 (defn resolve-dependency-jars
   [env]
@@ -246,8 +254,8 @@
 
 (defn add-dependencies-in
   [pod env]
-  (call-in pod
-    `(boot.pod/add-dependencies ~env)))
+  (with-call-in pod
+    (boot.pod/add-dependencies ~env)))
 
 (defn add-dependencies-worker
   [env]
@@ -271,7 +279,7 @@
 
 (defn jars-in-dep-order
   [env]
-  (map io/file (call-worker `(boot.aether/jars-in-dep-order ~env))))
+  (map io/file (with-call-worker (boot.aether/jars-in-dep-order ~env))))
 
 (defn copy-dependency-jar-entries
   [env outdir coord & regexes]

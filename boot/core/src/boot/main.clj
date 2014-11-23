@@ -33,7 +33,7 @@
 (defn- dep-ns-decls
   [jar]
   (binding [*print-meta* true]
-    (pod/eval-worker
+    (pod/with-eval-worker
       (require '[clojure.tools.namespace.find :as nsf])
       (->> ~(.getPath (io/file jar))
         java.util.jar.JarFile. nsf/find-ns-decls-in-jarfile))))
@@ -116,7 +116,7 @@
           (#'core/init!)
 
           (let [tmpf (.getPath (file/tmpfile "boot.user" ".clj"))]
-            (pod/call-worker `(boot.aether/load-wagon-mappings))
+            (pod/with-call-worker (boot.aether/load-wagon-mappings))
             (apply core/set-env! (->> initial-env (mapcat identity) seq))
             (try (doto tmpf (spit scriptstr) (load-file))
                  (catch clojure.lang.Compiler$CompilerException cx
