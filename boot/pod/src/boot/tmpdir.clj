@@ -16,7 +16,8 @@
   (ls      [this])
   (commit! [this])
   (rm!     [this paths])
-  (add!    [this dest-dir src-dir]))
+  (add!    [this dest-dir src-dir])
+  (cp!     [this src-file dest-tmpfile]))
 
 (defrecord TmpFile [dir path id]
   ITmpFile
@@ -39,10 +40,21 @@
                           [p (TmpFile. dir p (digest/md5 %))])]
     (->> dir file-seq (filter (memfn isFile)) (map file->kv) (into {}))))
 
+(defn- add-blob!
+  [blob src hash]
+  (let [out    (io/file blob hash)
+        mod    #(.lastModified %)
+        write! #(.setWritable %1 %2)
+        mod!   #(.setLastModified %1 %2)]
+    (if (.exists out)
+      (when (< (mod out) (mod src))
+        (doto out (write! true) (mod! (mod src)) (write! false)))
+      (doto out (#(io/copy src %)) (mod! (mod src)) (write! false)))))
+
 (defrecord TmpFileSet [dirs tree blob]
   ITmpFileSet
   (ls [this]
-    (vals tree))
+    (set (vals tree)))
   (commit! [this]
     (util/with-let [{:keys [dirs tree blob]} this]
       (apply file/empty-dir! (map file dirs))
@@ -61,9 +73,15 @@
           src-tree (-> #(assoc %1 %2 (assoc %3 :dir dest-dir))
                        (reduce-kv {} (dir->tree src-dir)))]
       (doseq [[path tmpf] src-tree]
-        (file/copy-with-lastmod
-          (io/file src-dir path) (io/file blob (id tmpf))))
-      (assoc this :tree (merge tree src-tree)))))
+        (add-blob! blob (io/file src-dir path) (id tmpf)))
+      (assoc this :tree (merge tree src-tree))))
+  (cp! [this src-file dest-tmpfile]
+    (let [hash (digest/md5 src-file)
+          p'   (path dest-tmpfile)]
+      (assert ((ls this) dest-tmpfile)
+              (format "dest-tmpfile not in fileset (%s)" dest-tmpfile))
+      (add-blob! blob src-file hash)
+      (assoc this :tree (merge tree {p' (assoc dest-tmpfile :id hash)})))))
 
 (comment
 

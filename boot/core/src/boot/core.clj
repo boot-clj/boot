@@ -208,6 +208,10 @@
   [fileset files]
   (tmpd/rm! fileset files))
 
+(defn cp!
+  [fileset src-file dest-tmpfile]
+  (tmpd/cp! fileset src-file dest-tmpfile))
+
 (defn user-dirs
   [fileset]
   (get-dirs fileset #{:user}))
