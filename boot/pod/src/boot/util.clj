@@ -1,19 +1,20 @@
 (ns boot.util
   (:require
-   [clojure.java.io              :as io]
-   [clojure.set                  :as set]
-   [clojure.pprint               :as pprint]
-   [clojure.string               :as string]
-   [boot.file                    :as file]
-   [boot.from.io.aviso.ansi      :as ansi]
-   [boot.from.io.aviso.repl      :as repl]
-   [boot.from.io.aviso.exception :as pretty])
+    [clojure.java.io              :as io]
+    [clojure.set                  :as set]
+    [clojure.pprint               :as pprint]
+    [clojure.string               :as string]
+    [boot.file                    :as file]
+    [boot.from.io.aviso.ansi      :as ansi]
+    [boot.from.io.aviso.repl      :as repl]
+    [boot.from.io.aviso.exception :as pretty]
+    [boot.from.me.raynes.conch    :as conch])
   (:import
-   [java.io       File]
-   [java.nio      ByteBuffer]
-   [java.util     UUID]
-   [java.util.zip ZipFile]
-   [java.util.jar JarEntry JarOutputStream]))
+    [java.io       File]
+    [java.nio      ByteBuffer]
+    [java.util     UUID]
+    [java.util.zip ZipFile]
+    [java.util.jar JarEntry JarOutputStream]))
 
 (declare print-ex)
 
@@ -53,7 +54,8 @@
     `(let [~@(->> bindings (partition 2) (mapcat res))] ~@body)))
 
 (defmacro let-assert-keys
-  "Let expression that throws an exception when any of the expected bindings is missing."
+  "Let expression that throws an exception when any of the expected bindings
+  is missing."
   [binding & body]
   (let [[ks m] [(butlast binding) (last binding)]
         req-ks (set (map keyword ks)) ]
@@ -132,3 +134,19 @@
 (defn pp*             [expr] (pprint/write expr :dispatch pprint/code-dispatch))
 (defn pp-str          [expr] (with-out-str (pp* expr)))
 (defn read-string-all [s]    (read-string (str "(" s "\n)")))
+
+(def ^:dynamic *sh-dir* nil)
+
+(defn sh [& args]
+  {:pre [(every? string? args)]}
+  (let [opts (into [:redirect-err true] (when *sh-dir* [:dir *sh-dir*]))
+        proc (apply conch/proc (concat args opts))]
+    (future (conch/stream-to-out proc :out))
+    #(.waitFor (:process proc))))
+
+(defn dosh [& args]
+  {:pre [(every? string? args)]}
+  (let [status ((apply sh args))]
+    (when-not (= 0 status)
+      (throw (Exception. (-> "%s: non-zero exit status (%d)"
+                           (format (first args) status)))))))

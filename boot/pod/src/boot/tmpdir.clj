@@ -83,6 +83,14 @@
       (add-blob! blob src-file hash)
       (assoc this :tree (merge tree {p' (assoc dest-tmpfile :id hash)})))))
 
+(defn tmpfile?
+  [x]
+  (instance? TmpFile x))
+
+(defn tmpfileset?
+  [x]
+  (instance? TmpFileSet x))
+
 (comment
 
   (def ^:private masks

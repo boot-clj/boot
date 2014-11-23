@@ -5,8 +5,7 @@
    [clojure.stacktrace        :as trace]
    [boot.pod                  :as pod]
    [boot.core                 :as core]
-   [boot.file                 :as file]
-   [boot.from.me.raynes.conch :as conch]))
+   [boot.file                 :as file]))
 
 (defn- first-line [s] (when s (first (string/split s #"\n"))))
 
@@ -33,29 +32,6 @@
         (->> sym ns-refers (map proc (repeat nil)))
         (->> sym ns-aliases (into base) (mapcat pubs)))
       (filter task?) (sort-by :name) (group-by :ns*) (into (sorted-map)))))
-
-(def ^:dynamic *sh-dir* nil)
-
-(defn sh [& args]
-  (let [opts (into [:redirect-err true] (when *sh-dir* [:dir *sh-dir*]))
-        proc (apply conch/proc (concat args opts))]
-    (future (conch/stream-to-out proc :out))
-    #(.waitFor (:process proc))))
-
-(defn dosh [& args]
-  (let [status ((apply sh args))]
-    (when-not (= 0 status)
-      (throw (Exception. (-> "%s: non-zero exit status (%d)"
-                           (format (first args) status)))))))
-
-(def ^:private bgs
-  "List of tasks running in other threads that will need to be cleaned up before
-  boot can exit."
-  (atom ()))
-
-;; cleanup background tasks on shutdown
-(def ^:private add-shutdown!
-  (delay (pod/add-shutdown-hook! #(doseq [job @bgs] (future-cancel job)))))
 
 (defn read-pass
   [prompt]
