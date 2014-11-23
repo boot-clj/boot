@@ -72,22 +72,3 @@
          ~pass
          :keyring ~keyring
          :user-id ~user-id))))
-
-;; Task helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn once
-  "Evaluate the given `task` only once, then pass through."
-  [task]
-  (let [ran? (atom false)
-        run? (partial compare-and-set! ran? @ran?)]
-    (fn [continue]
-      (let [task (task continue)]
-        #(continue ((if (run? true) task identity) %))))))
-
-(defn bg-task
-  "Run the given task once, in a separate, background thread."
-  [task]
-  @add-shutdown!
-  (once
-    (core/with-pre-wrap
-      (swap! bgs conj (future ((task identity) core/*event*))))))
