@@ -15,9 +15,9 @@
 (defprotocol ITmpFileSet
   (ls      [this])
   (commit! [this])
-  (rm!     [this paths])
-  (add!    [this dest-dir src-dir])
-  (cp!     [this src-file dest-tmpfile]))
+  (rm      [this paths])
+  (add     [this dest-dir src-dir])
+  (cp      [this src-file dest-tmpfile]))
 
 (defrecord TmpFile [dir path id]
   ITmpFile
@@ -64,14 +64,14 @@
       (doseq [[p tmpf] tree]
         (let [srcf (io/file blob (id tmpf))]
           (file/copy-with-lastmod srcf (file tmpf))))))
-  (rm! [this tmpfiles]
-    (assert (not *locked*) "can't rm! during this phase")
+  (rm [this tmpfiles]
+    (assert (not *locked*) "can't rm during this phase")
     (let [{:keys [dirs tree blob]} this
           treefiles (set (vals tree))
           remove?   (->> tmpfiles set (set/difference treefiles) complement)]
       (assoc this :tree (reduce-kv #(if (remove? %3) %1 (assoc %1 %2 %3)) {} tree))))
-  (add! [this dest-dir src-dir]
-    (assert (not *locked*) "can't add! during this phase")
+  (add [this dest-dir src-dir]
+    (assert (not *locked*) "can't add during this phase")
     (assert ((set (map file dirs)) dest-dir)
             (format "dest-dir not in dir set (%s)" dest-dir))
     (let [{:keys [dirs tree blob]} this
@@ -80,8 +80,8 @@
       (doseq [[path tmpf] src-tree]
         (add-blob! blob (io/file src-dir path) (id tmpf)))
       (assoc this :tree (merge tree src-tree))))
-  (cp! [this src-file dest-tmpfile]
-    (assert (not *locked*) "can't cp! during this phase")
+  (cp [this src-file dest-tmpfile]
+    (assert (not *locked*) "can't cp during this phase")
     (let [hash (digest/md5 src-file)
           p'   (path dest-tmpfile)]
       (assert ((ls this) dest-tmpfile)
@@ -129,9 +129,9 @@
   (defn user-files    [this]     (get-files this #{:user}))
   (defn input-files   [this]     (get-files this #{:input}))
   (defn output-files  [this]     (get-files this #{:output}))
-  (defn add-asset!    [this dir] (add! this (get-add-dir this #{:asset}) dir))
-  (defn add-source!   [this dir] (add! this (get-add-dir this #{:source}) dir))
-  (defn add-resource! [this dir] (add! this (get-add-dir this #{:resource}) dir))
+  (defn add-asset!    [this dir] (add this (get-add-dir this #{:asset}) dir))
+  (defn add-source!   [this dir] (add this (get-add-dir this #{:source}) dir))
+  (defn add-resource! [this dir] (add this (get-add-dir this #{:resource}) dir))
 
   (defn tmp-dir
     [dir & masks+]
@@ -151,7 +151,7 @@
   (file-seq (io/file "foop3/"))
   (identity tf)
   (ls tf)
-  (def tf (rm! tf #{(first (ls tf))}))
+  (def tf (rm tf #{(first (ls tf))}))
   (def tf (commit! tf))
   (map path (ls tf))
   (map file (ls tf))

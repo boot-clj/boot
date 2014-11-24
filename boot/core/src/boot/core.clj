@@ -72,9 +72,9 @@
         (when (:input t)
           (set-env! :directories #(conj % (.getPath (:dir t)))))))))
 
-(defn- add-user-asset!    [fileset dir] (tmpd/add! fileset (get-add-dir fileset #{:user :asset}) dir))
-(defn- add-user-source!   [fileset dir] (tmpd/add! fileset (get-add-dir fileset #{:user :source}) dir))
-(defn- add-user-resource! [fileset dir] (tmpd/add! fileset (get-add-dir fileset #{:user :resource}) dir))
+(defn- add-user-asset!    [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :asset}) dir))
+(defn- add-user-source!   [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :source}) dir))
+(defn- add-user-resource! [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :resource}) dir))
 
 (defn- user-temp-dirs     [] (get-dirs {:dirs @tempdirs} #{:user}))
 (defn- user-asset-dirs    [] (get-dirs {:dirs @tempdirs} #{:user :asset}))
@@ -204,13 +204,13 @@
   [fileset]
   (tmpd/commit! fileset))
 
-(defn rm!
+(defn rm
   [fileset files]
-  (tmpd/rm! fileset files))
+  (tmpd/rm fileset files))
 
-(defn cp!
+(defn cp
   [fileset src-file dest-tmpfile]
-  (tmpd/cp! fileset src-file dest-tmpfile))
+  (tmpd/cp fileset src-file dest-tmpfile))
 
 (defn user-dirs
   [fileset]
@@ -238,14 +238,14 @@
 
 (defn add-asset!
   [fileset dir]
-  (tmpd/add! fileset (get-add-dir fileset #{:asset}) dir))
+  (tmpd/add fileset (get-add-dir fileset #{:asset}) dir))
 
 (defn add-source!
   [fileset dir]
-  (tmpd/add! fileset (get-add-dir fileset #{:source}) dir))
+  (tmpd/add fileset (get-add-dir fileset #{:source}) dir))
 
 (defn add-resource!
-  [fileset dir] (tmpd/add! fileset (get-add-dir fileset #{:resource}) dir))
+  [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:resource}) dir))
 
 ;; Tempdir helpers
 
