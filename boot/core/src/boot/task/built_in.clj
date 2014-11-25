@@ -398,15 +398,6 @@
           (when @throw? (throw (Exception. "java compiler error")))))
       (-> fileset (core/add-resource tgt) core/commit!))))
 
-(defn- clean-output
-  [fileset]
-  (let [keepers  (set/intersection (core/output-files fileset)
-                                   (core/input-files fileset))
-        keepdirs (set/intersection (core/output-dirs fileset)
-                                   (core/input-dirs fileset))
-        losers   (set/difference (core/output-files fileset) keepers)]
-    (reduce core/rm (reduce core/add-source fileset keepdirs) losers)))
-
 (core/deftask jar
   "Build a jar file for the project."
 
@@ -431,7 +422,7 @@
           (util/info "Writing %s...\n" (.getName jarfile))
           (pod/with-call-worker
             (boot.jar/spit-jar! ~(.getPath jarfile) ~index ~manifest ~main))
-          (-> fileset clean-output (core/add-resource tgt) core/commit!))))))
+          (-> fileset (core/rm entries) (core/add-resource tgt) core/commit!))))))
 
 (core/deftask war
   "Create war file for web deployment."
@@ -456,7 +447,7 @@
           (util/info "Writing %s...\n" (.getName warfile))
           (pod/with-call-worker
             (boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))
-          (-> fileset clean-output (core/add-resource tgt) core/commit!))))))
+          (-> fileset (core/rm entries) (core/add-resource tgt) core/commit!))))))
 
 (core/deftask zip
   "Build a zip file for the project."
@@ -474,7 +465,7 @@
             (util/info "Writing %s...\n" (.getName zipfile))
             (pod/with-call-worker
               (boot.jar/spit-zip! ~(.getPath zipfile) ~index))
-            (-> fileset clean-output (core/add-resource tgt) core/commit!)))))))
+            (-> fileset (core/rm entries) (core/add-resource tgt) core/commit!)))))))
 
 (core/deftask install
   "Install project jar to local Maven repository.
