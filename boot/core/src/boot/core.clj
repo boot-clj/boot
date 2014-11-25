@@ -72,9 +72,9 @@
         (when (:input t)
           (set-env! :directories #(conj % (.getPath (:dir t)))))))))
 
-(defn- add-user-asset!    [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :asset}) dir))
-(defn- add-user-source!   [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :source}) dir))
-(defn- add-user-resource! [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :resource}) dir))
+(defn- add-user-asset    [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :asset}) dir))
+(defn- add-user-source   [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :source}) dir))
+(defn- add-user-resource [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :resource}) dir))
 
 (defn- user-temp-dirs     [] (get-dirs {:dirs @tempdirs} #{:user}))
 (defn- user-asset-dirs    [] (get-dirs {:dirs @tempdirs} #{:user :asset}))
@@ -196,22 +196,6 @@
 
 ;; TmpFileSet API
 
-(defn ls
-  [fileset]
-  (tmpd/ls fileset))
-
-(defn commit!
-  [fileset]
-  (tmpd/commit! fileset))
-
-(defn rm
-  [fileset files]
-  (tmpd/rm fileset files))
-
-(defn cp
-  [fileset src-file dest-tmpfile]
-  (tmpd/cp fileset src-file dest-tmpfile))
-
 (defn user-dirs
   [fileset]
   (get-dirs fileset #{:user}))
@@ -236,15 +220,43 @@
   [fileset]
   (get-files fileset #{:output}))
 
-(defn add-asset!
+(defn ls
+  [fileset]
+  (tmpd/ls fileset))
+
+(defn commit!
+  [fileset]
+  (tmpd/commit! fileset))
+
+(defn rm
+  [fileset files]
+  (tmpd/rm fileset files))
+
+(defn- non-user-dir-for
+  [fileset d]
+  (let [u (user-dirs fileset)]
+    (or (and (not (u d)) d)
+        (->> (cond ((get-dirs fileset #{:asset}) d) #{:asset}
+                   ((get-dirs fileset #{:source}) d) #{:source}
+                   ((get-dirs fileset #{:resource}) d) #{:resource})
+             (get-add-dir fileset)))))
+
+(defn cp
+  [fileset src-file dest-tmpfile]
+  (->> (tmpdir dest-tmpfile)
+       (non-user-dir-for fileset)
+       (assoc dest-tmpfile :dir)
+       (tmpd/cp fileset src-file)))
+
+(defn add-asset
   [fileset dir]
   (tmpd/add fileset (get-add-dir fileset #{:asset}) dir))
 
-(defn add-source!
+(defn add-source
   [fileset dir]
   (tmpd/add fileset (get-add-dir fileset #{:source}) dir))
 
-(defn add-resource!
+(defn add-resource
   [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:resource}) dir))
 
 ;; Tempdir helpers
@@ -382,9 +394,9 @@
   [fileset]
   (-> (or fileset (boot.tmpdir.TmpFileSet. @tempdirs {} (temp-dir* ::blob)))
       (assoc :tree {})
-      (add-user-asset! (first (user-asset-dirs)))
-      (add-user-source! (first (user-source-dirs)))
-      (add-user-resource! (first (user-resource-dirs)))
+      (add-user-asset (first (user-asset-dirs)))
+      (add-user-source (first (user-source-dirs)))
+      (add-user-resource (first (user-resource-dirs)))
       commit!))
 
 (defn reset-build!

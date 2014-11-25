@@ -238,39 +238,34 @@
         (util/info "Writing %s and %s...\n" (.getName xmlfile) (.getName propfile))
         (pod/with-call-worker
           (boot.pom/spit-pom! ~(.getPath xmlfile) ~(.getPath propfile) ~opts))
-        (-> fileset (core/add-resource! tgt) core/commit!))))))
+        (-> fileset (core/add-resource tgt) core/commit!))))))
 
-(core/deftask add-src
-  "Add source files to fileset.
+(core/deftask sift
+  "Filter the output fileset, matching paths against regexes.
 
   The include and exclude options specify sets of regular expressions (strings)
-  that will be used to filter the source files. If no filters are specified then
-  all files are added to the fileset."
+  that will be used to filter the fileset."
 
   [i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
   (core/with-pre-wrap fileset
-    (let [in  (core/input-dirs fileset)
-          out (core/output-dirs fileset)
-          src (set/difference in out)]
-      (util/info "Adding source files...\n")
-      (-> (reduce core/add-resource! fileset src) core/commit!))))
+    (let [outs    (core/output-files fileset)
+          include (map re-pattern include)
+          exclude (map re-pattern exclude)
+          keep?   (partial file/keep-filters? include exclude)
+          reducer #(if (keep? (io/file (core/tmppath %2))) %1 (core/rm %1 [%2]))]
+      (util/info "Sifting output files...\n")
+      (->> outs (reduce reducer fileset) core/commit!))))
 
 (core/deftask add-repo
   "Add all files in project git repo to fileset.
 
   The ref option (default HEAD) facilitates pulling files from tags or specific
-  commits.
-
-  The include and exclude options specify sets of regular expressions (strings)
-  that will be used to filter the source files. If no filters are specified then
-  all files are added to the fileset."
+  commits."
 
   [u untracked     bool   "Add untracked (but not ignored) files."
-   r ref REF       str    "The git reference for the desired file tree."
-   i include REGEX #{str} "The set of regexes that paths must match."
-   x exclude REGEX #{str} "The set of regexes that paths must not match."]
+   r ref REF       str    "The git reference for the desired file tree."]
 
   (let [tgt (core/temp-dir!)]
     (core/with-pre-wrap fileset
@@ -278,7 +273,7 @@
       (util/info "Adding repo files...\n")
       (doseq [p (core/git-files :ref ref :untracked untracked)]
         (file/copy-with-lastmod (io/file p) (io/file tgt p)))
-      (-> fileset (core/add-resource! tgt) core/commit!))))
+      (-> fileset (core/add-resource tgt) core/commit!))))
 
 (core/deftask uber
   "Add jar entries from dependencies to fileset.
@@ -292,26 +287,17 @@
   scope options may be used to add or remove scope(s) from this set.
 
   The as-jars option pulls in dependency jars without exploding them, such that
-  the jarfiles themselves are copied into the fileset.
-
-  The include and exclude options specify sets of regular expressions (strings)
-  that will be used to filter the entries (or jar files if the as-jars option
-  was specified). If no filters are specified then all entries (or jar files)
-  are added to the fileset."
+  the jarfiles themselves are copied into the fileset."
 
   [j as-jars             bool   "Copy entire jar files instead of exploding them."
    s include-scope SCOPE #{str} "The set of scopes to add."
-   S exclude-scope SCOPE #{str} "The set of scopes to remove."
-   i include REGEX       #{str} "The set of regexes that paths must match."
-   x exclude REGEX       #{str} "The set of regexes that paths must not match."]
+   S exclude-scope SCOPE #{str} "The set of scopes to remove."]
 
   (let [tgt        (core/temp-dir!)
         dfl-scopes #{"compile" "runtime" "provided"}
         scopes     (-> dfl-scopes
                        (set/union include-scope)
                        (set/difference exclude-scope))
-        include    (map re-pattern include)
-        exclude    (map re-pattern exclude)
         scope?     #(contains? scopes (:scope (util/dep-as-map %)))
         jars       (-> (core/get-env)
                        (update-in [:dependencies] (partial filter scope?))
@@ -320,18 +306,16 @@
                      (util/info "Adding uberjar entries...\n")
                      (doseq [jar jars]
                        (if as-jars
-                         (when (file/keep-filters? include exclude jar)
-                           (file/copy-with-lastmod jar (io/file tgt (.getName jar))))
+                         (file/copy-with-lastmod jar (io/file tgt (.getName jar)))
                          (doseq [[relpath url-str] (pod/jar-entries jar)
                                  :let [f (io/file relpath)]]
-                           (when (file/keep-filters? include exclude f)
-                             (let [segs    (file/split-path relpath)
-                                   outfile (apply io/file tgt segs)]
-                               (when-not (or (.exists outfile) (= "META-INF" (first segs)))
-                                 (pod/copy-url url-str outfile))))))))]
+                           (let [segs    (file/split-path relpath)
+                                 outfile (apply io/file tgt segs)]
+                             (when-not (or (.exists outfile) (= "META-INF" (first segs)))
+                               (pod/copy-url url-str outfile)))))))]
     (core/with-pre-wrap fileset
       @add-uber
-      (-> fileset (core/add-resource! tgt) core/commit!))))
+      (-> fileset (core/add-resource tgt) core/commit!))))
 
 (core/deftask web
   "Create project web.xml file.
@@ -358,7 +342,7 @@
       (assert (and (symbol? serve) (namespace serve))
               (format "serve function must be namespaced symbol (%s)" serve))
       @webxml
-      (-> fileset (core/add-resource! tgt) core/commit!))))
+      (-> fileset (core/add-resource tgt) core/commit!))))
 
 (core/deftask aot
   "Perform AOT compilation of Clojure namespaces."
@@ -378,7 +362,7 @@
           (doseq [ns nses]
             (util/info "Compiling %s...\n" ns)
             (compile ns))))
-      (-> fileset (core/add-resource! tgt) core/commit!))))
+      (-> fileset (core/add-resource tgt) core/commit!))))
 
 (core/deftask javac
   "Compile java sources."
@@ -412,20 +396,23 @@
                    (.getMessage d nil))))
           (.close file-mgr)
           (when @throw? (throw (Exception. "java compiler error")))))
-      (-> fileset (core/add-resource! tgt) core/commit!))))
+      (-> fileset (core/add-resource tgt) core/commit!))))
+
+(defn- clean-output
+  [fileset]
+  (let [keepers  (set/intersection (core/output-files fileset)
+                                   (core/input-files fileset))
+        keepdirs (set/intersection (core/output-dirs fileset)
+                                   (core/input-dirs fileset))
+        losers   (set/difference (core/output-files fileset) keepers)]
+    (reduce core/rm (reduce core/add-source fileset keepdirs) losers)))
 
 (core/deftask jar
-  "Build a jar file for the project.
-
-  The include and exclude options specify sets of regular expressions (strings)
-  that will be used to filter the entries. If no filters are specified then all
-  entries are added to the jar file."
+  "Build a jar file for the project."
 
   [f file PATH        str       "The target jar file name."
    M manifest KEY=VAL {str str} "The jar manifest map."
-   m main MAIN        sym       "The namespace containing the -main function."
-   i include REGEX       #{str} "The set of regexes that paths must match."
-   x exclude REGEX       #{str} "The set of regexes that paths must not match."]
+   m main MAIN        sym       "The namespace containing the -main function."]
 
   (let [tgt (core/temp-dir!)]
     (core/with-pre-wrap fileset
@@ -439,24 +426,17 @@
                              ((juxt :artifact-id :version)))
             jarname (or file (and aid v (str aid "-" v ".jar")) "project.jar")
             jarfile (io/file tgt jarname)]
-        (let [keep?   (partial file/keep-filters? include exclude)
-              entries (->> (core/output-files fileset) (filter #(keep? (core/tmpfile %))))
+        (let [entries (core/output-files fileset)
               index   (->> entries (map (juxt core/tmppath #(.getPath (core/tmpfile %)))))]
           (util/info "Writing %s...\n" (.getName jarfile))
           (pod/with-call-worker
             (boot.jar/spit-jar! ~(.getPath jarfile) ~index ~manifest ~main))
-          (-> fileset (core/rm! entries) (core/add-resource! tgt) core/commit!))))))
+          (-> fileset clean-output (core/add-resource tgt) core/commit!))))))
 
 (core/deftask war
-  "Create war file for web deployment.
+  "Create war file for web deployment."
 
-  The include and exclude options specify sets of regular expressions (strings)
-  that will be used to filter the entries. If no filters are specified then all
-  entries are added to the war file."
-
-  [f file PATH     str    "The target war file name."
-   i include REGEX #{str} "The set of regexes that paths must match."
-   x exclude REGEX #{str} "The set of regexes that paths must not match."]
+  [f file PATH str "The target war file name."]
 
   (let [tgt (core/temp-dir!)]
     (core/with-pre-wrap fileset
@@ -471,24 +451,17 @@
                                          (into ["classes"] r'))
                                        (into ["WEB-INF"]))]
                          (if (inf? (first r')) r (.getPath (apply io/file path))))
-              keep?   (partial file/keep-filters? include exclude)
-              entries (->> (core/output-files fileset) (filter (comp keep? core/tmpfile)))
+              entries (core/output-files fileset)
               index   (->> entries (mapv (juxt ->war #(.getPath (core/tmpfile %)))))]
           (util/info "Writing %s...\n" (.getName warfile))
           (pod/with-call-worker
             (boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))
-          (-> fileset (core/rm! entries) (core/add-resource! tgt) core/commit!))))))
+          (-> fileset clean-output (core/add-resource tgt) core/commit!))))))
 
 (core/deftask zip
-  "Build a zip file for the project.
+  "Build a zip file for the project."
 
-  The include and exclude options specify sets of regular expressions (strings)
-  that will be used to filter the entries. If no filters are specified then all
-  entries are added to the zip file."
-
-  [f file PATH        str       "The target zip file name."
-   i include REGEX       #{str} "The set of regexes that paths must match."
-   x exclude REGEX       #{str} "The set of regexes that paths must not match."]
+  [f file PATH str "The target zip file name."]
 
   (let [tgt (core/temp-dir!)]
     (core/with-pre-wrap fileset
@@ -496,13 +469,12 @@
       (let [zipname (or file "project.zip")
             zipfile (io/file tgt zipname)]
         (when-not (.exists zipfile)
-          (let [keep?   (partial file/keep-filters? include exclude)
-                entries (->> (core/output-files fileset) (filter (comp keep? core/tmpfile)))
+          (let [entries (core/output-files fileset)
                 index   (->> entries (map (juxt core/tmppath #(.getPath (core/tmpfile %)))))]
             (util/info "Writing %s...\n" (.getName zipfile))
             (pod/with-call-worker
               (boot.jar/spit-zip! ~(.getPath zipfile) ~index))
-            (-> fileset (core/rm! entries) (core/add-resource! tgt) core/commit!)))))))
+            (-> fileset clean-output (core/add-resource tgt) core/commit!)))))))
 
 (core/deftask install
   "Install project jar to local Maven repository.

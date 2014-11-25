@@ -83,9 +83,10 @@
   (cp [this src-file dest-tmpfile]
     (assert (not *locked*) "can't cp during this phase")
     (let [hash (digest/md5 src-file)
-          p'   (path dest-tmpfile)]
-      (assert ((ls this) dest-tmpfile)
-              (format "dest-tmpfile not in fileset (%s)" dest-tmpfile))
+          p'   (path dest-tmpfile)
+          d'   (dir dest-tmpfile)]
+      (assert ((set (map file dirs)) d')
+              (format "dest-dir not in dir set (%s)" d'))
       (add-blob! blob src-file hash)
       (assoc this :tree (merge tree {p' (assoc dest-tmpfile :id hash)})))))
 
@@ -123,15 +124,15 @@
     (let [dirs (get-dirs this masks+)]
       (->> this ls (filter (comp dirs dir)) set)))
 
-  (defn user-dirs     [this]     (get-dirs this #{:user}))
-  (defn input-dirs    [this]     (get-dirs this #{:input}))
-  (defn output-dirs   [this]     (get-dirs this #{:output}))
-  (defn user-files    [this]     (get-files this #{:user}))
-  (defn input-files   [this]     (get-files this #{:input}))
-  (defn output-files  [this]     (get-files this #{:output}))
-  (defn add-asset!    [this dir] (add this (get-add-dir this #{:asset}) dir))
-  (defn add-source!   [this dir] (add this (get-add-dir this #{:source}) dir))
-  (defn add-resource! [this dir] (add this (get-add-dir this #{:resource}) dir))
+  (defn user-dirs    [this]     (get-dirs this #{:user}))
+  (defn input-dirs   [this]     (get-dirs this #{:input}))
+  (defn output-dirs  [this]     (get-dirs this #{:output}))
+  (defn user-files   [this]     (get-files this #{:user}))
+  (defn input-files  [this]     (get-files this #{:input}))
+  (defn output-files [this]     (get-files this #{:output}))
+  (defn add-asset    [this dir] (add this (get-add-dir this #{:asset}) dir))
+  (defn add-source   [this dir] (add this (get-add-dir this #{:source}) dir))
+  (defn add-resource [this dir] (add this (get-add-dir this #{:resource}) dir))
 
   (defn tmp-dir
     [dir & masks+]
@@ -142,11 +143,11 @@
   (def tf (TmpFileSet. #{t1 t2} {} (io/file "foop0")))
   (input-dirs tf)
   (output-dirs tf)
-  (def tf (add-source! tf (io/file "foop3")))
+  (def tf (add-source tf (io/file "foop3")))
   (def tf (commit! tf))
-  (def tf (add-resource! tf (io/file "foop3")))
+  (def tf (add-resource tf (io/file "foop3")))
   (def tf (commit! tf))
-  (def tf (add-source! tf (io/file "foop4")))
+  (def tf (add-source tf (io/file "foop4")))
   (def tf (commit! tf))
   (file-seq (io/file "foop3/"))
   (identity tf)

@@ -42,8 +42,9 @@
 (defn delete-empty-subdirs!
   [dir]
   (let [empty-dir? #(and (.isDirectory %) (empty? (.list %)))
-        empty-subs (->> dir io/file file-seq (filter empty-dir?))]
-    (doseq [f empty-subs] (io/delete-file f true))))
+        subdirs    (->> dir io/file file-seq (filter (memfn isDirectory)))]
+    (doseq [f (reverse subdirs)]
+      (when (empty-dir? f) (io/delete-file f true)))))
 
 (defn parent-seq [f]
   (->> f io/file (iterate #(.getParentFile %)) (take-while identity)))
