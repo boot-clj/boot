@@ -146,8 +146,9 @@
                   (partition-by string?)
                   (mapcat (partial take 2))
                   (filter symbol?))]
-    (assert (apply distinct? opts) "cli options must be unique")
-    (assert (not-any? #{'h 'help} opts) "the -h/--help cli option is reserved")))
+    (when (seq opts)
+      (assert (apply distinct? opts) "cli options must be unique")
+      (assert (not-any? #{'h 'help} opts) "the -h/--help cli option is reserved"))))
 
 (defmacro clifn [& forms]
   (let [[doc argspecs & body]
