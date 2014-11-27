@@ -82,15 +82,18 @@
         doreg   #(register-recursive %1 %2 [:create :modify :delete])]
     (doseq [path paths] (doreg service (io/file path)))
     (-> #(let [watch-key (take-watch-key service)]
-           (doseq [event (and watch-key (.isValid watch-key) (.pollEvents watch-key))]
-             (let [dir     (.toFile (.watchable watch-key))
-                   changed (io/file dir (str (.context event)))
-                   etype   (enum->kw service (.kind event))
-                   dir?    (.isDirectory changed)]
-               (cond
-                 (and dir? (= :create etype)) (doreg service changed)
-                 (not dir?) (.offer queue (.getPath changed)))))
-           (and watch-key (.reset watch-key) (recur)))
+           (when watch-key
+             (if-not (.isValid watch-key)
+               (println "watch service: invalid watch key")
+               (do (doseq [event (.pollEvents watch-key)]
+                     (let [dir     (.toFile (.watchable watch-key))
+                           changed (io/file dir (str (.context event)))
+                           etype   (enum->kw service (.kind event))
+                           dir?    (.isDirectory changed)]
+                       (cond
+                         (and dir? (= :create etype)) (doreg service changed)
+                         (not dir?) (.offer queue (.getPath changed)))))
+                   (and watch-key (.reset watch-key) (recur))))))
       Thread. .start)
     service))
 
