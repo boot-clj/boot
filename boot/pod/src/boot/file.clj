@@ -137,9 +137,10 @@
   ([dst-map src-map algo]
    (let [[created deleted modified]
          (data/diff (set (keys src-map)) (set (keys dst-map)))
-         algos {:hash #(not= (digest/md5 (:abs (src-map %)))
-                             (digest/md5 (:abs (dst-map %))))
-                :time #(< (:mod (dst-map %)) (:mod (src-map %)))}
+         algos {:hash   #(not= (digest/md5 (:abs (src-map %)))
+                               (digest/md5 (:abs (dst-map %))))
+                :time   #(< (:mod (dst-map %)) (:mod (src-map %)))
+                :theirs #(not= (:mod (dst-map %)) (:mod (src-map %)))}
          modified (set (filter (algos algo) modified))]
      [(set/union created modified) deleted])))
 

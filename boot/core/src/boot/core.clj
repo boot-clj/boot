@@ -90,7 +90,7 @@
                  :asset-paths    (user-asset-dirs)}]
     (when-let [s (seq (get-env k))]
       (binding [file/*hard-link* false]
-        (apply file/sync :hash (first d) s)))))
+        (apply file/sync :theirs (first d) s)))))
 
 (defn- set-user-dirs!
   []
