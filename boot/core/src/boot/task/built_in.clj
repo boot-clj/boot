@@ -140,8 +140,8 @@
             watchers (map file/make-watcher srcdirs)
             paths    (into-array String srcdirs)
             k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
-        (when-not quiet
-          (util/info "Starting file watcher (CTRL-C to quit)...\n\n"))
+        (core/cleanup (.invoke @pod/worker-pod "boot.watcher/stop-watcher" k))
+        (when-not quiet (util/info "Starting file watcher (CTRL-C to quit)...\n\n"))
         (loop [ret (util/guard [(.take q)])]
           (when ret
             (if-let [more (.poll q (or debounce 10) TimeUnit/MILLISECONDS)]
@@ -155,11 +155,10 @@
                   (binding [*out* (if quiet (new java.io.StringWriter) *out*)
                             *err* (if quiet (new java.io.StringWriter) *err*)]
                     (core/reset-build!)
-                    (try (reset! return (-> fileset core/reset-fileset! core/commit! next-task))
+                    (try (reset! return (-> fileset core/reset-fileset core/commit! next-task))
                          (catch Throwable ex (util/print-ex ex)))
                     (util/info "Elapsed time: %.3f sec\n\n" (float (/ (etime) 1000)))))
                 (recur (util/guard [(.take q)]))))))
-        (.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)
         @return))))
 
 (core/deftask repl

@@ -390,14 +390,19 @@
   [& body]
   `(swap! @#'boot.core/cleanup-fns conj (fn [] ~@body)))
 
-(defn reset-fileset!
+(defn- new-fileset
+  []
+  (boot.tmpdir.TmpFileSet. @tempdirs {} (temp-dir* ::blob)))
+
+(defn reset-fileset
   [fileset]
-  (-> (or fileset (boot.tmpdir.TmpFileSet. @tempdirs {} (temp-dir* ::blob)))
-      (assoc :tree {})
+  (sync-user-dirs!)
+  (-> (if-not fileset
+        (new-fileset)
+        (rm fileset (user-files fileset)))
       (add-user-asset (first (user-asset-dirs)))
       (add-user-source (first (user-source-dirs)))
-      (add-user-resource (first (user-resource-dirs)))
-      commit!))
+      (add-user-resource (first (user-resource-dirs)))))
 
 (defn reset-build!
   "FIXME: document"
@@ -428,7 +433,7 @@
                  (file/delete-empty-subdirs! tgt))]
     (binding [*warnings* (atom 0)]
       (reset-build!)
-      ((task-stack #(do (sync! %) %)) (reset-fileset! nil)))))
+      ((task-stack #(do (sync! %) %)) (commit! (reset-fileset nil))))))
 
 (defmacro boot
   "Builds the project as if `argv` was given on the command line."
