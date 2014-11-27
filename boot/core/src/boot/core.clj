@@ -378,8 +378,8 @@
 
 (defmacro deftask
   "Define a boot task."
-  [sym doc argspec & body]
-  `(cli2/defclifn ~(vary-meta sym assoc ::task true) ~doc ~argspec ~@body))
+  [sym & forms]
+  `(cli2/defclifn ~(vary-meta sym assoc ::task true) ~@forms))
 
 ;; Boot Lifecycle ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

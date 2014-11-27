@@ -141,30 +141,40 @@
         (recur kw (conj cli arg) more)
         (recur (assoc kw arg (first more)) cli (rest more))))))
 
-(defmacro clifn [doc argspecs & body]
-  (assert (string? doc) "missing docstring")
-  (let [doc      (string/replace doc #"\n  " "\n")
-        helpspec '[h help bool "Print this help info."]
-        argspecs (cons helpspec (argspec-seq argspecs))
-        cli-args (mapv (partial apply argspec->cli-argspec) argspecs)
-        bindings (cli-argspec->bindings cli-args)
-        arglists (list 'list (list 'quote ['& bindings]))
-        cli-doc  (format "%s\n\nOptions:\n%s\n" doc (cli-summary argspecs))
-        clj-doc  (format "%s\n\nKeyword Args:\n%s\n" doc (clj-summary argspecs))
-        varmeta  {:doc clj-doc :arglists arglists :argspec cli-args}]
-    `(->
-       (fn [& args#]
-         (let [{kws# :kw clis# :cli} (split-args args#)
-               parsed#   (cli/parse-opts clis# ~cli-args)
-               ~bindings (merge kws# (:options parsed#))
-               ~'*args*  (:arguments parsed#)]
-           ~@(mapv (partial apply argspec->assert) argspecs)
-           (if-not ~'help (do ~@body) (print ~cli-doc))))
-       (with-meta ~varmeta))))
+(defn- assert-argspecs [argspecs]
+  (let [opts (->> argspecs
+                  (partition-by string?)
+                  (mapcat (partial take 2))
+                  (filter symbol?))]
+    (assert (apply distinct? opts) "cli options must be unique")
+    (assert (not-any? #{'h 'help} opts) "the -h/--help cli option is reserved")))
 
-(defmacro defclifn [sym doc argspecs & body]
-  (assert (string? doc) (format "missing docstring (%s)" sym))
-  `(let [var#    (def ~sym (clifn ~doc ~argspecs ~@body))
+(defmacro clifn [& forms]
+  (let [[doc argspecs & body]
+        (if (string? (first forms))
+          forms
+          (list* "No description provided." forms))]
+    (assert-argspecs argspecs)
+    (let [doc      (string/replace doc #"\n  " "\n")
+          helpspec '[h help bool "Print this help info."]
+          argspecs (cons helpspec (argspec-seq argspecs))
+          cli-args (mapv (partial apply argspec->cli-argspec) argspecs)
+          bindings (cli-argspec->bindings cli-args)
+          arglists (list 'list (list 'quote ['& bindings]))
+          cli-doc  (format "%s\n\nOptions:\n%s\n" doc (cli-summary argspecs))
+          clj-doc  (format "%s\n\nKeyword Args:\n%s\n" doc (clj-summary argspecs))
+          varmeta  {:doc clj-doc :arglists arglists :argspec cli-args}]
+      `(-> (fn [& args#]
+             (let [{kws# :kw clis# :cli} (split-args args#)
+                   parsed#   (cli/parse-opts clis# ~cli-args)
+                   ~bindings (merge kws# (:options parsed#))
+                   ~'*args*  (:arguments parsed#)]
+               ~@(mapv (partial apply argspec->assert) argspecs)
+               (if-not ~'help (do ~@body) (print ~cli-doc))))
+           (with-meta ~varmeta)))))
+
+(defmacro defclifn [sym & forms]
+  `(let [var#    (def ~sym (clifn ~@forms))
          fmtdoc# (comp string/trim (#'indent 2))
          meta#   (update-in (meta ~sym) [:doc] fmtdoc#)]
      (doto var# (alter-meta! (fnil merge {}) meta#))))
