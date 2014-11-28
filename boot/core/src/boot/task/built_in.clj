@@ -178,7 +178,7 @@
   [s server         bool  "Start REPL server only."
    c client         bool  "Start REPL client only."
    C no-color       bool  "Disable ANSI color output in client."
-   e eval EXPR      any   "The form the client will evaluate in the boot.user ns."
+   e eval EXPR      edn   "The form the client will evaluate in the boot.user ns."
    b bind ADDR      str   "The address server listens on."
    H host HOST      str   "The host client connects to."
    i init PATH      str   "The file to evaluate in the boot.user ns."

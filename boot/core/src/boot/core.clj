@@ -62,6 +62,11 @@
   [key]
   (tmp/mkdir! @tmpregistry key))
 
+(def ^:private new-fileset
+  (memoize
+    (fn []
+      (boot.tmpdir.TmpFileSet. @tempdirs {} (temp-dir* ::blob)))))
+
 (defn- temp-dir**
   [key & masks+]
   (let [k (or key (keyword "boot.core" (str (gensym))))
@@ -389,10 +394,6 @@
   clean up persistent resources created by the task (eg. threads, files, etc.)"
   [& body]
   `(swap! @#'boot.core/cleanup-fns conj (fn [] ~@body)))
-
-(defn- new-fileset
-  []
-  (boot.tmpdir.TmpFileSet. @tempdirs {} (temp-dir* ::blob)))
 
 (defn reset-fileset
   [fileset]

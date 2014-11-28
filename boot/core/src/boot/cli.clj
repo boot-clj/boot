@@ -22,7 +22,7 @@
     sym   symbol
     char  first
     bool  identity
-    any   read-string
+    edn   read-string
     code  (comp eval read-string)))
 
 (defn- assert-atom [type]
@@ -34,7 +34,7 @@
     sym   symbol?
     char  char?
     bool  #(contains? #{true false} %)
-    any   (constantly true)
+    edn   (constantly true)
     code  (constantly true)))
 
 (defn- parse-fn [optarg]
