@@ -74,11 +74,15 @@ public class App {
                 p.store(file, booturl); }
         
         return p; }
-    
+
+    private static boolean
+    isWindows() throws Exception {
+        return (System.getProperty("os.name").toLowerCase().indexOf("win") >= 0); }
+
     private static Properties
     readProps(File f, boolean create) throws Exception {
         FileLock lock = null;
-        if (f.exists())
+        if (!isWindows() && f.exists())
             lock = (new RandomAccessFile(f, "rw")).getChannel().lock();
         Properties p = new Properties();
         try {
@@ -122,14 +126,17 @@ public class App {
     
     private static Object
     readCache(File f) throws Exception {
-        FileLock lock = (new RandomAccessFile(f, "rw")).getChannel().lock();
+        FileLock lock = null;
+        if (!isWindows()){
+            lock = (new RandomAccessFile(f, "rw")).getChannel().lock();
+        }
         try {
             long max = 18 * 60 * 60 * 1000;
             long age = System.currentTimeMillis() - f.lastModified();
             if (age > max) throw new Exception("cache age exceeds TTL");
             return validateCache(f, (new ObjectInputStream(new FileInputStream(f))).readObject()); }
         catch (Throwable e) { return writeCache(f, seedCache()); }
-        finally { lock.release(); }}
+        finally { if (lock != null) lock.release(); }}
     
     public static ClojureRuntimeShim
     newShim(File[] jarFiles) throws Exception {
