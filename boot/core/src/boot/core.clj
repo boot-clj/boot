@@ -104,7 +104,8 @@
     (map get-env)
     (apply set/union)
     (watch-dirs (fn [_] (sync-user-dirs!)))
-    (reset! src-watcher)))
+    (reset! src-watcher))
+  (sync-user-dirs!))
 
 (defn- do-cleanup!
   []
