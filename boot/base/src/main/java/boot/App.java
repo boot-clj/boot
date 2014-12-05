@@ -77,8 +77,8 @@ public class App {
 
     private static boolean
     isWindows() throws Exception {
-        return (System.getProperty("os.name").toLowerCase().indexOf("win") >= 0);
-    }
+        return (System.getProperty("os.name").toLowerCase().indexOf("win") >= 0); }
+
     private static Properties
     readProps(File f, boolean create) throws Exception {
         FileLock lock = null;

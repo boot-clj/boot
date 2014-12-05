@@ -369,7 +369,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [2]: https://github.com/boot-clj/boot/releases/download/v2-r1/boot.sh
 [3]: https://github.com/boot-clj/boot/releases/download/v2-r1/boot.exe
 [4]: #install
-[5]: https://drone.io/github.com/boot-clj/boot/status.png?cache=1
+[5]: https://drone.io/github.com/boot-clj/boot/status.png?camocache=1
 [6]: https://drone.io/github.com/boot-clj/boot/latest
 [7]: http://clojure.org/transducers
 [8]: http://drtom.ch/posts/2012-12-10/An_Introduction_to_Webprogramming_in_Clojure_-_Ring_and_Middleware/#ring-middleware
