@@ -23,7 +23,7 @@
 
 (defn dir-id []
   (apply str
-    (-> (->> (.. ManagementFactory getRuntimeMXBean getName) 
+    (-> (->> (.. ManagementFactory getRuntimeMXBean getName)
           (take-while (partial not= \@))
           (apply str)
           Long/parseLong)
@@ -46,22 +46,26 @@
 ;;; tmpregistry interface
 
 (defprotocol ITmpRegistry
-  (-init!       [this]                "Initialize temp registry.")
-  (-get         [this k]              "Retrieve a temp file or directory.")
-  (-unmk!       [this k]              "Remove a temp file or directory.")
-  (-mk!         [this type key name]  "Create a temp file or directory.")
-  (-add-sync!   [this dest srcs]      "Add a directory which is to be synced.")
-  (-sync!       [this]                "Sync directories added with -add-sync!.")
-  (-tmpfile?    [this f]              "Is f a file in the tmpregistry?"))
+  (-init!        [this]               "Initialize temp registry.")
+  (-get          [this k]             "Retrieve a temp file or directory.")
+  (-unmk!        [this k]             "Remove a temp file or directory.")
+  (-mk!          [this type key name] "Create a temp file or directory.")
+  (-add-sync!    [this dest srcs]     "Add a directory which is to be synced.")
+  (-get-sync!    [this dest]          "Retrieve a list of directories to be synced.")
+  (-remove-sync! [this dest srcs]     "Remove directories to be synced.")
+  (-sync!        [this]               "Sync directories added with -add-sync!.")
+  (-tmpfile?     [this f]             "Is f a file in the tmpregistry?"))
 
-(defn init!     [this]              (doto this -init!))
-(defn get       [this key]          (-get this key))
-(defn unmk!     [this key]          (doto this (-unmk! key)))
-(defn mk!       [this key & [name]] (-mk! this ::file key (or name "file.tmp")))
-(defn mkdir!    [this key & [name]] (-mk! this ::dir key name))
-(defn add-sync! [this dst & [srcs]] (doto this (-add-sync! dst srcs)))
-(defn sync!     [this]              (doto this -sync!))
-(defn tmpfile?  [this f]            (-tmpfile? this f))
+(defn init!        [this]              (doto this -init!))
+(defn get          [this key]          (-get this key))
+(defn unmk!        [this key]          (doto this (-unmk! key)))
+(defn mk!          [this key & [name]] (-mk! this ::file key (or name "file.tmp")))
+(defn mkdir!       [this key & [name]] (-mk! this ::dir key name))
+(defn add-sync!    [this dst & [srcs]] (doto this (-add-sync! dst srcs)))
+(defn get-sync!    [this dst]          (-get-sync! this dst))
+(defn remove-sync! [this dst & [srcs]] (doto this (-remove-sync! dst srcs)))
+(defn sync!        [this]              (doto this -sync!))
+(defn tmpfile?     [this f]            (-tmpfile? this f))
 
 ;;; tmpregistry implementation
 
@@ -93,6 +97,13 @@
   (-add-sync! [this dest srcs]
     (let [srcs (set (map io/file srcs))]
       (swap! syncs update-in [(io/file dest)] #(if % (into % srcs) srcs))))
+  (-get-sync! [this dest]
+    (get-in @syncs [(io/file dest)]))
+  (-remove-sync! [this dest srcs]
+    (let [srcs (set (map io/file srcs))]
+      (if (empty? srcs)
+        (swap! syncs dissoc (io/file dest))
+        (swap! syncs update-in [(io/file dest)] #(difference % srcs)))))
   (-sync! [this]
     (let [path  #(.getPath %)
           syncs (->> @syncs

@@ -17,7 +17,7 @@
     [java.net URLClassLoader URL]
     java.lang.management.ManagementFactory))
 
-(declare get-env set-env! add-sync! boot-env on-env! merge-env!
+(declare get-env set-env! add-sync! get-sync! remove-sync! boot-env on-env! merge-env!
          tgt-files rsc-files relative-path)
 
 (declare ^{:dynamic true :doc "The running version of boot app."}      *app-version*)
@@ -137,6 +137,11 @@
   (add-directories! (set/difference new old))
   (add-sync! (get-env :tgt-path) (set/difference new old)))
 
+(defmethod on-env! :tgt-path  [key old new env]
+  (let [srcs (get-sync! old)]
+    (add-sync! new srcs)
+    (remove-sync! old)))
+
 (defmulti merge-env!
   "This function is used to modify how new values are merged into the boot atom
   when `set-env!` is called. This function's result will become the new value
@@ -188,6 +193,18 @@
   "
   [dst & [srcs]]
   (tmp/add-sync! @tmpregistry dst srcs))
+
+(defn get-sync!
+  "Retrieves all directories to be synced to the destination directory `dst`."
+  [dst]
+  (tmp/get-sync! @tmpregistry dst))
+
+(defn remove-sync!
+  "Removes directories to be synced to the destination directory `dst`. The
+  `srcs` are an optional list of directories whose contents will be removed
+  from the sync. If `srcs` are not specified the entire sync will be removed."
+  [dst & [srcs]]
+  (tmp/remove-sync! @tmpregistry dst srcs))
 
 ;; ## Task helpers – managed temp files
 
