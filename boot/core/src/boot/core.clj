@@ -70,12 +70,14 @@
 (defn- temp-dir**
   [key & masks+]
   (let [k (or key (keyword "boot.core" (str (gensym))))
-        m (->> masks+ (map masks) (apply merge))]
+        m (->> masks+ (map masks) (apply merge))
+        in-fileset? (or (:input m) (:output m))]
     (util/with-let [d (temp-dir* k)]
-      (let [t (tmpd/map->TmpDir (assoc m :dir d))]
-        (swap! tempdirs conj t)
-        (when (:input t)
-          (set-env! :directories #(conj % (.getPath (:dir t)))))))))
+      (when in-fileset?
+        (let [t (tmpd/map->TmpDir (assoc m :dir d))]
+          (swap! tempdirs conj t)
+          (when (:input t)
+            (set-env! :directories #(conj % (.getPath (:dir t))))))))))
 
 (defn- add-user-asset    [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :asset}) dir))
 (defn- add-user-source   [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :source}) dir))
@@ -277,11 +279,9 @@
   "Given a dest directory and one or more srcs directories, overlays srcs on
   dest, removing files in dest that are not in srcs. Uses file modification
   timestamps to decide which version of files to emit to dest. Uses hardlinks
-  instead of copying file contents. File modification times are preserved.
-
-  The zero-arg arity is used internally by boot."
-  ([dest & srcs] (apply file/sync :time dest srcs))
-  ([] (apply file/sync :time (get-env :target-path) (output-dirs))))
+  instead of copying file contents. File modification times are preserved."
+  [dest & srcs]
+  (apply file/sync :time dest srcs))
 
 ;; Boot Environment ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -431,8 +431,10 @@
   "FIXME: document"
   [task-stack]
   (let [sync! #(let [tgt (get-env :target-path)]
-                 (apply file/sync :time tgt (output-dirs %))
-                 (file/delete-empty-subdirs! tgt))]
+                 (binding [file/*hard-link* false]
+                   (apply file/sync :time tgt (output-dirs %)))
+                 (file/delete-empty-subdirs! tgt)
+                 (sync-user-dirs!))]
     (binding [*warnings* (atom 0)]
       (reset-build!)
       ((task-stack #(do (sync! %) %)) (commit! (reset-fileset nil))))))

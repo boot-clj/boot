@@ -93,12 +93,13 @@
 
 (defn copy-with-lastmod
   [src-file dst-file]
-  (let [last-mod (.lastModified src-file)]
+  (let [last-mod (.lastModified src-file)
+        cp-src!  (partial io/copy src-file)]
     (io/make-parents dst-file)
     (when (.exists dst-file) (.delete dst-file))
     (if *hard-link*
       (Files/createLink (.toPath dst-file) (.toPath src-file))
-      (doto dst-file ((partial io/copy src-file)) (.setLastModified last-mod)))))
+      (doto dst-file cp-src! (.setLastModified last-mod)))))
 
 (defn copy-files
   [src dest]

@@ -129,7 +129,8 @@
   Debouncing time is 10ms by default."
 
   [q quiet         bool "Suppress all output from running jobs."
-   d debounce MSEC long "The time to wait (millisec) for filesystem to settle down."]
+   d debounce MSEC long "The time to wait (millisec) for filesystem to settle down."
+   v verbose       bool "Print which files have changed."]
 
   (pod/require-in @pod/worker-pod "boot.watcher")
   (fn [next-task]
@@ -152,6 +153,10 @@
                                  (reduce (partial merge-with set/union))
                                  :time (filter (memfn exists)) set)]
                 (when-not (empty? changed)
+                  (when verbose
+                    (doseq [p (->> changed (map #(.getPath %)))]
+                      (util/info (format "→ %s %s\n" (.lastModified (io/file p)) p)))
+                    (util/info "\n"))
                   (binding [*out* (if quiet (new java.io.StringWriter) *out*)
                             *err* (if quiet (new java.io.StringWriter) *err*)]
                     (core/reset-build!)
