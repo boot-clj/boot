@@ -505,18 +505,24 @@
            `(replace-task! [t# ~task] (fn [& _#] identity)))))
 
 (defmacro task-options!
-  "Given a number of task/vector-of-curried-arguments pairs, replaces the root
+  "Given a number of task/map-of-curried-arguments pairs, replaces the root
   bindings of the tasks with their curried values.
 
   Example:
 
   (task-options!
-    repl [:port 12345]
-    jar  [:manifest {:howdy \"world\"}])"
+    repl {:port     12345}
+    jar  {:manifest {:howdy \"world\"}})"
   [& task-option-pairs]
   `(do ~@(for [[task opts] (partition 2 task-option-pairs)]
-           `(replace-task! [t# ~task]
-              (fn [& xs#] (apply t# (concat ~opts xs#)))))))
+           `(let [opt# ~opts
+                  var# (var ~task)
+                  old# (:task-options (meta var#))
+                  new# (if (map? opt#) opt# (opt# old#))
+                  arg# (mapcat identity new#)]
+              (replace-task! [t# ~task] (fn [& xs#] (apply t# (concat arg# xs#))))
+              (alter-meta! var# (fn [x#] (update-in x# [:task-options] merge new#)))))
+       nil))
 
 ;; Task Utility Functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
