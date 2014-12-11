@@ -299,14 +299,15 @@
     (.invoke "boot.pod/set-worker-pod!" @worker-pod)))
 
 (defn lifecycle-pool
-  [size create destroy & {:keys [priority]}]
+  [size create bootstrap destroy & {:keys [priority]}]
   (let [run? (atom true)
         pri  (or priority Thread/NORM_PRIORITY)
         q    (LinkedBlockingQueue. (int size))
         poll #(.poll % 1 TimeUnit/SECONDS)
         putp #(util/with-let [p (promise)] (.put % p))
         fill #(util/while-let [p (and @run? (putp q))]
-                (deliver p (when @run? (create))))
+                (deliver p (when @run? (let [p (create)]
+                                         (when bootstrap (bootstrap p)) p))))
         take #(deref (.peek q))
         swap #(destroy @(.take q))
         stop #(do (reset! run? false)
@@ -332,5 +333,7 @@
     (.. pod getClassLoader close)))
 
 (defn pod-pool
-  [size env]
-  (lifecycle-pool size #(make-pod env) destroy-pod))
+  ([size env]
+     (lifecycle-pool size #(make-pod env) nil destroy-pod))
+  ([size env bootstrap]
+     (lifecycle-pool size #(make-pod env) bootstrap destroy-pod)))
