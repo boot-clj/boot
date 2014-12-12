@@ -332,5 +332,40 @@
     (.. pod getClassLoader close)))
 
 (defn pod-pool
-  [size env]
-  (lifecycle-pool size #(make-pod env) destroy-pod))
+  "Creates a pod pool service. The service maintains a pool of prebuilt pods
+  with a current active pod and a number of pods in reserve, warmed and ready
+  to go (it takes ~2s to load clojure.core into a pod).
+  
+  Pool Service API:
+  -----------------
+
+  The pod-pool function returns a pod service instance, which is itself a
+  Clojure function. The pod service function can be called with no arguments
+  or with :refresh or :shutdown.
+
+  Calling the function with no arguments produces a reference to the current
+  pod. Expressions can be evaluated in this pod via with-eval-in, etc.
+  
+  Calling the function with the :refresh argument swaps out the current pod,
+  destroys it, and promotes a pod from the reserve pool. A new pod is created
+  asynchronously to replenish the reserve pool.
+
+  Calling the function with the :shutdown argument destroys all pods in the
+  pool and shuts down the service.
+
+  Options:
+  --------
+
+  :size       The total number of pods to be maintained in the pool. Default
+              size is 2.
+  :init       A function that is called when a new pod is created. Takes the
+              new pod as an argument, is evaluated for side effects only.
+  :destroy    A function that is called when a pod is destroyed. Takes the pod
+              to be destroyed as an argument, is evaluated for side effects
+              before pod is destroyed."
+  [env & {:keys [size init destroy]}]
+  (let [size    (or size 2)
+        init    (if-not init #(make-pod env) #(doto (make-pod env) init))
+        destroy (if-not destroy destroy-pod #(doto % destroy destroy-pod))]
+    (lifecycle-pool size init destroy)))
+
