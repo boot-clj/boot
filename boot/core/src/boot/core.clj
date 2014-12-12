@@ -202,6 +202,11 @@
   [tmpfile]
   (tmpd/file tmpfile))
 
+(defn fileset-diff
+  "FIXME: document this"
+  [before after]
+  (tmpd/diff before after))
+
 ;; TmpFileSet API
 
 (defn user-dirs

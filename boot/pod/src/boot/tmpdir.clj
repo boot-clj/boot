@@ -2,6 +2,7 @@
   (:require
     [clojure.java.io  :as io]
     [clojure.set      :as set]
+    [clojure.data     :as data]
     [boot.util        :as util]
     [boot.file        :as file]
     [boot.from.digest :as digest]))
@@ -17,7 +18,8 @@
   (commit! [this])
   (rm      [this paths])
   (add     [this dest-dir src-dir])
-  (cp      [this src-file dest-tmpfile]))
+  (cp      [this src-file dest-tmpfile])
+  (diff    [this fileset]))
 
 (defrecord TmpFile [dir path id]
   ITmpFile
@@ -88,7 +90,11 @@
       (assert ((set (map file dirs)) d')
               (format "dest-dir not in dir set (%s)" d'))
       (add-blob! blob src-file hash)
-      (assoc this :tree (merge tree {p' (assoc dest-tmpfile :id hash)})))))
+      (assoc this :tree (merge tree {p' (assoc dest-tmpfile :id hash)}))))
+  (diff [this fileset]
+    (let [t1 (:tree this)
+          t2 (:tree fileset)]
+      (->> (data/diff t1 t2) second keys (select-keys t2) (assoc fileset :tree)))))
 
 (defn tmpfile?
   [x]
