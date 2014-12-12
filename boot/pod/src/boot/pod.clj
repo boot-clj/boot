@@ -315,7 +315,7 @@
     (doto (Thread. fill) (.setDaemon true) (.setPriority pri) .start)
     (fn
       ([] (take))
-      ([op] (case op :refresh (swap) :shutdown (stop))))))
+      ([op] (case op :refresh (do (swap) (take)) :shutdown (stop))))))
 
 (defn make-pod
   ([] (set-this-worker-in-pod! (boot.App/newPod)))
