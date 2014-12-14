@@ -32,8 +32,9 @@
 
 (defn prompt-for
   [keyring user-id]
-  (-> keyring secring (get-pubkey user-id)
-    pgp/key-info :user-ids first (str "\nGPG passphrase: ")))
+  (if-let [pk (-> keyring secring (get-pubkey user-id))]
+    (-> pk pgp/key-info :user-ids first (str "\nGPG passphrase: "))
+    (throw (Exception. (format "public key not found (%s)" user-id)))))
 
 (defn sign
   [content passphrase & {:keys [keyring user-id]}]
