@@ -77,15 +77,20 @@
     (catch com.barbarysoftware.watchservice.ClosedWatchServiceException _ nil)))
 
 (defn- service
-  [queue paths]
+  [queue paths verbose]
   (let [service (new-watch-service)
-        doreg   #(register-recursive %1 %2 [:create :modify :delete])]
+        doreg   #(register-recursive %1 %2 [:create :modify])]
     (doseq [path paths] (doreg service (io/file path)))
     (-> #(let [watch-key (take-watch-key service)]
            (when watch-key
              (if-not (.isValid watch-key)
-               (println "watch service: invalid watch key")
-               (do (doseq [event (.pollEvents watch-key)]
+               (do (when verbose
+                     (printf "→ DEBUG: invalid watch key %s\n" (.watchable watch-key)))
+                   (Thread/sleep 500)
+                   (recur))
+               (do #_(prn :-- watch-key)
+                   #_(prn :-- (.watchable watch-key))
+                   (doseq [event (.pollEvents watch-key)]
                      (let [dir     (.toFile (.watchable watch-key))
                            changed (io/file dir (str (.context event)))
                            etype   (enum->kw service (.kind event))
@@ -104,9 +109,9 @@
   (when-let [w (@watchers k)] (.close w)))
 
 (defn make-watcher
-  [queue paths]
+  [queue paths verbose]
   (let [k  (str (gensym))
-        s  (service queue paths)
+        s  (service queue paths verbose)
         fs (->> paths (mapcat (comp file-seq io/file)) (filter (memfn isFile)))]
     (swap! watchers assoc k s)
     (doseq [f fs] (.offer queue (.getPath f)))

@@ -140,7 +140,8 @@
             srcdirs  (map (memfn getPath) (core/user-dirs fileset))
             watchers (map file/make-watcher srcdirs)
             paths    (into-array String srcdirs)
-            k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
+            extra-v? (> (or (:verbose core/*boot-opts*) 0) 2)
+            k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths extra-v?)]
         (core/cleanup (.invoke @pod/worker-pod "boot.watcher/stop-watcher" k))
         (when-not quiet (util/info "Starting file watcher (CTRL-C to quit)...\n\n"))
         (loop [ret (util/guard [(.take q)])]
@@ -152,6 +153,8 @@
                     changed (->> (map #(%) watchers)
                                  (reduce (partial merge-with set/union))
                                  :time (filter (memfn exists)) set)]
+                (when extra-v?
+                  (util/info (format "→ DEBUG: %s\n" (pr-str changed))))
                 (when-not (empty? changed)
                   (when verbose
                     (doseq [p (->> changed (map #(.getPath %)))]
