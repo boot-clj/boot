@@ -88,9 +88,7 @@
                      (printf "→ DEBUG: invalid watch key %s\n" (.watchable watch-key)))
                    (Thread/sleep 500)
                    (recur))
-               (do #_(prn :-- watch-key)
-                   #_(prn :-- (.watchable watch-key))
-                   (doseq [event (.pollEvents watch-key)]
+               (do (doseq [event (.pollEvents watch-key)]
                      (let [dir     (.toFile (.watchable watch-key))
                            changed (io/file dir (str (.context event)))
                            etype   (enum->kw service (.kind event))
