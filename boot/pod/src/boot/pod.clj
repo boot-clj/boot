@@ -292,11 +292,14 @@
                 (map (fn [[k v]] [v (.getPath (io/file outdir k))])))]
     (doseq [[url-str out-path] ents] (copy-url url-str out-path))))
 
-(defn- set-this-worker-in-pod!
+(defn- init-pod!
   [pod]
   (doto pod
     (require-in "boot.pod")
-    (.invoke "boot.pod/set-worker-pod!" @worker-pod)))
+    (.invoke "boot.pod/set-worker-pod!" @worker-pod)
+    (with-eval-in
+      (require '[boot.util :as util])
+      (reset! util/*verbosity* ~(deref util/*verbosity*)))))
 
 (defn lifecycle-pool
   [size create destroy & {:keys [priority]}]
@@ -318,12 +321,11 @@
       ([op] (case op :refresh (do (swap) (take)) :shutdown (stop))))))
 
 (defn make-pod
-  ([] (set-this-worker-in-pod! (boot.App/newPod)))
+  ([] (init-pod! (boot.App/newPod)))
   ([{:keys [directories] :as env}]
      (let [dirs (map io/file directories)
            jars (resolve-dependency-jars env)]
-       (set-this-worker-in-pod!
-         (->> (concat dirs jars) (into-array java.io.File) (boot.App/newPod))))))
+       (->> (concat dirs jars) (into-array java.io.File) boot.App/newPod init-pod!))))
 
 (defn destroy-pod
   [pod]

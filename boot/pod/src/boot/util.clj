@@ -18,11 +18,18 @@
 
 (declare print-ex)
 
-(def verbose-exceptions (atom 1))
+(def ^:dynamic *verbosity* (atom 1))
 
-(defn info [& more] (binding [*out* *err*] (apply printf more) (flush)))
-(defn warn [& more] (binding [*out* *err*] (apply printf more) (flush)))
-(defn fail [& more] (binding [*out* *err*] (apply printf more) (flush)))
+(defn- print*
+  [verbosity args]
+  (when (>= @*verbosity* verbosity)
+    (binding [*out* *err*]
+      (apply printf args) (flush))))
+
+(defn dbug [& more] (print* 3 more))
+(defn info [& more] (print* 1 more))
+(defn warn [& more] (print* 1 more))
+(defn fail [& more] (print* 0 more))
 
 (defmacro with-let
   "Binds resource to binding and evaluates body.  Then, returns
@@ -91,7 +98,7 @@
 
 (defn print-ex
   [ex]
-  (case @verbose-exceptions
+  (case @*verbosity*
     0 (binding [*out* *err*] (println (.getMessage ex)))
     1 (pretty/write-exception *err* ex
         {:properties true :filter repl/standard-frame-filter})

@@ -16,10 +16,11 @@
   {:boot/from :google/hesokuri
    :doc "This file was modified by micha.niskin@gmail.com."}
   (:import
-   [java.nio.file FileSystems Path Paths StandardWatchEventKinds]
-   [com.barbarysoftware.watchservice StandardWatchEventKind WatchableFile])
+    [java.nio.file FileSystems Path Paths StandardWatchEventKinds]
+    [com.barbarysoftware.watchservice StandardWatchEventKind WatchableFile])
   (:require
-   [clojure.java.io :as io]))
+    [clojure.java.io :as io]
+    [boot.util       :as util]))
 
 (defprotocol IRegister
   (register [this path events])
@@ -77,15 +78,14 @@
     (catch com.barbarysoftware.watchservice.ClosedWatchServiceException _ nil)))
 
 (defn- service
-  [queue paths verbose]
+  [queue paths]
   (let [service (new-watch-service)
         doreg   #(register-recursive %1 %2 [:create :modify])]
     (doseq [path paths] (doreg service (io/file path)))
     (-> #(let [watch-key (take-watch-key service)]
            (when watch-key
              (if-not (.isValid watch-key)
-               (do (when verbose
-                     (printf "→ DEBUG: invalid watch key %s\n" (.watchable watch-key)))
+               (do (util/dbug "invalid watch key %s\n" (.watchable watch-key))
                    (Thread/sleep 500)
                    (recur))
                (do (doseq [event (.pollEvents watch-key)]
@@ -107,9 +107,9 @@
   (when-let [w (@watchers k)] (.close w)))
 
 (defn make-watcher
-  [queue paths verbose]
+  [queue paths]
   (let [k  (str (gensym))
-        s  (service queue paths verbose)
+        s  (service queue paths)
         fs (->> paths (mapcat (comp file-seq io/file)) (filter (memfn isFile)))]
     (swap! watchers assoc k s)
     (doseq [f fs] (.offer queue (.getPath f)))

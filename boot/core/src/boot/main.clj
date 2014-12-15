@@ -100,6 +100,7 @@
               core/*app-version*  (boot.App/getVersion)]
       (util/exit-ok
         (let [userscript  (script? (io/file (System/getProperty "user.home") ".profile.boot"))
+              verbosity   (or (:verbose opts) 0)
               profile?    (not (:no-profile opts))
               bootforms   (some->> arg0 slurp util/read-string-all)
               userforms   (when profile? (some->> userscript slurp util/read-string-all))
@@ -110,7 +111,11 @@
               scriptforms (emit boot? args userforms bootforms import-ns)
               scriptstr   (str (string/join "\n\n" (map pr-str scriptforms)) "\n")]
 
-          (swap! util/verbose-exceptions + (or (:verbose opts) 0))
+          (swap! util/*verbosity* + verbosity)
+          (pod/with-eval-in worker-pod
+            (require '[boot.util :as util])
+            (swap! util/*verbosity* + ~verbosity))
+
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
 
           (#'core/init!)

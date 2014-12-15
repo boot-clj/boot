@@ -305,8 +305,7 @@
         (let [q        (LinkedBlockingQueue.)
               watchers (map file/make-watcher dirs)
               paths    (into-array String dirs)
-              verbose  (> (or (:verbose *boot-opts*) 0) 2)
-              k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths verbose)]
+              k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
           (daemon
             (loop [ret (util/guard [(.take q)])]
               (when ret
