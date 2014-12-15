@@ -205,7 +205,7 @@
 (defn fileset-diff
   "FIXME: document this"
   [before after]
-  (tmpd/diff before after))
+  (if-not before after (tmpd/diff before after)))
 
 ;; TmpFileSet API
 
