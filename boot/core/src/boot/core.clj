@@ -99,6 +99,20 @@
       (binding [file/*hard-link* false]
         (apply file/sync :theirs (first d) s)))))
 
+(defn- set-fake-class-path!
+  []
+  (let [dirs (->> (get-env)
+                  ((juxt :source-paths :resource-paths))
+                  (apply concat)
+                  (map #(.getAbsolutePath (io/file %))))]
+    (->> (pod/get-classpath)
+         (map #(.getPath (URL. %)))
+         (remove #(.isDirectory (io/file %)))
+         (concat dirs)
+         (interpose (System/getProperty "path.separator"))
+         (apply str)
+         (System/setProperty "fake.class.path"))))
+
 (defn- set-user-dirs!
   []
   (@src-watcher)
@@ -107,6 +121,7 @@
     (apply set/union)
     (watch-dirs (fn [_] (sync-user-dirs!)))
     (reset! src-watcher))
+  (set-fake-class-path!)
   (sync-user-dirs!))
 
 (defn- do-cleanup!
@@ -135,6 +150,7 @@
 (defn- add-directories!
   "Add URLs (directories or jar files) to the classpath."
   [dirs]
+  (set-fake-class-path!)
   (doseq [dir dirs] (pod/add-classpath dir)))
 
 (defn- configure!*
