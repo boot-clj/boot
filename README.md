@@ -131,7 +131,7 @@ from the command line:
 
 ```
 # The -- args below are optional. We use them here to visually separate the tasks.
-$ boot -s src -d me.raynes/conch:0.8.0 -- pom -p my-project -v 0.1.0 -- add-src -- jar -M Foo=bar -- install
+$ boot -s src -d me.raynes/conch:0.8.0 -- pom -p my-project -v 0.1.0 -- jar -M Foo=bar -- install
 ```
 
 What we did here was we built a pipeline on the command line and ran it to
@@ -143,7 +143,6 @@ build our project.
 This sets up the build environment. Then we constructed a pipeline of tasks:
 
 * The `pom` task with options to set the project ID and version,
-* The `add-src` task to add files from the `src` directory to the fileset
   (by default only compiled artifacts end up in the fileset),
 * The `jar` task with options to add a `Foo` key to the jar,
 manifest with value `bar`,
@@ -184,7 +183,6 @@ Now that boot environment is set up we can build the project:
 
 ```clojure
 boot.user=> (boot (pom :project 'my-project :version "0.1.0")
-       #_=>       (add-src)
        #_=>       (jar :manifest {"Foo" "bar"})
        #_=>       (install))
 ```
@@ -203,16 +201,16 @@ The `task-options!` macro does this. Continuing in the REPL:
 
 ```clojure
 boot.user=> (task-options!
-       #_=>   pom [:project 'my-project
-       #_=>        :version "0.1.0"]
-       #_=>   jar [:manifest {"Foo" "bar"}])
+       #_=>   pom {:project 'my-project
+       #_=>        :version "0.1.0"}
+       #_=>   jar {:manifest {"Foo" "bar"}})
 ```
 
 Now we can build the project without specifying these options, because the
 task functions have been replaced with curried versions of themselves:
 
 ```clojure
-boot.user=> (boot (pom) (add-src) (jar) (install))
+boot.user=> (boot (pom) (jar) (install))
 ```
 
 Individual options can still be set by providing arguments to the tasks such
@@ -220,7 +218,7 @@ that they override those set with `task-options!`. Let's build our project with
 a different version number, for example:
 
 ```clojure
-boot.user=> (boot (pom :version "0.1.1") (add-src) (jar) (install))
+boot.user=> (boot (pom :version "0.1.1") (jar) (install))
 ```
 
 Pretty simple, right? This way of setting options requires no participation by
@@ -243,22 +241,22 @@ contents:
   :dependencies '[[me.raynes/conch "0.8.0"]])
 
 (task-options!
-  pom [:project 'my-project
-       :version "0.1.0"]
-  jar [:manifest {"Foo" "bar"}])
+  pom {:project 'my-project
+       :version "0.1.0"}
+  jar {:manifest {"Foo" "bar"}})
 ```
 
 Now we can build the project without specifying the options for each task on
 the command line–we only need to specify the tasks to create the pipeline.
 
 ```
-$ boot pom add-src jar install
+$ boot pom jar install
 ```
 
 And we can override these options on the command line as we did in the REPL:
 
 ```
-$ boot -- pom -v 0.1.1 -- add-src -- jar -- install
+$ boot -- pom -v 0.1.1 -- jar -- install
 ```
 
 Notice how we did not need a `(boot ...)` expression in the `build.boot` script.
@@ -268,7 +266,7 @@ You can start a REPL in the context of the boot script (compiled as the
 `boot.user` namespace), and build interactively too:
 
 ```clojure
-boot.user=> (boot (pom) (add-src) (jar) (install))
+boot.user=> (boot (pom) (jar) (install))
 ```
 
 When boot is run from the command line it actually generates a `boot` expression
@@ -290,14 +288,14 @@ it `build`. We'll modify `build.boot` such that it contains the following:
   :dependencies '[[me.raynes/conch "0.8.0"]])
 
 (task-options!
-  pom [:project 'my-project
-       :version "0.1.0"]
-  jar [:manifest {"Foo" "bar"}])
+  pom {:project 'my-project
+       :version "0.1.0"}
+  jar {:manifest {"Foo" "bar"}})
 
 (deftask build
   "Build my project."
   []
-  (comp (pom) (add-src) (jar) (install)))
+  (comp (pom) (jar) (install)))
 ```
 
 Now we should be able to see the `build` task listed among the available tasks
