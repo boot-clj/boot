@@ -15,9 +15,10 @@
     [boot.util                   :as util]
     [boot.from.clojure.tools.cli :as cli])
   (:import
-   [java.net URLClassLoader URL]
-   java.lang.management.ManagementFactory
-   [java.util.concurrent LinkedBlockingQueue TimeUnit]))
+    [java.io File]
+    [java.net URLClassLoader URL]
+    [java.lang.management ManagementFactory]
+    [java.util.concurrent LinkedBlockingQueue TimeUnit]))
 
 (declare watch-dirs sync! on-env! get-env set-env! tmpfile tmpdir ls)
 
@@ -99,7 +100,28 @@
       (binding [file/*hard-link* false]
         (apply file/sync :theirs (first d) s)))))
 
+(defn- set-fake-class-path!
+  "Sets the fake.class.path system property to reflect all JAR files on the
+  pod class path plus the :source-paths and :resource-paths. Note that these
+  directories are not actually on the class path (this is why it's the fake
+  class path). This property is a workaround for IDEs and tools that expect
+  the full class path to be determined by the java.class.path property."
+  []
+  (let [dirs (->> (get-env)
+                  ((juxt :source-paths :resource-paths))
+                  (apply concat)
+                  (map #(.getAbsolutePath (io/file %))))]
+    (->> (pod/get-classpath)
+         (map #(.getPath (URL. %)))
+         (remove #(.isDirectory (io/file %)))
+         (concat dirs)
+         (interpose (System/getProperty "path.separator"))
+         (apply str)
+         (System/setProperty "fake.class.path"))))
+
 (defn- set-user-dirs!
+  "Resets the file watchers that sync the project directories to their
+  corresponding temp dirs, reflecting any changes to :source-paths, etc."
   []
   (@src-watcher)
   (->> [:source-paths :resource-paths :asset-paths]
@@ -107,22 +129,27 @@
     (apply set/union)
     (watch-dirs (fn [_] (sync-user-dirs!)))
     (reset! src-watcher))
+  (set-fake-class-path!)
   (sync-user-dirs!))
 
 (defn- do-cleanup!
+  "Cleanup handler. This is run after the build process is complete. Tasks can
+  register cleanup callbacks via the cleanup macro below."
   []
   (doseq [f @cleanup-fns] (util/guard (f)))
   (reset! cleanup-fns []))
 
 (defn- printable-readable?
-  "FIXME: document"
+  "If the form can be round-tripped through pr-str -> read-string -> pr-str
+  then form is returned, otherwise nil."
   [form]
   (or (nil? form)
       (false? form)
       (try (read-string (pr-str form)) (catch Throwable _))))
 
 (defn- rm-clojure-dep
-  "FIXME: document"
+  "Remove the org.clojure/clojure dependency (if one exists) from a Maven
+  dependencies vector."
   [deps]
   (vec (remove (comp (partial = 'org.clojure/clojure) first) deps)))
 
@@ -135,6 +162,7 @@
 (defn- add-directories!
   "Add URLs (directories or jar files) to the classpath."
   [dirs]
+  (set-fake-class-path!)
   (doseq [dir dirs] (pod/add-classpath dir)))
 
 (defn- configure!*
@@ -147,7 +175,8 @@
       (if (not= o n) (on-env! k o n new)))))
 
 (defn- add-wagon!
-  "FIXME: document this."
+  "Adds a maven wagon dependency to the worker pod and initializes it with an
+  optional map of scheme handlers."
   ([maven-coord scheme-map]
    (add-wagon! nil [maven-coord] (get-env) scheme-map))
   ([old new env]
@@ -159,13 +188,17 @@
    new))
 
 (defn- order-set-env-keys
-  "FIXME: document"
+  "Ensures that :dependencies are processed last, because changes to other
+  keys affect dependency resolution."
   [kvs]
   (let [dk :dependencies]
     (->> kvs (sort-by first #(cond (= %1 dk) 1 (= %2 dk) -1 :else 0)))))
 
 (defn- parse-task-opts
-  "FIXME: document"
+  "Given and argv and a tools.cli type argspec spec, returns a vector of the
+  parsed option map and a list of remaining non-option arguments. This is how
+  tasks in a pipeline created on the cli are separated into individual tasks
+  and task options."
   [argv spec]
   (loop [opts [] [car & cdr :as argv] argv]
     (if-not car
@@ -175,6 +208,7 @@
         (if (seq (:arguments parsd)) [opts argv] (recur opts* cdr))))))
 
 (defmacro ^:private daemon
+  "Evaluate the body in a new daemon thread."
   [& body]
   `(doto (Thread. (fn [] ~@body)) (.setDaemon true) .start))
 
@@ -203,17 +237,21 @@
   (tmpd/file tmpfile))
 
 (defn fileset-diff
-  "FIXME: document this"
+  "Returns a new fileset containing files that were added or modified. Removed
+  files are not considered."
   [before after]
   (if-not before after (tmpd/diff before after)))
 
 ;; TmpFileSet API
 
 (defn user-dirs
+  "Get a list of directories containing files that originated in the project's
+  source, resource, or asset paths."
   [fileset]
   (get-dirs fileset #{:user}))
 
 (defn input-dirs
+  "Get a list of directories containing files with input roles."
   [fileset]
   (get-dirs fileset #{:input}))
 
@@ -222,30 +260,43 @@
   (get-dirs fileset #{:output}))
 
 (defn user-files
+  "Get a list of TmpFile objects corresponding to files that originated in
+  the project's source, resource, or asset paths."
   [fileset]
   (get-files fileset #{:user}))
 
 (defn input-files
+  "Get a list of TmpFile objects corresponding to files with input role."
   [fileset]
   (get-files fileset #{:input}))
 
 (defn output-files
+  "Get a list of TmpFile objects corresponding to files with output role."
   [fileset]
   (get-files fileset #{:output}))
 
 (defn ls
+  "Get a list of TmpFile objects for all files in the fileset."
   [fileset]
   (tmpd/ls fileset))
 
 (defn commit!
+  "Make the underlying temp directories correspond to the immutable fileset
+  tree structure."
   [fileset]
   (tmpd/commit! fileset))
 
 (defn rm
+  "Removes files from the fileset tree, returning a new fileset object. This
+  does not affect the underlying filesystem in any way."
   [fileset files]
   (tmpd/rm fileset files))
 
 (defn- non-user-dir-for
+  "Given a fileset and a directory d in that fileset's set of underlying temp
+  directories, returns a directory of the same type (ie. source, resource, or
+  asset) but not a user dir (ie. not one of the directories that is synced to
+  project dirs)."
   [fileset d]
   (let [u (user-dirs fileset)]
     (or (and (not (u d)) d)
@@ -255,22 +306,27 @@
              (get-add-dir fileset)))))
 
 (defn cp
-  [fileset src-file dest-tmpfile]
+  "Given a fileset and a dest-tmpfile from that fileset, overwrites the dest
+  tmpfile with the contents of the java.io.File src-file."
+  [fileset ^File src-file dest-tmpfile]
   (->> (tmpdir dest-tmpfile)
        (non-user-dir-for fileset)
        (assoc dest-tmpfile :dir)
        (tmpd/cp fileset src-file)))
 
 (defn add-asset
-  [fileset dir]
+  "Add the contents of the java.io.File dir to the fileset's assets."
+  [fileset ^File dir]
   (tmpd/add fileset (get-add-dir fileset #{:asset}) dir))
 
 (defn add-source
-  [fileset dir]
+  "Add the contents of the java.io.File dir to the fileset's sources."
+  [fileset ^File dir]
   (tmpd/add fileset (get-add-dir fileset #{:source}) dir))
 
 (defn add-resource
-  [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:resource}) dir))
+  "Add the contents of the java.io.File dir to the fileset's resources."
+  [fileset ^File dir] (tmpd/add fileset (get-add-dir fileset #{:resource}) dir))
 
 ;; Tempdir helpers
 
@@ -402,7 +458,10 @@
   `(swap! @#'boot.core/cleanup-fns conj (fn [] ~@body)))
 
 (defn reset-fileset
-  [fileset]
+  "Updates the user directories in the fileset with the latest project files,
+  returning a new immutable fileset. When called with no args returns a new
+  fileset containing only the latest project files."
+  [& [fileset]]
   (sync-user-dirs!)
   (-> (if-not fileset
         (new-fileset)
@@ -412,11 +471,13 @@
       (add-user-resource (first (user-resource-dirs)))))
 
 (defn reset-build!
-  "FIXME: document"
+  "Resets mutable build state to default values. This includes such things as
+  warning counters etc., state that is relevant to a single build cycle. This
+  function should be called before each build iteration."
   []
   (reset! *warnings* 0))
 
-(defn construct-tasks
+(defn- construct-tasks
   "FIXME: document"
   [& argv]
   (loop [ret [] [op-str & args] argv]
@@ -432,7 +493,7 @@
           (let [[opts argv] (parse-task-opts args spec)]
             (recur (conj ret (apply (var-get op) opts)) argv)))))))
 
-(defn run-tasks
+(defn- run-tasks
   "FIXME: document"
   [task-stack]
   (let [sync! #(let [tgt (get-env :target-path)]
@@ -442,7 +503,7 @@
                  (sync-user-dirs!))]
     (binding [*warnings* (atom 0)]
       (reset-build!)
-      ((task-stack #(do (sync! %) %)) (commit! (reset-fileset nil))))))
+      ((task-stack #(do (sync! %) %)) (commit! (reset-fileset))))))
 
 (defmacro boot
   "Builds the project as if `argv` was given on the command line."
@@ -451,9 +512,9 @@
         ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
     `(try @(future
              (util/with-let [_# nil]
-               (run-tasks
+               (#'run-tasks
                  ~(if (every? string? argv)
-                    `(apply construct-tasks [~@argv])
+                    `(apply #'construct-tasks [~@argv])
                     (->app (map ->list argv))))))
           (finally (#'do-cleanup!)))))
 
@@ -517,7 +578,12 @@
 
   (task-options!
     repl {:port     12345}
-    jar  {:manifest {:howdy \"world\"}})"
+    jar  {:manifest {:howdy \"world\"}})
+  
+  You can update options, too:
+
+  (task-options!
+    jar {:manifest #(assoc % :i-like \"turtles\")})"
   [& task-option-pairs]
   `(do ~@(for [[task opts] (partition 2 task-option-pairs)]
            `(let [opt# ~opts
@@ -560,7 +626,10 @@
   [f]
   (.setLastModified f (System/currentTimeMillis)))
 
-(defn git-files [& {:keys [untracked]}]
+(defn git-files
+  "Returns a list of files roughly equivalent to what you'd get with the git
+  command line `git ls-files`. The :untracked option includes untracked files."
+  [& {:keys [untracked]}]
   (git/ls-files :untracked untracked))
 
 (defn file-filter
