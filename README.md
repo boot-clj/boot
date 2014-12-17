@@ -171,11 +171,11 @@ the `conch` dependency to the build environment:
 
 ```clojure
 boot.user=> (set-env! 
-       #_=>   :src-paths #{"src"}
+       #_=>   :source-paths #{"src"}
        #_=>   :dependencies '[[me.raynes/conch "0.8.0"]])
 ```
 
-This was specified on the command line as the `-s` or `--src-paths` and `-d` or
+This was specified on the command line as the `-s` or `--source-paths` and `-d` or
 `--dependencies` arguments to boot itself. These translate to calls to `set-env!`
 in the REPL or in a script. Note that the keyword always corresponds to the long
 option from the command line.
@@ -239,7 +239,7 @@ contents:
 
 ```clojure
 (set-env!
-  :src-paths #{"src"}
+  :source-paths #{"src"}
   :dependencies '[[me.raynes/conch "0.8.0"]])
 
 (task-options!
@@ -286,7 +286,7 @@ it `build`. We'll modify `build.boot` such that it contains the following:
 
 ```clojure
 (set-env!
-  :src-paths #{"src"}
+  :source-paths #{"src"}
   :dependencies '[[me.raynes/conch "0.8.0"]])
 
 (task-options!
