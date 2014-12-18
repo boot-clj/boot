@@ -67,7 +67,7 @@
             (version    v)
             (scope      (or s "compile")) 
             (exclusions
-              (for [[p] es :let [[g a] (util/extract-ids p)]]
+              (for [p es :let [[g a] (util/extract-ids p)]]
                 (exclusion
                   (groupId    g)
                   (artifactId a))))))))))
