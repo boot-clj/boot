@@ -105,19 +105,25 @@
   pod class path plus the :source-paths and :resource-paths. Note that these
   directories are not actually on the class path (this is why it's the fake
   class path). This property is a workaround for IDEs and tools that expect
-  the full class path to be determined by the java.class.path property."
+  the full class path to be determined by the java.class.path property.
+  
+  Also sets the boot.class.path system property which is the same as above
+  except that the actual class path directories are used instead of the user's
+  project directories. This property can be used to configure Java tools that
+  would otherwise be looking at java.class.path expecting it to have the full
+  class path (the javac task uses it, for example, to configure the Java com-
+  piler class)."
   []
-  (let [dirs (->> (get-env)
-                  ((juxt :source-paths :resource-paths))
-                  (apply concat)
-                  (map #(.getAbsolutePath (io/file %))))]
-    (->> (pod/get-classpath)
-         (map #(.getPath (URL. %)))
-         (remove #(.isDirectory (io/file %)))
-         (concat dirs)
-         (interpose (System/getProperty "path.separator"))
-         (apply str)
-         (System/setProperty "fake.class.path"))))
+  (let [user-dirs  (->> (get-env)
+                        ((juxt :source-paths :resource-paths))
+                        (apply concat)
+                        (map #(.getAbsolutePath (io/file %))))
+        paths      (->> (pod/get-classpath) (map #(.getPath (URL. %))))
+        dir?       (comp (memfn isDirectory) io/file)
+        fake-paths (->> paths (remove dir?) (concat user-dirs))
+        separated  (partial string/join (System/getProperty "path.separator"))]
+    (System/setProperty "boot.class.path" (separated paths))
+    (System/setProperty "fake.class.path" (separated fake-paths))))
 
 (defn- set-user-dirs!
   "Resets the file watchers that sync the project directories to their
@@ -388,6 +394,7 @@
              :repositories   [["clojars"       "http://clojars.org/repo/"]
                               ["maven-central" "http://repo1.maven.org/maven2/"]]})
     (add-watch ::boot #(configure!* %3 %4)))
+  (set-fake-class-path!)
   (temp-dir** nil :asset)
   (temp-dir** nil :source)
   (temp-dir** nil :resource)
