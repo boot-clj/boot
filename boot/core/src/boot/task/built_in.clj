@@ -377,7 +377,9 @@
             diag-coll (DiagnosticCollector.)
             compiler  (ToolProvider/getSystemJavaCompiler)
             file-mgr  (.getStandardFileManager compiler diag-coll nil nil)
-            opts      (->> ["-d" (.getPath tgt)] (into-array String) Arrays/asList)
+            opts      (->> ["-d"  (.getPath tgt)
+                            "-cp" (System/getProperty "boot.class.path")]
+                           (into-array String) Arrays/asList)
             handler   {Diagnostic$Kind/ERROR util/fail
                        Diagnostic$Kind/WARNING util/warn
                        Diagnostic$Kind/MANDATORY_WARNING util/warn}
