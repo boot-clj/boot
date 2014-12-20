@@ -354,7 +354,9 @@
   [a all          bool   "Compile all namespaces."
    n namespace NS #{sym} "The set of namespaces to compile."]
 
-  (let [tgt (core/temp-dir!)]
+  (let [tgt         (core/temp-dir!)
+        pod-env     (update-in (core/get-env) [:directories] conj (.getPath tgt))
+        compile-pod (future (pod/make-pod pod-env))]
     (core/with-pre-wrap fileset
       (core/empty-dir! tgt)
       (let [nses (->> (core/input-files fileset)
@@ -362,10 +364,11 @@
                       (filter #(.endsWith % ".clj"))
                       (map util/path->ns)
                       (filter #(or all (contains? namespace %))))]
-        (binding [*compile-path* (.getPath tgt)]
-          (doseq [ns nses]
-            (util/info "Compiling %s...\n" ns)
-            (compile ns))))
+        (pod/with-eval-in @compile-pod
+          (binding [*compile-path* ~(.getPath tgt)]
+            (doseq [ns '~nses]
+              (util/info "Compiling %s...\n" ns)
+              (compile ns)))))
       (-> fileset (core/add-resource tgt) core/commit!))))
 
 (core/deftask javac
