@@ -152,8 +152,8 @@
                     changed (watcher)]
                 (when-not (empty? changed)
                   (when verbose
-                    (doseq [[op p f] changed]
-                      (util/info (format "→ %s %s %s\n" op (.lastModified f) p)))
+                    (doseq [[op p _] changed]
+                      (util/info (format "\u25C9 %s %s\n" op p)))
                     (util/info "\n"))
                   (binding [*out* (if quiet (new java.io.StringWriter) *out*)
                             *err* (if quiet (new java.io.StringWriter) *err*)]
