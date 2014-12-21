@@ -153,7 +153,7 @@
         :cp (copy-with-lastmod x (io/file dest p))))))
 
 (defn watcher! [pred & dirs]
-  (let [state (atom (apply files-for dirs))]
+  (let [state (atom nil)]
     (fn []
       (let [state' (apply files-for dirs)
             patch' (patch pred @state state')]
