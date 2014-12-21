@@ -102,7 +102,7 @@
       (assert (or (not (nil? sortd)) (empty? dests))
         "syncs appear to have a cyclic dependency")
       (doseq [dest sortd]
-        (apply file/sync :hash (io/file dest) (map io/file (core/get syncs dest))))))
+        (apply file/sync! :hash (io/file dest) (map io/file (core/get syncs dest))))))
   (-tmpfile? [this f]
     (when (file/parent? dir f) f)))
 

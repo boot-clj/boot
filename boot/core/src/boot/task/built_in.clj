@@ -135,12 +135,12 @@
   (pod/require-in @pod/worker-pod "boot.watcher")
   (fn [next-task]
     (fn [fileset]
-      (let [q        (LinkedBlockingQueue.)
-            return   (atom fileset)
-            srcdirs  (map (memfn getPath) (core/user-dirs fileset))
-            watchers (map file/make-watcher srcdirs)
-            paths    (into-array String srcdirs)
-            k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
+      (let [q       (LinkedBlockingQueue.)
+            return  (atom fileset)
+            srcdirs (map (memfn getPath) (core/user-dirs fileset))
+            watcher (apply file/watcher! :time srcdirs)
+            paths   (into-array String srcdirs)
+            k       (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
         (core/cleanup (.invoke @pod/worker-pod "boot.watcher/stop-watcher" k))
         (when-not quiet (util/info "Starting file watcher (CTRL-C to quit)...\n\n"))
         (loop [ret (util/guard [(.take q)])]
@@ -149,13 +149,11 @@
               (recur (conj ret more))
               (let [start   (System/currentTimeMillis)
                     etime   #(- (System/currentTimeMillis) start)
-                    changed (->> (map #(%) watchers)
-                                 (reduce (partial merge-with set/union))
-                                 :time (filter (memfn exists)) set)]
+                    changed (watcher)]
                 (when-not (empty? changed)
                   (when verbose
-                    (doseq [p (->> changed (map #(.getPath %)))]
-                      (util/info (format "→ %s %s\n" (.lastModified (io/file p)) p)))
+                    (doseq [[op p f] changed]
+                      (util/info (format "→ %s %s %s\n" op (.lastModified f) p)))
                     (util/info "\n"))
                   (binding [*out* (if quiet (new java.io.StringWriter) *out*)
                             *err* (if quiet (new java.io.StringWriter) *err*)]

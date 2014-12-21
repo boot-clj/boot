@@ -98,7 +98,7 @@
                  :asset-paths    (user-asset-dirs)}]
     (when-let [s (seq (get-env k))]
       (binding [file/*hard-link* false]
-        (apply file/sync :theirs (first d) s)))))
+        (apply file/sync! :time (first d) s)))))
 
 (defn- set-fake-class-path!
   "Sets the fake.class.path system property to reflect all JAR files on the
@@ -348,7 +348,7 @@
   timestamps to decide which version of files to emit to dest. Uses hardlinks
   instead of copying file contents. File modification times are preserved."
   [dest & srcs]
-  (apply file/sync :time dest srcs))
+  (apply file/sync! :time dest srcs))
 
 ;; Boot Environment ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -364,17 +364,16 @@
   (if (empty? dirs)
     (constantly true)
     (do (pod/require-in @pod/worker-pod "boot.watcher")
-        (let [q        (LinkedBlockingQueue.)
-              watchers (map file/make-watcher dirs)
-              paths    (into-array String dirs)
-              k        (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
+        (let [q       (LinkedBlockingQueue.)
+              watcher (apply file/watcher! :time dirs)
+              paths   (into-array String dirs)
+              k       (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
           (daemon
             (loop [ret (util/guard [(.take q)])]
               (when ret
                 (if-let [more (.poll q (or debounce 10) TimeUnit/MILLISECONDS)]
                   (recur (conj ret more))
-                  (let [changed (->> (map #(%) watchers)
-                                  (reduce (partial merge-with set/union)) :time set)]
+                  (let [changed (watcher)]
                     (when-not (empty? changed) (callback changed))
                     (recur (util/guard [(.take q)])))))))
           #(.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)))))
@@ -505,7 +504,7 @@
   [task-stack]
   (let [sync! #(let [tgt (get-env :target-path)]
                  (binding [file/*hard-link* false]
-                   (apply file/sync :time tgt (output-dirs %)))
+                   (apply file/sync! :time tgt (output-dirs %)))
                  (file/delete-empty-subdirs! tgt)
                  (sync-user-dirs!))]
     (binding [*warnings* (atom 0)]

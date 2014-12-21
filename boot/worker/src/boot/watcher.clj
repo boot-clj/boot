@@ -86,7 +86,6 @@
            (when watch-key
              (if-not (.isValid watch-key)
                (do (util/dbug "invalid watch key %s\n" (.watchable watch-key))
-                   (Thread/sleep 500)
                    (recur))
                (do (doseq [event (.pollEvents watch-key)]
                      (let [dir     (.toFile (.watchable watch-key))

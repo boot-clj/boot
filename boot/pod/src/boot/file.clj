@@ -3,7 +3,8 @@
    [clojure.java.io  :as io]
    [clojure.set      :as set]
    [clojure.data     :as data]
-   [boot.from.digest :as digest])
+   [boot.from.digest :as digest]
+   [clojure.core.reducers :as r])
   (:import
    [java.nio.file Files]
    [java.lang.management ManagementFactory])
@@ -108,53 +109,56 @@
           outs   (map #(srcdir->outdir % src dest) files)]
       (mapv copy-with-lastmod (map io/file files) (map io/file outs)))))
 
-(defn select-keys-by [m pred?]
-  (select-keys m (filter pred? (keys m))))
+(defn files-for [& dirs]
+  (->> (for [dir dirs]
+         (let [path  (-> (if (string? dir) dir (.getPath dir)) (.replaceAll "/$" ""))
+               snip  (count (str path "/"))]
+           (->> (file-seq (io/file path))
+                (filter (memfn isFile))
+                (reduce #(let [p (subs (.getPath %2) snip)]
+                           (-> (assoc-in %1 [:file p] %2)
+                               (assoc-in [:time p] (.lastModified %2))))
+                        {}))))
+       (reduce (partial merge-with into) {})))
 
-(defn dir-set
-  ([dir]
-   (let [info (juxt #(relative-to dir %) #(.lastModified %))
-         mapf #(zipmap [:dir :abs :rel :mod] (list* dir % (info %)))
-         ign? #(and *ignore* (*ignore* %))]
-     (set (mapv mapf (filter (memfn isFile) (remove ign? (file-seq dir)))))))
-  ([dir1 dir2 & dirs]
-   (reduce set/union (map dir-set (list* dir1 dir2 dirs)))))
+(def time-diff-memo
+  (memoize
+    (fn [bef aft]
+      ((fn [[b a]] [(set/difference b a) a])
+       (->> (data/diff bef aft) (take 2) (map (comp set keys)))))))
 
-(defn dir-map
-  [& dirs]
-  (->>
-    (apply dir-set (mapv io/file dirs))
-    (mapv #(vector (.getPath (:rel %)) %))
-    (into {})))
+(defn time-diff [before after]
+  (time-diff-memo (:time before) (:time after)))
 
-(defn dir-map-ext
-  [exts & dirs]
-  (let [ext  #(let [f (name (io/file %))] (subs f (.lastIndexOf f ".")))
-        ext? #(contains? exts (ext %))]
-    (select-keys-by (apply dir-map dirs) ext?)))
+(defmulti  patch-cp? (fn [pred a b] pred))
+(defmethod patch-cp? :default [_ a b] true)
+(defmethod patch-cp? :theirs  [_ a b] true)
+(defmethod patch-cp? :hash    [_ a b] (not= (digest/md5 a) (digest/md5 b)))
 
-(defn what-changed
-  ([dst-map src-map] (what-changed dst-map src-map :time))
-  ([dst-map src-map algo]
-   (let [[created deleted modified]
-         (data/diff (set (keys src-map)) (set (keys dst-map)))
-         algos {:hash   #(not= (digest/md5 (:abs (src-map %)))
-                               (digest/md5 (:abs (dst-map %))))
-                :time   #(< (:mod (dst-map %)) (:mod (src-map %)))
-                :theirs #(not= (:mod (dst-map %)) (:mod (src-map %)))}
-         modified (set (filter (algos algo) modified))]
-     [(set/union created modified) deleted])))
+(defn patch [pred before after]
+  (let [[rm cp] (time-diff before after)]
+    (concat
+      (for [x rm] [:rm x (get-in before [:file x])])
+      (for [x cp :let [b (get-in before [:file x])
+                       a (get-in after [:file x])]
+            :when (patch-cp? pred a b)]
+        [:cp x a]))))
 
-(defn diff
-  [algo dst src & srcs]
-  (let [d (dir-map (io/file dst))
-        s (->> (cons src srcs)
-            (map io/file)
-            (apply dir-map))
-        [to-cp to-rm] (what-changed d s algo)
-        cp (map #(vector :cp (:abs (s %)) (io/file dst %)) to-cp)
-        rm (map #(vector :rm (io/file dst %)) to-rm)]
-    (concat cp rm)))
+(defn sync! [pred dest & srcs]
+  (let [before (files-for dest)
+        after  (apply files-for srcs)]
+    (doseq [[op p x] (patch pred before after)]
+      (case op
+        :rm (io/delete-file x true)
+        :cp (copy-with-lastmod x (io/file dest p))))))
+
+(defn watcher! [pred & dirs]
+  (let [state (atom (apply files-for dirs))]
+    (fn []
+      (let [state' (apply files-for dirs)
+            patch' (patch pred @state state')]
+        (reset! state state')
+        patch'))))
 
 (defn match-filter?
   [filters f]
@@ -165,27 +169,3 @@
   (and
     (or (empty? include) (match-filter? include f))
     (or (empty? exclude) (not (match-filter? exclude f)))))
-
-(defn sync*
-  [ops]
-  (let [opfn {:rm #(when *sync-delete* (.delete (nth % 1)))
-              :cp #(when (keep-filters? *include* *exclude* (nth % 2))
-                     (copy-with-lastmod (nth % 1) (nth % 2)))}]
-    (doseq [[op s d :as cmd] ops] ((opfn op) cmd))))
-
-(defn sync
-  [algo dst src & srcs]
-  (sync* (apply diff algo dst src srcs)))
-
-(defn make-watcher [dir]
-  (let [prev (atom nil)]
-    (fn []
-      (let [only-file #(filter file? %)
-            make-info #(guard (vector [% (.lastModified %)] [% (digest/md5 %)]))
-            file-info #(remove nil? (mapcat make-info %))
-            info      (->> dir io/file file-seq only-file file-info set)
-            mods      (set/difference (set/union info @prev) (set/intersection info @prev))
-            by        #(->> %2 (filter (comp %1 second)) (map first) set)]
-        (reset! prev info)
-        {:hash (by string? mods) :time (by number? mods)}))))
-
