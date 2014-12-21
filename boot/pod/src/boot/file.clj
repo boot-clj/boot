@@ -109,7 +109,7 @@
           outs   (map #(srcdir->outdir % src dest) files)]
       (mapv copy-with-lastmod (map io/file files) (map io/file outs)))))
 
-(defn files-for [& dirs]
+(defn tree-for [& dirs]
   (->> (for [dir dirs]
          (let [path  (-> (if (string? dir) dir (.getPath dir)) (.replaceAll "/$" ""))
                snip  (count (str path "/"))]
@@ -121,14 +121,9 @@
                         {}))))
        (reduce (partial merge-with into) {})))
 
-(def time-diff-memo
-  (memoize
-    (fn [bef aft]
-      ((fn [[b a]] [(set/difference b a) a])
-       (->> (data/diff bef aft) (take 2) (map (comp set keys)))))))
-
 (defn time-diff [before after]
-  (time-diff-memo (:time before) (:time after)))
+  ((fn [[b a]] [(set/difference b a) a])
+   (->> (data/diff (:time before) (:time after)) (take 2) (map (comp set keys)))))
 
 (defmulti  patch-cp? (fn [pred a b] pred))
 (defmethod patch-cp? :default [_ a b] true)
@@ -145,8 +140,8 @@
         [:cp x a]))))
 
 (defn sync! [pred dest & srcs]
-  (let [before (files-for dest)
-        after  (apply files-for srcs)]
+  (let [before (tree-for dest)
+        after  (apply tree-for srcs)]
     (doseq [[op p x] (patch pred before after)]
       (case op
         :rm (io/delete-file x true)
@@ -155,7 +150,7 @@
 (defn watcher! [pred & dirs]
   (let [state (atom nil)]
     (fn []
-      (let [state' (apply files-for dirs)
+      (let [state' (apply tree-for dirs)
             patch' (patch pred @state state')]
         (reset! state state')
         patch'))))
