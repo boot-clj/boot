@@ -245,7 +245,7 @@
              (let [env' (-> env (assoc :dependencies [(assoc coord 1 v+)]))
                    [p' v' & _ :as coord'] (->> (map :dep (resolve-dependencies env'))
                                                (filter #(= p (first %))) first)]
-               (and (= p p') (not= v v') coord))))
+               (and (= p p') (not= v v') coord'))))
          (filter identity))))
 
 (defn add-dependencies
