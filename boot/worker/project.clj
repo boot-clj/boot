@@ -17,7 +17,7 @@
   :dependencies [[org.clojure/clojure         "1.6.0"  :scope "provided"]
                  [boot/base                   ~version :scope "provided"]
                  [boot/aether                 ~version :scope "compile"]
-                 [reply                       "0.3.4"  :scope "compile"]
+                 [reply                       "0.3.5"  :scope "compile"]
                  [cheshire                    "5.3.1"  :scope "compile"]
                  [clj-jgit                    "0.8.0"  :scope "compile"]
                  [clj-yaml                    "0.4.0"  :scope "compile"]
