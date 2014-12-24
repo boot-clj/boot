@@ -169,6 +169,7 @@
   "Add Maven dependencies to the classpath, fetching them if necessary."
   [old new env]
   (->> new rm-clojure-dep (assoc env :dependencies) pod/add-dependencies)
+  (set-fake-class-path!)
   new)
 
 (defn- add-directories!
