@@ -159,6 +159,12 @@
   [deps]
   (vec (remove (comp (partial = 'org.clojure/clojure) first) deps)))
 
+(defn load-data-readers!
+  "Refresh *data-readers* with readers from newly acquired dependencies."
+  []
+  (#'clojure.core/load-data-readers)
+  (set! *data-readers* (.getRawRoot #'*data-readers*)))
+
 (defn- add-dependencies!
   "Add Maven dependencies to the classpath, fetching them if necessary."
   [old new env]
