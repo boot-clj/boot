@@ -76,4 +76,4 @@
         {:keys [port]} (apply server/start-server (mapcat identity opts))
         bind           (or (:bind opts) "0.0.0.0")]
     (doto (io/file ".nrepl-port") .deleteOnExit (spit port))
-    (printf "nREPL server listening: %s:%s\n" bind port)))
+    (printf "nREPL server started on port %d on host %s - nrepl://%s:%d\n" port bind bind port)))
