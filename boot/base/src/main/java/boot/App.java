@@ -61,7 +61,7 @@ public class App {
         
         if (c == null) c = "1.6.0";
         
-        if (bootversion != null) 
+        if (bootversion != null)
             p.setProperty("BOOT_VERSION", bootversion);
         else
             for (File x : resolveDepJars(a, "boot", channel, c))
@@ -127,9 +127,8 @@ public class App {
     private static Object
     readCache(File f) throws Exception {
         FileLock lock = null;
-        if (!isWindows()){
+        if (!isWindows())
             lock = (new RandomAccessFile(f, "rw")).getChannel().lock();
-        }
         try {
             long max = 18 * 60 * 60 * 1000;
             long age = System.currentTimeMillis() - f.lastModified();
