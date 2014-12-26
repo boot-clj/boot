@@ -396,12 +396,14 @@
   "Initialize the boot environment. This is normally run once by boot at
   startup. There should be no need to call this function directly."
   []
-  (let [dir (->> (io/file ".")
-                 .getCanonicalFile
-                 file/split-path
-                 rest
-                 (apply io/file (App/getBootDir) "tmp"))]
-    (->> dir tmp/registry tmp/init! (reset! tmpregistry)))
+  (->> (io/file ".")
+       .getCanonicalFile
+       file/split-path
+       rest
+       (apply io/file (App/getBootDir) "tmp")
+       tmp/registry
+       tmp/init!
+       (reset! tmpregistry))
   (doto boot-env
     (reset! {:dependencies   []
              :directories    #{}
