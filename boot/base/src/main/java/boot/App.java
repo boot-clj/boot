@@ -194,12 +194,10 @@ public class App {
         shim.require("boot.aether");
         if (localrepo != null) {
             shim.invoke("boot.aether/set-local-repo!", localrepo);
-        } else {
-          shim.invoke("boot.aether/update-always!");
-          return (File[]) shim.invoke(
-            "boot.aether/resolve-dependency-jars", sym, bootversion, cljversion);
         }
-    }
+        shim.invoke("boot.aether/update-always!");
+        return (File[]) shim.invoke(
+            "boot.aether/resolve-dependency-jars", sym, bootversion, cljversion); }
     
     public static Future<ClojureRuntimeShim>
     newShimFuture(final File[] jars) throws Exception {

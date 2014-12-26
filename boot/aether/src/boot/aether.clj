@@ -72,7 +72,11 @@
       :offline?          (or @offline? (:offline? env))
       :mirrors           (:mirrors env)
       :proxy             (or (:proxy env) (get-proxy-settings))
-      :transfer-listener transfer-listener)
+      :transfer-listener transfer-listener
+      :repository-session-fn (if (= @update? :always)
+                               #(doto (aether/repository-session %)
+                                  (.setUpdatePolicy (aether/update-policies :always)))
+                               aether/repository-session))
     (catch Exception e
       (let [root-cause (last (take-while identity (iterate (memfn getCause) e)))]
         (if-not (and (not @offline?) (instance? java.net.UnknownHostException root-cause))
