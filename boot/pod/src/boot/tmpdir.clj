@@ -18,8 +18,8 @@
   (commit! [this])
   (rm      [this paths])
   (add     [this dest-dir src-dir])
-  (cp      [this src-file dest-tmpfile])
-  (diff    [this fileset]))
+  (mv      [this from-path to-path])
+  (cp      [this src-file dest-tmpfile]))
 
 (defrecord TmpFile [dir path id]
   ITmpFile
@@ -82,6 +82,11 @@
       (doseq [[path tmpf] src-tree]
         (add-blob! blob (io/file src-dir path) (id tmpf)))
       (assoc this :tree (merge tree src-tree))))
+  (mv [this from-path to-path]
+    (assert (not *locked*) "can't mv during this phase")
+    (if-let [f (assoc (get-in this [:tree from-path]) :path to-path)]
+      (update-in this [:tree] #(-> % (assoc to-path f) (dissoc from-path)))
+      (throw (Exception. (format "not in fileset (%s)" from-path)))))
   (cp [this src-file dest-tmpfile]
     (assert (not *locked*) "can't cp during this phase")
     (let [hash (digest/md5 src-file)
@@ -90,11 +95,7 @@
       (assert ((set (map file dirs)) d')
               (format "dest-dir not in dir set (%s)" d'))
       (add-blob! blob src-file hash)
-      (assoc this :tree (merge tree {p' (assoc dest-tmpfile :id hash)}))))
-  (diff [this fileset]
-    (let [t1 (:tree this)
-          t2 (:tree fileset)]
-      (->> (data/diff t1 t2) second keys (select-keys t2) (assoc fileset :tree)))))
+      (assoc this :tree (merge tree {p' (assoc dest-tmpfile :id hash)})))))
 
 (defn tmpfile?
   [x]
@@ -103,3 +104,10 @@
 (defn tmpfileset?
   [x]
   (instance? TmpFileSet x))
+
+(defn diff [this fileset]
+  (if-not this
+    fileset
+    (let [t1 (:tree this)
+          t2 (:tree fileset)]
+      (->> (data/diff t1 t2) second keys (select-keys t2) (assoc fileset :tree)))))

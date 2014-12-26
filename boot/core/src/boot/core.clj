@@ -253,7 +253,7 @@
   "Returns a new fileset containing files that were added or modified. Removed
   files are not considered."
   [before after]
-  (if-not before after (tmpd/diff before after)))
+  (tmpd/diff before after))
 
 ;; TmpFileSet API
 
@@ -317,6 +317,12 @@
                    ((get-dirs fileset #{:source}) d) #{:source}
                    ((get-dirs fileset #{:resource}) d) #{:resource})
              (get-add-dir fileset)))))
+
+(defn mv
+  "Given a fileset and two paths in the fileset, from-path and to-path, moves
+  the tmpfile at from-path to to-path, returning a new fileset."
+  [fileset ^String from-path ^String to-path]
+  (tmpd/mv fileset from-path to-path))
 
 (defn cp
   "Given a fileset and a dest-tmpfile from that fileset, overwrites the dest

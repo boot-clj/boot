@@ -249,7 +249,8 @@
   The include and exclude options specify sets of regular expressions (strings)
   that will be used to filter the fileset."
 
-  [i include REGEX #{str} "The set of regexes that paths must match."
+  [c chroot ROOT   str    "The path to be prepended to all output file paths."
+   i include REGEX #{str} "The set of regexes that paths must match."
    x exclude REGEX #{str} "The set of regexes that paths must not match."]
 
   (core/with-pre-wrap fileset
@@ -257,9 +258,17 @@
           include (map re-pattern include)
           exclude (map re-pattern exclude)
           keep?   (partial file/keep-filters? include exclude)
-          reducer #(if (keep? (io/file (core/tmppath %2))) %1 (core/rm %1 [%2]))]
+          addroot #(or (and (not chroot) %1)
+                       (let [from-path (core/tmppath %2)
+                             to-path   (.getPath (io/file chroot from-path))]
+                         (core/mv %1 from-path to-path)))
+          remover #(if (keep? (io/file (core/tmppath %2))) %1 (core/rm %1 [%2]))]
       (util/info "Sifting output files...\n")
-      (->> outs (reduce reducer fileset) core/commit!))))
+      (->> outs
+           (reduce remover fileset)
+           ((juxt identity core/output-files))
+           (apply reduce addroot)
+           core/commit!))))
 
 (core/deftask add-repo
   "Add all files in project git repo to fileset.
