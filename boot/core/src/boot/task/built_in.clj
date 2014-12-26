@@ -105,13 +105,13 @@
    u updates   bool "Print newer releases of outdated dependencies."
    s snapshots bool "Include snapshot versions in updates searches."]
 
-  (core/with-pre-wrap fileset'
-    (cond
-      env     (println (pr-str (core/get-env)))
-      fileset (println (pr-str fileset'))
-      updates (mapv prn (pod/outdated (core/get-env) :snapshots snapshots))
-      :else   (print (pod/with-call-worker (boot.aether/dep-tree ~(core/get-env)))))
-    fileset'))
+  (let [updates (or updates (not (or deps env fileset)))]
+    (core/with-pre-wrap fileset'
+      (when deps    (print (pod/with-call-worker (boot.aether/dep-tree ~(core/get-env)))))
+      (when env     (println (pr-str (core/get-env))))
+      (when fileset (println (pr-str fileset')))
+      (when updates (mapv prn (pod/outdated (core/get-env) :snapshots snapshots)))
+      fileset')))
 
 (core/deftask wait
   "Wait before calling the next handler.
