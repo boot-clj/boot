@@ -18,6 +18,7 @@
 
 (defn set-offline!    [x] (reset! offline? x))
 (defn set-update!     [x] (reset! update? x))
+(defn update-always!  []  (set-update! :always))
 (defn set-local-repo! [x] (reset! local-repo x))
 
 (defn default-repositories
