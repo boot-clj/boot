@@ -7,6 +7,7 @@
    [clojure.core.reducers :as r])
   (:import
    [java.nio.file Files]
+   [java.nio.file.attribute FileAttribute]
    [java.lang.management ManagementFactory])
   (:refer-clojure :exclude [sync name file-seq]))
 
@@ -46,6 +47,10 @@
         subdirs    (->> dir io/file file-seq (filter (memfn isDirectory)))]
     (doseq [f (reverse subdirs)]
       (when (empty-dir? f) (io/delete-file f true)))))
+
+(defn- contains-files?
+  [dir]
+  (->> dir file-seq (filter (memfn isFile)) seq))
 
 (defn parent-seq [f]
   (->> f io/file (iterate #(.getParentFile %)) (take-while identity)))
@@ -92,6 +97,14 @@
   (if (exists? dir)
     (mapv #(.delete %) (reverse (rest (file-seq (io/file dir)))))))
 
+(defn hard-link
+  [from-file to-file]
+  (Files/createLink (.toPath to-file) (.toPath from-file)))
+
+(defn sym-link
+  [from-file to-file]
+  (Files/createSymbolicLink (.toPath to-file) (.toPath from-file) (make-array FileAttribute 0)))
+
 (defn copy-with-lastmod
   [src-file dst-file]
   (let [last-mod (.lastModified src-file)
@@ -99,7 +112,7 @@
     (io/make-parents dst-file)
     (when (.exists dst-file) (.delete dst-file))
     (if *hard-link*
-      (Files/createLink (.toPath dst-file) (.toPath src-file))
+      (hard-link src-file dst-file)
       (doto dst-file cp-src! (.setLastModified last-mod)))))
 
 (defn copy-files

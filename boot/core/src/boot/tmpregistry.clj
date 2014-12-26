@@ -23,7 +23,7 @@
 
 (defn dir-id []
   (apply str
-    (-> (->> (.. ManagementFactory getRuntimeMXBean getName) 
+    (-> (->> (.. ManagementFactory getRuntimeMXBean getName)
           (take-while (partial not= \@))
           (apply str)
           Long/parseLong)
