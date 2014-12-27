@@ -83,9 +83,11 @@
             (format "dest-dir not in dir set (%s)" dest-dir))
     (reduce #(assoc %1 (path %2) (assoc %2 :dir dest-dir)) this tmpfiles))
   (mv [this from-path to-path]
-    (if-let [f (assoc (get-in this [:tree from-path]) :path to-path)]
-      (update-in this [:tree] #(-> % (assoc to-path f) (dissoc from-path)))
-      (throw (Exception. (format "not in fileset (%s)" from-path)))))
+    (if (= from-path to-path)
+      this
+      (if-let [f (assoc (get-in this [:tree from-path]) :path to-path)]
+        (update-in this [:tree] #(-> % (assoc to-path f) (dissoc from-path)))
+        (throw (Exception. (format "not in fileset (%s)" from-path))))))
   (cp [this src-file dest-tmpfile]
     (let [hash (digest/md5 src-file)
           p'   (path dest-tmpfile)
