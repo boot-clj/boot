@@ -53,27 +53,22 @@
         (doto out (write! true) (mod! (mod src)) (write! false)))
       (doto out (#(io/copy src %)) (mod! (mod src)) (write! false)))))
 
-(def ^:dynamic *locked* false)
-
 (defrecord TmpFileSet [dirs tree blob]
   ITmpFileSet
   (ls [this]
     (set (vals tree)))
   (commit! [this]
-    (assert (not *locked*) "can't commit! during this phase")
     (util/with-let [{:keys [dirs tree blob]} this]
       (apply file/empty-dir! (map file dirs))
       (doseq [[p tmpf] tree]
         (let [srcf (io/file blob (id tmpf))]
           (file/copy-with-lastmod srcf (file tmpf))))))
   (rm [this tmpfiles]
-    (assert (not *locked*) "can't rm during this phase")
     (let [{:keys [dirs tree blob]} this
           treefiles (set (vals tree))
           remove?   (->> tmpfiles set (set/difference treefiles) complement)]
       (assoc this :tree (reduce-kv #(if (remove? %3) %1 (assoc %1 %2 %3)) {} tree))))
   (add [this dest-dir src-dir]
-    (assert (not *locked*) "can't add during this phase")
     (assert ((set (map file dirs)) dest-dir)
             (format "dest-dir not in dir set (%s)" dest-dir))
     (let [{:keys [dirs tree blob]} this
@@ -83,12 +78,10 @@
         (add-blob! blob (io/file src-dir path) (id tmpf)))
       (assoc this :tree (merge tree src-tree))))
   (mv [this from-path to-path]
-    (assert (not *locked*) "can't mv during this phase")
     (if-let [f (assoc (get-in this [:tree from-path]) :path to-path)]
       (update-in this [:tree] #(-> % (assoc to-path f) (dissoc from-path)))
       (throw (Exception. (format "not in fileset (%s)" from-path)))))
   (cp [this src-file dest-tmpfile]
-    (assert (not *locked*) "can't cp during this phase")
     (let [hash (digest/md5 src-file)
           p'   (path dest-tmpfile)
           d'   (dir dest-tmpfile)]

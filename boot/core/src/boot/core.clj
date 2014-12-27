@@ -581,7 +581,7 @@
              ~bind   result#]
          (assert (tmpd/tmpfileset? result#)
                  "task handler must return a fileset")
-         (binding [tmpd/*locked* true] ~@body)
+         ~@body
          result#))))
 
 ;; Task Configuration Macros ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
