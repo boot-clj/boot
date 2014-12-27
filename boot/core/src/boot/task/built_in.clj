@@ -246,28 +246,29 @@
 (core/deftask sift
   "Filter the output fileset, matching paths against regexes.
 
-  The include and exclude options specify sets of regular expressions (strings)
-  that will be used to filter the fileset."
+  The include and exclude options specify sets of regular expressions that will
+  be used to filter the fileset.
+  
+  The move option applies a find/replace transformation on all paths in the
+  output fileset."
 
-  [c chroot ROOT   str    "The path to be prepended to all output file paths."
-   i include REGEX #{str} "The set of regexes that paths must match."
-   x exclude REGEX #{str} "The set of regexes that paths must not match."]
+  [m move MATCH:REPLACE {regex str} "The map of regex to replacement path strings."
+   i include REGEX      #{regex}    "The set of regexes that paths must match."
+   x exclude REGEX      #{regex}    "The set of regexes that paths must not match."]
 
   (core/with-pre-wrap fileset
     (let [outs    (core/output-files fileset)
-          include (map re-pattern include)
-          exclude (map re-pattern exclude)
           keep?   (partial file/keep-filters? include exclude)
-          addroot #(or (and (not chroot) %1)
+          mvpath  (partial reduce-kv #(string/replace %1 %2 %3))
+          mover   #(or (and (not move) %1)
                        (let [from-path (core/tmppath %2)
-                             to-path   (.getPath (io/file chroot from-path))]
+                             to-path   (mvpath from-path move)]
                          (core/mv %1 from-path to-path)))
           remover #(if (keep? (io/file (core/tmppath %2))) %1 (core/rm %1 [%2]))]
       (util/info "Sifting output files...\n")
-      (->> outs
-           (reduce remover fileset)
+      (->> (reduce remover fileset outs)
            ((juxt identity core/output-files))
-           (apply reduce addroot)
+           (apply reduce mover)
            core/commit!))))
 
 (core/deftask add-repo
