@@ -256,6 +256,11 @@
   [before after]
   (tmpd/diff before after))
 
+(defn fileset-removed
+  "Returns a new fileset containing files that were removed."
+  [before after]
+  (tmpd/removed before after))
+
 ;; TmpFileSet API
 
 (defn user-dirs
