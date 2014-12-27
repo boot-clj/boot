@@ -339,14 +339,29 @@
   [fileset ^File dir]
   (tmpd/add fileset (get-add-dir fileset #{:asset}) dir))
 
+(defn mv-asset
+  "FIXME: document"
+  [fileset tmpfiles]
+  (tmpd/add-tmp fileset (get-add-dir fileset #{:asset}) tmpfiles))
+
 (defn add-source
   "Add the contents of the java.io.File dir to the fileset's sources."
   [fileset ^File dir]
   (tmpd/add fileset (get-add-dir fileset #{:source}) dir))
 
+(defn mv-source
+  "FIXME: document"
+  [fileset tmpfiles]
+  (tmpd/add-tmp fileset (get-add-dir fileset #{:source}) tmpfiles))
+
 (defn add-resource
   "Add the contents of the java.io.File dir to the fileset's resources."
   [fileset ^File dir] (tmpd/add fileset (get-add-dir fileset #{:resource}) dir))
+
+(defn mv-resource
+  "FIXME: document"
+  [fileset tmpfiles]
+  (tmpd/add-tmp fileset (get-add-dir fileset #{:resource}) tmpfiles))
 
 ;; Tempdir helpers
 

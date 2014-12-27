@@ -18,6 +18,7 @@
   (commit! [this])
   (rm      [this paths])
   (add     [this dest-dir src-dir])
+  (add-tmp [this dest-dir tmpfiles])
   (mv      [this from-path to-path])
   (cp      [this src-file dest-tmpfile]))
 
@@ -77,6 +78,10 @@
       (doseq [[path tmpf] src-tree]
         (add-blob! blob (io/file src-dir path) (id tmpf)))
       (assoc this :tree (merge tree src-tree))))
+  (add-tmp [this dest-dir tmpfiles]
+    (assert ((set (map file dirs)) dest-dir)
+            (format "dest-dir not in dir set (%s)" dest-dir))
+    (reduce #(assoc %1 (path %2) (assoc %2 :dir dest-dir)) this tmpfiles))
   (mv [this from-path to-path]
     (if-let [f (assoc (get-in this [:tree from-path]) :path to-path)]
       (update-in this [:tree] #(-> % (assoc to-path f) (dissoc from-path)))
