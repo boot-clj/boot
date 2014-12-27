@@ -48,8 +48,7 @@ public class App {
     private static String
     jarVersion(File f, String prefix) throws Exception {
         String n = f.getName();
-        if (! n.startsWith(prefix))
-            return null;
+        if (! n.startsWith(prefix)) return null;
         else return n.substring(prefix.length()).replaceAll(".jar$", ""); }
 
     private static Properties
@@ -192,9 +191,8 @@ public class App {
     public static File[]
     resolveDepJars(ClojureRuntimeShim shim, String sym, String bootversion, String cljversion) {
         shim.require("boot.aether");
-        if (localrepo != null) {
+        if (localrepo != null)
             shim.invoke("boot.aether/set-local-repo!", localrepo);
-        }
         shim.invoke("boot.aether/update-always!");
         return (File[]) shim.invoke(
             "boot.aether/resolve-dependency-jars", sym, bootversion, cljversion); }

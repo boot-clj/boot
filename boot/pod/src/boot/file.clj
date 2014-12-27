@@ -74,6 +74,11 @@
     (apply io/file)
     (.getPath)))
 
+(defn shared-parent
+  [file1 file2]
+  (let [p1 (set (parent-seq file1))]
+    (->> file2 parent-seq (drop-while #(not (contains? p1 %))) first)))
+
 (defn lockfile
   [f]
   (let [f (io/file f)]
