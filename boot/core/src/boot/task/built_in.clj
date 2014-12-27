@@ -439,7 +439,7 @@
           (util/info "Writing %s...\n" (.getName jarfile))
           (pod/with-call-worker
             (boot.jar/spit-jar! ~(.getPath jarfile) ~index ~manifest ~main))
-          (-> fileset (core/rm entries) (core/add-resource tgt) core/commit!))))))
+          (-> fileset (core/add-resource tgt) core/commit!))))))
 
 (core/deftask war
   "Create war file for web deployment."
@@ -464,7 +464,7 @@
           (util/info "Writing %s...\n" (.getName warfile))
           (pod/with-call-worker
             (boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))
-          (-> fileset (core/rm entries) (core/add-resource tgt) core/commit!))))))
+          (-> fileset (core/add-resource tgt) core/commit!))))))
 
 (core/deftask zip
   "Build a zip file for the project."
@@ -482,7 +482,7 @@
             (util/info "Writing %s...\n" (.getName zipfile))
             (pod/with-call-worker
               (boot.jar/spit-zip! ~(.getPath zipfile) ~index))
-            (-> fileset (core/rm entries) (core/add-resource tgt) core/commit!)))))))
+            (-> fileset (core/add-resource tgt) core/commit!)))))))
 
 (core/deftask install
   "Install project jar to local Maven repository.
