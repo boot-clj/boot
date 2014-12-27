@@ -23,6 +23,7 @@
     char  first
     bool  identity
     edn   read-string
+    regex re-pattern
     code  (comp eval read-string)))
 
 (defn- assert-atom [type]
@@ -35,6 +36,7 @@
     char  char?
     bool  #(contains? #{true false} %)
     edn   (constantly true)
+    regex #(instance? java.util.regex.Pattern %)
     code  (constantly true)))
 
 (defn- parse-fn [optarg]
