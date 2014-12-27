@@ -111,3 +111,10 @@
     (let [t1 (:tree this)
           t2 (:tree fileset)]
       (->> (data/diff t1 t2) second keys (select-keys t2) (assoc fileset :tree)))))
+
+(defn removed [this fileset]
+  (if-not fileset
+    this
+    (let [t1 (:tree this)
+          t2 (:tree fileset)]
+      (->> (data/diff t1 t2) first keys (select-keys t1) (assoc fileset :tree)))))
