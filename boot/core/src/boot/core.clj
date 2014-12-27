@@ -532,8 +532,20 @@
       (reset-build!)
       ((task-stack #(do (sync! %) %)) (commit! (reset-fileset))))))
 
+(defmacro with-env!
+  "Given an env map and some body expressions, evaluates the body in the
+  given env (via set-env!). The current env is then restored. Note that
+  not all env settings are idempotent and/or reversible, so be careful."
+  [env & body]
+  `(let [env# (get-env)]
+     (try (set-env! ~env)
+          ~@body
+          (finally (set-env! env#)))))
+
 (defmacro boot
-  "Builds the project as if `argv` was given on the command line."
+  "The REPL equivalent to the command line 'boot'. If all arguments are
+  strings then they are treated as if they were given on the command line.
+  Otherwise they are assumed to evaluate to task middleware."
   [& argv]
   (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
         ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]

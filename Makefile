@@ -1,7 +1,7 @@
 .PHONY: help deps install deploy test clean
 
 SHELL       := /bin/bash
-export PATH := bin:$(PATH)
+export PATH := bin:l4j:$(PATH)
 
 green        = '\e[0;32m'
 nc           = '\e[0m'
