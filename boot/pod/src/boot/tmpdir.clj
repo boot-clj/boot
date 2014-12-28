@@ -1,4 +1,5 @@
 (ns boot.tmpdir
+  (:refer-clojure :exclude [time])
   (:require
     [clojure.java.io  :as io]
     [clojure.set      :as set]
@@ -11,6 +12,7 @@
   (id   [this])
   (dir  [this])
   (path [this])
+  (time [this])
   (file [this]))
 
 (defprotocol ITmpFileSet
@@ -22,11 +24,12 @@
   (mv      [this from-path to-path])
   (cp      [this src-file dest-tmpfile]))
 
-(defrecord TmpFile [dir path id]
+(defrecord TmpFile [dir path id time]
   ITmpFile
   (id   [this] id)
   (dir  [this] dir)
   (path [this] path)
+  (time [this] time)
   (file [this] (io/file dir path)))
 
 (defrecord TmpDir [dir user input output]
@@ -40,7 +43,7 @@
   [dir]
   (let [file->rel-path #(file/relative-to dir %)
         file->kv       #(let [p (str (file->rel-path %))]
-                          [p (TmpFile. dir p (digest/md5 %))])]
+                          [p (TmpFile. dir p (digest/md5 %) (.lastModified %))])]
     (->> dir file-seq (filter (memfn isFile)) (map file->kv) (into {}))))
 
 (defn- add-blob!
