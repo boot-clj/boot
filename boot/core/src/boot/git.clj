@@ -23,3 +23,8 @@
   []
   (let [fs (util/guard (ls-files :untracked true))]
     (if-not fs (constantly false) #(not (contains? fs (.getPath %))))))
+
+(defn describe
+  []
+  (pod/with-call-worker
+    (boot.jgit/describe)))
