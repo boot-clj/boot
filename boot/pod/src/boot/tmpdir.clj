@@ -1,4 +1,5 @@
 (ns boot.tmpdir
+  (:refer-clojure :exclude [time])
   (:require
     [clojure.java.io  :as io]
     [clojure.set      :as set]
@@ -11,6 +12,7 @@
   (id   [this])
   (dir  [this])
   (path [this])
+  (time [this])
   (file [this]))
 
 (defprotocol ITmpFileSet
@@ -18,14 +20,16 @@
   (commit! [this])
   (rm      [this paths])
   (add     [this dest-dir src-dir])
+  (add-tmp [this dest-dir tmpfiles])
   (mv      [this from-path to-path])
   (cp      [this src-file dest-tmpfile]))
 
-(defrecord TmpFile [dir path id]
+(defrecord TmpFile [dir path id time]
   ITmpFile
   (id   [this] id)
   (dir  [this] dir)
   (path [this] path)
+  (time [this] time)
   (file [this] (io/file dir path)))
 
 (defrecord TmpDir [dir user input output]
@@ -39,7 +43,7 @@
   [dir]
   (let [file->rel-path #(file/relative-to dir %)
         file->kv       #(let [p (str (file->rel-path %))]
-                          [p (TmpFile. dir p (digest/md5 %))])]
+                          [p (TmpFile. dir p (digest/md5 %) (.lastModified %))])]
     (->> dir file-seq (filter (memfn isFile)) (map file->kv) (into {}))))
 
 (defn- add-blob!
@@ -53,27 +57,22 @@
         (doto out (write! true) (mod! (mod src)) (write! false)))
       (doto out (#(io/copy src %)) (mod! (mod src)) (write! false)))))
 
-(def ^:dynamic *locked* false)
-
 (defrecord TmpFileSet [dirs tree blob]
   ITmpFileSet
   (ls [this]
     (set (vals tree)))
   (commit! [this]
-    (assert (not *locked*) "can't commit! during this phase")
     (util/with-let [{:keys [dirs tree blob]} this]
       (apply file/empty-dir! (map file dirs))
       (doseq [[p tmpf] tree]
         (let [srcf (io/file blob (id tmpf))]
           (file/copy-with-lastmod srcf (file tmpf))))))
   (rm [this tmpfiles]
-    (assert (not *locked*) "can't rm during this phase")
     (let [{:keys [dirs tree blob]} this
           treefiles (set (vals tree))
           remove?   (->> tmpfiles set (set/difference treefiles) complement)]
       (assoc this :tree (reduce-kv #(if (remove? %3) %1 (assoc %1 %2 %3)) {} tree))))
   (add [this dest-dir src-dir]
-    (assert (not *locked*) "can't add during this phase")
     (assert ((set (map file dirs)) dest-dir)
             (format "dest-dir not in dir set (%s)" dest-dir))
     (let [{:keys [dirs tree blob]} this
@@ -82,13 +81,17 @@
       (doseq [[path tmpf] src-tree]
         (add-blob! blob (io/file src-dir path) (id tmpf)))
       (assoc this :tree (merge tree src-tree))))
+  (add-tmp [this dest-dir tmpfiles]
+    (assert ((set (map file dirs)) dest-dir)
+            (format "dest-dir not in dir set (%s)" dest-dir))
+    (reduce #(assoc %1 (path %2) (assoc %2 :dir dest-dir)) this tmpfiles))
   (mv [this from-path to-path]
-    (assert (not *locked*) "can't mv during this phase")
-    (if-let [f (assoc (get-in this [:tree from-path]) :path to-path)]
-      (update-in this [:tree] #(-> % (assoc to-path f) (dissoc from-path)))
-      (throw (Exception. (format "not in fileset (%s)" from-path)))))
+    (if (= from-path to-path)
+      this
+      (if-let [f (assoc (get-in this [:tree from-path]) :path to-path)]
+        (update-in this [:tree] #(-> % (assoc to-path f) (dissoc from-path)))
+        (throw (Exception. (format "not in fileset (%s)" from-path))))))
   (cp [this src-file dest-tmpfile]
-    (assert (not *locked*) "can't cp during this phase")
     (let [hash (digest/md5 src-file)
           p'   (path dest-tmpfile)
           d'   (dir dest-tmpfile)]
@@ -105,9 +108,43 @@
   [x]
   (instance? TmpFileSet x))
 
-(defn diff [this fileset]
-  (if-not this
-    fileset
-    (let [t1 (:tree this)
-          t2 (:tree fileset)]
-      (->> (data/diff t1 t2) second keys (select-keys t2) (assoc fileset :tree)))))
+(defn- diff-tree
+  [tree props]
+  (let [->map #(-> {:hash (id %)
+                    :time (time %)}
+                   (select-keys props))]
+    (reduce-kv #(assoc %1 %2 (->map %3)) {} tree)))
+
+(defn- diff*
+  [before after props]
+  (if-not before
+    {:added   after
+     :removed (assoc after :tree {})
+     :changed (assoc after :tree {})}
+    (let [props   (or (seq props) [:time :hash])
+          t1      (:tree before)
+          t2      (:tree after)
+          d1      (diff-tree t1 props)
+          d2      (diff-tree t2 props)
+          [x y _] (map (comp set keys) (data/diff d1 d2))]
+      {:added   (->> (set/difference   y x) (select-keys t2) (assoc after :tree))
+       :removed (->> (set/difference   x y) (select-keys t1) (assoc after :tree))
+       :changed (->> (set/intersection x y) (select-keys t2) (assoc after :tree))})))
+
+(defn diff
+  [before after & props]
+  (let [{:keys [added changed]}
+        (diff* before after props)]
+    (update-in added [:tree] merge (:tree changed))))
+
+(defn removed
+  [before after & props]
+  (:removed (diff* before after props)))
+
+(defn added
+  [before after & props]
+  (:added (diff* before after props)))
+
+(defn changed
+  [before after & props]
+  (:changed (diff* before after props)))

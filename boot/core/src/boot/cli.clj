@@ -23,6 +23,7 @@
     char  first
     bool  identity
     edn   read-string
+    regex re-pattern
     code  (comp eval read-string)))
 
 (defn- assert-atom [type]
@@ -35,6 +36,7 @@
     char  char?
     bool  #(contains? #{true false} %)
     edn   (constantly true)
+    regex #(instance? java.util.regex.Pattern %)
     code  (constantly true)))
 
 (defn- parse-fn [optarg]
@@ -45,7 +47,10 @@
         (loop [ret [], arg arg, [c & chars] chars]
           (if-not c
             (conj ret arg)
-            (let [[nxt arg] (string/split arg (re-pattern (str c)) 2)]
+            (let [splitter  (re-pattern (str "(?<!\\\\)" c))
+                  cleaner   (re-pattern (str "\\\\" c))
+                  [nxt arg] (string/split arg (re-pattern (str "(?<!\\\\)" c)) 2)
+                  nxt       (string/replace nxt cleaner (str c))]
               (recur (conj ret nxt) arg chars))))))))
 
 (defn- parse-type [type args]

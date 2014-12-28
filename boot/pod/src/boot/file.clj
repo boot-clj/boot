@@ -74,6 +74,11 @@
     (apply io/file)
     (.getPath)))
 
+(defn shared-parent
+  [file1 file2]
+  (let [p1 (set (parent-seq file1))]
+    (->> file2 parent-seq (drop-while #(not (contains? p1 %))) first)))
+
 (defn lockfile
   [f]
   (let [f (io/file f)]
@@ -144,7 +149,8 @@
 (defmethod patch-cp? :hash    [_ a b] (not= (digest/md5 a) (digest/md5 b)))
 
 (defn patch [pred before after]
-  (let [[rm cp] (time-diff before after)]
+  (let [[x cp] (time-diff before after)
+        rm     (set/difference x cp)]
     (concat
       (for [x rm] [:rm x (get-in before [:file x])])
       (for [x cp :let [b (get-in before [:file x])

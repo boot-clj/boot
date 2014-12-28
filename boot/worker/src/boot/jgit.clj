@@ -25,6 +25,10 @@
   []
   (with-repo (jgit/git-status repo)))
 
+(defn describe
+  []
+  (with-repo (.. repo describe call)))
+
 (defn branch-current
   []
   (with-repo (jgit/git-branch-current repo)))

@@ -250,11 +250,33 @@
   [tmpfile]
   (tmpd/file tmpfile))
 
+(defn tmptime
+  "Returns the last modified timestamp for the tmpfile."
+  [tmpfile]
+  (tmpd/time tmpfile))
+
 (defn fileset-diff
   "Returns a new fileset containing files that were added or modified. Removed
-  files are not considered."
-  [before after]
-  (tmpd/diff before after))
+  files are not considered. The optional props arguments can be any of :time,
+  :hash, or both, specifying whether to consider changes to last modified time
+  or content md5 hash of the files (the default is both)."
+  [before after & props]
+  (apply tmpd/diff before after props))
+
+(defn fileset-added
+  "Returns a new fileset containing only files that were added."
+  [before after & props]
+  (apply tmpd/added before after props))
+
+(defn fileset-removed
+  "Returns a new fileset containing only files that were removed."
+  [before after & props]
+  (apply tmpd/removed before after props))
+
+(defn fileset-changed
+  "Returns a new fileset containing only files that were changed."
+  [before after & props]
+  (apply tmpd/changed before after props))
 
 ;; TmpFileSet API
 
@@ -274,23 +296,23 @@
   (get-dirs fileset #{:output}))
 
 (defn user-files
-  "Get a list of TmpFile objects corresponding to files that originated in
+  "Get a set of TmpFile objects corresponding to files that originated in
   the project's source, resource, or asset paths."
   [fileset]
   (get-files fileset #{:user}))
 
 (defn input-files
-  "Get a list of TmpFile objects corresponding to files with input role."
+  "Get a set of TmpFile objects corresponding to files with input role."
   [fileset]
   (get-files fileset #{:input}))
 
 (defn output-files
-  "Get a list of TmpFile objects corresponding to files with output role."
+  "Get a set of TmpFile objects corresponding to files with output role."
   [fileset]
   (get-files fileset #{:output}))
 
 (defn ls
-  "Get a list of TmpFile objects for all files in the fileset."
+  "Get a set of TmpFile objects for all files in the fileset."
   [fileset]
   (tmpd/ls fileset))
 
@@ -339,14 +361,29 @@
   [fileset ^File dir]
   (tmpd/add fileset (get-add-dir fileset #{:asset}) dir))
 
+(defn mv-asset
+  "FIXME: document"
+  [fileset tmpfiles]
+  (tmpd/add-tmp fileset (get-add-dir fileset #{:asset}) tmpfiles))
+
 (defn add-source
   "Add the contents of the java.io.File dir to the fileset's sources."
   [fileset ^File dir]
   (tmpd/add fileset (get-add-dir fileset #{:source}) dir))
 
+(defn mv-source
+  "FIXME: document"
+  [fileset tmpfiles]
+  (tmpd/add-tmp fileset (get-add-dir fileset #{:source}) tmpfiles))
+
 (defn add-resource
   "Add the contents of the java.io.File dir to the fileset's resources."
   [fileset ^File dir] (tmpd/add fileset (get-add-dir fileset #{:resource}) dir))
+
+(defn mv-resource
+  "FIXME: document"
+  [fileset tmpfiles]
+  (tmpd/add-tmp fileset (get-add-dir fileset #{:resource}) tmpfiles))
 
 ;; Tempdir helpers
 
@@ -581,7 +618,7 @@
              ~bind   result#]
          (assert (tmpd/tmpfileset? result#)
                  "task handler must return a fileset")
-         (binding [tmpd/*locked* true] ~@body)
+         ~@body
          result#))))
 
 ;; Task Configuration Macros ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
