@@ -149,7 +149,8 @@
 (defmethod patch-cp? :hash    [_ a b] (not= (digest/md5 a) (digest/md5 b)))
 
 (defn patch [pred before after]
-  (let [[rm cp] (time-diff before after)]
+  (let [[x cp] (time-diff before after)
+        rm     (set/difference x cp)]
     (concat
       (for [x rm] [:rm x (get-in before [:file x])])
       (for [x cp :let [b (get-in before [:file x])
