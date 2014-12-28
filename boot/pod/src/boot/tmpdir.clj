@@ -108,9 +108,43 @@
   [x]
   (instance? TmpFileSet x))
 
-(defn diff [this fileset]
-  (if-not this
-    fileset
-    (let [t1 (:tree this)
-          t2 (:tree fileset)]
-      (->> (data/diff t1 t2) second keys (select-keys t2) (assoc fileset :tree)))))
+(defn- diff-tree
+  [tree props]
+  (let [->map #(-> {:hash (id %)
+                    :time (time %)}
+                   (select-keys props))]
+    (reduce-kv #(assoc %1 %2 (->map %3)) {} tree)))
+
+(defn- diff*
+  [before after props]
+  (if-not before
+    {:added   after
+     :removed (assoc after :tree {})
+     :changed (assoc after :tree {})}
+    (let [props   (or (seq props) [:time :hash])
+          t1      (:tree before)
+          t2      (:tree after)
+          d1      (diff-tree t1 props)
+          d2      (diff-tree t2 props)
+          [x y _] (map (comp set keys) (data/diff d1 d2))]
+      {:added   (->> (set/difference   y x) (select-keys t2) (assoc after :tree))
+       :removed (->> (set/difference   x y) (select-keys t1) (assoc after :tree))
+       :changed (->> (set/intersection x y) (select-keys t2) (assoc after :tree))})))
+
+(defn diff
+  [before after & props]
+  (let [{:keys [added changed]}
+        (diff* before after props)]
+    (update-in added [:tree] merge (:tree changed))))
+
+(defn removed
+  [before after & props]
+  (:removed (diff* before after props)))
+
+(defn added
+  [before after & props]
+  (:added (diff* before after props)))
+
+(defn changed
+  [before after & props]
+  (:changed (diff* before after props)))
