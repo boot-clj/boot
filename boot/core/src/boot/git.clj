@@ -8,6 +8,7 @@
 (defn dirty?         [] (not (clean?)))
 (defn last-commit    [] (pod/with-call-worker (boot.jgit/last-commit)))
 (defn branch-current [] (pod/with-call-worker (boot.jgit/branch-current)))
+(defn describe       [] (pod/with-call-worker (boot.jgit/describe)))
 
 (defn ls-files
   [& {:keys [ref untracked]}]
@@ -23,8 +24,3 @@
   []
   (let [fs (util/guard (ls-files :untracked true))]
     (if-not fs (constantly false) #(not (contains? fs (.getPath %))))))
-
-(defn describe
-  []
-  (pod/with-call-worker
-    (boot.jgit/describe)))
