@@ -252,7 +252,7 @@
   The move option applies a find/replace transformation on all paths in the
   output fileset."
 
-  [a add-src            bool        "Add all input files to output fileset."
+  [a add-source         bool        "Add all input files to output fileset."
    m move MATCH:REPLACE {regex str} "The map of regex to replacement path strings."
    i include REGEX      #{regex}    "The set of regexes that paths must match."
    x exclude REGEX      #{regex}    "The set of regexes that paths must not match."]
@@ -266,7 +266,7 @@
                              to-path   (mvpath from-path move)]
                          (core/mv %1 from-path to-path)))
           remover #(if (keep? (io/file (core/tmppath %2))) %1 (core/rm %1 [%2]))
-          addsrcs #(if-not add-src % (core/mv-resource % (core/input-files %)))]
+          addsrcs #(if-not add-source % (core/mv-resource % (core/input-files %)))]
       (util/info "Sifting output files...\n")
       (-> (addsrcs fileset)
           (core/fileset-reduce core/output-files remover mover)
