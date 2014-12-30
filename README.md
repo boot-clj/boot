@@ -323,7 +323,7 @@ To build boot from source you will need:
 * JDK 1.7
 * GNU make
 * maven 3
-* launch4j (optional)
+* launch4j (optional, for windows support only)
 * bash shell, wget
 
 In a terminal in the project directory do:
