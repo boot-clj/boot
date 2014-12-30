@@ -84,7 +84,7 @@
   (add-tmp [this dest-dir tmpfiles]
     (assert ((set (map file dirs)) dest-dir)
             (format "dest-dir not in dir set (%s)" dest-dir))
-    (reduce #(assoc %1 (path %2) (assoc %2 :dir dest-dir)) this tmpfiles))
+    (reduce #(assoc-in %1 [:tree (path %2)] (assoc %2 :dir dest-dir)) this tmpfiles))
   (mv [this from-path to-path]
     (if (= from-path to-path)
       this
