@@ -334,7 +334,8 @@ $ make install
 ```
 
 Jars for all of the boot components will be created and installed to your local
-Maven repository. The executables `bin/boot.sh` and `bin/boot.exe` (if you have
+Maven repository. Running `boot -u` will upgrade your locally installed boot command
+to use these new artifacts. The executables `bin/boot.sh` and `bin/boot.exe` (if you have
 launch4j available) will be created, as well.
 
 ## Attribution
