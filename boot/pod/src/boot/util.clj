@@ -157,3 +157,16 @@
     (when-not (= 0 status)
       (throw (Exception. (-> "%s: non-zero exit status (%d)"
                            (format (first args) status)))))))
+
+(defmacro without-exiting
+  "Evaluates body in a context where System/exit doesn't work.
+  Returns result of evaluating body, or nil if code in body attempted to exit."
+  [& body]
+  `(let [old-sm# (System/getSecurityManager)
+         new-sm# (proxy [SecurityManager] []
+                   (checkPermission [p#])
+                   (checkExit [s#] (throw (SecurityException.))))]
+     (System/setSecurityManager ^SecurityManager new-sm#)
+     (try ~@body
+          (catch SecurityException e#)
+          (finally (System/setSecurityManager old-sm#)))))
