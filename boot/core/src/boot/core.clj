@@ -621,6 +621,15 @@
          ~@body
          result#))))
 
+(defmacro fileset-reduce
+  [fileset get-files & reducers]
+  (if-not (seq reducers)
+    fileset
+    (let [each-reducer (fn [r]
+                         [`((juxt identity ~get-files))
+                          `(apply reduce ~r)])]
+      `(->> ~fileset ~@(mapcat each-reducer reducers)))))
+
 ;; Task Configuration Macros ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro replace-task!
