@@ -325,6 +325,7 @@ To build boot from source you will need:
 * maven 3
 * launch4j (optional, for windows support only)
 * bash shell, wget
+* leiningen
 
 In a terminal in the project directory do:
 
