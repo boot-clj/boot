@@ -162,7 +162,6 @@
                     (try (reset! return (-> fileset core/reset-fileset core/commit! next-task))
                          (catch Throwable ex (util/print-ex ex)))
                     (util/info "Elapsed time: %.3f sec\n\n" (float (/ (etime) 1000)))))
-                (println "recuring...")
                 (recur (util/guard [(.take q)]))))))
         @return))))
 
