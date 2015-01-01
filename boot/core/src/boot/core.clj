@@ -682,25 +682,26 @@
 
   Example:
 
-  (disable-task! repl jar)"
+      (disable-task! repl jar)"
   [& tasks]
   `(do ~@(for [task tasks]
            `(replace-task! [t# ~task] (fn [& _#] identity)))))
 
 (defmacro task-options!
   "Given a number of task/map-of-curried-arguments pairs, replaces the root
-  bindings of the tasks with their curried values.
+  bindings of the tasks with their curried values. For example:
 
-  Example:
-
-  (task-options!
-    repl {:port     12345}
-    jar  {:manifest {:howdy \"world\"}})
+      (task-options!
+        repl {:port     12345}
+        jar  {:manifest {:howdy \"world\"}})
   
-  You can update options, too:
+  You can update options, too, by providing a function instead of an option
+  map. This function will be passed the current option map and its result will
+  be used as the new one. For example:
 
-  (task-options!
-    jar {:manifest #(assoc % :i-like \"turtles\")})"
+      (task-options!
+        repl #(update-in % [:port] (fnil inc 1234))
+        jar  #(assoc-in % [:manifest \"ILike\"] \"Turtles\"))"
   [& task-option-pairs]
   `(do ~@(for [[task opts] (partition 2 task-option-pairs)]
            `(let [opt# ~opts
@@ -709,7 +710,7 @@
                   new# (if (map? opt#) opt# (opt# old#))
                   arg# (mapcat identity new#)]
               (replace-task! [t# ~task] (fn [& xs#] (apply t# (concat arg# xs#))))
-              (alter-meta! var# (fn [x#] (update-in x# [:task-options] merge new#)))))
+              (alter-meta! var# (fn [x#] (assoc x# :task-options new#)))))
        nil))
 
 ;; Task Utility Functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
