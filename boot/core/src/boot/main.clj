@@ -22,6 +22,7 @@
    ["-P" "--no-profile"          "Skip loading of profile.boot script."]
    ["-r" "--resource-paths PATH" "Add PATH to set of resource directories."
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
+   ["-q" "--quiet"               "Suppress printed output."]
    ["-s" "--source-paths PATH"   "Add PATH to set of source directories."
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
    ["-t" "--target-path PATH"    "Set the target directory to PATH."]
@@ -99,11 +100,16 @@
               core/*boot-version* (boot.App/getBootVersion)
               core/*app-version*  (boot.App/getVersion)]
       (util/exit-ok
-        (let [userscript  (script? (io/file (System/getProperty "user.home") ".profile.boot"))
-              verbosity   (or (:verbose opts) 0)
+        (let [userscript  (-> (System/getProperty "user.home")
+                              (io/file ".profile.boot")
+                              script?)
+              verbosity   (if (:quiet opts)
+                            (* -1 @util/*verbosity*)
+                            (or (:verbose opts) 0))
               profile?    (not (:no-profile opts))
               bootforms   (some->> arg0 slurp util/read-string-all)
-              userforms   (when profile? (some->> userscript slurp util/read-string-all))
+              userforms   (when profile?
+                            (some->> userscript slurp util/read-string-all))
               initial-env (->> [:source-paths :resource-paths :asset-paths :target-path :dependencies]
                             (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
                             (merge {} (:set-env opts)))

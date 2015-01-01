@@ -26,10 +26,10 @@
     (binding [*out* *err*]
       (apply printf args) (flush))))
 
-(defn dbug [& more] (print* 3 more))
+(defn dbug [& more] (print* 2 more))
 (defn info [& more] (print* 1 more))
 (defn warn [& more] (print* 1 more))
-(defn fail [& more] (print* 0 more))
+(defn fail [& more] (print* 1 more))
 
 (defmacro with-let
   "Binds resource to binding and evaluates body.  Then, returns
@@ -99,10 +99,11 @@
 (defn print-ex
   [ex]
   (case @*verbosity*
-    0 (binding [*out* *err*] (println (.getMessage ex)))
+    0 nil
     1 (pretty/write-exception *err* ex
         {:properties true :filter repl/standard-frame-filter})
-    (pretty/write-exception *err* ex {:properties true})))
+    2 (pretty/write-exception *err* ex {:properties true})
+    (binding [*out* *err*] (.printStackTrace ex))))
 
 (defn path->ns
   [path]
