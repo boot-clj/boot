@@ -255,30 +255,14 @@
   [tmpfile]
   (tmpd/time tmpfile))
 
-(defn fileset-diff
-  "Returns a new fileset containing files that were added or modified. Removed
-  files are not considered. The optional props arguments can be any of :time,
-  :hash, or both, specifying whether to consider changes to last modified time
-  or content md5 hash of the files (the default is both)."
-  [before after & props]
-  (apply tmpd/diff before after props))
-
-(defn fileset-added
-  "Returns a new fileset containing only files that were added."
-  [before after & props]
-  (apply tmpd/added before after props))
-
-(defn fileset-removed
-  "Returns a new fileset containing only files that were removed."
-  [before after & props]
-  (apply tmpd/removed before after props))
-
-(defn fileset-changed
-  "Returns a new fileset containing only files that were changed."
-  [before after & props]
-  (apply tmpd/changed before after props))
-
 ;; TmpFileSet API
+
+(defn tmpget
+  "Given a fileset and a path, returns the associated TmpFile record. If the
+  not-found argument is specified and the TmpFile is not in the fileset then
+  not-found is returned, otherwise nil."
+  [fileset path & [not-found]]
+  (get-in fileset [:tree path] not-found))
 
 (defn user-dirs
   "Get a list of directories containing files that originated in the project's
@@ -384,6 +368,29 @@
   "FIXME: document"
   [fileset tmpfiles]
   (tmpd/add-tmp fileset (get-add-dir fileset #{:resource}) tmpfiles))
+
+(defn fileset-diff
+  "Returns a new fileset containing files that were added or modified. Removed
+  files are not considered. The optional props arguments can be any of :time,
+  :hash, or both, specifying whether to consider changes to last modified time
+  or content md5 hash of the files (the default is both)."
+  [before after & props]
+  (apply tmpd/diff before after props))
+
+(defn fileset-added
+  "Returns a new fileset containing only files that were added."
+  [before after & props]
+  (apply tmpd/added before after props))
+
+(defn fileset-removed
+  "Returns a new fileset containing only files that were removed."
+  [before after & props]
+  (apply tmpd/removed before after props))
+
+(defn fileset-changed
+  "Returns a new fileset containing only files that were changed."
+  [before after & props]
+  (apply tmpd/changed before after props))
 
 ;; Tempdir helpers
 
@@ -597,6 +604,17 @@
 ;; Low-Level Tasks, Helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro with-pre-wrap
+  "Given a binding and body expressions, constructs a task handler. The body
+  expressions are evaluated with the current fileset bound to binding, and the
+  result is passed to the next handler in the pipeline. The fileset obtained
+  from the next handler is then returned up the handler stack. The body must
+  evaluate to a fileset object. Roughly equivalent to:
+  
+      (fn [next-handler]
+        (fn [binding]
+          (next-handler (do ... ...))))
+
+  where ... are the given body expressions."
   [bind & body]
   `(fn [next-task#]
      (fn [fileset#]
@@ -610,6 +628,18 @@
 
 (defmacro with-post-wrap
   [bind & body]
+  "Given a binding and body expressions, constructs a task handler. The next
+  handler is called with the current fileset, and the result is bound to
+  binding. The body expressions are then evaluated for side effects and the
+  bound fileset is returned up the handler stack. Roughly equivalent to:
+  
+      (fn [next-handler]
+        (fn [fileset]
+          (let [binding (next-handler fileset)]
+            (do ... ...)
+            binding)))
+  
+  where ... are the given body expressions."
   `(fn [next-task#]
      (fn [fileset#]
        (assert (tmpd/tmpfileset? fileset#)
@@ -622,12 +652,14 @@
          result#))))
 
 (defmacro fileset-reduce
+  "Given a fileset, a function get-files that selects files from the fileset,
+  and a number of reducing functions, composes the reductions. The result of
+  the previous reduction and the result of get-files applied to it are passed
+  through to the next reducing function."
   [fileset get-files & reducers]
   (if-not (seq reducers)
     fileset
-    (let [each-reducer (fn [r]
-                         [`((juxt identity ~get-files))
-                          `(apply reduce ~r)])]
+    (let [each-reducer #(vector `((juxt identity ~get-files)) `(apply reduce ~%))]
       `(->> ~fileset ~@(mapcat each-reducer reducers)))))
 
 ;; Task Configuration Macros ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
