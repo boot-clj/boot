@@ -244,15 +244,22 @@
         (-> fileset (core/add-resource tgt) core/commit!))))))
 
 (core/deftask sift
-  "Filter the output fileset, matching paths against regexes.
+  "Transform the fileset, matching paths against regexes.
 
-  The include and exclude options specify sets of regular expressions that will
-  be used to filter the fileset.
+  The --include and --exclude options specify sets of regular expressions that
+  will be used to filter the fileset.
   
-  The move option applies a find/replace transformation on all paths in the
-  output fileset."
+  The --move option applies a find/replace transformation on all paths in the
+  output fileset.
+  
+  The --to-asset, --to-resource, and --to-source options move matching paths
+  to the corresponding section of the fileset. This can be used to make source
+  files into resource files, for example, etc."
 
-  [a add-source         bool        "Add all input files to output fileset."
+  [A add-source         bool        "Add all input files to output fileset."
+   a to-asset REGEX     #{regex}    "The set of regexes of paths to move to assets."
+   r to-resource REGEX  #{regex}    "The set of regexes of paths to move to resources."
+   s to-source REGEX    #{regex}    "The set of regexes of paths to move to sources."
    m move MATCH:REPLACE {regex str} "The map of regex to replacement path strings."
    i include REGEX      #{regex}    "The set of regexes that paths must match."
    x exclude REGEX      #{regex}    "The set of regexes that paths must not match."]
@@ -265,11 +272,16 @@
                        (let [from-path (core/tmppath %2)
                              to-path   (mvpath from-path move)]
                          (core/mv %1 from-path to-path)))
+          findany #(reduce (fn [xs x] (or (re-find x %2) xs)) false %1)
+          match?  #(and %1 (findany %1 (core/tmppath %2)))
+          to-src  #(if-not (match? to-source   %2) %1 (core/mv-source   %1 [%2]))
+          to-rsc  #(if-not (match? to-resource %2) %1 (core/mv-resource %1 [%2]))
+          to-ast  #(if-not (match? to-asset    %2) %1 (core/mv-asset    %1 [%2]))
           remover #(if (keep? (io/file (core/tmppath %2))) %1 (core/rm %1 [%2]))
           addsrcs #(if-not add-source % (core/mv-resource % (core/input-files %)))]
       (util/info "Sifting output files...\n")
       (-> (addsrcs fileset)
-          (core/fileset-reduce core/output-files remover mover)
+          (core/fileset-reduce core/ls remover to-src to-rsc to-ast mover)
           core/commit!))))
 
 (core/deftask add-repo
