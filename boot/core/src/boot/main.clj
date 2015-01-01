@@ -22,7 +22,7 @@
    ["-P" "--no-profile"          "Skip loading of profile.boot script."]
    ["-r" "--resource-paths PATH" "Add PATH to set of resource directories."
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
-   ["-q" "--quiet"               "Suppress printed output."]
+   ["-q" "--quiet"               "Suppress output from boot itself."]
    ["-s" "--source-paths PATH"   "Add PATH to set of source directories."
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
    ["-t" "--target-path PATH"    "Set the target directory to PATH."]

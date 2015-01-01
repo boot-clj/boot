@@ -59,11 +59,11 @@
   Default themes: system (the default), ordinance, and woodblock. New themes
   can be included via jar dependency with the sound files as resources:
 
-    boot
-    └── notify
-        ├── <theme-name>_failure.mp3
-        ├── <theme-name>_success.mp3
-        └── <theme-name>_warning.mp3
+      boot
+      └── notify
+          ├── <theme-name>_failure.mp3
+          ├── <theme-name>_success.mp3
+          └── <theme-name>_warning.mp3
 
   Sound files specified individually take precedence over theme sounds."
 
