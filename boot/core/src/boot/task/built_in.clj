@@ -130,7 +130,7 @@
   Debouncing time is 10ms by default."
 
   [q quiet         bool "Suppress all output from running jobs."
-   d debounce MSEC long "The time to wait (millisec) for filesystem to settle down."
+   d debounce MSEC int "The time to wait (millisec) for filesystem to settle down."
    v verbose       bool "Print which files have changed."]
 
   (pod/require-in @pod/worker-pod "boot.watcher")
@@ -162,6 +162,7 @@
                     (try (reset! return (-> fileset core/reset-fileset core/commit! next-task))
                          (catch Throwable ex (util/print-ex ex)))
                     (util/info "Elapsed time: %.3f sec\n\n" (float (/ (etime) 1000)))))
+                (println "recuring...")
                 (recur (util/guard [(.take q)]))))))
         @return))))
 
@@ -248,7 +249,7 @@
 
   The include and exclude options specify sets of regular expressions that will
   be used to filter the fileset.
-  
+
   The move option applies a find/replace transformation on all paths in the
   output fileset."
 
