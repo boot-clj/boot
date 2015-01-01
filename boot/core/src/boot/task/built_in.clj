@@ -248,7 +248,13 @@
   
   The --to-asset, --to-resource, and --to-source options move matching paths
   to the corresponding section of the fileset. This can be used to make source
-  files into resource files, for example, etc.
+  files into resource files, for example, etc. If --invert is also specified
+  the transformation is done to paths that DO NOT match.
+
+  The --with-meta option specifies a set of metadata keys files in the fileset
+  must have. Files without one of these keys will be filtered out. If --invert
+  is also specified then files that DO have one of these keys will be filtered
+  out, instead.
 
   The --add-meta option adds a key to the metadata map associated with paths
   matching the regex portion of the argument. For example:
@@ -256,47 +262,54 @@
       boot sift --add-meta 'foo$':bar
 
   merges {:bar true} into the metadata map associated with all paths that end
-  with 'foo'.
+  with 'foo'. If --invert is also specified the metadata is added to paths
+  that DO NOT match the regex portion.
 
   The --move option applies a find/replace transformation on all paths in the
-  output fileset.
+  output fileset. The --invert option has no effect on this operation.
 
-  The --include and --exclude options specify sets of regular expressions that
-  will be used to filter the fileset."
+  The --include option specifies a set of regexes that will be used to filter
+  the fileset. Only paths matching one of these will be kept. If --invert is
+  also specified then only paths NOT matching one of the regexes will be kept."
 
-  [A add-source         bool        "Add all input files to output fileset."
-   a to-asset REGEX     #{regex}    "The set of regexes of paths to move to assets."
+  [a to-asset REGEX     #{regex}    "The set of regexes of paths to move to assets."
    r to-resource REGEX  #{regex}    "The set of regexes of paths to move to resources."
    s to-source REGEX    #{regex}    "The set of regexes of paths to move to sources."
+   w with-meta KEY      #{kw}       "The set of metadata keys files must have."
    M add-meta REGEX:KEY {regex kw}  "The map of path regex to meta key to add."
    m move MATCH:REPLACE {regex str} "The map of regex to replacement path strings."
    i include REGEX      #{regex}    "The set of regexes that paths must match."
-   x exclude REGEX      #{regex}    "The set of regexes that paths must not match."]
+   v invert             bool        "Perform the inverse operation on the fileset."]
 
   (core/with-pre-wrap fileset
-    (let [outs    (core/output-files fileset)
-          keep?   (partial file/keep-filters? include exclude)
-          mvpath  (partial reduce-kv #(string/replace %1 %2 %3))
-          mover   #(or (and (not move) %1)
-                       (let [from-path (core/tmppath %2)
-                             to-path   (mvpath from-path move)]
-                         (core/mv %1 from-path to-path)))
-          findany #(reduce (fn [xs x] (or (re-find x %2) xs)) false %1)
-          match?  #(and %1 (findany %1 (core/tmppath %2)))
-          to-src  #(if-not (match? to-source   %2) %1 (core/mv-source   %1 [%2]))
-          to-rsc  #(if-not (match? to-resource %2) %1 (core/mv-resource %1 [%2]))
-          to-ast  #(if-not (match? to-asset    %2) %1 (core/mv-asset    %1 [%2]))
-          remover #(if (keep? (io/file (core/tmppath %2))) %1 (core/rm %1 [%2]))
-          addsrcs #(if-not add-source % (core/mv-resource % (core/input-files %)))
-          pathfor #(filter (partial re-find %1) (map core/tmppath (core/ls %2)))
-          addmeta #(-> (fn [meta-map re key]
-                         (-> (fn [meta-map path]
-                               (assoc-in meta-map [path key] true))
-                             (reduce meta-map (pathfor re %))))
-                       (reduce-kv {} add-meta))]
+    (let [negate   #(if-not invert % (not %))
+          include* (when-not invert include)
+          exclude* (when invert include)
+          keep?    (partial file/keep-filters? include* exclude*)
+          mvpath   (partial reduce-kv #(string/replace %1 %2 %3))
+          mover    #(or (and (not move) %1)
+                        (let [from-path (core/tmppath %2)
+                              to-path   (mvpath from-path move)]
+                          (core/mv %1 from-path to-path)))
+          findany  #(reduce (fn [xs x] (or (re-find x %2) xs)) false %1)
+          match?   #(and %1 (negate (findany %1 (core/tmppath %2))))
+          to-src   #(if-not (match? to-source   %2) %1 (core/mv-source   %1 [%2]))
+          to-rsc   #(if-not (match? to-resource %2) %1 (core/mv-resource %1 [%2]))
+          to-ast   #(if-not (match? to-asset    %2) %1 (core/mv-asset    %1 [%2]))
+          remover  #(if (keep? (io/file (core/tmppath %2))) %1 (core/rm %1 [%2]))
+          pathfor  #(-> (fn [p] (negate (re-find %1 p)))
+                        (filter (map core/tmppath (core/ls %2))))
+          pathfor  #(filter (partial re-find %1) (map core/tmppath (core/ls %2)))
+          addmeta  #(-> (fn [meta-map re key]
+                          (-> (fn [meta-map path]
+                                (assoc-in meta-map [path key] true))
+                              (reduce meta-map (pathfor re %))))
+                        (reduce-kv {} add-meta))
+          withmeta #(or (and (not with-meta) %1)
+                        (if (negate (some with-meta (keys %2))) %1 (core/rm %1 [%2])))]
       (util/info "Sifting output files...\n")
-      (-> (addsrcs fileset)
-          (core/fileset-reduce core/ls remover to-src to-rsc to-ast mover)
+      (-> fileset
+          (core/fileset-reduce core/ls remover to-src to-rsc to-ast mover withmeta)
           (#(core/add-meta % (addmeta %)))
           core/commit!))))
 
