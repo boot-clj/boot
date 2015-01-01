@@ -169,6 +169,7 @@
 (defn- add-dependencies!
   "Add Maven dependencies to the classpath, fetching them if necessary."
   [old new env]
+  (assert (vector? new) "env :dependencies must be a vector")
   (->> new rm-clojure-dep (assoc env :dependencies) pod/add-dependencies)
   (set-fake-class-path!)
   new)
@@ -194,6 +195,7 @@
   ([maven-coord scheme-map]
    (add-wagon! nil [maven-coord] (get-env) scheme-map))
   ([old new env]
+   (assert (vector? new) "env :wagons must be a vector")
    (add-wagon! old new env nil))
   ([old new env scheme-map]
    (doseq [maven-coord new]
@@ -499,10 +501,15 @@
   associated with the given `key` in the boot atom."
   (fn [key old-value new-value env] key) :default ::default)
 
-(defmethod merge-env! ::default     [key old new env] new)
-(defmethod merge-env! :directories  [key old new env] (set/union old new))
-(defmethod merge-env! :wagons       [key old new env] (add-wagon! old new env))
-(defmethod merge-env! :dependencies [key old new env] (add-dependencies! old new env))
+(defn- assert-set [k new] (assert (set? new) (format "env %s must be a set" k)))
+
+(defmethod merge-env! ::default       [key old new env] new)
+(defmethod merge-env! :directories    [key old new env] (set/union old new))
+(defmethod merge-env! :source-paths   [key old new env] (assert-set key new) new)
+(defmethod merge-env! :resource-paths [key old new env] (assert-set key new) new)
+(defmethod merge-env! :asset-paths    [key old new env] (assert-set key new) new)
+(defmethod merge-env! :wagons         [key old new env] (add-wagon! old new env))
+(defmethod merge-env! :dependencies   [key old new env] (add-dependencies! old new env))
 
 (defn get-env
   "Returns the value associated with the key `k` in the boot environment, or
