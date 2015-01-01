@@ -355,6 +355,19 @@
   [fileset ^File dir]
   (tmpd/add fileset (get-add-dir fileset #{:source}) dir))
 
+(defn add-meta
+  "Adds metadata about the files in the filesystem to their corresponding
+  TmpFile objects in the fileset. The meta-map is expected to be a map with
+  string paths as keys and maps of metadata as values. These metadata maps
+  will be merged into the TmpFile objects associated with the paths."
+  [fileset meta-map]
+  (-> #(let [k [:tree %2]
+             x [:dir :path :id :time]]
+         (if-not (get-in %1 k)
+           %1
+           (update-in %1 k merge (apply dissoc %3 x))))
+      (reduce-kv fileset meta-map)))
+
 (defn mv-source
   "FIXME: document"
   [fileset tmpfiles]
