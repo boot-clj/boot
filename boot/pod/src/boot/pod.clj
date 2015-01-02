@@ -277,6 +277,10 @@
                            [name (->> (io/file (io/file (str path "!")) name)
                                    .toURI .toURL .toString (str "jar:"))])))))))))))
 
+(defn jars-dep-graph
+  [env]
+  (with-call-worker (boot.aether/jars-dep-graph ~env)))
+
 (defn jars-in-dep-order
   [env]
   (map io/file (with-call-worker (boot.aether/jars-in-dep-order ~env))))
