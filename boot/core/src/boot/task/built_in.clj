@@ -251,6 +251,12 @@
   files into resource files, for example, etc. If --invert is also specified
   the transformation is done to paths that DO NOT match.
 
+  The --add-jar option extracts the contents of a jar file on the classpath
+  and adds them to the fileset. The PROJECT part of the argument specifies the
+  group-id/artifact-id symbol associated with the jar, and the MATCH portion
+  selects which entries in the jar will be extracted. If --invert is also
+  specified then entries whose paths DO NOT match the regex will be extracted.
+
   The --with-meta option specifies a set of metadata keys files in the fileset
   must have. Files without one of these keys will be filtered out. If --invert
   is also specified then files that DO have one of these keys will be filtered
@@ -272,17 +278,19 @@
   the fileset. Only paths matching one of these will be kept. If --invert is
   also specified then only paths NOT matching one of the regexes will be kept."
 
-  [a to-asset REGEX     #{regex}    "The set of regexes of paths to move to assets."
-   r to-resource REGEX  #{regex}    "The set of regexes of paths to move to resources."
-   s to-source REGEX    #{regex}    "The set of regexes of paths to move to sources."
-   w with-meta KEY      #{kw}       "The set of metadata keys files must have."
-   M add-meta REGEX:KEY {regex kw}  "The map of path regex to meta key to add."
-   m move MATCH:REPLACE {regex str} "The map of regex to replacement path strings."
-   i include REGEX      #{regex}    "The set of regexes that paths must match."
-   v invert             bool        "Perform the inverse operation on the fileset."]
+  [a to-asset MATCH        #{regex}    "The set of regexes of paths to move to assets."
+   r to-resource MATCH     #{regex}    "The set of regexes of paths to move to resources."
+   s to-source MATCH       #{regex}    "The set of regexes of paths to move to sources."
+   j add-jar PROJECT:MATCH {sym regex} "The map of jar to path regex of entries in jar to unpack."
+   w with-meta KEY         #{kw}       "The set of metadata keys files must have."
+   M add-meta MATCH:KEY    {regex kw}  "The map of path regex to meta key to add."
+   m move MATCH:REPLACE    {regex str} "The map of regex to replacement path strings."
+   i include MATCH         #{regex}    "The set of regexes that paths must match."
+   v invert                bool        "Invert the sense of matching."]
 
   (core/with-pre-wrap fileset
-    (let [negate   #(if-not invert % (not %))
+    (let [tmp      (core/temp-dir!)
+          negate   #(if-not invert % (not %))
           include* (when-not invert include)
           exclude* (when invert include)
           keep?    (partial file/keep-filters? include* exclude*)
@@ -308,9 +316,18 @@
           withmeta #(or (and (not with-meta) %1)
                         (if (negate (some with-meta (keys %2))) %1 (core/rm %1 [%2])))]
       (util/info "Sifting output files...\n")
+      (doseq [[proj re] add-jar]
+        (let [inc (when-not invert [re])
+              exc (when invert [re])
+              env (core/get-env)
+              dep (->> env :dependencies (filter #(= proj (first %))) first)
+              jar (pod/resolve-dependency-jar (core/get-env) dep)]
+          (util/info "Adding jar entries from %s...\n" (.getName (io/file jar)))
+          (pod/unpack-jar jar tmp :include inc :exclude exc)))
       (-> fileset
           (core/fileset-reduce core/ls remover to-src to-rsc to-ast mover withmeta)
           (#(core/add-meta % (addmeta %)))
+          (core/add-resource tmp)
           core/commit!))))
 
 (core/deftask add-repo
