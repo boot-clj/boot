@@ -17,14 +17,14 @@
   (case type
     int   read-string
     float read-string
-    str   identity
+    str   (fnil identity "")
     kw    keyword
     sym   symbol
     char  first
     bool  identity
-    edn   read-string
-    regex re-pattern
-    code  (comp eval read-string)))
+    edn   (fnil read-string "nil")
+    regex (fnil re-pattern "")
+    code  (fnil (comp eval read-string) "nil")))
 
 (defn- assert-atom [type]
   (case type
