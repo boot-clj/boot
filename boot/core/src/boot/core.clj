@@ -775,7 +775,7 @@
   [mkpred]
   (fn [criteria files & [negate?]]
     (let [tmp?   (partial satisfies? tmpd/ITmpFile)
-          ->file #(if (tmp? %) (tmpd/file %) (io/file %))]
+          ->file #(if (tmp? %) (io/file (tmppath %)) (io/file %))]
       ((if negate? remove filter)
        #(some identity ((apply juxt (map mkpred criteria)) (->file %))) files))))
 
@@ -808,10 +808,10 @@
 (defn by-re
   "This function takes two arguments: `res` and `files`, where `res` is a seq
   of regex patterns like `[#\"clj$\" #\"cljs$\"]` and `files` is a seq of
-  file objects. Returns a seq of the files in `files` whose names match one of
+  file objects. Returns a seq of the files in `files` whose paths match one of
   the regex patterns in `res`."
   [res files & [negate?]]
-  ((file-filter #(fn [f] (re-find % (.getName f)))) res files negate?))
+  ((file-filter #(fn [f] (re-find % (.getPath f)))) res files negate?))
 
 (defn not-by-re
   "This function is the same as `by-re` but negated."
