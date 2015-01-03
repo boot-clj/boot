@@ -362,12 +362,7 @@
                      (doseq [jar jars]
                        (if as-jars
                          (file/copy-with-lastmod jar (io/file tgt (.getName jar)))
-                         (doseq [[relpath url-str] (pod/jar-entries jar)
-                                 :let [f (io/file relpath)]]
-                           (let [segs    (file/split-path relpath)
-                                 outfile (apply io/file tgt segs)]
-                             (when-not (or (.exists outfile) (= "META-INF" (first segs)))
-                               (pod/copy-url url-str outfile)))))))]
+                         (pod/unpack-jar jar tgt :exclude [#"^META-INF/"]))))]
     (core/with-pre-wrap fileset
       @add-uber
       (-> fileset (core/add-resource tgt) core/commit!))))

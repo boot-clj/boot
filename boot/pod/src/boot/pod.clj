@@ -1,6 +1,7 @@
 (ns boot.pod
   (:require
    [boot.util                  :as util]
+   [boot.file                  :as file]
    [boot.from.backtick         :as bt]
    [clojure.java.io            :as io]
    [dynapath.util              :as dp]
@@ -276,6 +277,13 @@
                          (let [name (.getName %)]
                            [name (->> (io/file (io/file (str path "!")) name)
                                    .toURI .toURL .toString (str "jar:"))])))))))))))
+
+(defn unpack-jar
+  [jar dir & {:keys [include exclude]}]
+  (doseq [[path url] (jar-entries jar)]
+    (let [out   (io/file dir path)
+          keep? (partial file/keep-filters? include exclude)]
+      (when (keep? (io/file path)) (copy-url url out)))))
 
 (defn jars-dep-graph
   [env]
