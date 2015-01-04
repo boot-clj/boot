@@ -6,6 +6,7 @@
    [boot.from.digest :as digest]
    [clojure.core.reducers :as r])
   (:import
+   [java.net URI]
    [java.nio.file Files]
    [java.nio.file.attribute FileAttribute]
    [java.lang.management ManagementFactory])
@@ -22,7 +23,6 @@
 (defn exists? [f] (when (try (.exists (io/file f)) (catch Throwable _)) f))
 (defn path [f] (.getPath (io/file f)))
 (defn name [f] (.getName (io/file f)))
-(defn relative-to [base f] (.relativize (.toURI base) (.toURI f)))
 (defn file-seq [dir] (when dir (clojure.core/file-seq dir)))
 
 (defmacro guard [& exprs]
@@ -52,15 +52,32 @@
   [dir]
   (->> dir file-seq (filter (memfn isFile)) seq))
 
-(defn parent-seq [f]
+(defn parent-seq
+  "Return sequence of this file and all it's parent directories"
+  [f]
   (->> f io/file (iterate #(.getParentFile %)) (take-while identity)))
 
 (defn split-path [p]
   (->> p parent-seq reverse (map (memfn getName))))
 
+(defn parent [f]
+  (.getParentFile f))
+
 (defn parent? [parent child]
   (contains? (set (parent-seq child)) parent))
 
+(defn relative-to
+  "Return relative path to f from directory base."
+  [base f]
+  (loop [base base
+         parts []]
+    (if base
+      (if (parent? base f)
+        (URI. (str (apply io/file (concat parts [(str (.relativize (.toURI base) (.toURI f)))]))))
+        (recur (parent base) (conj parts "..")))
+      (URI. (str (apply io/file (concat parts (split-path f))))))))
+
+; FIXME: Is this useful for anything?
 (defn up-parents
   [f base & parts]
   (->> (io/file f)
@@ -74,6 +91,7 @@
     (apply io/file)
     (.getPath)))
 
+; FIXME: Is this useful for anything?
 (defn shared-parent
   [file1 file2]
   (let [p1 (set (parent-seq file1))]
