@@ -95,7 +95,9 @@
                        (cond
                          (and dir? (= :create etype)) (doreg service changed)
                          (not dir?) (.offer queue (.getPath changed)))))
-                   (and watch-key (.reset watch-key) (recur))))))
+                 (if-not (.reset watch-key)
+                   (util/dbug "failed to reset watch key %s\n" (.watchable watch-key)))
+                 (recur)))))
       Thread. .start)
     service))
 
