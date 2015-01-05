@@ -97,7 +97,9 @@
   (doseq [[k d] {:source-paths   (user-source-dirs)
                  :resource-paths (user-resource-dirs)
                  :asset-paths    (user-asset-dirs)}]
-    (when-let [s (seq (get-env k))]
+    (when-let [s (->> (get-env k)
+                      (filter #(.isDirectory (io/file %)))
+                      seq)]
       (binding [file/*hard-link* false]
         (apply file/sync! :time (first d) s)))))
 
@@ -132,8 +134,9 @@
   []
   (@src-watcher)
   (->> [:source-paths :resource-paths :asset-paths]
-    (map get-env)
-    (apply set/union)
+    (mapcat get-env)
+    (filter #(.isDirectory (io/file %)))
+    set
     (watch-dirs (fn [_] (sync-user-dirs!)))
     (reset! src-watcher))
   (set-fake-class-path!)
