@@ -103,13 +103,15 @@
    e env       bool "Print the boot env map."
    f fileset   bool "Print the build fileset object."
    u updates   bool "Print newer releases of outdated dependencies."
-   s snapshots bool "Include snapshot versions in updates searches."]
+   s snapshots bool "Include snapshot versions in updates searches."
+   c classpath bool "Print the project's full classpath."]
 
-  (let [updates (or updates (not (or deps env fileset)))]
+  (let [updates (or updates (not (or deps env fileset classpath)))]
     (core/with-pre-wrap fileset'
       (when deps    (print (pod/with-call-worker (boot.aether/dep-tree ~(core/get-env)))))
       (when env     (println (pr-str (core/get-env))))
       (when fileset (println (pr-str fileset')))
+      (when classpath (println (or (System/getProperty "boot.class.path") "")))
       (when updates (mapv prn (pod/outdated (core/get-env) :snapshots snapshots)))
       fileset')))
 
@@ -245,7 +247,7 @@
 
 (core/deftask sift
   "Transform the fileset, matching paths against regexes.
-  
+
   The --to-asset, --to-resource, and --to-source options move matching paths
   to the corresponding section of the fileset. This can be used to make source
   files into resource files, for example, etc. If --invert is also specified
