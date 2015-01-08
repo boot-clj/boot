@@ -23,6 +23,7 @@
 (defn exists? [f] (when (try (.exists (io/file f)) (catch Throwable _)) f))
 (defn path [f] (.getPath (io/file f)))
 (defn name [f] (.getName (io/file f)))
+(defn parent [f] (.getParentFile (io/file f)))
 (defn file-seq [dir] (when dir (clojure.core/file-seq dir)))
 
 (defmacro guard [& exprs]
@@ -55,13 +56,14 @@
 (defn parent-seq
   "Return sequence of this file and all it's parent directories"
   [f]
-  (->> f io/file (iterate #(.getParentFile %)) (take-while identity)))
+  (->> f io/file (iterate parent) (take-while identity)))
 
-(defn split-path [p]
+(defn split-path
+  "Return sequence of this file's and its parent directories names.
+
+   e.g. public/js/main.js -> (\"public\" \"js\" \"main.js\")"
+  [p]
   (->> p parent-seq reverse (map (memfn getName))))
-
-(defn parent [f]
-  (.getParentFile f))
 
 (defn parent? [parent child]
   (contains? (set (parent-seq child)) parent))
@@ -76,26 +78,6 @@
         (URI. (str (apply io/file (concat parts [(str (.relativize (.toURI base) (.toURI f)))]))))
         (recur (parent base) (conj parts "..")))
       (URI. (str (apply io/file (concat parts (split-path f))))))))
-
-; FIXME: Is this useful for anything?
-(defn up-parents
-  [f base & parts]
-  (->> (io/file f)
-    (relative-to (io/file base))
-    (.getPath)
-    parent-seq
-    butlast
-    (map (constantly ".."))
-    (concat (reverse parts))
-    reverse
-    (apply io/file)
-    (.getPath)))
-
-; FIXME: Is this useful for anything?
-(defn shared-parent
-  [file1 file2]
-  (let [p1 (set (parent-seq file1))]
-    (->> file2 parent-seq (drop-while #(not (contains? p1 %))) first)))
 
 (defn lockfile
   [f]
