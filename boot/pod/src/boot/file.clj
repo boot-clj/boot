@@ -77,26 +77,6 @@
         (recur (parent base) (conj parts "..")))
       (URI. (str (apply io/file (concat parts (split-path f))))))))
 
-; FIXME: Is this useful for anything?
-(defn up-parents
-  [f base & parts]
-  (->> (io/file f)
-    (relative-to (io/file base))
-    (.getPath)
-    parent-seq
-    butlast
-    (map (constantly ".."))
-    (concat (reverse parts))
-    reverse
-    (apply io/file)
-    (.getPath)))
-
-; FIXME: Is this useful for anything?
-(defn shared-parent
-  [file1 file2]
-  (let [p1 (set (parent-seq file1))]
-    (->> file2 parent-seq (drop-while #(not (contains? p1 %))) first)))
-
 (defn lockfile
   [f]
   (let [f (io/file f)]
