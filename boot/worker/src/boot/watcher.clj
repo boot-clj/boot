@@ -58,6 +58,7 @@
 
 (defn- register-recursive
   [service path events]
+  (util/dbug "registering %s %s\n" path events)
   (register service path events)
   (doseq [dir (.listFiles (io/file path))]
     (when (.isDirectory dir)
@@ -92,13 +93,16 @@
                            changed (io/file dir (str (.context event)))
                            etype   (enum->kw service (.kind event))
                            dir?    (.isDirectory changed)]
-                       (cond
-                         (and dir? (= :create etype)) (doreg service changed)
-                         (not dir?) (.offer queue (.getPath changed)))))
-                 (if-not (.reset watch-key)
-                   (util/dbug "failed to reset watch key %s\n" (.watchable watch-key)))
-                 (recur)))))
-      Thread. .start)
+                       (util/dbug "event: %s %s %s\n" etype dir? (.watchable watch-key))
+                       (when (and dir? (= :create etype))
+                         (try (doreg service changed)
+                              (catch Throwable t
+                                (util/dbug "error registering %s: %s\n" (.watchable watch-key) t))))
+                       (.offer queue (.getPath changed))))
+                   (if-not (.reset watch-key)
+                     (util/dbug "failed to reset watch key %s\n" (.watchable watch-key)))
+                   (recur)))))
+        Thread. .start)
     service))
 
 (def ^:private watchers (atom {}))
