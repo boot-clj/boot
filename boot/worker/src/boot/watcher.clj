@@ -75,8 +75,17 @@
 (defn- take-watch-key [service]
   (try
     (.take service)
-    (catch java.nio.file.ClosedWatchServiceException _ nil)
-    (catch com.barbarysoftware.watchservice.ClosedWatchServiceException _ nil)))
+    (catch java.nio.file.ClosedWatchServiceException _
+      (util/dbug "watch service closed\n"))
+    (catch com.barbarysoftware.watchservice.ClosedWatchServiceException _
+      (util/dbug "watch service closed\n"))))
+
+(defn- send-it!
+  [queue]
+  ;; It doesn't matter what we send because the information in the watch keys
+  ;; is completely unreliable and useless, so we send the sentinel "changed!".
+  (util/dbug "sending change event\n")
+  (.offer queue "changed!"))
 
 (defn- service
   [queue paths]
@@ -84,24 +93,23 @@
         doreg   #(register-recursive %1 %2 [:create :modify])]
     (doseq [path paths] (doreg service (io/file path)))
     (-> #(let [watch-key (take-watch-key service)]
-           (when watch-key
+           (when-let [path (and watch-key (or (.watchable watch-key) ""))]
              (if-not (.isValid watch-key)
-               (do (util/dbug "invalid watch key %s\n" (.watchable watch-key))
-                   (recur))
+               (util/dbug "invalid watch key %s\n" (.watchable watch-key))
                (do (doseq [event (.pollEvents watch-key)]
-                     (let [dir     (.toFile (.watchable watch-key))
+                     (let [dir     (.toFile path)
                            changed (io/file dir (str (.context event)))
                            etype   (enum->kw service (.kind event))
                            dir?    (.isDirectory changed)]
-                       (util/dbug "event: %s %s %s\n" etype dir? (.watchable watch-key))
+                       (util/dbug "event: %s %s %s\n" etype dir? path)
                        (when (and dir? (= :create etype))
                          (try (doreg service changed)
                               (catch Throwable t
-                                (util/dbug "error registering %s: %s\n" (.watchable watch-key) t))))
-                       (.offer queue (.getPath changed))))
-                   (if-not (.reset watch-key)
-                     (util/dbug "failed to reset watch key %s\n" (.watchable watch-key)))
-                   (recur)))))
+                                (util/dbug "error registering %s: %s\n" path t))))))
+                   (when-not (.reset watch-key)
+                     (util/dbug "failed to reset watch key %s\n" path))))
+             (send-it! queue)
+             (recur)))
         Thread. .start)
     service))
 
@@ -117,5 +125,5 @@
         s  (service queue paths)
         fs (->> paths (mapcat (comp file-seq io/file)) (filter (memfn isFile)))]
     (swap! watchers assoc k s)
-    (doseq [f fs] (.offer queue (.getPath f)))
+    (send-it! queue)
     k))
