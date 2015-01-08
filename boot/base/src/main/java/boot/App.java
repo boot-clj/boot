@@ -260,7 +260,7 @@ public class App {
 
         if (chan != null && chan.equals("DEV")) channel = "(0.0.0,)";
 
-        String dir_l  = (localrepo == null) ? "default" : String.valueOf(localrepo.hashCode());
+        String dir_l  = (localrepo == null) ? "boot/default" : "boot/" + localrepo;
         
         if (clj_v != null) cljversion = clj_v;
         if (boot_v != null) bootversion = boot_v;

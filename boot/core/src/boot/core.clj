@@ -238,6 +238,23 @@
   []
   (temp-dir** nil :cache))
 
+(defn cache-dir!
+  "Returns a directory which is managed by boot but whose contents will not be
+  deleted after the build is complete. The :global option specifies that the
+  directory is shared by all projects. The default behavior returns different
+  directories for the same key when run in different projects."
+  [key & {:keys [global]}]
+  (assert (and (keyword? key) (namespace key))
+          "cache key must be a namespaced keyword")
+  (->> (io/file ".")
+       .getCanonicalFile
+       file/split-path
+       (when-not global)
+       (into [(App/getBootDir) "cache" (if global "global" "project")])
+       (#(into % ((juxt namespace name) key)))
+       (apply io/file)
+       (#(doto % .mkdirs))))
+
 ;; TmpFile API
 
 (defn tmppath
