@@ -23,6 +23,7 @@
 (defn exists? [f] (when (try (.exists (io/file f)) (catch Throwable _)) f))
 (defn path [f] (.getPath (io/file f)))
 (defn name [f] (.getName (io/file f)))
+(defn parent [f] (.getParentFile (io/file f)))
 (defn file-seq [dir] (when dir (clojure.core/file-seq dir)))
 
 (defmacro guard [& exprs]
@@ -55,13 +56,14 @@
 (defn parent-seq
   "Return sequence of this file and all it's parent directories"
   [f]
-  (->> f io/file (iterate #(.getParentFile %)) (take-while identity)))
+  (->> f io/file (iterate parent) (take-while identity)))
 
-(defn split-path [p]
+(defn split-path
+  "Return sequence of this file's and its parent directories names.
+
+   e.g. public/js/main.js -> (\"public\" \"js\" \"main.js\")"
+  [p]
   (->> p parent-seq reverse (map (memfn getName))))
-
-(defn parent [f]
-  (.getParentFile f))
 
 (defn parent? [parent child]
   (contains? (set (parent-seq child)) parent))
