@@ -221,12 +221,12 @@
 
   The project and version must be specified to make a pom.xml."
 
-  [p project SYM      sym      "The project id (eg. foo/bar)."
-   v version VER      str      "The project version."
-   d description DESC str      "The project description."
-   u url URL          str      "The project homepage url."
-   l license KEY=VAL  {kw str} "The project license map (KEY in name, url)."
-   s scm KEY=VAL      {kw str} "The project scm map (KEY in url, tag)."]
+  [p project SYM      sym       "The project id (eg. foo/bar)."
+   v version VER      str       "The project version."
+   d description DESC str       "The project description."
+   u url URL          str       "The project homepage url."
+   l license NAME:URL {str str} "The project license map."
+   s scm KEY=VAL      {kw str}  "The project scm map (KEY in url, tag)."]
 
   (let [tgt (core/temp-dir!)]
     (core/with-pre-wrap fileset

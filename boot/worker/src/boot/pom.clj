@@ -37,18 +37,18 @@
 (defn pom-xml [{p :project v :version d :description l :license
                 {su :url st :tag} :scm u :url deps :dependencies :as env}]
   (let [[g a] (util/extract-ids p)
-        ls    (if-not (map? l) l [l])]
+        ls    (map (fn [[name url]] {:name name :url url}) l)]
     (project
       :xmlns              "http://maven.apache.org/POM/4.0.0"
       :xmlns:xsi          "http://www.w3.org/2001/XMLSchema-instance"
-      :xsi:schemaLocation "http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" 
+      :xsi:schemaLocation "http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
       (modelVersion "4.0.0")
       (groupId      g)
       (artifactId   a)
       (version      v)
       (name         a)
       (description  d)
-      (url          u) 
+      (url          u)
       (licenses
         (for [{ln :name lu :url lc :comments} ls]
           (license
@@ -65,7 +65,7 @@
             (groupId    g)
             (artifactId a)
             (version    v)
-            (scope      (or s "compile")) 
+            (scope      (or s "compile"))
             (exclusions
               (for [p es :let [[g a] (util/extract-ids p)]]
                 (exclusion
