@@ -19,6 +19,7 @@
 (declare print-ex)
 
 (def ^:dynamic *verbosity* (atom 1))
+(def ^:dynamic *colorize?* (atom true))
 
 (defn- print*
   [verbosity args]
@@ -112,8 +113,9 @@
 
 (defn auto-flush
   [writer]
-  (proxy [java.io.PrintWriter] [writer]
-    (write [s] (.write writer s) (flush))))
+  (let [fmt #(if @*colorize?* % (ansi/strip-ansi %))]
+    (proxy [java.io.PrintWriter] [writer]
+      (write [s] (.write writer (fmt s)) (flush)))))
 
 (defn extract-ids
   [sym]

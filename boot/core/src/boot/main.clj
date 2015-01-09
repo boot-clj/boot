@@ -12,6 +12,7 @@
   [["-a" "--asset-paths PATH"    "Add PATH to set of asset directories."
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
    ["-b" "--boot-script"         "Print generated boot script for debugging."]
+   ["-C" "--no-colors"           "Remove ANSI escape codes from printed output."]
    ["-d" "--dependencies ID:VER" "Add dependency to project (eg. -d foo/bar:1.2.3)."
     :assoc-fn #(let [[p v] (string/split %3 #":" 2)]
                  (update-in %1 [%2] (fnil conj []) [(read-string p) (or v "RELEASE")]))]
@@ -117,6 +118,7 @@
               scriptforms (emit boot? args userforms bootforms import-ns)
               scriptstr   (str (string/join "\n\n" (map pr-str scriptforms)) "\n")]
 
+          (reset! util/*colorize?* (not (:no-colors opts)))
           (swap! util/*verbosity* + verbosity)
           (pod/with-eval-in worker-pod
             (require '[boot.util :as util])
