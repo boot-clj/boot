@@ -154,6 +154,7 @@
               out (io/output-stream (doto (io/file out-path) io/make-parents))]
     (io/copy in out)))
 
+(def  env            nil)
 (def  pod-id         (atom nil))
 (def  worker-pod     (atom nil))
 (def  shutdown-hooks (atom nil))
@@ -304,19 +305,6 @@
                 (map (fn [[k v]] [v (.getPath (io/file outdir k))])))]
     (doseq [[url-str out-path] ents] (copy-url url-str out-path))))
 
-(defn- init-pod!
-  [pod]
-  (doto pod
-    (require-in "boot.pod")
-    (.invoke "boot.pod/set-worker-pod!" @worker-pod)
-    (with-eval-in
-      (require 'boot.util)
-      (reset! boot.util/*verbosity* ~(deref util/*verbosity*))
-      (create-ns 'pod)
-      (dosync (alter @#'clojure.core/*loaded-libs* conj 'pod))
-      (alter-var-root #'*ns* (constantly (the-ns 'pod)))
-      (clojure.core/refer-clojure))))
-
 (defn lifecycle-pool
   [size create destroy & {:keys [priority]}]
   (let [run? (atom true)
@@ -336,12 +324,26 @@
       ([] (take))
       ([op] (case op :refresh (do (swap) (take)) :shutdown (stop))))))
 
+(defn- init-pod!
+  [env pod]
+  (doto pod
+    (require-in "boot.pod")
+    (.invoke "boot.pod/set-worker-pod!" @worker-pod)
+    (with-eval-in
+      (require 'boot.util 'boot.pod)
+      (reset! boot.util/*verbosity* ~(deref util/*verbosity*))
+      (alter-var-root #'boot.pod/env (constantly '~env))
+      (create-ns 'pod)
+      (dosync (alter @#'clojure.core/*loaded-libs* conj 'pod))
+      (alter-var-root #'*ns* (constantly (the-ns 'pod)))
+      (clojure.core/refer-clojure))))
+
 (defn make-pod
   ([] (init-pod! (boot.App/newPod)))
   ([{:keys [directories] :as env}]
      (let [dirs (map io/file directories)
            jars (resolve-dependency-jars env)]
-       (->> (concat dirs jars) (into-array java.io.File) boot.App/newPod init-pod!))))
+       (->> (concat dirs jars) (into-array java.io.File) boot.App/newPod (init-pod! env)))))
 
 (defn destroy-pod
   [pod]
