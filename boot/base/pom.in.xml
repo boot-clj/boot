@@ -21,6 +21,24 @@
       <distribution>repo</distribution>
     </license>
   </licenses>
+  <repositories>
+    <repository>
+      <id>sonatype</id>
+      <url>http://oss.sonatype.org/content/repositories/releases/</url>
+    </repository>
+    <repository>
+      <id>sonatype-snaps</id>
+      <url>http://oss.sonatype.org/content/repositories/snapshots/</url>
+    </repository>
+    <repository>
+      <id>clojars</id>
+      <url>https://clojars.org/repo/</url>
+    </repository>
+    <repository>
+      <id>maven-central</id>
+      <url>http://repo1.maven.org/maven2/</url>
+    </repository>
+  </repositories>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -68,7 +86,7 @@
     <dependency>
       <groupId>org.projectodd.shimdandy</groupId>
       <artifactId>shimdandy-api</artifactId>
-      <version>1.0.1</version>
+      <version>1.1.0</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
