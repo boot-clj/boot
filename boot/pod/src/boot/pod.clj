@@ -310,8 +310,13 @@
     (require-in "boot.pod")
     (.invoke "boot.pod/set-worker-pod!" @worker-pod)
     (with-eval-in
-      (require '[boot.util :as util])
-      (reset! util/*verbosity* ~(deref util/*verbosity*)))))
+      (require 'boot.util)
+      (reset! boot.util/*verbosity* ~(deref util/*verbosity*))
+      (create-ns 'pod)
+      (dosync (alter @#'clojure.core/*loaded-libs* conj 'pod))
+      (alter-var-root #'*ns* (constantly (the-ns 'pod)))
+      (clojure.core/binding [clojure.core/*ns* clojure.core/*ns*]
+        (clojure.core/refer-clojure)))))
 
 (defn lifecycle-pool
   [size create destroy & {:keys [priority]}]
