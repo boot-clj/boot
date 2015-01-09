@@ -187,10 +187,11 @@
   "Performs side-effects associated with changes to the env atom. Boot adds this
   function as a watcher on it."
   [old new]
+  (alter-var-root #'boot.pod/env (constantly new))
   (doseq [k (set/union (set (keys old)) (set (keys new)))]
     (let [o (get old k ::noval)
           n (get new k ::noval)]
-      (if (not= o n) (on-env! k o n new)))))
+      (when (not= o n) (on-env! k o n new)))))
 
 (defn- add-wagon!
   "Adds a maven wagon dependency to the worker pod and initializes it with an
