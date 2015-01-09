@@ -2,6 +2,7 @@
 
 SHELL       := /bin/bash
 export PATH := bin:l4j:$(PATH)
+export  LEIN_SNAPSHOTS_IN_RELEASE := yes
 
 green        = '\e[0;32m'
 nc           = '\e[0m'
@@ -26,7 +27,7 @@ help:
 	@echo "Usage: make {help|deps|install|deploy|test|clean}" 1>&2 && false
 
 clean:
-	(cd boot/base && mvn -q clean)
+	(cd boot/base && mvn -q clean && rm -f src/main/resources/$(aetheruber))
 	(cd boot/core && lein clean)
 	(cd boot/aether && lein clean)
 	(cd boot/pod && lein clean)
