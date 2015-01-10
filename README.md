@@ -114,7 +114,7 @@ file, `hello.txt`:
 ```
 $ mkdir -p my-project/src
 $ cd my-project
-$ echo "hi there" > src/greet.txt
+$ echo "hi there" > src/hello.txt
 ```
 
 The directory should now have the following structure:
