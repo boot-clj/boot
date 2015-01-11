@@ -28,6 +28,8 @@
 (declare ^{:dynamic true :doc "Command line options for boot itself."} *boot-opts*)
 (declare ^{:dynamic true :doc "Count of warnings during build."}       *warnings*)
 
+(def last-file-change "Last source file watcher update time." (atom 0))
+
 ;; Internal helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^:private tmpregistry       (atom nil))
@@ -137,7 +139,10 @@
     (mapcat get-env)
     (filter #(.isDirectory (io/file %)))
     set
-    (watch-dirs (fn [_] (sync-user-dirs!)))
+    (watch-dirs
+      (fn [_]
+        (sync-user-dirs!)
+        (reset! last-file-change (System/currentTimeMillis))))
     (reset! src-watcher))
   (set-fake-class-path!)
   (sync-user-dirs!))

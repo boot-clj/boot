@@ -139,12 +139,12 @@
   (fn [next-task]
     (fn [fileset]
       (let [q       (LinkedBlockingQueue.)
+            k       (gensym)
             return  (atom fileset)
             srcdirs (map (memfn getPath) (core/user-dirs fileset))
-            watcher (apply file/watcher! :time srcdirs)
-            paths   (into-array String srcdirs)
-            k       (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
-        (core/cleanup (.invoke @pod/worker-pod "boot.watcher/stop-watcher" k))
+            watcher (apply file/watcher! :time srcdirs)]
+        (add-watch core/last-file-change k #(.offer q %4))
+        (core/cleanup (remove-watch core/last-file-change k))
         (when-not quiet (util/info "Starting file watcher (CTRL-C to quit)...\n\n"))
         (loop [ret (util/guard [(.take q)])]
           (when ret
