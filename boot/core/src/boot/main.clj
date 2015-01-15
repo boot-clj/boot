@@ -116,7 +116,8 @@
                             (merge {} (:set-env opts)))
               import-ns   (export-task-namespaces initial-env)
               scriptforms (emit boot? args userforms bootforms import-ns)
-              scriptstr   (str (string/join "\n\n" (map pr-str scriptforms)) "\n")]
+              scriptstr   (binding [*print-meta* true]
+                            (str (string/join "\n\n" (map pr-str scriptforms)) "\n"))]
 
           (reset! util/*colorize?* (not (:no-colors opts)))
           (swap! util/*verbosity* + verbosity)
