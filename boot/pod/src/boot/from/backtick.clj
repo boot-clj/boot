@@ -1,5 +1,6 @@
 (ns boot.from.backtick
-  {:boot/from :bbloom/backtick}
+  {:boot/from :bbloom/backtick
+   :boot/from-version "0.3.2"}
   (:refer-clojure :exclude [eval resolve]))
 
 (def ^:dynamic *resolve*)
@@ -31,10 +32,10 @@
     (record? form) `'~form
     (coll? form)
       (let [xs (if (map? form) (apply concat form) form)
-            parts (for [x (partition-by unquote-splicing? xs)]
-                    (if (unquote-splicing? (first x))
-                      (second (first x))
-                      (mapv quote-fn* x)))
+            parts (for [x xs]
+                    (if (unquote-splicing? x)
+                      (second x)
+                      [(quote-fn* x)]))
             cat (doall `(concat ~@parts))]
         (cond
           (vector? form) `(vec ~cat)
