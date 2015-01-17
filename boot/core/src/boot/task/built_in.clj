@@ -433,7 +433,7 @@
         (pod/with-eval-in @compile-pod
           (binding [*compile-path* ~(.getPath tgt)]
             (doseq [ns '~nses]
-              (util/info "Compiling %s...\n" ns)
+              (boot.util/info "Compiling %s...\n" ns)
               (compile ns)))))
       (-> fileset (core/add-resource tgt) core/commit!))))
 
