@@ -241,6 +241,7 @@
 
 (defn outdated
   [env & {:keys [snapshots]}]
+  (with-call-worker (boot.aether/update-always!))
   (let [v+ (if snapshots "(0,)" "RELEASE")]
     (->> (for [[p v & _ :as coord] (->> env :dependencies (map canonical-coord))]
            (util/guard

@@ -99,20 +99,20 @@
 (core/deftask show
   "Print project/build info (e.g. dependency graph, etc)."
 
-  [d deps      bool "Print project dependency graph."
-   e env       bool "Print the boot env map."
-   f fileset   bool "Print the build fileset object."
-   u updates   bool "Print newer releases of outdated dependencies."
-   s snapshots bool "Include snapshot versions in updates searches."
-   c classpath bool "Print the project's full classpath."]
+  [d deps             bool "Print project dependency graph."
+   e env              bool "Print the boot env map."
+   f fileset          bool "Print the build fileset object."
+   u updates          bool "Print newer releases of outdated dependencies."
+   U update-snapshots bool "Include snapshot versions in updates searches."
+   c classpath        bool "Print the project's full classpath."]
 
-  (let [updates (or updates (not (or deps env fileset classpath)))]
+  (let [updates (or updates update-snapshots (not (or deps env fileset classpath)))]
     (core/with-pre-wrap fileset'
       (when deps    (print (pod/with-call-worker (boot.aether/dep-tree ~(core/get-env)))))
       (when env     (println (pr-str (core/get-env))))
       (when fileset (println (pr-str fileset')))
       (when classpath (println (or (System/getProperty "boot.class.path") "")))
-      (when updates (mapv prn (pod/outdated (core/get-env) :snapshots snapshots)))
+      (when updates (mapv prn (pod/outdated (core/get-env) :snapshots update-snapshots)))
       fileset')))
 
 (core/deftask wait
