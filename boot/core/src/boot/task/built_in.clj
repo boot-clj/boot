@@ -556,9 +556,10 @@
     (util/with-let [_ fileset]
       (let [jarfiles (or (and file [(io/file file)])
                          (->> (core/output-files fileset)
-                              (core/by-ext [".jar"])))]
+                              (core/by-ext [".jar"])
+                              (map core/tmpfile)))]
         (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
-        (doseq [jarfile (map core/tmpfile jarfiles)]
+        (doseq [jarfile jarfiles]
           (util/info "Installing %s...\n" (.getName jarfile))
           (pod/with-call-worker
             (boot.aether/install ~(core/get-env) ~(.getPath jarfile))))))))
