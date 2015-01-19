@@ -1,6 +1,7 @@
 (ns boot.cli
   (:require
    [boot.util :as util]
+   [clojure.java.io :as io]
    [clojure.string :as string]
    [clojure.pprint :as pprint]
    [boot.from.clojure.tools.cli :as cli]))
@@ -24,7 +25,8 @@
     bool  identity
     edn   (fnil read-string "nil")
     regex (fnil re-pattern "")
-    code  (fnil (comp eval read-string) "nil")))
+    code  (fnil (comp eval read-string) "nil")
+    file  io/file))
 
 (defn- assert-atom [type]
   (case type
@@ -37,7 +39,8 @@
     bool  #(contains? #{true false} %)
     edn   (constantly true)
     regex #(instance? java.util.regex.Pattern %)
-    code  (constantly true)))
+    code  (constantly true)
+    file  #(instance? java.io.File %)))
 
 (defn- parse-fn [optarg]
   (fn [arg]
