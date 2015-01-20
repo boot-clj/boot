@@ -145,6 +145,9 @@ public class App {
         ClassLoader cl = new URLClassLoader(urls, App.class.getClassLoader());
         ClojureRuntimeShim rt = ClojureRuntimeShim.newRuntime(cl);
 
+        File hooks = new File("boot-shim.clj");
+        if (hooks.exists())
+          rt.invoke("clojure.core/load-file", hooks.getPath());
         rt.require("boot.pod");
         rt.invoke("boot.pod/seal-app-classloader");
 
