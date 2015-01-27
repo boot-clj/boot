@@ -327,8 +327,10 @@ public class App {
             Runtime.getRuntime().addShutdownHook(shutdown);
             System.exit(runBoot(newCore(), newWorker(), args)); }
         else {
-            Map<String, String> release = latestReleaseTag();
-            if (appversion.compareTo(release.get("tag")) < 0) {
-                System.out.printf("#New boot executable available:\n");
-                System.out.printf("#%s\n", release.get("url")); }
+            try {
+                Map<String, String> release = latestReleaseTag();
+                if (appversion.compareTo(release.get("tag")) < 0) {
+                    System.out.printf("#New boot executable available:\n");
+                    System.out.printf("#%s\n", release.get("url")); }}
+            catch (Throwable t) {}
             System.exit(0); }}}
