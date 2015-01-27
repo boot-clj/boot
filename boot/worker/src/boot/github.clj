@@ -1,6 +1,5 @@
 (ns boot.github
-  (:require [boot.pod :as pod])
-  (:import [java.util HashMap]))
+  (:require [boot.pod :as pod]))
 
 (def api-url "https://api.github.com")
 

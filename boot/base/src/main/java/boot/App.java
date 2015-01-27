@@ -327,9 +327,8 @@ public class App {
             Runtime.getRuntime().addShutdownHook(shutdown);
             System.exit(runBoot(newCore(), newWorker(), args)); }
         else {
-            appversion = "2.0.0-rc7";
             Map<String, String> release = latestReleaseTag();
             if (appversion.compareTo(release.get("tag")) < 0) {
-                System.out.printf("# New boot executable available:\n");
-                System.out.printf("# %s\n", release.get("url")); }
+                System.out.printf("#New boot executable available:\n");
+                System.out.printf("#%s\n", release.get("url")); }
             System.exit(0); }}}
