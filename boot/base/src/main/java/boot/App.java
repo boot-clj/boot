@@ -5,6 +5,7 @@ import java.nio.channels.FileLock;
 import java.nio.channels.FileChannel;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.Map;
 import java.util.HashMap;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
@@ -246,17 +247,24 @@ public class App {
         p.load(in);
         return p.getProperty("version"); }
 
+    public static Map<String, String>
+    latestReleaseTag() throws Exception {
+        Future<ClojureRuntimeShim> worker = newWorker();
+        worker.get().require("boot.github");
+        return (Map<String, String>) worker.get().invoke("boot.github/latest-boot-release"); }
+
     public static void
     main(String[] args) throws Exception {
-        appversion    = readVersion();
-        localrepo     = System.getenv("BOOT_LOCAL_REPO");
-        String bhome  = System.getenv("BOOT_HOME");
-        String homed  = System.getProperty("user.home");
-        String uname  = System.getProperty("user.name");
-        String boot_v = System.getenv("BOOT_VERSION");
-        String clj_v  = System.getenv("BOOT_CLOJURE_VERSION");
-        String chan   = System.getenv("BOOT_CHANNEL");
-        String asroot = System.getenv("BOOT_AS_ROOT");
+        appversion       = readVersion();
+        localrepo        = System.getenv("BOOT_LOCAL_REPO");
+        String bhome     = System.getenv("BOOT_HOME");
+        String homed     = System.getProperty("user.home");
+        String uname     = System.getProperty("user.name");
+        String boot_v    = System.getenv("BOOT_VERSION");
+        String clj_v     = System.getenv("BOOT_CLOJURE_VERSION");
+        String chan      = System.getenv("BOOT_CHANNEL");
+        String asroot    = System.getenv("BOOT_AS_ROOT");
+        boolean isUpdate = false;
         
         if (uname.equals("root") && (asroot == null || !asroot.equals("yes")))
             throw new Exception("refusing to run as root (set BOOT_AS_ROOT=yes env var to force)");
@@ -283,9 +291,9 @@ public class App {
         if (args.length > 0
             && ((args[0]).equals("-u")
                 || (args[0]).equals("--update"))) {
+            isUpdate = true;
             Properties p = writeProps(bootprops);
-            p.store(System.out, booturl);
-            System.exit(0); }
+            p.store(System.out, booturl); }
 
         if (cljversion == null || bootversion == null) {
             Properties q = readProps(bootprops, true);
@@ -314,7 +322,14 @@ public class App {
         corejars   = cache.get("boot/core");
         workerjars = cache.get("boot/worker");
         
-        Thread shutdown = new Thread() { public void run() { ex.shutdown(); }};
-        Runtime.getRuntime().addShutdownHook(shutdown);
-
-        System.exit(runBoot(newCore(), newWorker(), args)); }}
+        if (isUpdate == false) {
+            Thread shutdown = new Thread() { public void run() { ex.shutdown(); }};
+            Runtime.getRuntime().addShutdownHook(shutdown);
+            System.exit(runBoot(newCore(), newWorker(), args)); }
+        else {
+            appversion = "2.0.0-rc7";
+            Map<String, String> release = latestReleaseTag();
+            if (appversion.compareTo(release.get("tag")) < 0) {
+                System.out.printf("# New boot executable available:\n");
+                System.out.printf("# %s\n", release.get("url")); }
+            System.exit(0); }}}
