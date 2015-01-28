@@ -262,14 +262,11 @@ public class App {
         String uname     = System.getProperty("user.name");
         String boot_v    = System.getenv("BOOT_VERSION");
         String clj_v     = System.getenv("BOOT_CLOJURE_VERSION");
-        String chan      = System.getenv("BOOT_CHANNEL");
         String asroot    = System.getenv("BOOT_AS_ROOT");
         boolean isUpdate = false;
         
         if (uname.equals("root") && (asroot == null || !asroot.equals("yes")))
             throw new Exception("refusing to run as root (set BOOT_AS_ROOT=yes env var to force)");
-
-        if (chan != null && chan.equals("DEV")) channel = "(0.0.0,)";
 
         String dir_l  = (localrepo == null)
             ? "boot/default"
