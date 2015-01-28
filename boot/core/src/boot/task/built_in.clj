@@ -428,11 +428,12 @@
                       (map core/tmppath)
                       (filter #(.endsWith % ".clj"))
                       (map util/path->ns)
-                      (filter #(or all (contains? namespace %))))]
+                      (filter #(or all (contains? namespace %)))
+                      sort)]
         (pod/with-eval-in @compile-pod
           (binding [*compile-path* ~(.getPath tgt)]
-            (doseq [ns '~nses]
-              (boot.util/info "Compiling %s...\n" ns)
+            (doseq [[idx ns] (map-indexed vector '~nses)]
+              (boot.util/info "Compiling %s/%s %s...\n" (inc idx) (count '~nses) ns)
               (compile ns)))))
       (-> fileset (core/add-resource tgt) core/commit!))))
 
