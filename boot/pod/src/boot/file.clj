@@ -75,9 +75,9 @@
          parts []]
     (if base
       (if (parent? base f)
-        (URI. (str (apply io/file (concat parts [(str (.relativize (.toURI base) (.toURI f)))]))))
+        (apply io/file (concat parts [(str (.relativize (.toURI base) (.toURI f)))]))
         (recur (parent base) (conj parts "..")))
-      (URI. (str (apply io/file (concat parts (split-path f))))))))
+      (apply io/file (concat parts (split-path f))))))
 
 (defn lockfile
   [f]
