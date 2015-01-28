@@ -443,7 +443,8 @@
     (core/with-pre-wrap fileset
       (let [throw?    (atom nil)
             diag-coll (DiagnosticCollector.)
-            compiler  (ToolProvider/getSystemJavaCompiler)
+            compiler  (or (ToolProvider/getSystemJavaCompiler)
+                          (throw (Exception. "The java compiler is not working. Please make sure you use a JDK!")))
             file-mgr  (.getStandardFileManager compiler diag-coll nil nil)
             opts      (->> ["-d"  (.getPath tgt)
                             "-cp" (System/getProperty "boot.class.path")]
