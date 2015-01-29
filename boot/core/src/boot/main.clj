@@ -134,6 +134,7 @@
           (let [tmpf (.getPath (file/tmpfile "boot.user" ".clj"))]
             (pod/with-call-worker (boot.aether/load-wagon-mappings))
             (apply core/set-env! (->> initial-env (mapcat identity) seq))
+            (reset! @#'core/cli-base initial-env)
             (try (doto tmpf (spit scriptstr) (load-file))
                  (catch clojure.lang.Compiler$CompilerException cx
                    (let [l (.-line cx)

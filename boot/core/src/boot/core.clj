@@ -32,6 +32,7 @@
 
 ;; Internal helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def ^:private cli-base          (atom {}))
 (def ^:private tmpregistry       (atom nil))
 (def ^:private cleanup-fns       (atom []))
 (def ^:private boot-env          (atom nil))
@@ -527,7 +528,9 @@
   value associated with the given `key` in the env atom."
   (fn [key old-value new-value env] key) :default ::default)
 
-(defn- assert-set [k new] (assert (set? new) (format "env %s must be a set" k)))
+(defn- merge-or-replace [x y]   (if-not (coll? x) y (into x y)))
+(defn- merge-if-coll    [x y]   (if-not (coll? x) x (into x y)))
+(defn- assert-set       [k new] (assert (set? new) (format "env %s must be a set" k)))
 
 (defmethod pre-env! ::default       [key old new env] new)
 (defmethod pre-env! :directories    [key old new env] (set/union old new))
@@ -536,19 +539,6 @@
 (defmethod pre-env! :asset-paths    [key old new env] (assert-set key new) new)
 (defmethod pre-env! :wagons         [key old new env] (add-wagon! old new env))
 (defmethod pre-env! :dependencies   [key old new env] (add-dependencies! old new env))
-
-(defmulti merge-env-key!
-  "This multimethod determines how to merge values into the env atom when
-  `merge-env` is called."
-  (fn [key old-value new-value] key) :default ::default)
-
-(defmethod merge-env-key! ::default       [key old new] new)
-(defmethod merge-env-key! :directories    [key old new] (set/union old new))
-(defmethod merge-env-key! :source-paths   [key old new] (set/union old new))
-(defmethod merge-env-key! :resource-paths [key old new] (set/union old new))
-(defmethod merge-env-key! :asset-paths    [key old new] (set/union old new))
-(defmethod merge-env-key! :wagons         [key old new] (into old new))
-(defmethod merge-env-key! :dependencies   [key old new] (into old new))
 
 (defn get-env
   "Returns the value associated with the key `k` in the boot environment, or
@@ -566,19 +556,20 @@
   clojure.core/update-in works."
   [& kvs]
   (doseq [[k v] (order-set-env-keys (partition 2 kvs))]
-    (let [v (if-not (fn? v) v (v (get-env k)))]
-      (assert (printable-readable? v)
-        (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v)))
-      (swap! boot-env update-in [k] (partial pre-env! k) v @boot-env))))
+    (let [v'  (if-not (fn? v) v (v (get-env k)))
+          v'' (if-let [b (get @cli-base k)] (merge-if-coll b v') v')]
+      (assert (printable-readable? v'')
+              (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v'')))
+      (swap! boot-env update-in [k] (partial pre-env! k) v'' @boot-env))))
 
 (defn merge-env!
   "Merges the new values into the current values for the given keys in the env
   map. Uses a merging strategy that is appropriate for the given key (eg. uses
-  clojure.core/into for :dependencies, clojure.set/union for :source-paths, etc).
-  Keys whose values aren't collections are simply replaced."
+  clojure.core/into for keys whose values are collections and simply replaces
+  Keys whose values aren't collections)."
   [& kvs]
   (->> (partition 2 kvs)
-       (mapcat (fn [[k v]] [k #(merge-env-key! k % v)]))
+       (mapcat (fn [[k v]] [k #(merge-or-replace % v)]))
        (apply set-env!)))
 
 ;; Defining Tasks ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
