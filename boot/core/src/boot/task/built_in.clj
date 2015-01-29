@@ -460,16 +460,20 @@
                                Arrays/asList
                                (.getJavaFileObjectsFromFiles file-mgr))]
         (when srcs
-          (util/info "Compiling Java classes...\n")
+          (util/info "Compiling %d Java source files...\n" (count srcs))
           (-> compiler (.getTask *err* file-mgr diag-coll opts nil srcs) .call)
           (doseq [d (.getDiagnostics diag-coll) :let [k (.getKind d)]]
             (when (= Diagnostic$Kind/ERROR k) (reset! throw? true))
             (let [log (handler k util/info)]
-              (log "%s: %s, line %d: %s\n"
-                   (.toString k)
-                   (.. d getSource getName)
-                   (.getLineNumber d)
-                   (.getMessage d nil))))
+              (if (nil? (.getSource d))
+                (log "%s: %s\n"
+                     (.toString k)
+                     (.getMessage d nil))
+                (log "%s: %s, line %d: %s\n"
+                     (.toString k)
+                     (.. d getSource getName)
+                     (.getLineNumber d)
+                     (.getMessage d nil)))))
           (.close file-mgr)
           (when @throw? (throw (Exception. "java compiler error")))))
       (-> fileset (core/add-resource tgt) core/commit!))))
