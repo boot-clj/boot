@@ -21,7 +21,7 @@
     [java.lang.management ManagementFactory]
     [java.util.concurrent LinkedBlockingQueue TimeUnit]))
 
-(declare watch-dirs sync! on-env! get-env set-env! tmpfile tmpdir ls)
+(declare watch-dirs sync! post-env! get-env set-env! tmpfile tmpdir ls)
 
 (declare ^{:dynamic true :doc "The running version of boot app."}      *app-version*)
 (declare ^{:dynamic true :doc "The running version of boot core."}     *boot-version*)
@@ -196,7 +196,7 @@
   (doseq [k (set/union (set (keys old)) (set (keys new)))]
     (let [o (get old k ::noval)
           n (get new k ::noval)]
-      (when (not= o n) (on-env! k o n new)))))
+      (when (not= o n) (post-env! k o n new)))))
 
 (defn- add-wagon!
   "Adds a maven wagon dependency to the worker pod and initializes it with an
@@ -508,34 +508,47 @@
   (temp-dir** nil :user :resource)
   (pod/add-shutdown-hook! do-cleanup!))
 
-(defmulti on-env!
-  "Event handler called when the boot atom is modified. This handler is for
+(defmulti post-env!
+  "Event handler called when the env atom is modified. This handler is for
   performing side-effects associated with maintaining the application state in
-  the boot atom. For example, when `:src-paths` is modified the handler adds
+  the env atom. For example, when `:src-paths` is modified the handler adds
   the new directories to the classpath."
   (fn [key old-value new-value env] key) :default ::default)
 
-(defmethod on-env! ::default       [key old new env] nil)
-(defmethod on-env! :directories    [key old new env] (add-directories! new))
-(defmethod on-env! :source-paths   [key old new env] (set-user-dirs!))
-(defmethod on-env! :resource-paths [key old new env] (set-user-dirs!))
-(defmethod on-env! :asset-paths    [key old new env] (set-user-dirs!))
+(defmethod post-env! ::default       [key old new env] nil)
+(defmethod post-env! :directories    [key old new env] (add-directories! new))
+(defmethod post-env! :source-paths   [key old new env] (set-user-dirs!))
+(defmethod post-env! :resource-paths [key old new env] (set-user-dirs!))
+(defmethod post-env! :asset-paths    [key old new env] (set-user-dirs!))
 
-(defmulti merge-env!
-  "This function is used to modify how new values are merged into the boot atom
-  when `set-env!` is called. This function's result will become the new value
-  associated with the given `key` in the boot atom."
+(defmulti pre-env!
+  "This multimethod is used to modify how new values are merged into the boot
+  atom when `set-env!` is called. This function's result will become the new
+  value associated with the given `key` in the env atom."
   (fn [key old-value new-value env] key) :default ::default)
 
 (defn- assert-set [k new] (assert (set? new) (format "env %s must be a set" k)))
 
-(defmethod merge-env! ::default       [key old new env] new)
-(defmethod merge-env! :directories    [key old new env] (set/union old new))
-(defmethod merge-env! :source-paths   [key old new env] (assert-set key new) new)
-(defmethod merge-env! :resource-paths [key old new env] (assert-set key new) new)
-(defmethod merge-env! :asset-paths    [key old new env] (assert-set key new) new)
-(defmethod merge-env! :wagons         [key old new env] (add-wagon! old new env))
-(defmethod merge-env! :dependencies   [key old new env] (add-dependencies! old new env))
+(defmethod pre-env! ::default       [key old new env] new)
+(defmethod pre-env! :directories    [key old new env] (set/union old new))
+(defmethod pre-env! :source-paths   [key old new env] (assert-set key new) new)
+(defmethod pre-env! :resource-paths [key old new env] (assert-set key new) new)
+(defmethod pre-env! :asset-paths    [key old new env] (assert-set key new) new)
+(defmethod pre-env! :wagons         [key old new env] (add-wagon! old new env))
+(defmethod pre-env! :dependencies   [key old new env] (add-dependencies! old new env))
+
+(defmulti merge-env-key!
+  "This multimethod determines how to merge values into the env atom when
+  `merge-env` is called."
+  (fn [key old-value new-value] key) :default ::default)
+
+(defmethod merge-env-key! ::default       [key old new] new)
+(defmethod merge-env-key! :directories    [key old new] (set/union old new))
+(defmethod merge-env-key! :source-paths   [key old new] (set/union old new))
+(defmethod merge-env-key! :resource-paths [key old new] (set/union old new))
+(defmethod merge-env-key! :asset-paths    [key old new] (set/union old new))
+(defmethod merge-env-key! :wagons         [key old new] (into old new))
+(defmethod merge-env-key! :dependencies   [key old new] (into old new))
 
 (defn get-env
   "Returns the value associated with the key `k` in the boot environment, or
@@ -546,7 +559,7 @@
 
 (defn set-env!
   "Update the boot environment atom `this` with the given key-value pairs given
-  in `kvs`. See also `on-env!` and `merge-env!`. The values in the env map must
+  in `kvs`. See also `post-env!` and `pre-env!`. The values in the env map must
   be both printable by the Clojure printer and readable by its reader. If the
   value for a key is a function, that function will be applied to the current
   value of that key and the result will become the new value (similar to how
@@ -556,7 +569,17 @@
     (let [v (if-not (fn? v) v (v (get-env k)))]
       (assert (printable-readable? v)
         (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v)))
-      (swap! boot-env update-in [k] (partial merge-env! k) v @boot-env))))
+      (swap! boot-env update-in [k] (partial pre-env! k) v @boot-env))))
+
+(defn merge-env!
+  "Merges the new values into the current values for the given keys in the env
+  map. Uses a merging strategy that is appropriate for the given key (eg. uses
+  clojure.core/into for :dependencies, clojure.set/union for :source-paths, etc).
+  Keys whose values aren't collections are simply replaced."
+  [& kvs]
+  (->> (partition 2 kvs)
+       (mapcat (fn [[k v]] [k #(merge-env-key! k % v)]))
+       (apply set-env!)))
 
 ;; Defining Tasks ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
