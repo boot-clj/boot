@@ -285,7 +285,11 @@
   (doseq [[path url] (jar-entries jar)]
     (let [out   (io/file dir path)
           keep? (partial file/keep-filters? include exclude)]
-      (when (keep? (io/file path)) (copy-url url out)))))
+      (when (keep? (io/file path))
+        (try
+          (copy-url url out)
+          (catch Exception err
+            (util/warn "Error while extracting %s: %s\n" url err)))))))
 
 (defn jars-dep-graph
   [env]
