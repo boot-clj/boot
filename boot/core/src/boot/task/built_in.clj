@@ -197,7 +197,7 @@
   (let [srv-opts (select-keys *opts* [:bind :port :init-ns :middleware :handler])
         cli-opts (-> *opts*
                      (select-keys [:host :port :history])
-                     (assoc :color (not no-color)
+                     (assoc :color (if no-color false (util/colorize?-system-default))
                             :standalone true
                             :custom-eval eval
                             :custom-init init
