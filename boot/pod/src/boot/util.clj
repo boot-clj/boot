@@ -18,8 +18,23 @@
 
 (declare print-ex)
 
+(defn colorize?-system-default
+  "return whether we should colorize output on this system. This is
+  true, unless we're on Windows, where this is false. The default
+  console on Windows does not interprete ansi escape codes. The
+  default can be overriden by setting the environment variable
+  BOOT_COLOR=1 to turn it on or BOOT_COLOR=0 to turn it off"
+  []
+  (cond
+    (System/getenv "BOOT_COLOR")
+      (= "1" (System/getenv "BOOT_COLOR"))
+    (.startsWith (System/getProperty "os.name") "Windows")
+      false
+    :else
+      true))
+
 (def ^:dynamic *verbosity* (atom 1))
-(def ^:dynamic *colorize?* (atom true))
+(def ^:dynamic *colorize?* (atom (colorize?-system-default)))
 
 (defn- print*
   [verbosity args]

@@ -121,7 +121,8 @@
               scriptstr   (binding [*print-meta* true]
                             (str (string/join "\n\n" (map pr-str scriptforms)) "\n"))]
 
-          (reset! util/*colorize?* (not (:no-colors opts)))
+          (when (:no-colors opts)
+            (reset! util/*colorize?* false))
           (swap! util/*verbosity* + verbosity)
           (pod/with-eval-in worker-pod
             (require '[boot.util :as util])
