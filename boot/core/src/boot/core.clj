@@ -175,10 +175,34 @@
   (#'clojure.core/load-data-readers)
   (set! *data-readers* (.getRawRoot #'*data-readers*)))
 
+(defn- find-version-conflicts
+  "compute a seq of [name new-coord old-coord] elements describing version conflicts
+   when resolving the 'old' dependency vector and the 'new' dependency vector"
+  [old new env]
+  (let [resolve-deps (fn [deps] (->> deps
+                                     rm-clojure-dep
+                                     (assoc env :dependencies)
+                                     pod/resolve-dependencies
+                                     (map (juxt (comp first :dep) (comp second :dep)))
+                                     (into {})))
+        old-deps (resolve-deps old)
+        new-deps (resolve-deps new)]
+    (->> new-deps
+         (map (fn [[name coord]] [name coord (get old-deps name coord)]))
+         (remove (fn [[name new-coord old-coord]] (= new-coord old-coord))))))
+
+(defn- report-version-conflicts
+  "Warn, when the version of a dependency changes. Call this with the
+  result of find-version-conflicts as arguments"
+  [coll]
+  (doseq [[name new-coord old-coord] coll]
+    (util/warn "Warning: version conflict detected: %s version changes from %s to %s\n" name old-coord new-coord)))
+
 (defn- add-dependencies!
   "Add Maven dependencies to the classpath, fetching them if necessary."
   [old new env]
   (assert (vector? new) "env :dependencies must be a vector")
+  (report-version-conflicts (find-version-conflicts old new env))
   (->> new rm-clojure-dep (assoc env :dependencies) pod/add-dependencies)
   (set-fake-class-path!)
   new)
