@@ -23,11 +23,12 @@
   true, unless we're on Windows, where this is false. The default
   console on Windows does not interprete ansi escape codes. The
   default can be overriden by setting the environment variable
-  BOOT_COLOR=1 to turn it on or BOOT_COLOR=0 to turn it off"
+  BOOT_COLOR=1 or BOOT_COLOR=yes to turn it on or any other value to
+  turn it off."
   []
   (cond
     (System/getenv "BOOT_COLOR")
-      (= "1" (System/getenv "BOOT_COLOR"))
+      (contains? #{"1" "yes"} (System/getenv "BOOT_COLOR"))
     (.startsWith (System/getProperty "os.name") "Windows")
       false
     :else
