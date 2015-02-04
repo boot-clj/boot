@@ -68,16 +68,14 @@
 (defn parent? [parent child]
   (contains? (set (parent-seq child)) parent))
 
-(defn relative-to
+(defn ^java.io.File relative-to
   "Return relative path to f from directory base."
-  [base f]
-  (loop [base base
-         parts []]
-    (if base
-      (if (parent? base f)
-        (apply io/file (concat parts [(str (.relativize (.toURI base) (.toURI f)))]))
-        (recur (parent base) (conj parts "..")))
-      (apply io/file (concat parts (split-path f))))))
+  [^java.io.File base ^java.io.File f]
+  {:pre [(not (nil? base)) (not (nil? f))]}
+  (let [base-path (.toPath base)
+        f-path (.toPath f)
+        relpath (.relativize base-path f-path)]
+    (.toFile relpath)))
 
 (defn lockfile
   [f]
