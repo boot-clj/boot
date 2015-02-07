@@ -139,9 +139,7 @@
             (try (doto tmpf (spit scriptstr) (load-file))
                  (catch clojure.lang.Compiler$CompilerException cx
                    (let [l (.-line cx)
-                         s (->> (io/file (.-source cx))
-                             (file/relative-to (io/file "."))
-                             .getPath)
+                         s (->> (io/file (.-source cx)) .getPath)
                          c (.getCause cx)
                          m (.getMessage (or c cx))
                          x (or c cx)]
