@@ -184,7 +184,6 @@
 
   [s server         bool  "Start REPL server only."
    c client         bool  "Start REPL client only."
-   C no-color       bool  "Disable ANSI color output in client."
    e eval EXPR      edn   "The form the client will evaluate in the boot.user ns."
    b bind ADDR      str   "The address server listens on."
    H host HOST      str   "The host client connects to."
@@ -198,10 +197,10 @@
   (let [srv-opts (select-keys *opts* [:bind :port :init-ns :middleware :handler])
         cli-opts (-> *opts*
                      (select-keys [:host :port :history])
-                     (assoc :color (if no-color false (util/colorize?-system-default))
-                            :standalone true
+                     (assoc :standalone true
                             :custom-eval eval
                             :custom-init init
+                            :color @util/*colorize?*
                             :skip-default-init skip-init))
         deps     (remove pod/dependency-loaded? @repl/*default-dependencies*)
         repl-svr (delay (when (seq deps)
