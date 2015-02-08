@@ -112,7 +112,7 @@
   directories are not actually on the class path (this is why it's the fake
   class path). This property is a workaround for IDEs and tools that expect
   the full class path to be determined by the java.class.path property.
-  
+
   Also sets the boot.class.path system property which is the same as above
   except that the actual class path directories are used instead of the user's
   project directories. This property can be used to configure Java tools that
@@ -136,15 +136,16 @@
   corresponding temp dirs, reflecting any changes to :source-paths, etc."
   []
   (@src-watcher)
-  (->> [:source-paths :resource-paths :asset-paths]
-    (mapcat get-env)
-    (filter #(.isDirectory (io/file %)))
-    set
-    (watch-dirs
-      (fn [_]
-        (sync-user-dirs!)
-        (reset! last-file-change (System/currentTimeMillis))))
-    (reset! src-watcher))
+  (->>  (watch-dirs
+          (fn [_]
+            (sync-user-dirs!)
+            (reset! last-file-change (System/currentTimeMillis)))
+          (->> [:source-paths :resource-paths :asset-paths]
+            (mapcat get-env)
+            (filter #(.isDirectory (io/file %)))
+            set)
+          :debounce (get-env :watcher-debounce-interval))
+        (reset! src-watcher))
   (set-fake-class-path!)
   (sync-user-dirs!))
 
@@ -522,7 +523,8 @@
              :asset-paths    #{}
              :target-path    "target"
              :repositories   [["clojars"       "http://clojars.org/repo/"]
-                              ["maven-central" "http://repo1.maven.org/maven2/"]]})
+                              ["maven-central" "http://repo1.maven.org/maven2/"]]
+             :watcher-debounce-interval 10})
     (add-watch ::boot #(configure!* %3 %4)))
   (set-fake-class-path!)
   (temp-dir** nil :asset)
@@ -545,6 +547,8 @@
 (defmethod post-env! :source-paths   [key old new env] (set-user-dirs!))
 (defmethod post-env! :resource-paths [key old new env] (set-user-dirs!))
 (defmethod post-env! :asset-paths    [key old new env] (set-user-dirs!))
+(defmethod post-env! :watcher-debounce-interval
+                                     [key old new env] (set-user-dirs!))
 
 (defmulti pre-env!
   "This multimethod is used to modify how new values are merged into the boot
@@ -563,6 +567,8 @@
 (defmethod pre-env! :asset-paths    [key old new env] (assert-set key new) new)
 (defmethod pre-env! :wagons         [key old new env] (add-wagon! old new env))
 (defmethod pre-env! :dependencies   [key old new env] (add-dependencies! old new env))
+(defmethod pre-env! :watcher-debounce-interval
+                                    [key old new env] new)
 
 (defn get-env
   "Returns the value associated with the key `k` in the boot environment, or
@@ -683,7 +689,7 @@
   result is passed to the next handler in the pipeline. The fileset obtained
   from the next handler is then returned up the handler stack. The body must
   evaluate to a fileset object. Roughly equivalent to:
-  
+
       (fn [next-handler]
         (fn [binding]
           (next-handler (do ... ...))))
@@ -706,13 +712,13 @@
   handler is called with the current fileset, and the result is bound to
   binding. The body expressions are then evaluated for side effects and the
   bound fileset is returned up the handler stack. Roughly equivalent to:
-  
+
       (fn [next-handler]
         (fn [fileset]
           (let [binding (next-handler fileset)]
             (do ... ...)
             binding)))
-  
+
   where ... are the given body expressions."
   `(fn [next-task#]
      (fn [fileset#]
@@ -768,7 +774,7 @@
       (task-options!
         repl {:port     12345}
         jar  {:manifest {:howdy \"world\"}})
-  
+
   You can update options, too, by providing a function instead of an option
   map. This function will be passed the current option map and its result will
   be used as the new one. For example:
