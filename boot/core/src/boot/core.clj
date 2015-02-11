@@ -23,10 +23,11 @@
 
 (declare watch-dirs sync! post-env! get-env set-env! tmpfile tmpdir ls)
 
-(declare ^{:dynamic true :doc "The running version of boot app."}      *app-version*)
-(declare ^{:dynamic true :doc "The running version of boot core."}     *boot-version*)
-(declare ^{:dynamic true :doc "Command line options for boot itself."} *boot-opts*)
-(declare ^{:dynamic true :doc "Count of warnings during build."}       *warnings*)
+(declare ^{:dynamic true :doc "The running version of boot app."}        *app-version*)
+(declare ^{:dynamic true :doc "The script's name (when run as script)."} *arg-zero*)
+(declare ^{:dynamic true :doc "The running version of boot core."}       *boot-version*)
+(declare ^{:dynamic true :doc "Command line options for boot itself."}   *boot-opts*)
+(declare ^{:dynamic true :doc "Count of warnings during build."}         *warnings*)
 
 (def last-file-change "Last source file watcher update time." (atom 0))
 

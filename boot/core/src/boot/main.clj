@@ -101,7 +101,8 @@
               *err*               (util/auto-flush *err*)
               core/*boot-opts*    opts
               core/*boot-version* (boot.App/getBootVersion)
-              core/*app-version*  (boot.App/getVersion)]
+              core/*app-version*  (boot.App/getVersion)
+              core/*arg-zero*     arg0]
       (util/exit-ok
         (let [userscript  (-> (System/getProperty "user.home")
                               (io/file ".profile.boot")
