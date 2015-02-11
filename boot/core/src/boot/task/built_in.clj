@@ -132,17 +132,17 @@
   Debouncing time is 10ms by default."
 
   [q quiet         bool "Suppress all output from running jobs."
-   d debounce MSEC int "The time to wait (millisec) for filesystem to settle down."
    v verbose       bool "Print which files have changed."]
 
   (pod/require-in @pod/worker-pod "boot.watcher")
   (fn [next-task]
     (fn [fileset]
-      (let [q       (LinkedBlockingQueue.)
-            k       (gensym)
-            return  (atom fileset)
-            srcdirs (map (memfn getPath) (core/user-dirs fileset))
-            watcher (apply file/watcher! :time srcdirs)]
+      (let [q        (LinkedBlockingQueue.)
+            k        (gensym)
+            return   (atom fileset)
+            srcdirs  (map (memfn getPath) (core/user-dirs fileset))
+            watcher  (apply file/watcher! :time srcdirs)
+            debounce (core/get-env :watcher-debounce)]
         (.offer q (System/currentTimeMillis))
         (add-watch core/last-file-change k #(.offer q %4))
         (core/cleanup (remove-watch core/last-file-change k))

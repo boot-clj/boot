@@ -137,18 +137,16 @@
   corresponding temp dirs, reflecting any changes to :source-paths, etc."
   []
   (@src-watcher)
-  (->>  (watch-dirs
-          (fn [_]
-            (sync-user-dirs!)
-            (reset! last-file-change (System/currentTimeMillis)))
-          (->> [:source-paths :resource-paths :asset-paths]
-            (mapcat get-env)
-            (filter #(.isDirectory (io/file %)))
-            set)
-          :debounce (get-env :watcher-debounce-interval))
-        (reset! src-watcher))
-  (set-fake-class-path!)
-  (sync-user-dirs!))
+  (let [debounce  (or (get-env :watcher-debounce) 10)
+        env-keys  [:source-paths :resource-paths :asset-paths]
+        dir-paths (set (->> (mapcat get-env env-keys)
+                            (filter #(.isDirectory (io/file %)))))
+        on-change (fn [_]
+                    (sync-user-dirs!)
+                    (reset! last-file-change (System/currentTimeMillis)))]
+    (reset! src-watcher (watch-dirs on-change dir-paths :debounce debounce))
+    (set-fake-class-path!)
+    (sync-user-dirs!)))
 
 (defn- do-cleanup!
   "Cleanup handler. This is run after the build process is complete. Tasks can
@@ -517,15 +515,15 @@
        tmp/init!
        (reset! tmpregistry))
   (doto boot-env
-    (reset! {:dependencies   []
-             :directories    #{}
-             :source-paths   #{}
-             :resource-paths #{}
-             :asset-paths    #{}
-             :target-path    "target"
-             :repositories   [["clojars"       "http://clojars.org/repo/"]
-                              ["maven-central" "http://repo1.maven.org/maven2/"]]
-             :watcher-debounce-interval 10})
+    (reset! {:watcher-debounce 10
+             :dependencies     []
+             :directories      #{}
+             :source-paths     #{}
+             :resource-paths   #{}
+             :asset-paths      #{}
+             :target-path      "target"
+             :repositories     [["clojars"       "http://clojars.org/repo/"]
+                                ["maven-central" "http://repo1.maven.org/maven2/"]]})
     (add-watch ::boot #(configure!* %3 %4)))
   (set-fake-class-path!)
   (temp-dir** nil :asset)
@@ -543,13 +541,12 @@
   the new directories to the classpath."
   (fn [key old-value new-value env] key) :default ::default)
 
-(defmethod post-env! ::default       [key old new env] nil)
-(defmethod post-env! :directories    [key old new env] (add-directories! new))
-(defmethod post-env! :source-paths   [key old new env] (set-user-dirs!))
-(defmethod post-env! :resource-paths [key old new env] (set-user-dirs!))
-(defmethod post-env! :asset-paths    [key old new env] (set-user-dirs!))
-(defmethod post-env! :watcher-debounce-interval
-                                     [key old new env] (set-user-dirs!))
+(defmethod post-env! ::default         [key old new env] nil)
+(defmethod post-env! :directories      [key old new env] (add-directories! new))
+(defmethod post-env! :source-paths     [key old new env] (set-user-dirs!))
+(defmethod post-env! :resource-paths   [key old new env] (set-user-dirs!))
+(defmethod post-env! :asset-paths      [key old new env] (set-user-dirs!))
+(defmethod post-env! :watcher-debounce [key old new env] (set-user-dirs!))
 
 (defmulti pre-env!
   "This multimethod is used to modify how new values are merged into the boot
@@ -568,8 +565,6 @@
 (defmethod pre-env! :asset-paths    [key old new env] (assert-set key new) new)
 (defmethod pre-env! :wagons         [key old new env] (add-wagon! old new env))
 (defmethod pre-env! :dependencies   [key old new env] (add-dependencies! old new env))
-(defmethod pre-env! :watcher-debounce-interval
-                                    [key old new env] new)
 
 (defn get-env
   "Returns the value associated with the key `k` in the boot environment, or
