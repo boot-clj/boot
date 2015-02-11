@@ -83,7 +83,7 @@
 
   (let [dotboot?         #(.endsWith (.getName (io/file %)) ".boot")
         script?          #(when (and % (.isFile (io/file %)) (dotboot? %)) %)
-        bootscript       (io/file "build.boot")
+        bootscript       "build.boot"
         have-bootscript? (script? bootscript)
         [arg0 args]      (cond
                            (script? arg0)   [arg0 args]
@@ -100,9 +100,9 @@
     (binding [*out*               (util/auto-flush *out*)
               *err*               (util/auto-flush *err*)
               core/*boot-opts*    opts
+              core/*boot-script*  arg0
               core/*boot-version* (boot.App/getBootVersion)
-              core/*app-version*  (boot.App/getVersion)
-              core/*arg-zero*     arg0]
+              core/*app-version*  (boot.App/getVersion)]
       (util/exit-ok
         (let [userscript  (-> (System/getProperty "user.home")
                               (io/file ".profile.boot")
