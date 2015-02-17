@@ -104,7 +104,8 @@
    f fileset          bool "Print the build fileset object."
    u updates          bool "Print newer releases of outdated dependencies."
    U update-snapshots bool "Include snapshot versions in updates searches."
-   c classpath        bool "Print the project's full classpath."]
+   c classpath        bool "Print the project's full classpath."
+   C fake-classpath   bool "Print the project's fake classpath."]
 
   (let [updates (or updates update-snapshots (not (or deps env fileset classpath)))]
     (core/with-pre-wrap fileset'
@@ -112,6 +113,7 @@
       (when env     (println (pr-str (core/get-env))))
       (when fileset (println (pr-str fileset')))
       (when classpath (println (or (System/getProperty "boot.class.path") "")))
+      (when fake-classpath (println (or (System/getProperty "fake.class.path") "")))
       (when updates (mapv prn (pod/outdated (core/get-env) :snapshots update-snapshots)))
       fileset')))
 
