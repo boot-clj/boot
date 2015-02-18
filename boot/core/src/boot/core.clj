@@ -586,7 +586,7 @@
           v'' (if-let [b (get @cli-base k)] (merge-if-coll b v') v')]
       (assert (printable-readable? v'')
               (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v'')))
-      (swap! boot-env update-in [k] (partial pre-env! k) v'' @boot-env))))
+      (swap! boot-env #(update-in % [k] (partial pre-env! k) v'' %)))))
 
 (defn merge-env!
   "Merges the new values into the current values for the given keys in the env
