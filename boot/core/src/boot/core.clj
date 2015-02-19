@@ -603,7 +603,12 @@
 (defmacro deftask
   "Define a boot task."
   [sym & forms]
-  `(cli2/defclifn ~(vary-meta sym assoc ::task true) ~@forms))
+  `(do
+     (when-let [existing-deftask# (resolve '~sym)]
+       (when (= *ns* (-> existing-deftask# meta :ns))
+         (boot.util/warn
+          "Warning: deftask %s/%s was overridden\n" *ns* '~sym)))
+     (cli2/defclifn ~(vary-meta sym assoc ::task true) ~@forms)))
 
 ;; Boot Lifecycle ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
