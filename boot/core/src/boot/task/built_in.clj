@@ -107,7 +107,7 @@
    c classpath        bool "Print the project's full classpath."
    C fake-classpath   bool "Print the project's fake classpath."]
 
-  (let [updates (or updates update-snapshots (not (or deps env fileset classpath)))]
+  (let [updates (or updates update-snapshots (not (or deps env fileset classpath fake-classpath)))]
     (core/with-pre-wrap fileset'
       (when deps    (print (pod/with-call-worker (boot.aether/dep-tree ~(core/get-env)))))
       (when env     (println (pr-str (core/get-env))))
