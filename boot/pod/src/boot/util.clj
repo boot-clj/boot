@@ -129,7 +129,11 @@
 
 (defn auto-flush
   [writer]
-  (let [fmt #(if @*colorize?* % (ansi/strip-ansi %))]
+  (let [fmt (if @*colorize?*
+              identity
+              (fn [s] (if (string? s)
+                        (ansi/strip-ansi s)
+                        s)))]
     (proxy [java.io.PrintWriter] [writer]
       (write [s] (.write writer (fmt s)) (flush)))))
 
