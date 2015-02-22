@@ -70,10 +70,10 @@
 
 (defn ^java.io.File relative-to
   "Return relative path to f from directory base."
-  [^java.io.File base ^java.io.File f]
+  [base f]
   {:pre [(not (nil? base)) (not (nil? f))]}
-  (let [base-path (.toPath base)
-        f-path (.toPath f)
+  (let [base-path (.toPath (io/file base))
+        f-path (.toPath (io/file f))
         relpath (.relativize base-path f-path)]
     (.toFile relpath)))
 
