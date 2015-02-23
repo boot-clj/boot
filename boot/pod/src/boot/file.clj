@@ -29,9 +29,16 @@
 (defmacro guard [& exprs]
   `(try (do ~@exprs) (catch Throwable _#)))
 
+(defn delete-file
+  [f]
+  (try
+    (io/delete-file f)
+    (catch Exception err
+      (println "ERROR deleting" f err))))
+
 (defn clean! [& files]
   (doseq [f files]
-    (doall (->> f io/file file-seq (keep file?) (map #(io/delete-file % true))))))
+    (doall (->> f io/file file-seq (keep file?) (map delete-file)))))
 
 (defn empty-dir!
   [& dirs]
@@ -40,14 +47,14 @@
              (mapcat (comp rest file-seq))
              (group-by (memfn isFile)))
         to-rm (concat files (reverse dirs'))]
-    (doseq [f to-rm] (io/delete-file f true))))
+    (doseq [f to-rm] (delete-file f))))
 
 (defn delete-empty-subdirs!
   [dir]
   (let [empty-dir? #(and (.isDirectory %) (empty? (.list %)))
         subdirs    (->> dir io/file file-seq (filter (memfn isDirectory)))]
     (doseq [f (reverse subdirs)]
-      (when (empty-dir? f) (io/delete-file f true)))))
+      (when (empty-dir? f) (delete-file f)))))
 
 (defn- contains-files?
   [dir]
@@ -161,7 +168,7 @@
         after  (apply tree-for srcs)]
     (doseq [[op p x] (patch pred before after)]
       (case op
-        :rm (io/delete-file x true)
+        :rm (delete-file x)
         :cp (copy-with-lastmod x (io/file dest p))))))
 
 (defn watcher! [pred & dirs]
