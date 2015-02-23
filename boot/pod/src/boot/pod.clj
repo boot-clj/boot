@@ -133,7 +133,8 @@
   (pom-prop-map
     (if (instance? Properties prop-or-jarpath)
       prop-or-jarpath
-      (doto (Properties.) (.load (io/input-stream prop-or-jarpath))))))
+      (with-open [pom-input-stream (io/input-stream prop-or-jarpath)]
+        (doto (Properties.) (.load pom-input-stream))))))
 
 (defn pom-xml
   [jarpath]
