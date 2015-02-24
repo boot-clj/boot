@@ -624,9 +624,9 @@
                       (format "scm tag in pom doesn't match (%s, %s)" t ensure-tag))
               (assert (or (not ensure-version) (= v ensure-version))
                       (format "jar version doesn't match project version (%s, %s)" v ensure-version))
-              (when tag
-                (util/info "Creating tag %s...\n" v)
-                (git/tag v "release"))
               (util/info "Deploying %s...\n" (.getName f))
               (pod/with-call-worker
-                (boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f) ~artifact-map)))))))))
+                (boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f) ~artifact-map))
+              (when tag
+                (util/info "Creating tag %s...\n" v)
+                (git/tag v "release")))))))))
