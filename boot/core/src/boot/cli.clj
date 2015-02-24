@@ -93,13 +93,14 @@
   ([short long type doc]
      (argspec->cli-argspec short long nil type doc))
   ([short long optarg type doc]
-     [:id           (keyword long)
-      :short-opt    (str "-" short)
-      :long-opt     (str "--" long)
-      :required     (when optarg (str optarg))
-      :desc         (format-doc optarg type doc)
-      :parse-fn     `(#'parse-fn ~(when optarg (list 'quote optarg)))
-      :assoc-fn     `(#'assoc-fn ~(when optarg (list 'quote optarg)) '~type)]))
+   ((fnil into [])
+    (when short [:short-opt (str "-" short)])
+    [:id           (keyword long)
+     :long-opt     (str "--" long)
+     :required     (when optarg (str optarg))
+     :desc         (format-doc optarg type doc)
+     :parse-fn     `(#'parse-fn ~(when optarg (list 'quote optarg)))
+     :assoc-fn     `(#'assoc-fn ~(when optarg (list 'quote optarg)) '~type)])))
 
 (defn- argspec->assert
   ([short long type doc]
@@ -187,73 +188,3 @@
          fmtdoc# (comp string/trim (#'indent 2))
          meta#   (update-in (meta ~sym) [:doc] fmtdoc#)]
      (doto var# (alter-meta! (fnil merge {}) meta#))))
-
-(comment
-
-  (defclifn d
-    "Docstring here."
-    [S no-source              bool        "Exclude source files from jar."
-     v verbose                int         "The verbosity level."
-     p project      SYM       sym         "The project id (eg. foo/bar)."
-     b bind         ADDR      str         "The address server will listen on."
-     n init-ns      SYM       sym         "The initial REPL namespace."
-     d description  DESC      str         "The project description."
-     D dependencies ID:VER    [[sym str]] "The dependencies vector."
-     l license      KEY=VAL   {kw str}    "The license map."
-     m middleware   SYM       [sym]       "The vector of REPL middleware."
-     M manifest     KEY=VAL   {str str}   "The jar manifest."
-     s scopes       SCOPE     #{str}      "The set of excluded scopes."
-     t thing        CODE      code        "Some computings."]
-
-    [*opts* *args*])
-
-  (d "-vvD" "foo/bar:0.1.0" "-p" "hello/world" "-l" "name=foop" "-l" "url=http://me.com" "-t" "(inc 41)" "zxcv" "qwer")
-  [{:thing 42,
-    :license {:url "http://me.com", :name "foop"},
-    :project hello/world,
-    :dependencies [[foo/bar "0.1.0"]],
-    :verbose 2}
-   ["zxcv" "qwer"]]
-  
-  (doc d)
-  ; -------------------------
-  ; boot.cli-util/d
-  ; ([& {:keys [help no-source verbose project bind init-ns description dependencies license middleware manifest scopes thing], :as *opts*}])
-  ;   Docstring here.
-  ;   
-  ;   Keyword Args:
-  ;     :help          bool         Print this help info.
-  ;     :no-source     bool         Exclude source files from jar.
-  ;     :verbose       int          The verbosity level.
-  ;     :project       sym          The project id (eg. foo/bar).
-  ;     :bind          str          The address server will listen on.
-  ;     :init-ns       sym          The initial REPL namespace.
-  ;     :description   str          The project description.
-  ;     :dependencies  [[sym str]]  The dependencies vector.
-  ;     :license       {kw str}     The license map.
-  ;     :middleware    [sym]        The vector of REPL middleware.
-  ;     :manifest      {str str}    The jar manifest.
-  ;     :scopes        #{str}       The set of excluded scopes.
-  ;     :thing         code         Some computings.
-  nil
-          
-  (d "-h")
-  ; Docstring here.
-  ; 
-  ; Options:
-  ;   -h, --help                 Print this help info.
-  ;   -S, --no-source            Exclude source files from jar.
-  ;   -v, --verbose              Increase the verbosity level.
-  ;   -p, --project SYM          Set the project id (eg. foo/bar) to SYM.
-  ;   -b, --bind ADDR            Set the address server will listen on to ADDR.
-  ;   -n, --init-ns SYM          Set the initial REPL namespace to SYM.
-  ;   -d, --description DESC     Set the project description to DESC.
-  ;   -D, --dependencies ID:VER  Conj [ID VER] onto the dependencies vector.
-  ;   -l, --license KEY=VAL      Conj [KEY VAL] onto the license map.
-  ;   -m, --middleware SYM       Conj SYM onto the vector of REPL middleware.
-  ;   -M, --manifest KEY=VAL     Conj [KEY VAL] onto the jar manifest.
-  ;   -s, --scopes SCOPE         Conj SCOPE onto the set of excluded scopes.
-  ;   -t, --thing CODE           Set some computings to CODE.
-  nil
-
-    )
