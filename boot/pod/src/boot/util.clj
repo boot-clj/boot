@@ -168,18 +168,20 @@
 (def ^:dynamic *sh-dir* nil)
 
 (defn sh [& args]
-  {:pre [(every? string? args)]}
-  (let [opts (into [:redirect-err true] (when *sh-dir* [:dir *sh-dir*]))
-        proc (apply conch/proc (concat args opts))]
-    (future (conch/stream-to-out proc :out))
-    #(.waitFor (:process proc))))
+  (let [args (remove nil? args)]
+    (assert (every? string? args))
+    (let [opts (into [:redirect-err true] (when *sh-dir* [:dir *sh-dir*]))
+          proc (apply conch/proc (concat args opts))]
+      (future (conch/stream-to-out proc :out))
+      #(.waitFor (:process proc)))))
 
 (defn dosh [& args]
-  {:pre [(every? string? args)]}
-  (let [status ((apply sh args))]
-    (when-not (= 0 status)
-      (throw (Exception. (-> "%s: non-zero exit status (%d)"
-                           (format (first args) status)))))))
+  (let [args (remove nil? args)]
+    (assert (every? string? args))
+    (let [status ((apply sh args))]
+      (when-not (= 0 status)
+        (throw (Exception. (-> "%s: non-zero exit status (%d)"
+                               (format (first args) status))))))))
 
 (defmacro without-exiting
   "Evaluates body in a context where System/exit doesn't work.
