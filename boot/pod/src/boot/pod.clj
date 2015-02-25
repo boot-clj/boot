@@ -328,7 +328,10 @@
     (doto (Thread. fill) (.setDaemon true) (.setPriority pri) .start)
     (fn
       ([] (take))
-      ([op] (case op :refresh (do (swap) (take)) :shutdown (stop))))))
+      ([op] (case op
+              :shutdown (stop)
+              :take     @(.take q)
+              :refresh  (do (swap) (take)))))))
 
 (defn- init-pod!
   [env pod]
