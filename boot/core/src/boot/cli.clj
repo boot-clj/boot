@@ -93,14 +93,15 @@
   ([short long type doc]
      (argspec->cli-argspec short long nil type doc))
   ([short long optarg type doc]
-   ((fnil into [])
-    (when short [:short-opt (str "-" short)])
-    [:id           (keyword long)
-     :long-opt     (str "--" long)
-     :required     (when optarg (str optarg))
-     :desc         (format-doc optarg type doc)
-     :parse-fn     `(#'parse-fn ~(when optarg (list 'quote optarg)))
-     :assoc-fn     `(#'assoc-fn ~(when optarg (list 'quote optarg)) '~type)])))
+   (let [doc (if-not (empty? doc) doc (format "The %s option." long))]
+     ((fnil into [])
+      (when short [:short-opt (str "-" short)])
+      [:id           (keyword long)
+       :long-opt     (str "--" long)
+       :required     (when optarg (str optarg))
+       :desc         (format-doc optarg type doc)
+       :parse-fn     `(#'parse-fn ~(when optarg (list 'quote optarg)))
+       :assoc-fn     `(#'assoc-fn ~(when optarg (list 'quote optarg)) '~type)]))))
 
 (defn- argspec->assert
   ([short long type doc]
