@@ -27,7 +27,9 @@
                     init-ns-sentinel true
                     (var *ns*)       (try (require init-ns)
                                           (create-ns init-ns)
-                                          (catch Throwable t (create-ns 'user)))))
+                                          (catch Throwable t
+                                            (.printStackTrace t)
+                                            (create-ns 'user)))))
            (h msg))))]
     (doto wrap-init-ns'
       ;; set-descriptor! currently nREPL only accepts a var
