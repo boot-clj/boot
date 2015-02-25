@@ -178,9 +178,10 @@
              (let [{kws# :kw clis# :cli} (split-args args#)
                    parsed#   (cli/parse-opts clis# ~cli-args)
                    ~bindings (merge kws# (:options parsed#))
-                   ~'*args*  (:arguments parsed#)]
+                   ~'*args*  (:arguments parsed#)
+                   ~'*usage* #(print ~cli-doc)]
                ~@(mapv (partial apply argspec->assert) argspecs)
-               (if-not ~'help (do ~@body) (print ~cli-doc))))
+               (if-not ~'help (do ~@body) (~'*usage*))))
            (with-meta ~varmeta)))))
 
 (defmacro defclifn [sym & forms]

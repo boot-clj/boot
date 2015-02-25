@@ -107,14 +107,16 @@
    c classpath        bool "Print the project's full classpath."
    C fake-classpath   bool "Print the project's fake classpath."]
 
-  (let [updates (or updates update-snapshots (not (or deps env fileset classpath fake-classpath)))]
+  (let [updates (or updates update-snapshots)]
     (core/with-pre-wrap fileset'
-      (when deps    (print (pod/with-call-worker (boot.aether/dep-tree ~(core/get-env)))))
-      (when env     (println (pr-str (core/get-env))))
-      (when fileset (println (pr-str fileset')))
-      (when classpath (println (or (System/getProperty "boot.class.path") "")))
-      (when fake-classpath (println (or (System/getProperty "fake.class.path") "")))
-      (when updates (mapv prn (pod/outdated (core/get-env) :snapshots update-snapshots)))
+      (cond
+        deps           (print (pod/with-call-worker (boot.aether/dep-tree ~(core/get-env))))
+        env            (println (pr-str (core/get-env)))
+        fileset        (println (pr-str fileset'))
+        classpath      (println (or (System/getProperty "boot.class.path") ""))
+        fake-classpath (println (or (System/getProperty "fake.class.path") ""))
+        updates        (mapv prn (pod/outdated (core/get-env) :snapshots update-snapshots))
+        :else          (*usage*))
       fileset')))
 
 (core/deftask wait
