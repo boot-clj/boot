@@ -120,7 +120,9 @@
 
 (defn- argspec-seq [args]
   (when (seq args)
-    (let [[ret [doc & more]] (split-with (complement string?) args)]
+    (let [[[short long & optarg-type] [doc & more]]
+          (split-with (complement string?) args)
+          ret (into [(when (not= short '_) short) long] optarg-type)]
       (cons (conj (vec ret) doc) (when (seq more) (argspec-seq more))))))
 
 (defn- cli-argspec->bindings [argspec]
@@ -163,11 +165,12 @@
   (let [[doc argspecs & body]
         (if (string? (first forms))
           forms
-          (list* "No description provided." forms))]
-    (assert-argspecs argspecs)
+          (list* "No description provided." forms))
+        argspecs (argspec-seq argspecs)]
+    (assert-argspecs (mapcat identity argspecs))
     (let [doc      (string/replace doc #"\n  " "\n")
           helpspec '[h help bool "Print this help info."]
-          argspecs (cons helpspec (argspec-seq argspecs))
+          argspecs (cons helpspec argspecs)
           cli-args (mapv (partial apply argspec->cli-argspec) argspecs)
           bindings (cli-argspec->bindings cli-args)
           arglists (list 'list (list 'quote ['& bindings]))
