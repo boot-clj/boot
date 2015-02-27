@@ -41,7 +41,7 @@ public class App {
     public static File   getBootDir()     { return bootdir; }
     public static String getVersion()     { return appversion; }
     public static String getBootVersion() { return bootversion; }
-    public static String propComment()    { return String.format(" App version: %s\n %s", appversion, booturl); }
+    public static String propComment()    { return String.format("App version: %s\n%s", appversion, booturl); }
 
     public static class Exit extends Exception {
         public Exit(String m) { super(m); }
