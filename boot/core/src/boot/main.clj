@@ -76,17 +76,25 @@
           (when-let [main# (resolve 'boot.user/-main)] (main# ~@argv))
           (core/boot ~@(or (seq argv) ["boot.task.built-in/help"])))))))
 
+(defn shebang? [arg]
+  (when (and (<= 0 (.indexOf arg (int \/))) (.exists (io/file arg)))
+    (let [bang-line (str (first (string/split (slurp arg) #"\n")))
+          full-path (System/getProperty "boot.app.path")
+          base-path (.getName (io/file full-path))
+          full-pat  (re-pattern (format "^#!\\s*\\Q%s\\E(?:\\s+.*)?$" full-path))
+          base-pat  (re-pattern (format "^#!\\s*/usr/bin/env\\s+\\Q%s\\E(?:\\s+.*)?$" base-path))]
+      (or (re-find full-pat bang-line) (re-find base-pat bang-line)))))
+
 (defn -main [pod-id worker-pod shutdown-hooks [arg0 & args :as args*]]
   (reset! pod/pod-id pod-id)
   (reset! pod/worker-pod worker-pod)
   (reset! pod/shutdown-hooks shutdown-hooks)
 
-  (let [dotboot?         #(.endsWith (.getName (io/file %)) ".boot")
-        script?          #(when (and % (.isFile (io/file %)) (dotboot? %)) %)
-        bootscript       "build.boot"
-        have-bootscript? (script? bootscript)
+  (let [bootscript       "build.boot"
+        exists?          #(when (.isFile (io/file %)) %)
+        have-bootscript? (exists? bootscript)
         [arg0 args]      (cond
-                           (script? arg0)   [arg0 args]
+                           (shebang? arg0)  [arg0 args]
                            have-bootscript? [bootscript args*]
                            :else            [nil args*])
         boot?            (contains? #{nil bootscript} arg0)
@@ -106,7 +114,7 @@
       (util/exit-ok
         (let [userscript  (-> (System/getProperty "user.home")
                               (io/file ".profile.boot")
-                              script?)
+                              exists?)
               verbosity   (if (:quiet opts)
                             (* -1 @util/*verbosity*)
                             (or (:verbose opts) 0))
