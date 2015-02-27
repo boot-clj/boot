@@ -41,6 +41,7 @@ public class App {
     public static File   getBootDir()     { return bootdir; }
     public static String getVersion()     { return appversion; }
     public static String getBootVersion() { return bootversion; }
+    public static String propComment()    { return String.format(" App version: %s\n %s", appversion, booturl); }
 
     public static class Exit extends Exception {
         public Exit(String m) { super(m); }
@@ -71,7 +72,7 @@ public class App {
         p.setProperty("BOOT_CLOJURE_VERSION", c);
 
         try (FileOutputStream file = new FileOutputStream(f)) {
-                p.store(file, booturl); }
+                p.store(file, propComment()); }
         
         return p; }
 
@@ -290,7 +291,7 @@ public class App {
                 || (args[0]).equals("--update"))) {
             isUpdate = true;
             Properties p = writeProps(bootprops);
-            p.store(System.out, booturl); }
+            p.store(System.out, propComment()); }
 
         if (cljversion == null || bootversion == null) {
             Properties q = readProps(bootprops, true);
@@ -305,7 +306,7 @@ public class App {
             Properties p = new Properties();
             p.setProperty("BOOT_VERSION", bootversion);
             p.setProperty("BOOT_CLOJURE_VERSION", cljversion);
-            p.store(System.out, booturl);
+            p.store(System.out, propComment());
             System.exit(0); }
 
         File cachedir  = new File(new File(new File(new File(bootdir, "cache"), dir_l), cljversion), bootversion);
