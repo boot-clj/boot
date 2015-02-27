@@ -10,14 +10,15 @@
     <minVersion>1.7.0</minVersion>
     <maxHeapSize>2048</maxHeapSize>
     <jdkPreference>preferJdk</jdkPreference>
+    <opt>-Dboot.app.path="%EXEFILE%"</opt>
   </jre>
   <versionInfo>
     <fileVersion>2.0.0.0</fileVersion>
-    <txtFileVersion>2.0.0-r1</txtFileVersion>
+    <txtFileVersion>__VERSION__</txtFileVersion>
     <fileDescription>The boot Clojure build tool</fileDescription>
     <copyright>2014 Alan Dipert and Micha Niskin</copyright>
     <productVersion>2.0.0.0</productVersion>
-    <txtProductVersion>2.0.0-r1</txtProductVersion>
+    <txtProductVersion>__VERSION__</txtProductVersion>
     <productName>boot</productName>
     <internalName>boot</internalName>
     <originalFilename>boot.exe</originalFilename>

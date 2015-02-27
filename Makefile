@@ -75,10 +75,11 @@ $(bootbin): head.sh $(baseuber)
 	chmod 0755 $(bootbin)
 	@echo -e "\033[0;32m<< Created boot executable: $(bootbin) >>\033[0m"
 
-$(bootexe): $(baseuber)
+launch4j-config.xml: launch4j-config.in.xml $(verfile)
+	sed -e "s@__VERSION__@`cat $(verfile) |sed 's/.*=//'`@" launch4j-config.in.xml > launch4j-config.xml;
+
+$(bootexe): $(baseuber) launch4j-config.xml
 	@if [ -z $$RUNNING_IN_CI ] && which launch4j; then \
-		sed -e "s@__VERSION__@`cat version.properties |sed 's/.*=//'`@" \
-			launch4j-config.in.xml > launch4j-config.xml; \
 		launch4j launch4j-config.xml; \
 		echo -e "\033[0;32m<< Created boot executable: $(bootexe) >>\033[0m"; \
 		[ -e $(bootexe) ] && touch $(bootexe); \
