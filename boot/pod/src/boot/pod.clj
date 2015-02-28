@@ -252,6 +252,21 @@
                (and (= p p') (not= v v') coord'))))
          (filter identity))))
 
+(defn apply-exclusions
+  [excl [p v & opts :as dep]]
+  (let [excl'  (:exclusions (apply hash-map opts))
+        excl'' (-> excl' set (into excl) (disj p) vec)
+        excl''' (if (empty? excl'') [] [:exclusions excl''])]
+    (if (empty? excl')
+      (into dep excl''')
+      (->> (partition 2 opts)
+           (mapcat #(if-not (= (first %) :exclusions) % excl'''))
+           (into [p v])))))
+
+(defn apply-global-exclusions
+  [excl deps]
+  (mapv (partial apply-exclusions excl) deps))
+
 (defn add-dependencies
   [env]
   (doseq [jar (resolve-dependency-jars env)] (add-classpath jar)))

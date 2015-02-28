@@ -202,10 +202,11 @@
   "Add Maven dependencies to the classpath, fetching them if necessary."
   [old new env]
   (assert (vector? new) "env :dependencies must be a vector")
-  (report-version-conflicts (find-version-conflicts old new env))
-  (->> new rm-clojure-dep (assoc env :dependencies) pod/add-dependencies)
-  (set-fake-class-path!)
-  new)
+  (let [new (pod/apply-global-exclusions (:exclusions env) new)]
+    (report-version-conflicts (find-version-conflicts old new env))
+    (->> new rm-clojure-dep (assoc env :dependencies) pod/add-dependencies)
+    (set-fake-class-path!)
+    new))
 
 (defn- add-directories!
   "Add URLs (directories or jar files) to the classpath."
