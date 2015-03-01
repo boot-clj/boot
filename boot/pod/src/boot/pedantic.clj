@@ -40,14 +40,17 @@
   (->> env pod/resolve-dependencies (map #(vec (take 2 (:dep %)))) (into {})))
 
 (defn prn-conflicts [env]
-  (let [version (resolved-versions env)]
-    (doseq [[k v] (dep-conflicts env)]
-      (println (ansi/bold-white (str "\u2022 " k)))
+  (let [version (resolved-versions env)
+        deps    (->> env :dependencies (map #(vec (take 2 %))) (into {}))]
+    (doseq [[k v] (dep-conflicts env)
+            m     (if (deps k) "\u2714" "!")]
+      (print (ansi/bold-white (format "[%s] %s\n" m k)))
       (doseq [[k' v'] (reverse v)
               :let [v? (= k' (version k))
                     m  (if v? "\u2714" "\u2718")
-                    c1 (if v? ansi/green ansi/yellow)
+                    c1 #((cond (= k %) ansi/bold-green
+                               v?      ansi/green
+                               :else   ansi/yellow) %)
                     c2 (if v? ansi/bold-green ansi/bold-yellow)]]
-        (->> (c1 (string/join "\n    " v'))
-             (format "  %s %s\n    %s\n" (c2 m) (c2 k'))
-             print)))))
+        (print (->> (string/join "\n      " (map c1 (sort v')))
+                    (format "    %s %s\n      %s\n" (c2 m) (c2 k'))))))))
