@@ -4,14 +4,15 @@
    [clojure.set          :as set]
    [clojure.string       :as string]
    [boot.pod             :as pod]
+   [boot.git             :as git]
    [boot.file            :as file]
    [boot.repl            :as repl]
    [boot.core            :as core]
    [boot.main            :as main]
    [boot.util            :as util]
-   [boot.git             :as git]
+   [boot.from.table.core :as table]
    [boot.task-helpers    :as helpers]
-   [boot.from.table.core :as table])
+   [boot.pedantic        :as pedantic])
   (:import
    [java.io File]
    [java.util Arrays]
@@ -99,13 +100,14 @@
 (core/deftask show
   "Print project/build info (e.g. dependency graph, etc)."
 
-  [d deps             bool "Print project dependency graph."
+  [C fake-classpath   bool "Print the project's fake classpath."
+   c classpath        bool "Print the project's full classpath."
+   d deps             bool "Print project dependency graph."
    e env              bool "Print the boot env map."
    f fileset          bool "Print the build fileset object."
-   u updates          bool "Print newer releases of outdated dependencies."
+   p pedantic         bool "Print graph of dependency conflicts."
    U update-snapshots bool "Include snapshot versions in updates searches."
-   c classpath        bool "Print the project's full classpath."
-   C fake-classpath   bool "Print the project's fake classpath."]
+   u updates          bool "Print newer releases of outdated dependencies."]
 
   (let [updates (or updates update-snapshots)]
     (core/with-pre-wrap fileset'
@@ -116,6 +118,7 @@
         classpath      (println (or (System/getProperty "boot.class.path") ""))
         fake-classpath (println (or (System/getProperty "fake.class.path") ""))
         updates        (mapv prn (pod/outdated (core/get-env) :snapshots update-snapshots))
+        pedantic       (pedantic/prn-conflicts (core/get-env))
         :else          (*usage*))
       fileset')))
 
