@@ -59,7 +59,7 @@ Download [boot.sh][2], then:
 $ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
 ```
 
-SHA1 checksum: e530c6861db597e91c3e5a8d476d3f54e1a1dc7d 
+> SHA1 checksum: 4ba53216f97b9bbf5de2064eaa0f5d6cf9a8e378
   
 #### Windows
 
@@ -367,8 +367,8 @@ Copyright © 2013 Alan Dipert and Micha Niskin
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
-[2]: https://github.com/boot-clj/boot/releases/download/2.0.0-rc9/boot.sh
-[3]: https://github.com/boot-clj/boot/releases/download/2.0.0-rc9/boot.exe
+[2]: https://github.com/boot-clj/boot/releases/download/2.0.0-rc11/boot.sh
+[3]: https://github.com/boot-clj/boot/releases/download/2.0.0-rc11/boot.exe
 [4]: #install
 [5]: https://drone.io/github.com/boot-clj/boot/status.png?camocache=1
 [6]: https://drone.io/github.com/boot-clj/boot/latest
