@@ -58,6 +58,8 @@ Download [boot.sh][2], then:
 ```
 $ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
 ```
+
+SHA1 checksum: e530c6861db597e91c3e5a8d476d3f54e1a1dc7d 
   
 #### Windows
 
