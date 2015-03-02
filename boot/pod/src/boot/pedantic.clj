@@ -40,17 +40,23 @@
   (->> env pod/resolve-dependencies (map #(vec (take 2 (:dep %)))) (into {})))
 
 (defn prn-conflicts [env]
-  (let [version (resolved-versions env)
-        deps    (->> env :dependencies (map #(vec (take 2 %))) (into {}))]
-    (doseq [[k v] (dep-conflicts env)
-            m     (if (deps k) "\u2714" "!")]
-      (print (ansi/bold-white (format "[%s] %s\n" m k)))
-      (doseq [[k' v'] (reverse v)
-              :let [v? (= k' (version k))
-                    m  (if v? "\u2714" "\u2718")
-                    c1 #((cond (= k %) ansi/bold-green
-                               v?      ansi/green
-                               :else   ansi/yellow) %)
-                    c2 (if v? ansi/bold-green ansi/bold-yellow)]]
-        (print (->> (string/join "\n      " (map c1 (sort v')))
-                    (format "    %s %s\n      %s\n" (c2 m) (c2 k'))))))))
+  (let [check-mark "\u2714"
+        version-of (resolved-versions env)]
+    (doseq [[dep versions] (dep-conflicts env)]
+      (let [explicit? (contains? (reduce into #{} (vals versions)) dep)
+            dep-mark  (if explicit? check-mark "-")]
+        (print (ansi/bold-white (format "[%s] %s\n" dep-mark dep)))
+        (doseq [[version vias] (reverse versions)]
+          (let [chosen?  (= version (version-of dep))
+                norm     (if chosen? ansi/green ansi/yellow)
+                bold     (if chosen? ansi/bold-green ansi/bold-yellow)
+                ver-mark (if chosen? dep-mark " ")]
+            (print (bold (format "    [%s] %s\n" ver-mark version)))
+            (doseq [via vias]
+              (let [given?    (= dep via)
+                    excluded? (not chosen?)
+                    color     (if given? bold norm)
+                    via-mark  (cond given?    check-mark
+                                    excluded? " "
+                                    :else     "-")]
+                (print (color (format "        [%s] %s\n" via-mark via)))))))))))
