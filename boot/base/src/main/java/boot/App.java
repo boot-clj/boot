@@ -41,7 +41,7 @@ public class App {
     public static File   getBootDir()     { return bootdir; }
     public static String getVersion()     { return appversion; }
     public static String getBootVersion() { return bootversion; }
-    public static String propComment()    { return String.format("App version: %s\n%s", appversion, booturl); }
+    public static String propComment()    { return booturl; }
 
     public static class Exit extends Exception {
         public Exit(String m) { super(m); }
@@ -291,7 +291,8 @@ public class App {
                 || (args[0]).equals("--update"))) {
             isUpdate = true;
             Properties p = writeProps(bootprops);
-            p.store(System.out, propComment()); }
+            p.store(System.out, propComment());
+            System.err.printf("#App version: %s\n", appversion); }
 
         if (cljversion == null || bootversion == null) {
             Properties q = readProps(bootprops, true);
@@ -328,7 +329,7 @@ public class App {
             try {
                 Map<String, String> release = latestReleaseTag();
                 if (appversion.compareTo(release.get("tag")) < 0) {
-                    System.out.printf("#New boot executable available:\n");
-                    System.out.printf("#%s\n", release.get("url")); }}
+                    System.err.printf("#New boot executable available:\n");
+                    System.err.printf("#%s\n", release.get("url")); }}
             catch (Throwable t) {}
             System.exit(0); }}}
