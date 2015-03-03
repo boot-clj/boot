@@ -93,8 +93,10 @@
 (defn- user-asset-dirs    [] (get-dirs {:dirs @tempdirs} #{:user :asset}))
 (defn- user-source-dirs   [] (get-dirs {:dirs @tempdirs} #{:user :source}))
 (defn- user-resource-dirs [] (get-dirs {:dirs @tempdirs} #{:user :resource}))
-(defn- non-user-temp-dirs [] (-> (apply set/union (map :dir @tempdirs))
-                                 (set/difference (user-temp-dirs))))
+(defn- non-user-temp-dirs [] (->> [:asset :source :resource]
+                                  (map #(get-dirs {:dirs @tempdirs} #{%}))
+                                  (apply set/union)
+                                  (#(set/difference % (user-temp-dirs)))))
 
 (defn- sync-user-dirs!
   []
@@ -656,17 +658,22 @@
           (let [[opts argv] (parse-task-opts args spec)]
             (recur (conj ret (apply (var-get op) opts)) argv)))))))
 
+(defn- sync-target
+  "FIXME: document"
+  [before after]
+  (let [tgt  (get-env :target-path)
+        diff (fileset-diff before after)]
+    (when (seq (output-files diff))
+      (binding [file/*hard-link* false]
+        (apply file/sync! :time tgt (output-dirs after)))
+      (file/delete-empty-subdirs! tgt))))
+
 (defn- run-tasks
   "FIXME: document"
   [task-stack]
-  (let [sync! #(let [tgt (get-env :target-path)]
-                 (binding [file/*hard-link* false]
-                   (apply file/sync! :time tgt (output-dirs %)))
-                 (file/delete-empty-subdirs! tgt)
-                 (sync-user-dirs!))]
-    (binding [*warnings* (atom 0)]
-      (reset-build!)
-      ((task-stack #(do (sync! %) %)) (commit! (reset-fileset))))))
+  (binding [*warnings* (atom 0)]
+    (let [fs (commit! (reset-fileset))]
+      ((task-stack #(do (sync-target fs %) (sync-user-dirs!) %)) fs))))
 
 (defmacro boot
   "The REPL equivalent to the command line 'boot'. If all arguments are
