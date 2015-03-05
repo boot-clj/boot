@@ -38,15 +38,16 @@
 (def ^:dynamic *colorize?* (atom (colorize?-system-default)))
 
 (defn- print*
-  [verbosity args]
+  [verbosity color args]
   (when (>= @*verbosity* verbosity)
     (binding [*out* *err*]
-      (apply printf args) (flush))))
+      (print ((or color identity) (apply format args)))
+      (flush))))
 
-(defn dbug [& more] (print* 2 more))
-(defn info [& more] (print* 1 more))
-(defn warn [& more] (print* 1 more))
-(defn fail [& more] (print* 1 more))
+(defn dbug [& more] (print* 2 ansi/bold-cyan   more))
+(defn info [& more] (print* 1 ansi/bold-white  more))
+(defn warn [& more] (print* 1 ansi/bold-yellow more))
+(defn fail [& more] (print* 1 ansi/bold-red    more))
 
 (defmacro with-let
   "Binds resource to binding and evaluates body.  Then, returns
