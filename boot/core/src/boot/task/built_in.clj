@@ -53,6 +53,57 @@
                   with-out-str))
       fileset)))
 
+(core/deftask checkout
+  "Checkout dependencies task.
+  
+  This task facilitates working on a project and its dependencies at the same
+  time, by extracting the dependency jar contents into the fileset. Transitive
+  dependencies will be added to the class path automatically.
+  
+  You'll need at least two boot instances---one to build the dependency jar and
+  the other to build the project. For example:
+  
+      $ boot watch pom -p foo/bar -v 1.2.3-SNAPSHOT jar install
+  
+  to build the dependency jar, and
+  
+      $ boot repl -s watch checkout -d foo/bar:1.2.3-SNAPSHOT cljs serve
+  
+  to build the project with the checkout dependency [foo/bar \"1.2.3\"]."
+
+  [d dependencies ID:VER [[sym str]] "The vector of checkout dependencies."]
+
+  (let [env   (core/get-env)
+        prev  (atom nil)
+        jars  (->> dependencies
+                   (map (comp io/file #(pod/resolve-dependency-jar env %))))
+        deps  (->> dependencies
+                   (mapcat #(pod/resolve-nontransitive-dependencies env %))
+                   (map :dep)
+                   (remove pod/dependency-loaded?))
+        names (map (memfn getName) jars)
+        dirs  (map (memfn getParent) jars)
+        tmps  (reduce #(assoc %1 %2 (core/temp-dir!)) {} names)]
+    (when (seq deps)
+      (util/info "Adding checkout dependencies:\n")
+      (doseq [dep deps]
+        (util/info "\u2022 %s\n" (pr-str dep))))
+    (core/merge-env! :dependencies (vec deps)
+                     :source-paths (set dirs))
+    (core/cleanup (core/set-env! :source-paths #(apply disj % dirs)))
+    (core/with-pre-wrap fileset
+      (let [diff (->> (core/fileset-diff @prev fileset)
+                      core/input-files
+                      (filter (comp (set names) core/tmppath))
+                      (map (juxt core/tmppath core/tmpfile)))]
+        (reset! prev fileset)
+        (doseq [[path file] diff]
+          (let [tmp (tmps path)]
+            (core/empty-dir! tmp)
+            (util/info "Checking out %s...\n" path)
+            (pod/unpack-jar file tmp :exclude [#"^META-INF/"])))
+        (->> tmps vals (reduce core/add-source fileset) core/commit!)))))
+
 (core/deftask speak
   "Audible notifications during build.
 

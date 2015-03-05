@@ -111,6 +111,16 @@
      (->> {:dependencies [['org.clojure/clojure cljversion] [(symbol sym-str) version]]}
        resolve-dependencies (map (comp io/file :jar)) (into-array java.io.File))))
 
+(defn resolve-nontransitive-dependencies
+  "Given an env map and a single dependency coordinates vector, resolves the
+  dependency and returns its direct, non-transitive dependencies. Dependencies
+  are returned as a list of maps of the same form as resolve-dependencies above."
+  [env dep]
+  (->> (assoc env :dependencies [dep])
+       resolve-dependencies-memoized*
+       (#(get % dep))
+       (map (fn [x] {:dep x :jar (dep->path x)}))))
+
 (def jars-dep-graph
   "Given an env map, returns a dependency graph for all jar files on on the
   classpath."

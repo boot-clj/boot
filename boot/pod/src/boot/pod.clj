@@ -234,6 +234,10 @@
   [env]
   (->> env resolve-dependencies (map (comp io/file :jar))))
 
+(defn resolve-nontransitive-dependencies
+  [env dep]
+  (with-call-worker (boot.aether/resolve-nontransitive-dependencies ~env ~dep)))
+
 (defn resolve-dependency-jar
   [env coord]
   (let [coord (canonical-coord coord)]
