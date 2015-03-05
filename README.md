@@ -316,6 +316,46 @@ when we used them on the command line before. Boot's command line parsing
 implicitly composes them; in our task we compose them using Clojure's `comp`
 function.
 
+### Define Tasks In Project
+
+Now let's define a task in a namespace in our project and use it from the command line.
+
+Create the namespace with the task:
+
+```
+(ns demo.boot-build
+  (:require [boot.core :as core]
+            [boot.task.built-in :as task]))
+
+(core/deftask build
+  "Print a friendly greeting."
+  []
+  (comp (task/pom) (task/jar) (task/install))
+```
+
+and write it to `src/demo/boot_build.clj` in your project.
+
+Modify the `build.boot` file to incorporate this new task by removing the definition for `build`. The new `build.boot` file will look like this:
+
+```
+(set-env!
+  :source-paths #{"src"}
+  :dependencies '[[me.raynes/conch "0.8.0"]])
+
+(task-options!
+  pom {:project 'my-project
+       :version "0.1.0"}
+  jar {:manifest {"Foo" "bar"}})
+
+(require '[demo.boot-build :refer :all])
+```
+
+You can now use the `build` task defined in the project namespace from the command line, as before:
+
+```
+$ boot build
+```
+
 ...
 
 ## Hacking Boot
