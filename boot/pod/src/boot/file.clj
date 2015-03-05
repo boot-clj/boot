@@ -29,12 +29,17 @@
 (defmacro guard [& exprs]
   `(try (do ~@exprs) (catch Throwable _#)))
 
+(def fail
+  (delay
+    (require 'boot.util)
+    (var-get (resolve 'boot.util/fail))))
+
 (defn delete-file
   [f]
   (try
     (io/delete-file f)
     (catch Exception err
-      (println "ERROR deleting" f err))))
+      (@fail "ERROR deleting" f err))))
 
 (defn clean! [& files]
   (doseq [f files]
