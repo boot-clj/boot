@@ -203,7 +203,7 @@
         (.offer q (System/currentTimeMillis))
         (add-watch core/last-file-change k #(.offer q %4))
         (core/cleanup (remove-watch core/last-file-change k))
-        (when-not quiet (util/info "Starting file watcher (CTRL-C to quit)...\n\n"))
+        (when-not quiet (util/info "\nStarting file watcher (CTRL-C to quit)...\n\n"))
         (loop [ret (util/guard [(.take q)])]
           (when ret
             (if-let [more (.poll q (or debounce 10) TimeUnit/MILLISECONDS)]
