@@ -101,7 +101,7 @@
           (let [tmp (tmps path)]
             (core/empty-dir! tmp)
             (util/info "Checking out %s...\n" path)
-            (pod/unpack-jar file tmp :exclude [#"^META-INF/"])))
+            (pod/unpack-jar (.getPath file) tmp :cache false :exclude [#"^META-INF/"])))
         (->> tmps vals (reduce core/add-source fileset) core/commit!)))))
 
 (core/deftask speak

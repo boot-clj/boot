@@ -9,7 +9,7 @@
   (:import
    [java.util.jar        JarFile]
    [java.util            Properties]
-   [java.net             URL URLClassLoader]
+   [java.net             URL URLClassLoader URLConnection]
    [java.util.concurrent ConcurrentLinkedQueue LinkedBlockingQueue TimeUnit]
    [java.nio.file        Files])
   (:refer-clojure :exclude [add-classpath]))
@@ -149,9 +149,13 @@
               out (io/output-stream (doto (io/file out-path) io/make-parents))]
     (io/copy in out)))
 
+(defn non-caching-url-input-stream
+  [url-str]
+  (.getInputStream (doto (.openConnection (URL. url-str)) (.setUseCaches false))))
+
 (defn copy-url
-  [url-str out-path]
-  (with-open [in  (io/input-stream url-str)
+  [url-str out-path & {:keys [cache] :or {cache true}}]
+  (with-open [in  ((if cache io/input-stream non-caching-url-input-stream) url-str)
               out (io/output-stream (doto (io/file out-path) io/make-parents))]
     (io/copy in out)))
 
@@ -284,30 +288,38 @@
   [env]
   (add-dependencies-in @worker-pod env))
 
-(def jar-entries
+(defn jar-entries*
+  [path-or-jarfile]
+  (when path-or-jarfile
+    (let [f    (io/file path-or-jarfile)
+          path (.getPath f)]
+      (when (.endsWith path ".jar")
+        (when (and (.exists f) (.isFile f))
+          (->> f JarFile. .entries enumeration-seq
+               (keep #(when-not (.isDirectory %)
+                        (let [name (.getName %)]
+                          [name (->> (io/file (io/file (str path "!")) name)
+                                     .toURI .toURL .toString (str "jar:"))])))))))))
+
+(def jar-entries-memoized* (memoize jar-entries*))
+
+(defn jar-entries
   "Given a path to a jar file, returns a list of [resource-path, resource-url]
   string pairs corresponding to all entries contained the jar contains."
-  (memoize
-    (fn [path-or-jarfile]
-      (when path-or-jarfile
-        (let [f    (io/file path-or-jarfile)
-              path (.getPath f)]
-          (when (.endsWith path ".jar")
-            (when (and (.exists f) (.isFile f))
-              (->> f JarFile. .entries enumeration-seq
-                (keep #(when-not (.isDirectory %)
-                         (let [name (.getName %)]
-                           [name (->> (io/file (io/file (str path "!")) name)
-                                   .toURI .toURL .toString (str "jar:"))])))))))))))
+  [path-or-jarfile & {:keys [cache] :or {cache true}}]
+  ((if cache jar-entries-memoized* jar-entries*) path-or-jarfile))
 
 (defn unpack-jar
-  [jar dir & {:keys [include exclude]}]
-  (doseq [[path url] (jar-entries jar)]
+  [jar dir & {:keys [include exclude cache] :or {cache true}}]
+  (doseq [[path url] (jar-entries jar :cache cache)]
     (let [out   (io/file dir path)
           keep? (partial file/keep-filters? include exclude)]
       (when (keep? (io/file path))
         (try
-          (copy-url url out)
+          (util/dbug "Unpacking %s from %s (caching %s)...\n"
+                     path (.getName (io/file jar)) (if cache "on" "off"))
+          (copy-url url out :cache false)
+          (util/warn "%s\n" (slurp out))
           (catch Exception err
             (util/warn "Error while extracting %s: %s\n" url err)))))))
 
