@@ -90,16 +90,19 @@
   (reset! pod/worker-pod worker-pod)
   (reset! pod/shutdown-hooks shutdown-hooks)
 
-  (let [bootscript       "build.boot"
-        exists?          #(when (.isFile (io/file %)) %)
-        have-bootscript? (exists? bootscript)
-        [arg0 args]      (cond
-                           (shebang? arg0)  [arg0 args]
-                           have-bootscript? [bootscript args*]
-                           :else            [nil args*])
-        boot?            (contains? #{nil bootscript} arg0)
-        [errs opts args] (if-not boot? [nil {} args] (parse-cli-opts args))
-        arg0             (if (:no-boot-script opts) nil arg0)]
+  (let [[arg0 args args*] (if (seq args*)
+                            [arg0 args args*]
+                            ["--help" nil ["--help"]])
+        bootscript        "build.boot"
+        exists?           #(when (.isFile (io/file %)) %)
+        have-bootscript?  (exists? bootscript)
+        [arg0 args]       (cond
+                            (shebang? arg0)  [arg0 args]
+                            have-bootscript? [bootscript args*]
+                            :else            [nil args*])
+        boot?             (contains? #{nil bootscript} arg0)
+        [errs opts args]  (if-not boot? [nil {} args] (parse-cli-opts args))
+        arg0              (if (:no-boot-script opts) nil arg0)]
     
     (when (seq errs)
       (util/exit-error
