@@ -39,7 +39,7 @@
   (try
     (io/delete-file f)
     (catch Exception err
-      (@fail "ERROR deleting" f err))))
+      (@fail "ERROR deleting '%s': %s" f err))))
 
 (defn clean! [& files]
   (doseq [f files]
