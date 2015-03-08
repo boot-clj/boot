@@ -347,21 +347,25 @@
   (let [run? (atom true)
         pri  (or priority Thread/NORM_PRIORITY)
         q    (LinkedBlockingQueue. (int size))
+        q*   (promise)
         poll #(.poll % 1 TimeUnit/SECONDS)
-        putp #(util/with-let [p (promise)] (.put % p))
+        putp #(util/with-let [p (promise)]
+                (.put % p)
+                (when-not (realized? q*)
+                  (deliver q* q)))
         fill #(util/while-let [p (and @run? (putp q))]
                 (deliver p (when @run? (create))))
-        take #(deref (.peek q))
-        swap #(destroy @(.take q))
-        stop #(do (reset! run? false)
-                  (util/while-let [p (poll q)]
-                    (destroy @p)))]
+        take #(deref (.peek @q*))
+        swap #(destroy @(.take @q*))
+        stop #(future (reset! run? false)
+                      (util/while-let [p (poll @q*)]
+                         (destroy @p)))]
     (doto (Thread. fill) (.setDaemon true) (.setPriority pri) .start)
     (fn
       ([] (take))
       ([op] (case op
               :shutdown (stop)
-              :take     @(.take q)
+              :take     @(.take @q*)
               :refresh  (do (swap) (take)))))))
 
 (defn- init-pod!
