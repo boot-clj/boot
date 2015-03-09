@@ -1,9 +1,9 @@
-# Boot [![Build Status][5]][6]
+# Boot [![Build Status][5]][6] [![Stories in Ready][waffle-badge]][waffle-board]
 
 Boot is a Clojure build framework and ad-hoc Clojure script evaluator. Boot
 provides a runtime environment that includes all of the tools needed to build
 Clojure projects from scripts written in Clojure that run in the context of
-the project.  
+the project.
 
 > If you have questions or need help, please [visit our Discourse site](http://hoplon.discoursehosting.net/).
 > You can find other developers and users in [the `#hoplon` channel on freenode IRC](http://webchat.freenode.net/?channels=hoplon).
@@ -407,8 +407,8 @@ Copyright © 2013 Alan Dipert and Micha Niskin
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
-[2]: https://github.com/boot-clj/boot/releases/download/2.0.0-rc11/boot.sh
-[3]: https://github.com/boot-clj/boot/releases/download/2.0.0-rc11/boot.exe
+[2]: https://github.com/boot-clj/boot/releases/download/2.0.0-rc12/boot.sh
+[3]: https://github.com/boot-clj/boot/releases/download/2.0.0-rc12/boot.exe
 [4]: #install
 [5]: https://drone.io/github.com/boot-clj/boot/status.png?camocache=1
 [6]: https://drone.io/github.com/boot-clj/boot/latest
@@ -433,3 +433,6 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [57]: https://github.com/AvisoNovate/pretty
 [58]: https://github.com/google/hesokuri
 [59]: https://code.google.com/p/barbarywatchservice/
+
+[waffle-badge]: https://badge.waffle.io/boot-clj/boot.svg?label=ready&title=Ready
+[waffle-board]: http://waffle.io/boot-clj/boot
