@@ -23,8 +23,8 @@
 
 (defn default-repositories
   []
-  [["clojars"       "http://clojars.org/repo/"]
-   ["maven-central" "http://repo1.maven.org/maven2/"]])
+  [["clojars"       "https://clojars.org/repo/"]
+   ["maven-central" "https://repo1.maven.org/maven2/"]])
 
 (defn transfer-listener
   [{type :type meth :method {name :name repo :repository} :resource err :error}]

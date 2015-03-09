@@ -525,8 +525,8 @@
              :resource-paths   #{}
              :asset-paths      #{}
              :target-path      "target"
-             :repositories     [["clojars"       "http://clojars.org/repo/"]
-                                ["maven-central" "http://repo1.maven.org/maven2/"]]})
+             :repositories     [["clojars"       "https://clojars.org/repo/"]
+                                ["maven-central" "https://repo1.maven.org/maven2/"]]})
     (add-watch ::boot #(configure!* %3 %4)))
   (set-fake-class-path!)
   (temp-dir** nil :asset)
