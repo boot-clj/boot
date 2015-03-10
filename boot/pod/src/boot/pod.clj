@@ -352,7 +352,6 @@
         fill #(util/while-let [p (and @run? (putp q))]
                 (deliver p (when @run? (create))))
         peek #(loop []
-                (prn :got-here)
                 (when @run?
                   (or (.peek %)
                       (do (Thread/sleep 10) (recur)))))
