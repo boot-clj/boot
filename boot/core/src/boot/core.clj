@@ -19,7 +19,7 @@
     [java.io File]
     [java.net URLClassLoader URL]
     [java.lang.management ManagementFactory]
-    [java.util.concurrent LinkedBlockingQueue TimeUnit]))
+    [java.util.concurrent LinkedBlockingQueue TimeUnit Semaphore]))
 
 (declare watch-dirs sync! post-env! get-env set-env! tmpfile tmpdir ls)
 
@@ -38,6 +38,7 @@
 (def ^:private cleanup-fns       (atom []))
 (def ^:private boot-env          (atom nil))
 (def ^:private tempdirs          (atom #{}))
+(def ^:private tempdirs-lock     (Semaphore. 1 true))
 (def ^:private src-watcher       (atom (constantly nil)))
 
 (def ^:private masks
@@ -106,6 +107,7 @@
     (when-let [s (->> (get-env k)
                       (filter #(.isDirectory (io/file %)))
                       seq)]
+      (util/dbug "Syncing project dirs to temp dirs...\n")
       (binding [file/*hard-link* false]
         (apply file/sync! :time (first d) s)))))
 
@@ -144,8 +146,9 @@
         dir-paths (set (->> (mapcat get-env env-keys)
                             (filter #(.isDirectory (io/file %)))))
         on-change (fn [_]
-                    (sync-user-dirs!)
-                    (reset! last-file-change (System/currentTimeMillis)))]
+                    (util/with-semaphore-noblock tempdirs-lock
+                      (sync-user-dirs!))
+                      (reset! last-file-change (System/currentTimeMillis)))]
     (reset! src-watcher (watch-dirs on-change dir-paths :debounce debounce))
     (set-fake-class-path!)
     (sync-user-dirs!)))
@@ -680,15 +683,16 @@
   strings then they are treated as if they were given on the command line.
   Otherwise they are assumed to evaluate to task middleware."
   [& argv]
-  (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
-        ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
-    `(try @(future
-             (util/with-let [_# nil]
-               (#'run-tasks
-                 ~(if (every? string? argv)
-                    `(apply #'construct-tasks [~@argv])
-                    (->app (map ->list argv))))))
-          (finally (#'do-cleanup!)))))
+  (util/with-semaphore tempdirs-lock
+    (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
+          ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
+      `(try @(future
+               (util/with-let [_# nil]
+                 (#'run-tasks
+                   ~(if (every? string? argv)
+                      `(apply #'construct-tasks [~@argv])
+                      (->app (map ->list argv))))))
+            (finally (#'do-cleanup!))))))
 
 ;; Low-Level Tasks, Helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

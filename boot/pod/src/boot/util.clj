@@ -49,6 +49,20 @@
 (defn warn [& more] (print* 1 ansi/bold-yellow more))
 (defn fail [& more] (print* 1 ansi/bold-red    more))
 
+(defmacro with-semaphore
+  [sem & body]
+  `(let [sem# ~sem]
+     (.acquire sem#)
+     (try ~@body
+          (finally (.release sem#)))))
+
+(defmacro with-semaphore-noblock
+  [sem & body]
+  `(let [sem# ~sem]
+     (when (.tryAcquire sem#)
+       (try ~@body
+            (finally (.release sem#))))))
+
 (defmacro with-let
   "Binds resource to binding and evaluates body.  Then, returns
   resource.  It's a cross between doto and with-open."
