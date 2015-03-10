@@ -308,6 +308,7 @@ public class App {
             p.setProperty("BOOT_VERSION", bootversion);
             p.setProperty("BOOT_CLOJURE_VERSION", cljversion);
             p.store(System.out, propComment());
+            System.err.printf("#App version: %s\n", appversion);
             System.exit(0); }
 
         File cachedir  = new File(new File(new File(new File(bootdir, "cache"), dir_l), cljversion), bootversion);
