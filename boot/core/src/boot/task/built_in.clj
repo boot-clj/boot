@@ -264,13 +264,7 @@
                           (pod/add-dependencies
                             (assoc (core/get-env) :dependencies deps)))
                         (require 'boot.repl-server)
-                        ((resolve 'boot.repl-server/start-server) srv-opts)
-                        ;; Boot inception:
-                        (let [s (var-get #'boot.core/tempdirs-lock)]
-                          ;; A level deeper requires adding a permit to the semaphore...
-                          (.release s)
-                          ;; And reduce by one when control returns to this level.
-                          (core/cleanup (.reducePermits s 1))))
+                        ((resolve 'boot.repl-server/start-server) srv-opts))
         repl-cli (delay (pod/with-call-worker (boot.repl-client/client ~cli-opts)))]
     (comp
       (core/with-pre-wrap fileset

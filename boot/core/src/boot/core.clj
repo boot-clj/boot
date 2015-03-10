@@ -109,7 +109,8 @@
                       seq)]
       (util/dbug "Syncing project dirs to temp dirs...\n")
       (binding [file/*hard-link* false]
-        (apply file/sync! :time (first d) s)))))
+        (util/with-semaphore tempdirs-lock
+          (apply file/sync! :time (first d) s))))))
 
 (defn- set-fake-class-path!
   "Sets the fake.class.path system property to reflect all JAR files on the
@@ -146,9 +147,8 @@
         dir-paths (set (->> (mapcat get-env env-keys)
                             (filter #(.isDirectory (io/file %)))))
         on-change (fn [_]
-                    (util/with-semaphore-noblock tempdirs-lock
-                      (sync-user-dirs!))
-                      (reset! last-file-change (System/currentTimeMillis)))]
+                    (sync-user-dirs!)
+                    (reset! last-file-change (System/currentTimeMillis)))]
     (reset! src-watcher (watch-dirs on-change dir-paths :debounce debounce))
     (set-fake-class-path!)
     (sync-user-dirs!)))
@@ -363,7 +363,8 @@
   "Make the underlying temp directories correspond to the immutable fileset
   tree structure."
   [fileset]
-  (tmpd/commit! fileset))
+  (util/with-semaphore tempdirs-lock
+    (tmpd/commit! fileset)))
 
 (defn rm
   "Removes files from the fileset tree, returning a new fileset object. This
@@ -685,14 +686,13 @@
   [& argv]
   (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
         ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
-    `(util/with-semaphore (var-get #'tempdirs-lock)
-       (try @(future
-               (util/with-let [_# nil]
-                 (#'run-tasks
-                   ~(if (every? string? argv)
-                      `(apply #'construct-tasks [~@argv])
-                      (->app (map ->list argv))))))
-            (finally (#'do-cleanup!))))))
+    `(try @(future
+             (util/with-let [_# nil]
+               (#'run-tasks
+                 ~(if (every? string? argv)
+                    `(apply #'construct-tasks [~@argv])
+                    (->app (map ->list argv))))))
+          (finally (#'do-cleanup!)))))
 
 ;; Low-Level Tasks, Helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
