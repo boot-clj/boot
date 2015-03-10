@@ -683,10 +683,10 @@
   strings then they are treated as if they were given on the command line.
   Otherwise they are assumed to evaluate to task middleware."
   [& argv]
-  (util/with-semaphore tempdirs-lock
-    (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
-          ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
-      `(try @(future
+  (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
+        ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
+    `(util/with-semaphore (var-get #'tempdirs-lock)
+       (try @(future
                (util/with-let [_# nil]
                  (#'run-tasks
                    ~(if (every? string? argv)

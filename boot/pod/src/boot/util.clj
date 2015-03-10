@@ -53,15 +53,19 @@
   [sem & body]
   `(let [sem# ~sem]
      (.acquire sem#)
+     (dbug "Acquired %s...\n" sem#)
      (try ~@body
-          (finally (.release sem#)))))
+          (finally (.release sem#)
+                   (dbug "Released %s...\n" sem#)))))
 
 (defmacro with-semaphore-noblock
   [sem & body]
   `(let [sem# ~sem]
      (when (.tryAcquire sem#)
+       (dbug "Acquired %s...\n" sem#)
        (try ~@body
-            (finally (.release sem#))))))
+            (finally (.release sem#)
+                     (dbug "Released %s...\n" sem#))))))
 
 (defmacro with-let
   "Binds resource to binding and evaluates body.  Then, returns
