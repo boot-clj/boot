@@ -59,8 +59,6 @@ Download [boot.sh][2], then:
 $ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
 ```
 
-> SHA1 checksum: 4ba53216f97b9bbf5de2064eaa0f5d6cf9a8e378
-  
 #### Windows
 
 Download [boot.exe][3], then:
