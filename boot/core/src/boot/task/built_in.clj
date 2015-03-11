@@ -228,8 +228,8 @@
 (core/deftask repl
   "Start a REPL session for the current project.
 
-  If no bind/host is specified the REPL server will listen on 0.0.0.0 and the
-  client will connect to 127.0.0.1.
+  If no bind/host is specified the REPL server will listen on 127.0.0.1 and
+  the client will connect to 127.0.0.1.
 
   If no port is specified the server will choose a random one and the client
   will read the .nrepl-port file and use that.
