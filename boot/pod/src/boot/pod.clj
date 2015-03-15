@@ -391,7 +391,7 @@
     (assoc env :dependencies (into dfl-deps dependencies))))
 
 (defn make-pod
-  ([] (init-pod! (boot.App/newPod)))
+  ([] (init-pod! env (boot.App/newPod)))
   ([{:keys [directories dependencies] :as env}]
      (let [dirs (map io/file directories)
            dfl  [['boot/pod (boot.App/getBootVersion)]
