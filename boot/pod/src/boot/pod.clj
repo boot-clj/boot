@@ -1,17 +1,18 @@
 (ns boot.pod
   (:require
-   [boot.util                  :as util]
-   [boot.file                  :as file]
-   [boot.from.backtick         :as bt]
-   [clojure.java.io            :as io]
-   [dynapath.util              :as dp]
-   [dynapath.dynamic-classpath :as cp])
+    [clojure.set               :as set]
+    [boot.util                  :as util]
+    [boot.file                  :as file]
+    [boot.from.backtick         :as bt]
+    [clojure.java.io            :as io]
+    [dynapath.util              :as dp]
+    [dynapath.dynamic-classpath :as cp])
   (:import
-   [java.util.jar        JarFile]
-   [java.util            Properties]
-   [java.net             URL URLClassLoader URLConnection]
-   [java.util.concurrent ConcurrentLinkedQueue LinkedBlockingQueue TimeUnit]
-   [java.nio.file        Files])
+    [java.util.jar        JarFile]
+    [java.util            Properties]
+    [java.net             URL URLClassLoader URLConnection]
+    [java.util.concurrent ConcurrentLinkedQueue LinkedBlockingQueue TimeUnit]
+    [java.nio.file        Files])
   (:refer-clojure :exclude [add-classpath]))
 
 (defn extract-ids
@@ -382,12 +383,23 @@
       (alter-var-root #'*ns* (constantly (the-ns 'pod)))
       (clojure.core/refer-clojure))))
 
+(defn default-dependencies
+  [deps {:keys [dependencies] :as env}]
+  (let [not-given (set/difference (set (map first deps))
+                                  (set (map first dependencies)))
+        dfl-deps  (vec (filter (comp not-given first) deps))]
+    (assoc env :dependencies (into dfl-deps dependencies))))
+
 (defn make-pod
   ([] (init-pod! (boot.App/newPod)))
-  ([{:keys [directories] :as env}]
+  ([{:keys [directories dependencies] :as env}]
      (let [dirs (map io/file directories)
-           jars (resolve-dependency-jars env)]
-       (->> (concat dirs jars) (into-array java.io.File) boot.App/newPod (init-pod! env)))))
+           dfl  [['boot/pod (boot.App/getBootVersion)]
+                 ['org.clojure/clojure (clojure-version)]]
+           env  (default-dependencies dfl env)
+           jars (resolve-dependency-jars env)
+           urls (concat dirs jars)]
+       (->> urls (into-array java.io.File) boot.App/newShim (init-pod! env)))))
 
 (defn destroy-pod
   [pod]
