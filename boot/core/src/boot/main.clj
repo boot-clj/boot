@@ -1,12 +1,14 @@
 (ns boot.main
+  (:import
+    [boot App])
   (:require
-   [clojure.java.io             :as io]
-   [clojure.string              :as string]
-   [boot.pod                    :as pod]
-   [boot.core                   :as core]
-   [boot.file                   :as file]
-   [boot.util                   :as util]
-   [boot.from.clojure.tools.cli :as cli]))
+    [clojure.java.io             :as io]
+    [clojure.string              :as string]
+    [boot.pod                    :as pod]
+    [boot.core                   :as core]
+    [boot.file                   :as file]
+    [boot.util                   :as util]
+    [boot.from.clojure.tools.cli :as cli]))
 
 (def cli-opts
   [["-a" "--asset-paths PATH"    "Add PATH to set of asset directories."
@@ -115,9 +117,14 @@
               core/*boot-version* (boot.App/getBootVersion)
               core/*app-version*  (boot.App/getVersion)]
       (util/exit-ok
-        (let [userscript  (-> (System/getProperty "user.home")
-                              (io/file ".profile.boot")
-                              exists?)
+        (let [userscript  (util/with-let [x (-> (System/getProperty "user.home")
+                                                (io/file ".profile.boot")
+                                                exists?)]
+                            (when x
+                              (util/warn "** WARNING: ~/.profile.boot is deprecated.\n")
+                              (util/warn "** Please use $BOOT_HOME/profile.boot instead.\n")
+                              (util/warn "** See: https://github.com/boot-clj/boot/issues/157\n")))
+              userscript  (or userscript (exists? (io/file (App/getBootDir) "profile.boot")))
               verbosity   (if (:quiet opts)
                             (* -1 @util/*verbosity*)
                             (or (:verbose opts) 0))

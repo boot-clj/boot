@@ -287,7 +287,7 @@
        .getCanonicalFile
        file/split-path
        (when-not global)
-       (into [(App/getBootDir) "cache" (if global "global" "project")])
+       (into [(App/getBootDir) "cache" "cache" (if global "global" "project")])
        (#(into % ((juxt namespace name) key)))
        (apply io/file)
        (#(doto % .mkdirs))))
@@ -517,7 +517,7 @@
        .getCanonicalFile
        file/split-path
        rest
-       (apply io/file (App/getBootDir) "tmp")
+       (apply io/file (App/getBootDir) "cache" "tmp")
        tmp/registry
        tmp/init!
        (reset! tmpregistry))

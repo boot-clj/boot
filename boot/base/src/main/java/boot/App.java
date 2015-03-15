@@ -279,9 +279,12 @@ public class App {
         if (bhome != null) bootdir = new File(bhome);
         else bootdir = new File(new File(homed), ".boot");
         
+        File bootcache = new File(bootdir, "cache");
+        bootcache.mkdirs();
+
         File projectprops = new File("boot.properties");
-        File bootprops    = new File(bootdir, "boot.properties");
-        File jardir       = new File(new File(bootdir, "lib"), appversion);
+        File bootprops    = new File(bootcache, "boot.properties");
+        File jardir       = new File(new File(bootcache, "lib"), appversion);
         aetherfile        = new File(jardir, aetherjar);
 
         jardir.mkdirs();
@@ -311,7 +314,7 @@ public class App {
             System.err.printf("#App version: %s\n", appversion);
             System.exit(0); }
 
-        File cachedir  = new File(new File(new File(new File(bootdir, "cache"), dir_l), cljversion), bootversion);
+        File cachedir  = new File(new File(new File(new File(bootcache, "cache"), dir_l), cljversion), bootversion);
         File cachefile = new File(cachedir, "deps.cache");
         
         cachedir.mkdirs();
