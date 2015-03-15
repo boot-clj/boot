@@ -319,7 +319,6 @@
           (util/dbug "Unpacking %s from %s (caching %s)...\n"
                      path (.getName (io/file jar)) (if cache "on" "off"))
           (copy-url url out :cache false)
-          (util/warn "%s\n" (slurp out))
           (catch Exception err
             (util/warn "Error while extracting %s: %s\n" url err)))))))
 
