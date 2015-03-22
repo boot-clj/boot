@@ -234,7 +234,7 @@
   If no port is specified the server will choose a random one and the client
   will read the .nrepl-port file and use that.
 
-  The *default-middleware* and *default-dependencies* atoms in the boot.repl-server
+  The *default-middleware* and *default-dependencies* atoms in the boot.repl
   namespace contain vectors of default REPL middleware and REPL dependencies to
   be loaded when starting the server. You may modify these in your build.boot
   file."
