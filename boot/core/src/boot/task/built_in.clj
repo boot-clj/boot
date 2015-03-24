@@ -3,6 +3,7 @@
    [clojure.java.io      :as io]
    [clojure.set          :as set]
    [clojure.string       :as string]
+   [clojure.pprint       :as pp]
    [boot.pod             :as pod]
    [boot.git             :as git]
    [boot.file            :as file]
@@ -159,12 +160,13 @@
    U update-snapshots bool "Include snapshot versions in updates searches."
    u updates          bool "Print newer releases of outdated dependencies."]
 
-  (let [updates (or updates update-snapshots)]
+  (let [updates (or updates update-snapshots)
+        pretty-str #(with-out-str (pp/pprint %))]
     (core/with-pre-wrap fileset'
       (cond
         deps           (print (pod/with-call-worker (boot.aether/dep-tree ~(core/get-env))))
-        env            (println (pr-str (core/get-env)))
-        fileset        (println (pr-str fileset'))
+        env            (println (pretty-str (core/get-env)))
+        fileset        (println (pretty-str fileset'))
         classpath      (println (or (System/getProperty "boot.class.path") ""))
         fake-classpath (println (or (System/getProperty "fake.class.path") ""))
         updates        (mapv prn (pod/outdated (core/get-env) :snapshots update-snapshots))
