@@ -1,4 +1,4 @@
-# Boot [![Build Status][5]][6] [![Stories in Ready][waffle-badge]][waffle-board]
+# Boot [![Build Status](https://travis-ci.org/boot-clj/boot.svg?branch=master)](https://travis-ci.org/boot-clj/boot) [![Stories in Ready][waffle-badge]][waffle-board]
 
 Boot is a Clojure build framework and ad-hoc Clojure script evaluator. Boot
 provides a runtime environment that includes all of the tools needed to build
