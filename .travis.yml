@@ -1,0 +1,4 @@
+language: java
+
+install: make deps
+script: make install
