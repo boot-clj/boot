@@ -12,19 +12,16 @@
    [java.util.jar JarFile]
    [org.sonatype.aether.resolution DependencyResolutionException]))
 
-(def offline?   (atom false))
-(def update?    (atom :daily))
-(def local-repo (atom nil))
+(def offline?             (atom false))
+(def update?              (atom :daily))
+(def local-repo           (atom nil))
+(def default-repositories (atom [["clojars"       "https://clojars.org/repo/"]
+                                 ["maven-central" "https://repo1.maven.org/maven2/"]]))
 
 (defn set-offline!    [x] (reset! offline? x))
 (defn set-update!     [x] (reset! update? x))
 (defn update-always!  []  (set-update! :always))
 (defn set-local-repo! [x] (reset! local-repo x))
-
-(defn default-repositories
-  []
-  [["clojars"       "https://clojars.org/repo/"]
-   ["maven-central" "https://repo1.maven.org/maven2/"]])
 
 (defn transfer-listener
   [{type :type meth :method {name :name repo :repository} :resource err :error}]
@@ -65,7 +62,7 @@
   (try
     (aether/resolve-dependencies
       :coordinates       (:dependencies env)
-      :repositories      (->> (or (:repositories env) (default-repositories))
+      :repositories      (->> (or (:repositories env) @default-repositories)
                            (map (juxt first (fn [[x y]] (if (map? y) y {:url y}))))
                            (map (juxt first (fn [[x y]] (update-in y [:update] #(or % @update?))))))
       :local-repo        (or (:local-repo env) @local-repo nil)
