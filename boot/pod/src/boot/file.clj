@@ -24,7 +24,20 @@
 (defn path [f] (.getPath (io/file f)))
 (defn name [f] (.getName (io/file f)))
 (defn parent [f] (.getParentFile (io/file f)))
-(defn file-seq [dir] (when dir (clojure.core/file-seq dir)))
+
+(defn file-seq
+  [dir & {:keys [follow-symlinks]
+          :or   {follow-symlinks true}}]
+  (when dir
+    (tree-seq
+      (fn [^java.io.File f]
+        (and (.isDirectory f)
+             (or follow-symlinks
+                 (not (Files/isSymbolicLink (.toPath f))))))
+      (fn [^java.io.File d] (seq (.listFiles d)))
+      dir)))
+
+(def file-seq-nofollow #(file-seq % :follow-symlinks false))
 
 (defmacro guard [& exprs]
   `(try (do ~@exprs) (catch Throwable _#)))
@@ -41,13 +54,13 @@
 
 (defn clean! [& files]
   (doseq [f files]
-    (doall (->> f io/file file-seq (keep file?) (map delete-file)))))
+    (doall (->> f io/file file-seq-nofollow (keep file?) (map delete-file)))))
 
 (defn empty-dir!
   [& dirs]
   (let [{files true dirs' false}
         (->> (map io/file dirs)
-             (mapcat (comp rest file-seq))
+             (mapcat (comp rest file-seq-nofollow))
              (group-by (memfn isFile)))
         to-rm (concat files (reverse dirs'))]
     (doseq [f to-rm] (delete-file f))))
@@ -55,7 +68,7 @@
 (defn delete-empty-subdirs!
   [dir]
   (let [empty-dir? #(and (.isDirectory %) (empty? (.list %)))
-        subdirs    (->> dir io/file file-seq (filter (memfn isDirectory)))]
+        subdirs    (->> dir io/file file-seq-nofollow (filter (memfn isDirectory)))]
     (doseq [f (reverse subdirs)]
       (when (empty-dir? f) (delete-file f)))))
 
@@ -107,8 +120,8 @@
 
 (defn delete-all
   [dir]
-  (if (exists? dir)
-    (mapv #(.delete %) (reverse (rest (file-seq (io/file dir)))))))
+  (when (exists? dir)
+    (mapv #(.delete %) (-> dir io/file file-seq-nofollow rest reverse))))
 
 (defn hard-link
   [existing-file link-file]
