@@ -134,8 +134,11 @@
 (defn copy-with-lastmod
   [src-file dst-file]
   (let [last-mod (.lastModified src-file)
-        cp-src!  (partial io/copy src-file)]
+        cp-src!  (partial io/copy src-file)
+        dst-par  (.getParent dst-file)]
     (io/make-parents dst-file)
+    (when-not (.canWrite (io/file dst-par))
+      (throw (ex-info (format "Can't write to directory (%s)." dst-par) {:dir dst-par})))
     (when (.exists dst-file) (.delete dst-file))
     (if *hard-link*
       (hard-link src-file dst-file)
