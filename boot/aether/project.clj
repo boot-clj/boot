@@ -6,6 +6,7 @@
 
 (defproject boot/aether version
   :aot :all
+  :jar-exclusions [#"^clojure/"]
   :description  "Boot aether module–performs maven dependency resolution."
   :url          "http://github.com/boot-clj/boot"
   :scm          {:url "https://github.com/boot-clj/boot.git" :dir "../../"}
