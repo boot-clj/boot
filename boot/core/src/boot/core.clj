@@ -709,15 +709,16 @@
 
   where ... are the given body expressions."
   [bind & body]
-  `(fn [next-task#]
-     (fn [fileset#]
-       (assert (tmpd/tmpfileset? fileset#)
-               "argument to task handler not a fileset")
-       (let [~bind fileset#
-             result# (do ~@body)]
-         (assert (tmpd/tmpfileset? result#)
-                 "task handler must return a fileset")
-         (next-task# result#)))))
+  (let [bind (if (vector? bind) (first bind) bind)]
+    `(fn [next-task#]
+       (fn [fileset#]
+         (assert (tmpd/tmpfileset? fileset#)
+                 "argument to task handler not a fileset")
+         (let [~bind fileset#
+               result# (do ~@body)]
+           (assert (tmpd/tmpfileset? result#)
+                   "task handler must return a fileset")
+           (next-task# result#))))))
 
 (defmacro with-post-wrap
   [bind & body]
@@ -733,16 +734,17 @@
             binding)))
 
   where ... are the given body expressions."
-  `(fn [next-task#]
-     (fn [fileset#]
-       (assert (tmpd/tmpfileset? fileset#)
-               "argument to task handler not a fileset")
-       (let [result# (next-task# fileset#)
-             ~bind   result#]
-         (assert (tmpd/tmpfileset? result#)
-                 "task handler must return a fileset")
-         ~@body
-         result#))))
+  (let [bind (if (vector? bind) (first bind) bind)]
+    `(fn [next-task#]
+       (fn [fileset#]
+         (assert (tmpd/tmpfileset? fileset#)
+                 "argument to task handler not a fileset")
+         (let [result# (next-task# fileset#)
+               ~bind   result#]
+           (assert (tmpd/tmpfileset? result#)
+                   "task handler must return a fileset")
+           ~@body
+           result#)))))
 
 (defmacro fileset-reduce
   "Given a fileset, a function get-files that selects files from the fileset,
