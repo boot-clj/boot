@@ -267,10 +267,7 @@
                             (assoc (core/get-env) :dependencies deps)))
                         (require 'boot.repl-server)
                         ((resolve 'boot.repl-server/start-server) srv-opts))
-        repl-cli (delay (when util/cygwin?
-                          (util/set-cygwin-tty)
-                          (core/cleanup (util/restore-cygwin-tty)))
-                        (pod/with-call-worker (boot.repl-client/client ~cli-opts)))]
+        repl-cli (delay (pod/with-call-worker (boot.repl-client/client ~cli-opts)))]
     (comp
       (core/with-pre-wrap fileset
         (when (or server (not client)) @repl-svr)

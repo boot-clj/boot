@@ -1,7 +1,6 @@
 (ns boot.util
   (:require
     [clojure.java.io              :as io]
-    [clojure.java.shell           :as sh]
     [clojure.set                  :as set]
     [clojure.pprint               :as pprint]
     [clojure.string               :as string]
@@ -49,21 +48,6 @@
 (defn info [& more] (print* 1 ansi/bold-white  more))
 (defn warn [& more] (print* 1 ansi/bold-yellow more))
 (defn fail [& more] (print* 1 ansi/bold-red    more))
-
-(def cygwin?
-  (-> (sh/sh "uname" "-s") :out str .trim .toLowerCase (.startsWith "cygwin")))
-
-(defn set-cygwin-tty
-  []
-  (dbug "Setting jline.terminal system property to jline.UnixTerminal on Cygwin...\n")
-  (System/setProperty "jline.terminal" "jline.UnixTerminal")
-  (dbug "Setting TTY to -icanon, min 1, and -echo on Cygwin...\n")
-  (sh/sh "stty" "-icanon" "min" "1" "-echo"))
-
-(defn restore-cygwin-tty
-  []
-  (dbug "Restoring TTY to icanon and echo on Cygwin...\n")
-  (sh/sh "stty" "icanon" "echo"))
 
 (defmacro with-semaphore
   [sem & body]
