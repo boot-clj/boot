@@ -111,12 +111,12 @@
     (mapv #(.delete %) (reverse (rest (file-seq (io/file dir)))))))
 
 (defn hard-link
-  [from-file to-file]
-  (Files/createLink (.toPath to-file) (.toPath from-file)))
+  [existing-file link-file]
+  (Files/createLink (.toPath link-file) (.toPath existing-file)))
 
 (defn sym-link
-  [from-file to-file]
-  (Files/createSymbolicLink (.toPath to-file) (.toPath from-file) (make-array FileAttribute 0)))
+  [target-file link-file]
+  (Files/createSymbolicLink (.toPath link-file) (.toPath target-file) (make-array FileAttribute 0)))
 
 (defn copy-with-lastmod
   [src-file dst-file]
