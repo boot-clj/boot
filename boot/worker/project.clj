@@ -6,6 +6,7 @@
 
 (defproject boot/worker version
   :aot :all
+  :jar-exclusions [#"^clojure/core/"]
   :description  "Boot worker module–this is the worker pod for built-in tasks."
   :url          "http://github.com/boot-clj/boot"
   :scm          {:url "https://github.com/boot-clj/boot.git" :dir "../../"}

@@ -6,7 +6,7 @@
 
 (defproject boot/core version
   :aot          [#"^(?!boot\.repl-server).*$"]
-  :jar-exclusions [#"^clojure/"]
+  :jar-exclusions [#"^clojure/core/"]
   :description  "Core boot module–boot scripts run in this pod."
   :url          "http://github.com/boot-clj/boot"
   :scm          {:url "https://github.com/boot-clj/boot.git" :dir "../../"}
