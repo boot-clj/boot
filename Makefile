@@ -91,10 +91,10 @@ $(bootexe): $(baseuber) launch4j-config.xml
 install: .installed
 
 .deployed: .installed
-	(cd boot/base   && lein deploy clojars boot/base $(version) target/base-$(version).jar pom.xml)
-	(cd boot/pod    && lein deploy clojars)
-	(cd boot/aether && lein deploy clojars)
-	(cd boot/worker && lein deploy clojars)
+	#(cd boot/base   && lein deploy clojars boot/base $(version) target/base-$(version).jar pom.xml)
+	#(cd boot/pod    && lein deploy clojars)
+	#(cd boot/aether && lein deploy clojars)
+	#(cd boot/worker && lein deploy clojars)
 	(cd boot/core   && lein deploy clojars)
 	(cd boot/boot   && lein deploy clojars)
 	date > .deployed
