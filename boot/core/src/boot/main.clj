@@ -104,11 +104,21 @@
                             :else            [nil args*])
         boot?             (contains? #{nil bootscript} arg0)
         [errs opts args]  (if-not boot? [nil {} args] (parse-cli-opts args))
-        arg0              (if (:no-boot-script opts) nil arg0)]
+        arg0              (if (:no-boot-script opts) nil arg0)
+        verbosity         (if (:quiet opts)
+                            (* -1 @util/*verbosity*)
+                            (or (:verbose opts) 0))]
     
     (when (seq errs)
       (util/exit-error
         (println (apply str (interpose "\n" errs)))))
+
+    (when (:no-colors opts)
+      (reset! util/*colorize?* false))
+    (swap! util/*verbosity* + verbosity)
+    (pod/with-eval-in worker-pod
+      (require '[boot.util :as util])
+      (swap! util/*verbosity* + ~verbosity))
 
     (binding [*out*               (util/auto-flush *out*)
               *err*               (util/auto-flush *err*)
@@ -116,6 +126,7 @@
               core/*boot-script*  arg0
               core/*boot-version* (boot.App/getBootVersion)
               core/*app-version*  (boot.App/getVersion)]
+
       (util/exit-ok
         (let [userscript  (util/with-let [x (-> (System/getProperty "user.home")
                                                 (io/file ".profile.boot")
@@ -125,9 +136,6 @@
                               (util/warn "** Please use $BOOT_HOME/profile.boot instead.\n")
                               (util/warn "** See: https://github.com/boot-clj/boot/issues/157\n")))
               userscript  (or userscript (exists? (io/file (App/getBootDir) "profile.boot")))
-              verbosity   (if (:quiet opts)
-                            (* -1 @util/*verbosity*)
-                            (or (:verbose opts) 0))
               profile?    (not (:no-profile opts))
               bootforms   (some->> arg0 slurp util/read-string-all)
               userforms   (when profile?
@@ -139,13 +147,6 @@
               scriptforms (emit boot? args userforms bootforms import-ns)
               scriptstr   (binding [*print-meta* true]
                             (str (string/join "\n\n" (map pr-str scriptforms)) "\n"))]
-
-          (when (:no-colors opts)
-            (reset! util/*colorize?* false))
-          (swap! util/*verbosity* + verbosity)
-          (pod/with-eval-in worker-pod
-            (require '[boot.util :as util])
-            (swap! util/*verbosity* + ~verbosity))
 
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
 
