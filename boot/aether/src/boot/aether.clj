@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io             :as io]
    [clojure.string              :as string]
+   [clojure.pprint              :as pprint]
    [cemerick.pomegranate.aether :as aether]
    [boot.util                   :as util]
    [boot.pod                    :as pod]
@@ -24,7 +25,8 @@
 (defn set-local-repo! [x] (reset! local-repo x))
 
 (defn transfer-listener
-  [{type :type meth :method {name :name repo :repository} :resource err :error}]
+  [{type :type meth :method {name :name repo :repository} :resource err :error :as info}]
+  (util/dbug "Aether: %s\n" (with-out-str (pprint/pprint info)))
   (when (and (.endsWith name ".jar") (= type :started))
     (util/info "Retrieving %s from %s\n" (.getName (io/file name)) repo)))
 
