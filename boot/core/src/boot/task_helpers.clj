@@ -1,11 +1,13 @@
 (ns boot.task-helpers
   (:require
-   [clojure.set               :as set]
-   [clojure.string            :as string]
-   [clojure.stacktrace        :as trace]
-   [boot.pod                  :as pod]
-   [boot.core                 :as core]
-   [boot.file                 :as file]))
+    [clojure.set             :as set]
+    [clojure.string          :as string]
+    [clojure.stacktrace      :as trace]
+    [boot.from.io.aviso.ansi :as ansi]
+    [boot.pod                :as pod]
+    [boot.core               :as core]
+    [boot.file               :as file]
+    [boot.util               :as util]))
 
 (defn- first-line [s] (when s (first (string/split s #"\n"))))
 
@@ -48,3 +50,13 @@
         ~pass
         :keyring ~keyring
         :user-id ~user-id))))
+
+(defn print-fileset
+  [fileset]
+  (letfn [(tree [xs]
+            (when-let [xs (seq (remove nil? xs))]
+              (->> (group-by first xs)
+                   (reduce-kv #(let [t (->> %3 (map (comp seq rest)) tree)]
+                                 (assoc %1 (if (map? t) (ansi/bold-blue %2) %2) t))
+                              (sorted-map-by #(->> %& (map ansi/strip-ansi) (apply compare)))))))]
+    (->> fileset core/ls (map (comp file/split-path core/tmppath)) tree util/print-tree)))

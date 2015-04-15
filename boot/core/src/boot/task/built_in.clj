@@ -166,7 +166,7 @@
       (cond
         deps           (print (pod/with-call-worker (boot.aether/dep-tree ~(core/get-env))))
         env            (println (pretty-str (core/get-env)))
-        fileset        (println (pretty-str fileset'))
+        fileset        (helpers/print-fileset fileset')
         classpath      (println (or (System/getProperty "boot.class.path") ""))
         fake-classpath (println (or (System/getProperty "fake.class.path") ""))
         updates        (mapv prn (pod/outdated (core/get-env) :snapshots update-snapshots))

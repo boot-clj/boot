@@ -141,6 +141,18 @@
     2 (pretty/write-exception *err* ex {:properties true})
     (binding [*out* *err*] (.printStackTrace ex))))
 
+(defn print-tree
+  [tree & [prefixes]]
+  (loop [[[node branch] & more] (seq tree)]
+    (when node
+      (let [pfx      (cond (not prefixes) "" (seq more) "├── " :else "└── ")
+            pfx      (ansi/blue (str (apply str prefixes) pfx))]
+        (println (str pfx node)))
+      (when branch
+        (let [pfx (cond (not prefixes) "" (seq more) "│   " :else "    ")]
+          (print-tree branch (concat prefixes (list pfx)))))
+      (recur more))))
+
 (defn path->ns
   [path]
   (-> path file/split-path (#(string/join "." %))

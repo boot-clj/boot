@@ -141,25 +141,13 @@
   [env]
   (->> env jars-dep-graph ksort/topo-sort reverse))
 
-(defn- print-tree
-  [tree & [prefixes]]
-  (loop [[[coord branch] & more] (seq tree)]
-    (when coord
-      (let [pfx      (cond (not prefixes) "" (seq more) "├── " :else "└── ")
-            pfx      (ansi/blue (str (apply str prefixes) pfx))]
-        (println (str pfx (->> coord pr-str rest butlast (apply str)))))
-      (when branch
-        (let [pfx (cond (not prefixes) "" (seq more) "│   " :else "    ")]
-          (print-tree branch (concat prefixes (list pfx)))))
-      (recur more))))
-
 (defn dep-tree
   "Returns the printed dependency graph as a string."
   [env]
   (->> env
     resolve-dependencies-memoized*
     (aether/dependency-hierarchy (:dependencies env))
-    print-tree
+    util/print-tree
     with-out-str))
 
 (defn install
