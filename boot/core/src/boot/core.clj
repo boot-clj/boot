@@ -684,14 +684,13 @@
   strings then they are treated as if they were given on the command line.
   Otherwise they are assumed to evaluate to task middleware."
   [& argv]
-  (let [->list #(cond (seq? %) % (vector? %) (seq %) :else (list %))
-        ->app  (fn [xs] `(apply comp (filter fn? [~@xs])))]
+  (let [->app (fn [xs] `(apply comp (filter fn? [~@xs])))]
     `(try @(future
              (util/with-let [_# nil]
                (#'run-tasks
                  ~(if (every? string? argv)
                     `(apply #'construct-tasks [~@argv])
-                    (->app (map ->list argv))))))
+                    (->app argv)))))
           (finally (#'do-cleanup!)))))
 
 ;; Low-Level Tasks, Helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
