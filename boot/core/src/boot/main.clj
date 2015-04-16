@@ -14,7 +14,7 @@
   [["-a" "--asset-paths PATH"    "Add PATH to set of asset directories."
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
    ["-b" "--boot-script"         "Print generated boot script for debugging."]
-   ["-B" "--no-boot-script"      "Ignore build.boot file in current directory."]
+   ["-B" "--no-boot-script"      "Ignore boot script in current directory."]
    ["-C" "--no-colors"           "Remove ANSI escape codes from printed output."]
    ["-d" "--dependencies ID:VER" "Add dependency to project (eg. -d foo/bar:1.2.3)."
     :assoc-fn #(let [[p v] (string/split %3 #":" 2)]
@@ -95,7 +95,7 @@
   (let [[arg0 args args*] (if (seq args*)
                             [arg0 args args*]
                             ["--help" nil ["--help"]])
-        bootscript        "build.boot"
+        bootscript        (or (System/getenv "BOOT_FILE") "build.boot")
         exists?           #(when (.isFile (io/file %)) %)
         have-bootscript?  (exists? bootscript)
         [arg0 args]       (cond
