@@ -23,8 +23,8 @@ the ultimate declarative.
 
 Instead of building the project based on a global configuration map,
 boot provides a runtime environment in which a build script written in
-Clojure can be evaluated. It is this script which builds the project–a
-Turing-complete build specification.
+Clojure can be evaluated. It is this script -- a
+Turing-complete build specification -- which builds the project.
 
 ### Features
 
