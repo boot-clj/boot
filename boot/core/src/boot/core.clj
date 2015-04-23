@@ -21,7 +21,7 @@
     [java.lang.management ManagementFactory]
     [java.util.concurrent LinkedBlockingQueue TimeUnit Semaphore]))
 
-(declare watch-dirs sync! post-env! get-env set-env! tmpfile tmp-dir ls)
+(declare watch-dirs sync! post-env! get-env set-env! tmp-file tmp-dir ls)
 
 (declare ^{:dynamic true :doc "The running version of boot app."}        *app-version*)
 (declare ^{:dynamic true :doc "The script's name (when run as script)."} *boot-script*)
@@ -54,7 +54,7 @@
   (let [dirs        (:dirs this)
         has-mask?   #(= %1 (select-keys %2 (keys %1)))
         filter-keys #(->> %1 (filter (partial has-mask? %2)))]
-    (->> masks+ (map masks) (apply merge) (filter-keys dirs) (map tmpfile) set)))
+    (->> masks+ (map masks) (apply merge) (filter-keys dirs) (map tmp-file) set)))
 
 (defn- get-add-dir [this masks+]
   (let [user?  (contains? masks+ :user)
@@ -270,10 +270,10 @@
 
 ;; Tempdir and Fileset API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmacro- deprecate! [was is & [args]]
-  `(defn ^:deprecated ~was
+(defmacro ^:private deprecate! [was is]
+  `(defn ^:deprecated ~was [& args#]
      (util/warn "%s was deprecated, please use %s instead\n" '~was '~is)
-     (~is ~@args)))
+     (apply ~is args#)))
 
 (defn tmp-dir!
   "Creates a boot-managed temporary directory, returning a java.io.File."
