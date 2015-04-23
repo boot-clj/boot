@@ -21,7 +21,7 @@
     [java.lang.management ManagementFactory]
     [java.util.concurrent LinkedBlockingQueue TimeUnit Semaphore]))
 
-(declare watch-dirs sync! post-env! get-env set-env! tmpfile tmpdir ls)
+(declare watch-dirs sync! post-env! get-env set-env! tmpfile tmp-dir ls)
 
 (declare ^{:dynamic true :doc "The running version of boot app."}        *app-version*)
 (declare ^{:dynamic true :doc "The script's name (when run as script)."} *boot-script*)
@@ -63,7 +63,7 @@
 
 (defn- get-files [this masks+]
   (let [dirs (get-dirs this masks+)]
-    (->> this ls (filter (comp dirs tmpdir)) set)))
+    (->> this ls (filter (comp dirs tmp-dir)) set)))
 
 (defn- tmp-dir*
   [key]
@@ -406,7 +406,7 @@
   "Given a fileset and a dest-tmpfile from that fileset, overwrites the dest
   tmpfile with the contents of the java.io.File src-file."
   [fileset ^File src-file dest-tmpfile]
-  (->> (tmpdir dest-tmpfile)
+  (->> (tmp-dir dest-tmpfile)
        (non-user-dir-for fileset)
        (assoc dest-tmpfile :dir)
        (tmpd/cp fileset src-file)))
