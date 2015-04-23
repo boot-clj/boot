@@ -61,7 +61,7 @@
 (defn mkdir!    [this key & [name]] (-mk! this ::dir key name))
 (defn add-sync! [this dst & [srcs]] (doto this (-add-sync! dst srcs)))
 (defn sync!     [this]              (doto this -sync!))
-(defn tmpfile?  [this f]            (-tmpfile? this f))
+(defn tmp-file? [this f]            (-tmpfile? this f))
 
 ;;; tmpregistry implementation
 

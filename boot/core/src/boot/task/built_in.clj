@@ -96,7 +96,7 @@
       (let [diff (->> (core/fileset-diff @prev fileset)
                       core/input-files
                       (filter (comp (set names) core/tmp-path))
-                      (map (juxt core/tmp-path core/tmpfile)))]
+                      (map (juxt core/tmp-path core/tmp-file)))]
         (reset! prev fileset)
         (doseq [[path file] diff]
           (let [tmp (tmps path)]
@@ -514,7 +514,7 @@
                        Diagnostic$Kind/MANDATORY_WARNING util/warn}
             srcs      (some->> (core/input-files fileset)
                                (core/by-ext [".java"])
-                               (map core/tmpfile)
+                               (map core/tmp-file)
                                (into-array File)
                                Arrays/asList
                                (.getJavaFileObjectsFromFiles file-mgr))]
@@ -548,7 +548,7 @@
     (core/with-pre-wrap fileset
       (core/empty-dir! tgt)
       (let [pomprop (->> (core/output-files fileset)
-                         (map core/tmpfile)
+                         (map core/tmp-file)
                          (core/by-name ["pom.properties"])
                          first)
             [aid v] (some->> pomprop
@@ -557,7 +557,7 @@
             jarname (or file (and aid v (str aid "-" v ".jar")) "project.jar")
             jarfile (io/file tgt jarname)]
         (let [entries (core/output-files fileset)
-              index   (->> entries (map (juxt core/tmp-path #(.getPath (core/tmpfile %)))))]
+              index   (->> entries (map (juxt core/tmp-path #(.getPath (core/tmp-file %)))))]
           (util/info "Writing %s...\n" (.getName jarfile))
           (pod/with-call-worker
             (boot.jar/spit-jar! ~(.getPath jarfile) ~index ~manifest ~main))
@@ -582,7 +582,7 @@
                                        (into ["WEB-INF"]))]
                          (if (inf? (first r')) r (.getPath (apply io/file path))))
               entries (core/output-files fileset)
-              index   (->> entries (mapv (juxt ->war #(.getPath (core/tmpfile %)))))]
+              index   (->> entries (mapv (juxt ->war #(.getPath (core/tmp-file %)))))]
           (util/info "Writing %s...\n" (.getName warfile))
           (pod/with-call-worker
             (boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))
@@ -600,7 +600,7 @@
             zipfile (io/file tgt zipname)]
         (when-not (.exists zipfile)
           (let [entries (core/output-files fileset)
-                index   (->> entries (map (juxt core/tmp-path #(.getPath (core/tmpfile %)))))]
+                index   (->> entries (map (juxt core/tmp-path #(.getPath (core/tmp-file %)))))]
             (util/info "Writing %s...\n" (.getName zipfile))
             (pod/with-call-worker
               (boot.jar/spit-zip! ~(.getPath zipfile) ~index))
@@ -621,7 +621,7 @@
       (let [jarfiles (or (and file [(io/file file)])
                          (->> (core/output-files fileset)
                               (core/by-ext [".jar"])
-                              (map core/tmpfile)))]
+                              (map core/tmp-file)))]
         (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
         (doseq [jarfile jarfiles]
           (util/info "Installing %s...\n" (.getName jarfile))
@@ -660,7 +660,7 @@
               r        (get repo-map repo)]
           (when-not (and r (seq jarfiles))
             (throw (Exception. "missing jar file or repo not found")))
-          (doseq [f (map core/tmpfile jarfiles)]
+          (doseq [f (map core/tmp-file jarfiles)]
             (let [{{t :tag} :scm
                    v :version} (pod/with-call-worker (boot.pom/pom-xml-parse ~(.getPath f)))
                   b            (util/guard (git/branch-current))
