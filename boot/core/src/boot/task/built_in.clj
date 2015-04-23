@@ -84,7 +84,7 @@
                    (remove pod/dependency-loaded?))
         names (map (memfn getName) jars)
         dirs  (map (memfn getParent) jars)
-        tmps  (reduce #(assoc %1 %2 (core/temp-dir!)) {} names)]
+        tmps  (reduce #(assoc %1 %2 (core/tmp-dir!)) {} names)]
     (when (seq deps)
       (util/info "Adding checkout dependencies:\n")
       (doseq [dep deps]
@@ -124,7 +124,7 @@
    w warning FILE str "The sound file to play when there are warnings reported."
    f failure FILE str "The sound file to play when the build fails."]
 
-  (let [tmp        (core/temp-dir!)
+  (let [tmp        (core/tmp-dir!)
         resource   #(vector %2 (format "boot/notify/%s_%s.mp3" %1 %2))
         resources  #(map resource (repeat %) ["success" "warning" "failure"])
         themefiles (into {}
@@ -287,7 +287,7 @@
    l license NAME:URL {str str} "The project license map."
    s scm KEY=VAL      {kw str}  "The project scm map (KEY in url, tag)."]
 
-  (let [tgt (core/temp-dir!)]
+  (let [tgt (core/tmp-dir!)]
     (core/with-pre-wrap fileset
       (let [tag  (or (:tag scm) (util/guard (git/last-commit)) "HEAD")
             scm  (when scm (assoc scm :tag tag))
@@ -350,7 +350,7 @@
    v invert                bool        "Invert the sense of matching."]
 
   (core/with-pre-wrap fileset
-    (let [tmp      (core/temp-dir!)
+    (let [tmp      (core/tmp-dir!)
           negate   #(if-not invert % (not %))
           include* (when-not invert include)
           exclude* (when invert include)
@@ -400,7 +400,7 @@
   [u untracked     bool   "Add untracked (but not ignored) files."
    r ref REF       str    "The git reference for the desired file tree."]
 
-  (let [tgt (core/temp-dir!)]
+  (let [tgt (core/tmp-dir!)]
     (core/with-pre-wrap fileset
       (core/empty-dir! tgt)
       (util/info "Adding repo files...\n")
@@ -426,7 +426,7 @@
    s include-scope SCOPE #{str} "The set of scopes to add."
    S exclude-scope SCOPE #{str} "The set of scopes to remove."]
 
-  (let [tgt        (core/temp-dir!)
+  (let [tgt        (core/tmp-dir!)
         dfl-scopes #{"compile" "runtime" "provided"}
         scopes     (-> dfl-scopes
                        (set/union include-scope)
@@ -454,7 +454,7 @@
    c create SYM  sym "The 'create' callback function."
    d destroy SYM sym "The 'destroy' callback function."]
 
-  (let [tgt     (core/temp-dir!)
+  (let [tgt     (core/tmp-dir!)
         xmlfile (io/file tgt "WEB-INF" "web.xml")
         implp   'tailrecursion/clojure-adapter-servlet
         implv   "0.1.0-SNAPSHOT"
@@ -478,7 +478,7 @@
   [a all          bool   "Compile all namespaces."
    n namespace NS #{sym} "The set of namespaces to compile."]
 
-  (let [tgt         (core/temp-dir!)
+  (let [tgt         (core/tmp-dir!)
         pod-env     (update-in (core/get-env) [:directories] conj (.getPath tgt))
         compile-pod (future (pod/make-pod pod-env))]
     (core/with-pre-wrap fileset
@@ -499,7 +499,7 @@
 (core/deftask javac
   "Compile java sources."
   []
-  (let [tgt (core/temp-dir!)]
+  (let [tgt (core/tmp-dir!)]
     (core/with-pre-wrap fileset
       (let [throw?    (atom nil)
             diag-coll (DiagnosticCollector.)
@@ -544,7 +544,7 @@
    M manifest KEY=VAL {str str} "The jar manifest map."
    m main MAIN        sym       "The namespace containing the -main function."]
 
-  (let [tgt (core/temp-dir!)]
+  (let [tgt (core/tmp-dir!)]
     (core/with-pre-wrap fileset
       (core/empty-dir! tgt)
       (let [pomprop (->> (core/output-files fileset)
@@ -568,7 +568,7 @@
 
   [f file PATH str "The target war file name."]
 
-  (let [tgt (core/temp-dir!)]
+  (let [tgt (core/tmp-dir!)]
     (core/with-pre-wrap fileset
       (core/empty-dir! tgt)
       (let [warname (or file "project.war")
@@ -593,7 +593,7 @@
 
   [f file PATH str "The target zip file name."]
 
-  (let [tgt (core/temp-dir!)]
+  (let [tgt (core/tmp-dir!)]
     (core/with-pre-wrap fileset
       (core/empty-dir! tgt)
       (let [zipname (or file "project.zip")
@@ -649,7 +649,7 @@
    T ensure-tag TAG       str  "The SHA1 of the commit the pom's scm tag must contain."
    V ensure-version VER   str  "The version the jar's pom must contain."]
 
-  (let [tgt (core/temp-dir!)]
+  (let [tgt (core/tmp-dir!)]
     (core/with-pre-wrap fileset
       (util/with-let [_ fileset]
         (core/empty-dir! tgt)

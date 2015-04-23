@@ -65,21 +65,21 @@
   (let [dirs (get-dirs this masks+)]
     (->> this ls (filter (comp dirs tmpdir)) set)))
 
-(defn- temp-dir*
+(defn- tmp-dir*
   [key]
   (tmp/mkdir! @tmpregistry key))
 
 (def ^:private new-fileset
   (memoize
     (fn []
-      (boot.tmpdir.TmpFileSet. @tempdirs {} (temp-dir* ::blob)))))
+      (boot.tmpdir.TmpFileSet. @tempdirs {} (tmp-dir* ::blob)))))
 
-(defn- temp-dir**
+(defn- tmp-dir**
   [key & masks+]
   (let [k (or key (keyword "boot.core" (str (gensym))))
         m (->> masks+ (map masks) (apply merge))
         in-fileset? (or (:input m) (:output m))]
-    (util/with-let [d (temp-dir* k)]
+    (util/with-let [d (tmp-dir* k)]
       (when in-fileset?
         (let [t (tmpd/map->TmpDir (assoc m :dir d))]
           (swap! tempdirs conj t)
@@ -278,7 +278,7 @@
 (defn tmp-dir!
   "Creates a boot-managed temporary directory, returning a java.io.File."
   []
-  (temp-dir** nil :cache))
+  (tmp-dir** nil :cache))
 (deprecate! temp-dir! tmp-dir!)
 
 (defn cache-dir!
@@ -544,12 +544,12 @@
                                 ["maven-central" "https://repo1.maven.org/maven2/"]]})
     (add-watch ::boot #(configure!* %3 %4)))
   (set-fake-class-path!)
-  (temp-dir** nil :asset)
-  (temp-dir** nil :source)
-  (temp-dir** nil :resource)
-  (temp-dir** nil :user :asset)
-  (temp-dir** nil :user :source)
-  (temp-dir** nil :user :resource)
+  (tmp-dir** nil :asset)
+  (tmp-dir** nil :source)
+  (tmp-dir** nil :resource)
+  (tmp-dir** nil :user :asset)
+  (tmp-dir** nil :user :source)
+  (tmp-dir** nil :user :resource)
   (pod/add-shutdown-hook! do-cleanup!))
 
 (defmulti post-env!
