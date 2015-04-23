@@ -860,7 +860,7 @@
   [mkpred]
   (fn [criteria files & [negate?]]
     (let [tmp?   (partial satisfies? tmpd/ITmpFile)
-          ->file #(if (tmp? %) (io/file (tmppath %)) (io/file %))]
+          ->file #(if (tmp? %) (io/file (tmp-path %)) (io/file %))]
       ((if negate? remove filter)
        #(some identity ((apply juxt (map mkpred criteria)) (->file %))) files))))
 

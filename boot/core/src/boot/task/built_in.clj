@@ -95,8 +95,8 @@
     (core/with-pre-wrap fileset
       (let [diff (->> (core/fileset-diff @prev fileset)
                       core/input-files
-                      (filter (comp (set names) core/tmppath))
-                      (map (juxt core/tmppath core/tmpfile)))]
+                      (filter (comp (set names) core/tmp-path))
+                      (map (juxt core/tmp-path core/tmpfile)))]
         (reset! prev fileset)
         (doseq [[path file] diff]
           (let [tmp (tmps path)]
@@ -357,18 +357,18 @@
           keep?    (partial file/keep-filters? include* exclude*)
           mvpath   (partial reduce-kv #(string/replace %1 %2 %3))
           mover    #(or (and (not move) %1)
-                        (let [from-path (core/tmppath %2)
+                        (let [from-path (core/tmp-path %2)
                               to-path   (mvpath from-path move)]
                           (core/mv %1 from-path to-path)))
           findany  #(reduce (fn [xs x] (or (re-find x %2) xs)) false %1)
-          match?   #(and %1 (negate (findany %1 (core/tmppath %2))))
+          match?   #(and %1 (negate (findany %1 (core/tmp-path %2))))
           to-src   #(if-not (match? to-source   %2) %1 (core/mv-source   %1 [%2]))
           to-rsc   #(if-not (match? to-resource %2) %1 (core/mv-resource %1 [%2]))
           to-ast   #(if-not (match? to-asset    %2) %1 (core/mv-asset    %1 [%2]))
-          remover  #(if (keep? (io/file (core/tmppath %2))) %1 (core/rm %1 [%2]))
+          remover  #(if (keep? (io/file (core/tmp-path %2))) %1 (core/rm %1 [%2]))
           pathfor  #(-> (fn [p] (negate (re-find %1 p)))
-                        (filter (map core/tmppath (core/ls %2))))
-          pathfor  #(filter (partial re-find %1) (map core/tmppath (core/ls %2)))
+                        (filter (map core/tmp-path (core/ls %2))))
+          pathfor  #(filter (partial re-find %1) (map core/tmp-path (core/ls %2)))
           addmeta  #(-> (fn [meta-map re key]
                           (-> (fn [meta-map path]
                                 (assoc-in meta-map [path key] true))
@@ -484,7 +484,7 @@
     (core/with-pre-wrap fileset
       (core/empty-dir! tgt)
       (let [nses (->> (core/input-files fileset)
-                      (map core/tmppath)
+                      (map core/tmp-path)
                       (filter #(.endsWith % ".clj"))
                       (map util/path->ns)
                       (filter #(or all (contains? namespace %)))
@@ -557,7 +557,7 @@
             jarname (or file (and aid v (str aid "-" v ".jar")) "project.jar")
             jarfile (io/file tgt jarname)]
         (let [entries (core/output-files fileset)
-              index   (->> entries (map (juxt core/tmppath #(.getPath (core/tmpfile %)))))]
+              index   (->> entries (map (juxt core/tmp-path #(.getPath (core/tmpfile %)))))]
           (util/info "Writing %s...\n" (.getName jarfile))
           (pod/with-call-worker
             (boot.jar/spit-jar! ~(.getPath jarfile) ~index ~manifest ~main))
@@ -574,7 +574,7 @@
       (let [warname (or file "project.war")
             warfile (io/file tgt warname)
             inf?    #(contains? #{"META-INF" "WEB-INF"} %)]
-        (let [->war   #(let [r    (core/tmppath %)
+        (let [->war   #(let [r    (core/tmp-path %)
                              r'   (file/split-path r)
                              path (->> (if (.endsWith r ".jar")
                                          ["lib" (last r')]
@@ -600,7 +600,7 @@
             zipfile (io/file tgt zipname)]
         (when-not (.exists zipfile)
           (let [entries (core/output-files fileset)
-                index   (->> entries (map (juxt core/tmppath #(.getPath (core/tmpfile %)))))]
+                index   (->> entries (map (juxt core/tmp-path #(.getPath (core/tmpfile %)))))]
             (util/info "Writing %s...\n" (.getName zipfile))
             (pod/with-call-worker
               (boot.jar/spit-zip! ~(.getPath zipfile) ~index))

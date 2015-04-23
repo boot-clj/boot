@@ -59,4 +59,4 @@
                    (reduce-kv #(let [t (->> %3 (map (comp seq rest)) tree)]
                                  (assoc %1 (if (map? t) (ansi/bold-blue %2) %2) t))
                               (sorted-map-by #(->> %& (map ansi/strip-ansi) (apply compare)))))))]
-    (->> fileset core/ls (map (comp file/split-path core/tmppath)) tree util/print-tree)))
+    (->> fileset core/ls (map (comp file/split-path core/tmp-path)) tree util/print-tree)))
