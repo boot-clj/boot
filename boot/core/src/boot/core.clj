@@ -270,10 +270,16 @@
 
 ;; Tempdir and Fileset API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn temp-dir!
+(defmacro- deprecate! [was is & [args]]
+  `(defn ^:deprecated ~was
+     (util/warn "%s was deprecated, please use %s instead\n" '~was '~is)
+     (~is ~@args)))
+
+(defn tmp-dir!
   "Creates a boot-managed temporary directory, returning a java.io.File."
   []
   (temp-dir** nil :cache))
+(deprecate! temp-dir! tmp-dir!)
 
 (defn cache-dir!
   "Returns a directory which is managed by boot but whose contents will not be
@@ -294,34 +300,39 @@
 
 ;; TmpFile API
 
-(defn tmppath
+(defn tmp-path
   "Returns the tmpfile's path relative to the fileset root."
   [tmpfile]
   (tmpd/path tmpfile))
+(deprecate! tmppath tmp-path)
 
-(defn tmpdir
+(defn tmp-dir
   "Returns the temporary directory containing the tmpfile."
   [tmpfile]
   (tmpd/dir tmpfile))
+(deprecate! tmpdir tmp-dir)
 
-(defn tmpfile
+(defn tmp-file
   "Returns the java.io.File object for the tmpfile."
   [tmpfile]
   (tmpd/file tmpfile))
+(deprecate! tmpfile tmp-file)
 
-(defn tmptime
+(defn tmp-time
   "Returns the last modified timestamp for the tmpfile."
   [tmpfile]
   (tmpd/time tmpfile))
+(deprecate! tmptime tmp-time)
 
 ;; TmpFileSet API
 
-(defn tmpget
+(defn tmp-get
   "Given a fileset and a path, returns the associated TmpFile record. If the
   not-found argument is specified and the TmpFile is not in the fileset then
   not-found is returned, otherwise nil."
   [fileset path & [not-found]]
   (get-in fileset [:tree path] not-found))
+(deprecate! tmpget tmp-get)
 
 (defn user-dirs
   "Get a list of directories containing files that originated in the project's
