@@ -655,12 +655,13 @@
         (core/empty-dir! tgt)
         (let [jarfiles (or (and file [(io/file file)])
                            (->> (core/output-files fileset)
-                                (core/by-ext [".jar"])))
+                                (core/by-ext [".jar"])
+                                (map core/tmp-file)))
               repo-map (->> (core/get-env :repositories) (into {}))
               r        (get repo-map repo)]
           (when-not (and r (seq jarfiles))
             (throw (Exception. "missing jar file or repo not found")))
-          (doseq [f (map core/tmp-file jarfiles)]
+          (doseq [f jarfiles]
             (let [{{t :tag} :scm
                    v :version} (pod/with-call-worker (boot.pom/pom-xml-parse ~(.getPath f)))
                   b            (util/guard (git/branch-current))
