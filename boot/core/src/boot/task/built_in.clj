@@ -635,19 +635,20 @@
   look for jar files created by the build pipeline. The jar file(s) must contain
   pom.xml entries."
 
-  [f file PATH            str  "The jar file to deploy."
-   g gpg-sign             bool "Sign jar using GPG private key."
-   k gpg-user-id NAME     str  "The name used to find the GPG key."
-   K gpg-keyring PATH     str  "The path to secring.gpg file to use for signing."
-   p gpg-passphrase PASS  str  "The passphrase to unlock GPG signing key."
-   r repo ALIAS           str  "The alias of the deploy repository."
-   t tag                  bool "Create git tag for this version."
-   B ensure-branch BRANCH str  "The required current git branch."
-   C ensure-clean         bool "Ensure that the project git repo is clean."
-   R ensure-release       bool "Ensure that the current version is not a snapshot."
-   S ensure-snapshot      bool "Ensure that the current version is a snapshot."
-   T ensure-tag TAG       str  "The SHA1 of the commit the pom's scm tag must contain."
-   V ensure-version VER   str  "The version the jar's pom must contain."]
+  [f file PATH            str      "The jar file to deploy."
+   F file-regex MATCH     #{regex} "The set of regexes of paths to deploy."
+   g gpg-sign             bool     "Sign jar using GPG private key."
+   k gpg-user-id NAME     str      "The name used to find the GPG key."
+   K gpg-keyring PATH     str      "The path to secring.gpg file to use for signing."
+   p gpg-passphrase PASS  str      "The passphrase to unlock GPG signing key."
+   r repo ALIAS           str      "The alias of the deploy repository."
+   t tag                  bool     "Create git tag for this version."
+   B ensure-branch BRANCH str      "The required current git branch."
+   C ensure-clean         bool     "Ensure that the project git repo is clean."
+   R ensure-release       bool     "Ensure that the current version is not a snapshot."
+   S ensure-snapshot      bool     "Ensure that the current version is a snapshot."
+   T ensure-tag TAG       str      "The SHA1 of the commit the pom's scm tag must contain."
+   V ensure-version VER   str      "The version the jar's pom must contain."]
 
   (let [tgt (core/tmp-dir!)]
     (core/with-pre-wrap fileset
@@ -655,12 +656,14 @@
         (core/empty-dir! tgt)
         (let [jarfiles (or (and file [(io/file file)])
                            (->> (core/output-files fileset)
-                                (core/by-ext [".jar"])))
+                                (core/by-ext [".jar"])
+                                ((if (seq file-regex) #(core/by-re file-regex %) identity))
+                                (map core/tmp-file)))
               repo-map (->> (core/get-env :repositories) (into {}))
               r        (get repo-map repo)]
           (when-not (and r (seq jarfiles))
             (throw (Exception. "missing jar file or repo not found")))
-          (doseq [f (map core/tmp-file jarfiles)]
+          (doseq [f jarfiles]
             (let [{{t :tag} :scm
                    v :version} (pod/with-call-worker (boot.pom/pom-xml-parse ~(.getPath f)))
                   b            (util/guard (git/branch-current))
