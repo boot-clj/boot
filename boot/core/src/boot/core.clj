@@ -690,19 +690,19 @@
     (let [fs (commit! (reset-fileset))]
       ((task-stack #(do (sync-target fs %) (sync-user-dirs!) %)) fs))))
 
-(defmacro boot
+(defn boot
   "The REPL equivalent to the command line 'boot'. If all arguments are
   strings then they are treated as if they were given on the command line.
   Otherwise they are assumed to evaluate to task middleware."
   [& argv]
-  (let [->app (fn [xs] `(apply comp (filter fn? [~@xs])))]
-    `(try @(future
-             (util/with-let [_# nil]
-               (#'run-tasks
-                 ~(if (every? string? argv)
-                    `(apply #'construct-tasks [~@argv])
-                    (->app argv)))))
-          (finally (#'do-cleanup!)))))
+  (try @(future ;; see issue #6
+          (util/with-let [_ nil]
+            (run-tasks
+              (cond (every? fn? argv)     (apply comp argv)
+                    (every? string? argv) (apply construct-tasks argv)
+                    :else (throw (IllegalArgumentException.
+                                   "Arguments must be either all strings or all fns"))))))
+       (finally (do-cleanup!))))
 
 ;; Low-Level Tasks, Helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
