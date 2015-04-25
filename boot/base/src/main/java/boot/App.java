@@ -258,6 +258,14 @@ public class App {
         return (Map<String, String>) worker.get().invoke("boot.github/latest-boot-release"); }
 
     public static void
+    printVersion() throws Exception {
+        Properties p = new Properties();
+        p.setProperty("BOOT_VERSION", bootversion);
+        p.setProperty("BOOT_CLOJURE_VERSION", cljversion);
+        p.store(System.out, propComment());
+        System.err.printf("#App version: %s\n", appversion); }
+
+    public static void
     main(String[] args) throws Exception {
         appversion       = readVersion();
         localrepo        = System.getenv("BOOT_LOCAL_REPO");
@@ -310,11 +318,7 @@ public class App {
         if (args.length > 0
             && ((args[0]).equals("-V")
                 || (args[0]).equals("--version"))) {
-            Properties p = new Properties();
-            p.setProperty("BOOT_VERSION", bootversion);
-            p.setProperty("BOOT_CLOJURE_VERSION", cljversion);
-            p.store(System.out, propComment());
-            System.err.printf("#App version: %s\n", appversion);
+            printVersion();
             System.exit(0); }
 
         File cachedir  = new File(new File(new File(new File(bootcache, "cache"), dir_l), cljversion), bootversion);

@@ -108,7 +108,7 @@
         verbosity         (if (:quiet opts)
                             (* -1 @util/*verbosity*)
                             (or (:verbose opts) 0))]
-    
+
     (when (seq errs)
       (util/exit-error
         (println (apply str (interpose "\n" errs)))))
@@ -149,6 +149,8 @@
                             (str (string/join "\n\n" (map pr-str scriptforms)) "\n"))]
 
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
+
+          (when (:version opts) (util/exit-ok (boot.App/printVersion)))
 
           (#'core/init!)
 
