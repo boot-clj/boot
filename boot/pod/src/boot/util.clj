@@ -45,7 +45,7 @@
       (flush))))
 
 (defn dbug [& more] (print* 2 ansi/bold-cyan   more))
-(defn info [& more] (print* 1 ansi/bold-white  more))
+(defn info [& more] (print* 1 ansi/bold        more))
 (defn warn [& more] (print* 1 ansi/bold-yellow more))
 (defn fail [& more] (print* 1 ansi/bold-red    more))
 
