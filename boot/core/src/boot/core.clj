@@ -1,19 +1,20 @@
 (ns boot.core
   "The boot core API."
   (:require
-    [clojure.java.io             :as io]
-    [clojure.set                 :as set]
-    [clojure.walk                :as walk]
-    [clojure.repl                :as repl]
-    [clojure.string              :as string]
-    [boot.pod                    :as pod]
-    [boot.git                    :as git]
-    [boot.cli                    :as cli2]
-    [boot.file                   :as file]
-    [boot.tmpregistry            :as tmp]
-    [boot.tmpdir                 :as tmpd]
-    [boot.util                   :as util]
-    [boot.from.clojure.tools.cli :as cli])
+    [clojure.java.io              :as io]
+    [clojure.set                  :as set]
+    [clojure.walk                 :as walk]
+    [clojure.repl                 :as repl]
+    [clojure.string               :as string]
+    [boot.pod                     :as pod]
+    [boot.git                     :as git]
+    [boot.cli                     :as cli2]
+    [boot.file                    :as file]
+    [boot.tmpregistry             :as tmp]
+    [boot.tmpdir                  :as tmpd]
+    [boot.util                    :as util]
+    [boot.from.io.aviso.exception :as ex]
+    [boot.from.clojure.tools.cli  :as cli])
   (:import
     [boot App]
     [java.io File]
@@ -271,9 +272,12 @@
 ;; Tempdir and Fileset API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro ^:private deprecate! [was is]
-  `(defn ^:deprecated ~was [& args#]
-     (util/warn "%s was deprecated, please use %s instead\n" '~was '~is)
-     (apply ~is args#)))
+  `(let [msg# (format "%s was deprecated, please use %s instead\n" '~was '~is)
+         warn# (delay (util/warn msg#))]
+     (defn ^:deprecated ~was [& args#]
+       @warn#
+       (util/dbug (ex/format-exception (Exception. msg#)))
+       (apply ~is args#))))
 
 (defn tmp-dir!
   "Creates a boot-managed temporary directory, returning a java.io.File."
