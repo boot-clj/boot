@@ -132,6 +132,17 @@
          (throw e#)
          (exit-error (print-ex e#))))))
 
+(defmacro with-err-str
+  "Evaluates exprs in a context in which *err* is bound to a fresh
+  StringWriter.  Returns the string created by any nested printing
+  calls.
+  http://stackoverflow.com/questions/17314128/get-stacktrace-as-string"
+  [& body]
+  `(let [s# (new java.io.StringWriter)]
+     (binding [*err* s#]
+       ~@body
+       (str s#))))
+
 (defn print-ex
   [ex]
   (case @*verbosity*
