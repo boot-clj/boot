@@ -450,14 +450,16 @@
 
   The --serve option is required. The others are optional."
 
-  [s serve SYM   sym "The 'serve' callback function."
-   c create SYM  sym "The 'create' callback function."
-   d destroy SYM sym "The 'destroy' callback function."]
+  [s serve           SYM sym "The 'serve' callback function."
+   c create          SYM sym "The 'create' callback function."
+   d destroy         SYM sym "The 'destroy' callback function."
+   C context-create  SYM sym "The context 'create' callback function, called when the servlet is first loaded by the container."
+   D context-destroy SYM sym "The context 'destroyed' callback function, called when the servlet is unloaded by the container."]
 
   (let [tgt     (core/tmp-dir!)
         xmlfile (io/file tgt "WEB-INF" "web.xml")
         implp   'tailrecursion/clojure-adapter-servlet
-        implv   "0.1.0-SNAPSHOT"
+        implv   "0.2.0"
         classes #"^tailrecursion/.*\.(class|clj)$"
         webxml  (delay
                   (util/info "Adding servlet impl...\n")
@@ -465,7 +467,12 @@
                     (core/get-env) tgt [implp implv] classes)
                   (util/info "Writing %s...\n" (.getName xmlfile))
                   (pod/with-call-worker
-                    (boot.web/spit-web!  ~(.getPath xmlfile) ~serve ~create ~destroy)))]
+                    (boot.web/spit-web! ~(.getPath xmlfile)
+                                        ~serve
+                                        ~create
+                                        ~destroy
+                                        ~context-create
+                                        ~context-destroy)))]
     (core/with-pre-wrap fileset
       (assert (and (symbol? serve) (namespace serve))
               (format "serve function must be namespaced symbol (%s)" serve))
