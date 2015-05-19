@@ -1,4 +1,6 @@
 (ns boot.xml
+  "DEPRECATED: Utility functions for working with XML."
+  {:deprecated "2.0.0"}
   (:require
    [clojure.java.io              :as io]
    [clojure.xml                  :as xml]

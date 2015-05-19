@@ -28,6 +28,6 @@
                  [mvxcvi/clj-pgp              "0.5.4"]
                  [net.java.dev.jna/jna        "4.1.0"]
                  [alandipert/desiderata       "1.0.2"]
-                 [org.clojure/data.xml        "0.0.7"]
+                 [org.clojure/data.xml        "0.0.8"]
                  [org.clojure/data.zip        "0.1.1"]
                  [org.clojure/tools.namespace "0.2.7"]])
