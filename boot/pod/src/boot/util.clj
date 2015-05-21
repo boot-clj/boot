@@ -171,13 +171,12 @@
 
 (defn auto-flush
   [writer]
-  (let [fmt #(if @*colorize?*
-               identity
-               (fn [s] (if (string? s)
-                         (ansi/strip-ansi s)
-                         s)))]
+  (let [strip? #(and (not @*colorize?*) (string? %))
+        strip  #(fn [s] (if (strip? s) (ansi/strip-ansi s) s))]
     (proxy [java.io.PrintWriter] [writer]
-      (write [s] (.write writer ((fmt) s)) (flush)))))
+      (write [s]
+        (.write writer ((strip) s))
+        (.flush writer)))))
 
 (defn extract-ids
   [sym]
