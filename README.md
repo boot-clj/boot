@@ -51,6 +51,10 @@ Binaries in executable format are available. Follow the instructions for your
 operating system (note: boot requires the Java Development Kit (JDK) version
 1.7 or greater).
 
+#### OSX with [Homebrew](https://github.com/homebrew/homebrew)
+
+    brew install boot-clj
+
 #### Unix, Linux, OSX
 
 Download [boot.sh][2], then:
