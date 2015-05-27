@@ -39,7 +39,7 @@
                 "context-destroy" context-destroy)
        [:servlet-mapping {}
         [:servlet-name {} name]
-        [:url-pattern {} [:url-pattern {} "/*"]]]]
+        [:url-pattern {} "/*"]]]
       splice
       xml/sexp-as-element
       xml/indent-str))
