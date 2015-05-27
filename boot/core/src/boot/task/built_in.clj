@@ -102,7 +102,9 @@
           (let [tmp (tmps path)]
             (core/empty-dir! tmp)
             (util/info "Checking out %s...\n" path)
-            (pod/unpack-jar (.getPath file) tmp :cache false :exclude [#"^META-INF/"])))
+            (pod/unpack-jar (.getPath file) tmp
+              :cache false
+              :exclude pod/standard-jar-exclusions)))
         (->> tmps vals (reduce core/add-source fileset) core/commit!)))))
 
 (core/deftask speak
@@ -420,11 +422,27 @@
   scope options may be used to add or remove scope(s) from this set.
 
   The as-jars option pulls in dependency jars without exploding them, such that
-  the jarfiles themselves are copied into the fileset."
+  the jarfiles themselves are copied into the fileset.
 
-  [j as-jars             bool   "Copy entire jar files instead of exploding them."
-   s include-scope SCOPE #{str} "The set of scopes to add."
-   S exclude-scope SCOPE #{str} "The set of scopes to remove."]
+  When jars are exploded, the include and exclude options control what paths are
+  added to the uberjar, with a path only being added if it matches an include
+  regex and does not match any exclude regexes. exclude defaults to:
+
+      #{#\"(?i)^META-INF/[^/]*\\.(MF|SF|RSA|DSA)$\"
+        #\"^((?i)META-INF)/.*pom\\.(properties|xml)$\"
+        #\"(?i)^META-INF/INDEX.LIST$\"}
+
+  And include-path defaults to:
+
+      #{#\".*\"}
+
+  Setting the include or exclude options replaces the appropriate default."
+
+  [j as-jars             bool     "Copy entire jar files instead of exploding them."
+   s include-scope SCOPE #{str}   "The set of scopes to add."
+   S exclude-scope SCOPE #{str}   "The set of scopes to remove."
+   i include       MATCH #{regex} "The set of regexes that paths must match."
+   e exclude       MATCH #{regex} "The set of regexes that paths must not match."]
 
   (let [tgt        (core/tmp-dir!)
         dfl-scopes #{"compile" "runtime" "provided"}
@@ -440,7 +458,9 @@
                      (doseq [jar jars]
                        (if as-jars
                          (file/copy-with-lastmod jar (io/file tgt (.getName jar)))
-                         (pod/unpack-jar jar tgt :exclude [#"^META-INF/"]))))]
+                         (pod/unpack-jar jar tgt
+                           :include include
+                           :exclude (or exclude pod/standard-jar-exclusions)))))]
     (core/with-pre-wrap fileset
       @add-uber
       (-> fileset (core/add-resource tgt) core/commit!))))
