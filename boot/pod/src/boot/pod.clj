@@ -310,6 +310,11 @@
   [path-or-jarfile & {:keys [cache] :or {cache true}}]
   ((if cache jar-entries-memoized* jar-entries*) path-or-jarfile))
 
+(def standard-jar-exclusions
+  #{#"(?i)^META-INF/[^/]*\.(MF|SF|RSA|DSA)$"
+    #"^((?i)META-INF)/.*pom\.(properties|xml)$"
+    #"(?i)^META-INF/INDEX.LIST$"})
+
 (defn unpack-jar
   [jar dir & {:keys [include exclude cache] :or {cache true}}]
   (doseq [[path url] (jar-entries jar :cache cache)]
