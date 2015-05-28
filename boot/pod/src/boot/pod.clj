@@ -1,6 +1,6 @@
 (ns boot.pod
   (:require
-    [clojure.set               :as set]
+    [clojure.set                :as set]
     [boot.util                  :as util]
     [boot.file                  :as file]
     [boot.from.backtick         :as bt]
@@ -12,7 +12,8 @@
     [java.util            Properties]
     [java.net             URL URLClassLoader URLConnection]
     [java.util.concurrent ConcurrentLinkedQueue LinkedBlockingQueue TimeUnit]
-    [java.nio.file        Files])
+    [java.io              File]
+    [java.nio.file        Files StandardCopyOption])
   (:refer-clojure :exclude [add-classpath]))
 
 (defn extract-ids
@@ -315,8 +316,33 @@
     #"^((?i)META-INF)/.*pom\.(properties|xml)$"
     #"(?i)^META-INF/INDEX.LIST$"})
 
+(defn into-merger [prev new out]
+  (let [read' (comp read-string slurp io/reader)]
+    (-> (read' prev)
+      (into (read' new))
+      pr-str
+      (io/copy out))))
+
+(defn first-wins-merger [prev _ out]
+  (io/copy prev out))
+
+(def standard-jar-mergers
+  [[#"data_readers.clj$" into-merger]
+   [#".*"                first-wins-merger]])
+
+(defn merge-duplicate-jar-entry [mergers curr-file new-path new-url]
+  (when-let [merger (some (fn [[re v]] (when (re-find re new-path) v)) mergers)]
+    (let [out-file (File/createTempFile (.getName curr-file) nil
+                     (.getParentFile curr-file))]
+      (with-open [curr-stream (io/input-stream curr-file)
+                  new-stream  (io/input-stream new-url)
+                  out-stream  (io/output-stream out-file)]
+        (merger curr-stream new-stream out-stream))
+      (Files/move (.toPath out-file) (.toPath curr-file)
+        (into-array [StandardCopyOption/REPLACE_EXISTING])))))
+
 (defn unpack-jar
-  [jar dir & {:keys [include exclude cache] :or {cache true}}]
+  [jar dir & {:keys [include exclude mergers cache] :or {cache true}}]
   (doseq [[path url] (jar-entries jar :cache cache)]
     (let [out   (io/file dir path)
           keep? (partial file/keep-filters? include exclude)]
@@ -324,7 +350,9 @@
         (try
           (util/dbug "Unpacking %s from %s (caching %s)...\n"
                      path (.getName (io/file jar)) (if cache "on" "off"))
-          (copy-url url out :cache false)
+          (if (.exists out)
+            (merge-duplicate-jar-entry mergers out path url)
+            (copy-url url out :cache false))
           (catch Exception err
             (util/warn "Error while extracting %s: %s\n" url err)))))))
 
