@@ -436,13 +436,27 @@
 
       #{#\".*\"}
 
-  Setting the include or exclude options replaces the appropriate default."
+  If exploding the jars results in duplicate entries, they will be merged using
+  the rules specified by the merge option. A merge rule is a [regex fn] pair,
+  where fn takes three parameters: an InputStream for the previous entry, an
+  InputStream of the new entry, and an OutputStream that will replace the entry.
+  merge defaults to:
 
-  [j as-jars             bool     "Copy entire jar files instead of exploding them."
-   s include-scope SCOPE #{str}   "The set of scopes to add."
-   S exclude-scope SCOPE #{str}   "The set of scopes to remove."
-   i include       MATCH #{regex} "The set of regexes that paths must match."
-   e exclude       MATCH #{regex} "The set of regexes that paths must not match."]
+      [[#\"data_readers.clj$\" boot.pod/into-merger]
+       [#\".*\"                boot.pod/first-wins-merger]]
+
+  The merge rule regular expressions are tested in order, and the fn from the
+  first match is applied.
+
+  Setting the include, exclude, or merge options replaces the appropriate
+  default."
+
+  [j as-jars                bool           "Copy entire jar files instead of exploding them."
+   s include-scope SCOPE    #{str}         "The set of scopes to add."
+   S exclude-scope SCOPE    #{str}         "The set of scopes to remove."
+   i include       MATCH    #{regex}       "The set of regexes that paths must match."
+   e exclude       MATCH    #{regex}       "The set of regexes that paths must not match."
+   m merge         REGEX=FN [[regex code]] "The list of duplicate file mergers."]
 
   (let [tgt        (core/tmp-dir!)
         dfl-scopes #{"compile" "runtime" "provided"}
@@ -460,7 +474,8 @@
                          (file/copy-with-lastmod jar (io/file tgt (.getName jar)))
                          (pod/unpack-jar jar tgt
                            :include include
-                           :exclude (or exclude pod/standard-jar-exclusions)))))]
+                           :exclude (or exclude pod/standard-jar-exclusions)
+                           :mergers (or merge pod/standard-jar-mergers)))))]
     (core/with-pre-wrap fileset
       @add-uber
       (-> fileset (core/add-resource tgt) core/commit!))))
