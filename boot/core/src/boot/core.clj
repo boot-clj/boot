@@ -169,12 +169,6 @@
       (false? form)
       (try (read-string (pr-str form)) (catch Throwable _))))
 
-(defn- rm-clojure-dep
-  "Remove the org.clojure/clojure dependency (if one exists) from a Maven
-  dependencies vector."
-  [deps]
-  (vec (remove (comp (partial = 'org.clojure/clojure) first) deps)))
-
 (defn load-data-readers!
   "Refresh *data-readers* with readers from newly acquired dependencies."
   []
@@ -210,7 +204,7 @@
   (assert (vector? new) "env :dependencies must be a vector")
   (let [new (pod/apply-global-exclusions (:exclusions env) new)]
     (report-version-conflicts (find-version-conflicts old new env))
-    (->> new rm-clojure-dep (assoc env :dependencies) pod/add-dependencies)
+    (->> new (assoc env :dependencies) pod/add-dependencies)
     (set-fake-class-path!)
     new))
 
