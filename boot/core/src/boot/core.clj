@@ -180,7 +180,6 @@
    when resolving the 'old' dependency vector and the 'new' dependency vector"
   [old new env]
   (let [resolve-deps (fn [deps] (->> deps
-                                     rm-clojure-dep
                                      (assoc env :dependencies)
                                      pod/resolve-dependencies
                                      (map (juxt (comp first :dep) (comp second :dep)))
