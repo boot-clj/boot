@@ -494,7 +494,7 @@
   (let [tgt     (core/tmp-dir!)
         xmlfile (io/file tgt "WEB-INF" "web.xml")
         implp   'tailrecursion/clojure-adapter-servlet
-        implv   "0.2.0"
+        implv   "0.2.1"
         classes #"^tailrecursion/.*\.(class|clj)$"
         webxml  (delay
                   (util/info "Adding servlet impl...\n")
