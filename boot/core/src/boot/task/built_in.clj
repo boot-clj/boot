@@ -452,8 +452,9 @@
   InputStream of the new entry, and an OutputStream that will replace the entry.
   merge defaults to:
 
-      [[#\"data_readers.clj$\" boot.pod/into-merger]
-       [#\".*\"                boot.pod/first-wins-merger]]
+      [[#\"data_readers.clj$\"    into-merger]
+       [#\"META-INF/services/.*\" concat-merger]
+       [#\".*\"                   first-wins-merger]]
 
   The merge rule regular expressions are tested in order, and the fn from the
   first match is applied.
