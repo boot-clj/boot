@@ -314,6 +314,10 @@
   files into resource files, for example, etc. If --invert is also specified
   the transformation is done to paths that DO NOT match.
 
+  The --add-asset, --add-resource, and --add-source options add the contents
+  of a directory to the fileset as assets, resources, or sources, respectively.
+  The --invert option has no effect on these options.
+
   The --add-jar option extracts the contents of a jar file on the classpath
   and adds them to the fileset. The PROJECT part of the argument specifies the
   group-id/artifact-id symbol associated with the jar, and the MATCH portion
@@ -344,6 +348,9 @@
   [a to-asset MATCH        #{regex}    "The set of regexes of paths to move to assets."
    r to-resource MATCH     #{regex}    "The set of regexes of paths to move to resources."
    s to-source MATCH       #{regex}    "The set of regexes of paths to move to sources."
+   A add-asset PATH        #{str}      "The set of directory paths to add to assets."
+   R add-resource PATH     #{str}      "The set of directory paths to add to resources."
+   S add-source PATH       #{str}      "The set of directory paths to add to sources."
    j add-jar PROJECT:MATCH {sym regex} "The map of jar to path regex of entries in jar to unpack."
    w with-meta KEY         #{kw}       "The set of metadata keys files must have."
    M add-meta MATCH:KEY    {regex kw}  "The map of path regex to meta key to add."
@@ -388,6 +395,9 @@
           (util/info "Adding jar entries from %s...\n" (.getName (io/file jar)))
           (pod/unpack-jar jar tmp :include inc :exclude exc)))
       (-> fileset
+          ((partial reduce core/add-asset)    (map io/file add-asset))
+          ((partial reduce core/add-resource) (map io/file add-resource))
+          ((partial reduce core/add-source)   (map io/file add-source))
           (core/fileset-reduce core/ls remover to-src to-rsc to-ast mover withmeta)
           (#(core/add-meta % (addmeta %)))
           (core/add-resource tmp)
