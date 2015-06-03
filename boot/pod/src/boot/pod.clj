@@ -323,12 +323,19 @@
       pr-str
       (io/copy out))))
 
+(defn concat-merger [prev new out]
+  (let [read' (comp slurp io/reader)]
+    (-> (read' prev)
+        (str \newline (read' new))
+        (io/copy out))))
+
 (defn first-wins-merger [prev _ out]
   (io/copy prev out))
 
 (def standard-jar-mergers
-  [[#"data_readers.clj$" into-merger]
-   [#".*"                first-wins-merger]])
+  [[#"data_readers.clj$"    into-merger]
+   [#"META-INF/services/.*" concat-merger]
+   [#".*"                   first-wins-merger]])
 
 (defn merge-duplicate-jar-entry [mergers curr-file new-path new-url]
   (when-let [merger (some (fn [[re v]] (when (re-find re new-path) v)) mergers)]
