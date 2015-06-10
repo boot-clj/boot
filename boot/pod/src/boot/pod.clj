@@ -337,16 +337,19 @@
    [#"META-INF/services/.*" concat-merger]
    [#".*"                   first-wins-merger]])
 
-(defn merge-duplicate-jar-entry [mergers curr-file new-path new-url]
-  (when-let [merger (some (fn [[re v]] (when (re-find re new-path) v)) mergers)]
-    (let [out-file (File/createTempFile (.getName curr-file) nil
-                     (.getParentFile curr-file))]
-      (with-open [curr-stream (io/input-stream curr-file)
-                  new-stream  (io/input-stream new-url)
-                  out-stream  (io/output-stream out-file)]
-        (merger curr-stream new-stream out-stream))
-      (Files/move (.toPath out-file) (.toPath curr-file)
-        (into-array [StandardCopyOption/REPLACE_EXISTING])))))
+(defn merge-duplicate-jar-entry
+  [mergers curr-file new-path new-url & {:keys [merged-url]}]
+  (let [merged-url (or merged-url curr-file)]
+    (when-let [merger (some (fn [[re v]] (when (re-find re new-path) v)) mergers)]
+      (util/dbug "Merging duplicate jar entry (%s)\n" new-path)
+      (let [out-file (File/createTempFile (.getName curr-file) nil
+                                          (.getParentFile curr-file))]
+        (with-open [curr-stream (io/input-stream curr-file)
+                    new-stream  (io/input-stream new-url)
+                    out-stream  (io/output-stream out-file)]
+          (merger curr-stream new-stream out-stream))
+        (Files/move (.toPath out-file) (.toPath merged-url)
+                    (into-array [StandardCopyOption/REPLACE_EXISTING]))))))
 
 (defn unpack-jar
   [jar dir & {:keys [include exclude mergers cache] :or {cache true}}]

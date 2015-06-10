@@ -4,6 +4,7 @@
     [clojure.java.io  :as io]
     [clojure.set      :as set]
     [clojure.data     :as data]
+    [boot.pod         :as pod]
     [boot.util        :as util]
     [boot.file        :as file]
     [boot.from.digest :as digest]))
@@ -19,7 +20,7 @@
   (ls      [this])
   (commit! [this])
   (rm      [this paths])
-  (add     [this dest-dir src-dir])
+  (add     [this dest-dir src-dir opts])
   (add-tmp [this dest-dir tmpfiles])
   (mv      [this from-path to-path])
   (cp      [this src-file dest-tmpfile]))
@@ -72,9 +73,15 @@
           treefiles (set (vals tree))
           remove?   (->> tmpfiles set (set/difference treefiles) complement)]
       (assoc this :tree (reduce-kv #(if (remove? %3) %1 (assoc %1 %2 %3)) {} tree))))
-  (add [this dest-dir src-dir]
+  (add [this dest-dir src-dir opts]
     (assert ((set (map file dirs)) dest-dir)
             (format "dest-dir not in dir set (%s)" dest-dir))
+    (when-let [mergers (:mergers opts)]
+      (doseq [tmpf (ls this)]
+        (let [[p f] ((juxt path file) tmpf)
+              out   (io/file src-dir p)]
+          (when (.exists out)
+            (pod/merge-duplicate-jar-entry mergers f p out :merged-url out)))))
     (let [{:keys [dirs tree blob]} this
           src-tree (-> #(assoc %1 %2 (assoc %3 :dir dest-dir))
                        (reduce-kv {} (dir->tree src-dir)))]

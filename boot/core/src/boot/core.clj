@@ -87,9 +87,9 @@
           (when (:input t)
             (set-env! :directories #(conj % (.getPath (:dir t))))))))))
 
-(defn- add-user-asset    [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :asset}) dir))
-(defn- add-user-source   [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :source}) dir))
-(defn- add-user-resource [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :resource}) dir))
+(defn- add-user-asset    [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :asset}) dir {}))
+(defn- add-user-source   [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :source}) dir {}))
+(defn- add-user-resource [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :resource}) dir {}))
 
 (defn- user-temp-dirs     [] (get-dirs {:dirs @tempdirs} #{:user}))
 (defn- user-asset-dirs    [] (get-dirs {:dirs @tempdirs} #{:user :asset}))
@@ -410,8 +410,8 @@
 
 (defn add-asset
   "Add the contents of the java.io.File dir to the fileset's assets."
-  [fileset ^File dir]
-  (tmpd/add fileset (get-add-dir fileset #{:asset}) dir))
+  [fileset ^File dir & {:keys [mergers] :as opts}]
+  (tmpd/add fileset (get-add-dir fileset #{:asset}) dir opts))
 
 (defn mv-asset
   "FIXME: document"
@@ -420,8 +420,8 @@
 
 (defn add-source
   "Add the contents of the java.io.File dir to the fileset's sources."
-  [fileset ^File dir]
-  (tmpd/add fileset (get-add-dir fileset #{:source}) dir))
+  [fileset ^File dir & {:keys [mergers] :as opts}]
+  (tmpd/add fileset (get-add-dir fileset #{:source}) dir opts))
 
 (defn mv-source
   "FIXME: document"
@@ -430,7 +430,8 @@
 
 (defn add-resource
   "Add the contents of the java.io.File dir to the fileset's resources."
-  [fileset ^File dir] (tmpd/add fileset (get-add-dir fileset #{:resource}) dir))
+  [fileset ^File dir & {:keys [mergers] :as opts}]
+  (tmpd/add fileset (get-add-dir fileset #{:resource}) dir opts))
 
 (defn mv-resource
   "FIXME: document"
