@@ -4,6 +4,7 @@
     [boot.util                  :as util]
     [boot.file                  :as file]
     [boot.from.backtick         :as bt]
+    [boot.from.digest           :as digest]
     [clojure.java.io            :as io]
     [dynapath.util              :as dp]
     [dynapath.dynamic-classpath :as cp])
@@ -361,8 +362,12 @@
           (util/dbug "Unpacking %s from %s (caching %s)...\n"
                      path (.getName (io/file jar)) (if cache "on" "off"))
           (if (.exists out)
-            (merge-duplicate-jar-entry mergers out path url)
-            (copy-url url out :cache false))
+            (let [pre (digest/md5 out)]
+              (merge-duplicate-jar-entry mergers out path url)
+              (when (not= pre (digest/md5 out))
+                (.setLastModified out (.getLastModified (.openConnection (URL. url))))))
+            (do (copy-url url out :cache false)
+                (.setLastModified out (.getLastModified (.openConnection (URL. url))))))
           (catch Exception err
             (util/warn "Error while extracting %s: %s\n" url err)))))))
 
@@ -383,7 +388,10 @@
                 jar-entries
                 (filter (comp keep? first))
                 (map (fn [[k v]] [v (.getPath (io/file outdir k))])))]
-    (doseq [[url-str out-path] ents] (copy-url url-str out-path))))
+    (doseq [[url-str out-path] ents]
+      (copy-url url-str out-path)
+      (-> (io/file out-path)
+          (.setLastModified (-> (URL. url-str) .openConnection .getLastModified))))))
 
 (defn lifecycle-pool
   [size create destroy & {:keys [priority]}]
