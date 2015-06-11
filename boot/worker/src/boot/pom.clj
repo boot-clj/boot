@@ -34,8 +34,17 @@
      :scm         {:url (util/guard (xml1-> z :scm :url text))
                    :tag (util/guard (xml1-> z :scm :tag text))}}))
 
-(defn pom-xml [{p :project v :version d :description l :license
-                {su :url st :tag} :scm u :url deps :dependencies :as env}]
+(defn pom-xml [{p :project
+                v :version
+                d :description
+                l :license
+                {su :url
+                 st :tag
+                 sc :connection
+                 sd :developerConnection} :scm
+                u :url
+                deps :dependencies
+                :as env}]
   (let [[g a] (util/extract-ids p)
         ls    (map (fn [[name url]] {:name name :url url}) l)]
     (project
@@ -55,9 +64,12 @@
             (url      lu)
             (name     ln)
             (comments lc))))
-      (scm
-        (url su)
-        (tag (or st "HEAD")))
+      (when (or su st sc sd)
+        (scm
+          (when sc (connection sc))
+          (when sd (developerConnection sd))
+          (when su (url su))
+          (when st (tag st))))
       (dependencies
         (for [[p v & {es :exclusions s :scope}] deps
               :let [[g a] (util/extract-ids p)]]

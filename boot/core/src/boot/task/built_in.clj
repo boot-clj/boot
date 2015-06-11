@@ -291,7 +291,7 @@
 
   (let [tgt (core/tmp-dir!)]
     (core/with-pre-wrap fileset
-      (let [tag  (or (:tag scm) (util/guard (git/last-commit)) "HEAD")
+      (let [tag  (or (:tag scm) (util/guard (git/last-commit)))
             scm  (when scm (assoc scm :tag tag))
             opts (assoc *opts* :scm scm :dependencies (:dependencies (core/get-env)))]
       (core/empty-dir! tgt)
@@ -734,8 +734,10 @@
                       (format "not a release version (%s)" v))
               (assert (or (not ensure-snapshot) snapshot?)
                       (format "not a snapshot version (%s)" v))
-              (assert (or (not ensure-tag) (= t ensure-tag))
+              (assert (or (not ensure-tag) (not t) (= t ensure-tag))
                       (format "scm tag in pom doesn't match (%s, %s)" t ensure-tag))
+              (when (and ensure-tag (not t))
+                (util/warn "The --ensure-tag option was specified but scm info is missing from pom.xml\n"))
               (assert (or (not ensure-version) (= v ensure-version))
                       (format "jar version doesn't match project version (%s, %s)" v ensure-version))
               (util/info "Deploying %s...\n" (.getName f))
