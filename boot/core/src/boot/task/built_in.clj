@@ -103,7 +103,6 @@
             (core/empty-dir! tmp)
             (util/info "Checking out %s...\n" path)
             (pod/unpack-jar (.getPath file) tmp
-              :cache false
               :exclude pod/standard-jar-exclusions)))
         (->> tmps vals (reduce core/add-source fileset) core/commit!)))))
 

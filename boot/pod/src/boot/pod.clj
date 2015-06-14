@@ -298,11 +298,14 @@
           path (.getPath f)]
       (when (.endsWith path ".jar")
         (when (and (.exists f) (.isFile f))
-          (->> f JarFile. .entries enumeration-seq
-               (keep #(when-not (.isDirectory %)
-                        (let [name (.getName %)]
-                          [name (->> (io/file (io/file (str path "!")) name)
-                                     .toURI .toURL .toString (str "jar:"))])))))))))
+          (with-open [jf (JarFile. f)]
+            (->> (.entries jf)
+                 enumeration-seq
+                 (keep #(when-not (.isDirectory %)
+                          (let [name (.getName %)]
+                            [name (->> (io/file (io/file (str path "!")) name)
+                                       .toURI .toURL .toString (str "jar:"))])))
+                 (into []))))))))
 
 (def jar-entries-memoized* (memoize jar-entries*))
 
@@ -339,37 +342,42 @@
    [#".*"                   first-wins-merger]])
 
 (defn merge-duplicate-jar-entry
-  [mergers curr-file new-path new-url & {:keys [merged-url]}]
+  [mergers curr-file new-path new-stream & {:keys [merged-url]}]
   (let [merged-url (or merged-url curr-file)]
     (when-let [merger (some (fn [[re v]] (when (re-find re new-path) v)) mergers)]
       (util/dbug "Merging duplicate jar entry (%s)\n" new-path)
       (let [out-file (File/createTempFile (.getName curr-file) nil
                                           (.getParentFile curr-file))]
         (with-open [curr-stream (io/input-stream curr-file)
-                    new-stream  (io/input-stream new-url)
                     out-stream  (io/output-stream out-file)]
           (merger curr-stream new-stream out-stream))
         (Files/move (.toPath out-file) (.toPath merged-url)
                     (into-array [StandardCopyOption/REPLACE_EXISTING]))))))
 
 (defn unpack-jar
-  [jar dir & {:keys [include exclude mergers cache] :or {cache true}}]
-  (doseq [[path url] (jar-entries jar :cache cache)]
-    (let [out   (io/file dir path)
-          keep? (partial file/keep-filters? include exclude)]
-      (when (keep? (io/file path))
-        (try
-          (util/dbug "Unpacking %s from %s (caching %s)...\n"
-                     path (.getName (io/file jar)) (if cache "on" "off"))
-          (if (.exists out)
-            (let [pre (digest/md5 out)]
-              (merge-duplicate-jar-entry mergers out path url)
-              (when (not= pre (digest/md5 out))
-                (.setLastModified out (.getLastModified (.openConnection (URL. url))))))
-            (do (copy-url url out :cache false)
-                (.setLastModified out (.getLastModified (.openConnection (URL. url))))))
-          (catch Exception err
-            (util/warn "Error while extracting %s: %s\n" url err)))))))
+  [jar-path dir & {:keys [include exclude mergers]}]
+  (with-open [jf (JarFile. jar-path)]
+    (doseq [entry (enumeration-seq (.entries jf))
+            :when (not (.isDirectory entry))]
+      (let [path     (.getName entry)
+            out-file (io/file dir path)
+            keep?    (partial file/keep-filters? include exclude)]
+        (when (keep? (io/file path))
+          (try
+            (util/dbug "Unpacking %s from %s...\n" path (.getName jf))
+            (if (.exists out-file)
+              (let [pre (digest/md5 out-file)]
+                (with-open [entry-stream (.getInputStream jf entry)]
+                  (merge-duplicate-jar-entry mergers out-file path entry-stream))
+                (when (not= pre (digest/md5 out-file))
+                  (.setLastModified out-file (.getTime entry)))) 
+              (do
+                (with-open [entry-stream (.getInputStream jf entry)
+                            out (io/output-stream (doto (io/file out-file) io/make-parents))]
+                  (io/copy entry-stream out))
+                (.setLastModified out-file (.getTime entry))))
+            (catch Exception err
+              (util/warn "Error while extracting %s:%s: %s\n" jar-path entry err))))))))
 
 (defn jars-dep-graph
   [env]
@@ -383,15 +391,16 @@
   [env outdir coord & regexes]
   (let [keep? (if-not (seq regexes)
                 (constantly true)
-                (apply some-fn (map #(partial re-find %) regexes)))
-        ents  (->> (resolve-dependency-jar env coord)
-                jar-entries
-                (filter (comp keep? first))
-                (map (fn [[k v]] [v (.getPath (io/file outdir k))])))]
-    (doseq [[url-str out-path] ents]
-      (copy-url url-str out-path)
-      (-> (io/file out-path)
-          (.setLastModified (-> (URL. url-str) .openConnection .getLastModified))))))
+                (apply some-fn (map #(partial re-find %) regexes)))]
+    (with-open [jf (JarFile. (resolve-dependency-jar env coord))]
+      (doseq [entry (enumeration-seq (.entries jf))
+              :let [entry-name (.getName entry)]
+              :when (keep? entry-name)]
+        (let [out-file (doto (io/file outdir entry-name) io/make-parents)]
+          (with-open [in (.getInputStream jf entry)
+                      out (io/output-stream out-file)]
+            (io/copy in out))
+          (.setLastModified out-file (.getTime entry)))))))
 
 (defn lifecycle-pool
   [size create destroy & {:keys [priority]}]
