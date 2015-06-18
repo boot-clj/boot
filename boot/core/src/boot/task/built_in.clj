@@ -32,6 +32,7 @@
                  ["" "BOOT_CLOJURE_VERSION"    "The version of Clojure boot will provide (1.6.0)."]
                  ["" "BOOT_HOME"               "Directory where boot stores global state (~/.boot)."]
                  ["" "BOOT_FILE"               "Build script name (build.boot)."]
+                 ["" "BOOT_JAVA_COMMAND"       "Specify the Java executable (java)."]
                  ["" "BOOT_JVM_OPTIONS"        "Specify JVM options (Unix/Linux/OSX only)."]
                  ["" "BOOT_LOCAL_REPO"         "The local Maven repo path (~/.m2/repository)."]
                  ["" "BOOT_VERSION"            "Specify the version of boot core to use."]
