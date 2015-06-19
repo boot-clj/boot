@@ -18,9 +18,9 @@ import org.projectodd.shimdandy.ClojureRuntimeShim;
 
 @SuppressWarnings("unchecked")
 public class App {
-    private static File[]                  podjars     = null;
-    private static File[]                  corejars    = null;
-    private static File[]                  workerjars  = null;
+    private static File[]                  podjars     = new File[0];
+    private static File[]                  corejars    = new File[0];
+    private static File[]                  workerjars  = new File[0];
     private static File                    bootdir     = null;
     private static File                    aetherfile  = null;
     private static HashMap<String, File[]> depsCache   = null;
