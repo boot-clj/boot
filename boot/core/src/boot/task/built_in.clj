@@ -537,14 +537,11 @@
         compile-pod (future (pod/make-pod pod-env))]
     (core/with-pre-wrap fileset
       (core/empty-dir! tgt)
-      (let [nses (->> (core/input-files fileset)
-                      (map core/tmp-path)
-                      (filter #(.endsWith % ".clj"))
-                      (map util/path->ns)
-                      (filter #(or all (contains? namespace %)))
-                      sort)]
+      (let [all-nses (->> fileset core/fileset-namespaces)
+            nses     (->> all-nses (set/intersection (if all all-nses namespace)) sort)]
         (pod/with-eval-in @compile-pod
           (binding [*compile-path* ~(.getPath tgt)]
+            (prn *clojure-version*)
             (doseq [[idx ns] (map-indexed vector '~nses)]
               (boot.util/info "Compiling %s/%s %s...\n" (inc idx) (count '~nses) ns)
               (compile ns)))))

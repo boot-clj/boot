@@ -474,6 +474,12 @@
   [before after & props]
   (apply tmpd/changed before after props))
 
+(defn fileset-namespaces
+  "Returns a set of symbols: the namespaces defined in this fileset."
+  [fileset]
+  (let [dirs (->> fileset input-dirs (map (memfn getPath)))]
+    (set (pod/with-call-worker (boot.namespace/find-namespaces-in-dirs [~@dirs])))))
+
 ;; Tempdir helpers
 
 (defn empty-dir!
