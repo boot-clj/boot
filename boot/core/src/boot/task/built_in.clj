@@ -541,7 +541,6 @@
             nses     (->> all-nses (set/intersection (if all all-nses namespace)) sort)]
         (pod/with-eval-in @compile-pod
           (binding [*compile-path* ~(.getPath tgt)]
-            (prn *clojure-version*)
             (doseq [[idx ns] (map-indexed vector '~nses)]
               (boot.util/info "Compiling %s/%s %s...\n" (inc idx) (count '~nses) ns)
               (compile ns)))))
