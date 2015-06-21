@@ -527,19 +527,29 @@
       (-> fileset (core/add-resource tgt) core/commit!))))
 
 (core/deftask aot
-  "Perform AOT compilation of Clojure namespaces."
+  "Perform AOT compilation of Clojure namespaces.
 
-  [a all          bool   "Compile all namespaces."
-   n namespace NS #{sym} "The set of namespaces to compile."]
+  The exclude option can be used control what source paths should not be
+  compiled, exclude defaults to:
+
+  [#\"data_readers.clj$\"]
+  "
+
+  [a all            bool     "Compile all namespaces."
+   e exclude   PATH [regex]  "The set of regexes that source paths must not match."
+   n namespace NS   #{sym}   "The set of namespaces to compile."]
 
   (let [tgt         (core/tmp-dir!)
         pod-env     (update-in (core/get-env) [:directories] conj (.getPath tgt))
         compile-pod (future (pod/make-pod pod-env))]
     (core/with-pre-wrap fileset
       (core/empty-dir! tgt)
-      (let [nses (->> (core/input-files fileset)
+      (let [exclude? #(->> (or exclude [#"data_readers\.clj$"])
+                           (map (fn [r] (re-find r %))) (some identity) not)
+            nses (->> (core/input-files fileset)
                       (map core/tmp-path)
                       (filter #(.endsWith % ".clj"))
+                      (filter exclude?)
                       (map util/path->ns)
                       (filter #(or all (contains? namespace %)))
                       sort)]
