@@ -548,7 +548,7 @@
 
 (core/deftask javac
   "Compile java sources."
-  []
+  [o options OPTIONS [str] "List of options passed to the java compiler."]
   (let [tgt (core/tmp-dir!)]
     (core/with-pre-wrap fileset
       (let [throw?    (atom nil)
@@ -558,6 +558,7 @@
             file-mgr  (.getStandardFileManager compiler diag-coll nil nil)
             opts      (->> ["-d"  (.getPath tgt)
                             "-cp" (System/getProperty "boot.class.path")]
+                           (concat options)
                            (into-array String) Arrays/asList)
             handler   {Diagnostic$Kind/ERROR util/fail
                        Diagnostic$Kind/WARNING util/warn
