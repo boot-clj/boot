@@ -70,7 +70,7 @@
   [key]
   (tmp/mkdir! @tmpregistry key))
 
-(def ^:private new-fileset
+(def new-fileset
   (memoize
     (fn []
       (boot.tmpdir.TmpFileSet. @tempdirs {} (tmp-dir* ::blob)))))
