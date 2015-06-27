@@ -45,14 +45,17 @@
               (-> [["" ""] ["Usage:" "boot OPTS <task> TASK_OPTS <task> TASK_OPTS ..."]]
                   (table/table :style :none)
                   with-out-str))
-      (printf "%s\nDo `boot <task> -h` to see usage info and TASK_OPTS for <task>.\n"
-              (-> [["" "" ""]]
-                  (into (#'helpers/set-title opts "OPTS:")) (br)
-                  (into (#'helpers/set-title (#'helpers/tasks-table tasks) "Tasks:")) (br)
-                  (into (#'helpers/set-title envs "Env:")) (br)
-                  (into (#'helpers/set-title files "Files:"))
-                  (table/table :style :none)
-                  with-out-str))
+      (printf "%s\n\nDo `boot <task> -h` to see usage info and TASK_OPTS for <task>.\n"
+              (->> (-> [["" "" ""]]
+                       (into (#'helpers/set-title opts "OPTS:")) (br)
+                       (into (#'helpers/set-title (#'helpers/tasks-table tasks) "Tasks:")) (br)
+                       (into (#'helpers/set-title envs "Env:")) (br)
+                       (into (#'helpers/set-title files "Files:"))
+                       (table/table :style :none)
+                       with-out-str
+                       (string/split #"\n"))
+                   (map string/trimr)
+                   (string/join "\n")))
       fileset)))
 
 (core/deftask checkout
@@ -188,7 +191,7 @@
     (core/with-pre-wrap fileset (Thread/sleep time) fileset)))
 
 (core/deftask watch
-  "Call the next handler whenever source and/or resource files change.
+  "Call the next handler when source files change.
 
   Debouncing time is 10ms by default."
 
