@@ -161,6 +161,75 @@
             (pod/with-call-worker (boot.notify/failure! ~theme ~failure))
             (throw t)))))))
 
+(defn ^{:boot/from :jeluard/boot-notify} boot-logo
+  []
+  (let [d (core/tmp-dir!)
+        f (io/file d "logo.png")]
+    (io/copy (io/input-stream (io/resource "boot-logo-3.png")) f)
+    (.getAbsolutePath f)))
+
+(core/deftask ^{:boot/from :jeluard/boot-notify} notify
+  "Aural and visual notifications during build.
+
+  Default audio themes: system (the default), ordinance, and woodblock.
+  New themes can be included via jar dependency with the
+  sound files as resources:
+
+      boot
+      └── notify
+          ├── <theme-name>_failure.mp3
+          ├── <theme-name>_success.mp3
+          └── <theme-name>_warning.mp3
+
+  Sound files specified individually take precedence over theme sounds."
+
+  [a aural                bool      "Play sounds for notification."
+   v visual               bool      "Display notifications visually."
+   T theme       NAME     str       "The audio notification sound theme."
+   s soundfiles  FOO=BAR  {kw str}  "Sound files overriding theme sounds. Keys can be :success, :warning or :failure."
+   m template    FOO=BAR  {kw str}  "Templates overriding default messages. Keys can be :success, :warning or :failure."
+   t title                str       "Title of the notification"
+   i icon                 str       "Full path of the file used as notification icon"
+   p pid                  str       "Unique ID identifying this boot process"]
+
+  (let [tmp        (core/tmp-dir!)
+        resource   #(vector %2 (format "boot/notify/%s_%s.mp3" %1 %2))
+        resources  #(map resource (repeat %) ["success" "warning" "failure"])
+        themefiles (into {}
+                         (let [rs (when theme (resources theme))]
+                           (when (and (seq rs) (every? (comp io/resource second) rs))
+                             (for [[x r] rs]
+                               (let [f (io/file tmp (.getName (io/file r)))]
+                                 (pod/copy-resource r f)
+                                 [(keyword x) (.getPath f)])))))
+        sounds (merge themefiles soundfiles)
+        title (or title "Boot notify")
+        base-message {:title title
+                      :pid (or pid title)
+                      :icon (or icon (boot-logo))}
+        messages (merge {:success "Success!" :warning "%s warning/s" :failure "%s"} template)]
+    (fn [next-task]
+      (fn [fileset]
+        (try
+          (util/with-let [_ (next-task fileset)]
+            (if (zero? @core/*warnings*)
+              (do
+                (when aural
+                  (pod/with-call-worker (boot.notify/success! ~theme ~(:success sounds))))
+                (when visual
+                  (pod/with-call-worker (boot.notify/notify! ~(:success messages) ~base-message))))
+              (do
+                (when aural
+                  (pod/with-call-worker (boot.notify/warning! ~theme ~(deref core/*warnings*) ~(:warning sounds))))
+                (when visual
+                  (pod/with-call-worker (boot.notify/notify! ~(format (:warning messages) (deref core/*warnings*)) ~base-message))))))
+          (catch Throwable t
+            (when aural
+              (pod/with-call-worker (boot.notify/failure! ~theme ~(:failure sounds))))
+            (when visual
+              (pod/with-call-worker (boot.notify/notify! ~(format (:failure messages) (.getMessage t)) ~base-message)))
+            (throw t)))))))
+
 (core/deftask show
   "Print project/build info (e.g. dependency graph, etc)."
 
