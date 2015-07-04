@@ -47,3 +47,40 @@
                 (fn [& _#] (swap! ~warnings inc)))
           ~@body)
        (catch Throwable _ `(do ~@body))))
+
+(defn- ^{:boot/from :jeluard/boot-notify} program-exists?
+  [s]
+  (= 0 (:exit (sh "sh" "-c" (format "command -v %s" s)))))
+
+(defprotocol Notifier
+  (-supported? [this] "Check if this notifier is supported on current platform")
+  (-notify [this m] "Perform the notification"))
+
+(deftype ConsolePrintNotifier
+    []
+  Notifier
+  (-supported? [_] true)
+  (-notify [_ {:keys [message title]}] (printf "%s: %s" title message)))
+
+(deftype TerminalNotifierNotifier
+    []
+  Notifier
+  (-supported? [_] (program-exists? "terminal-notifier"))
+  (-notify [_ {:keys [message title icon pid]}]
+    (sh "terminal-notifier" "-message" message "-title" title "-contentImage" icon "-group" pid)))
+
+(deftype NotifySendNotifier
+    []
+  Notifier
+  (-supported? [_] (program-exists? "notify-send"))
+  (-notify [_ {:keys [message title icon]}] (sh "notify-send" title message "--icon" icon)))
+
+(def ^{:boot/from :jeluard/boot-notify} default-notifier
+  (condp = (System/getProperty "os.name")
+    "Mac OS X" (TerminalNotifierNotifier.)
+    "Linux" (NotifySendNotifier.)
+    (ConsolePrintNotifier.)))
+
+(defn ^{:boot/from :jeluard/boot-notify} notify!
+  [s m]
+  (-notify default-notifier (assoc m :message s)))
