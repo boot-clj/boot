@@ -29,7 +29,7 @@
     (let [tasks (#'helpers/available-tasks 'boot.user)
           opts  (->> main/cli-opts (mapv (fn [[x y z]] ["" (str x " " y) z])))
           envs  [["" "BOOT_AS_ROOT"            "Set to 'yes' to allow boot to run as root."]
-                 ["" "BOOT_CLOJURE_VERSION"    "The version of Clojure boot will provide (1.6.0)."]
+                 ["" "BOOT_CLOJURE_VERSION"    "The version of Clojure boot will provide (1.7.0)."]
                  ["" "BOOT_HOME"               "Directory where boot stores global state (~/.boot)."]
                  ["" "BOOT_FILE"               "Build script name (build.boot)."]
                  ["" "BOOT_JAVA_COMMAND"       "Specify the Java executable (java)."]

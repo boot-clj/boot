@@ -60,7 +60,7 @@ public class App {
         String             c = cljversion;
         String             t = null;
         
-        if (c == null) c = "1.6.0";
+        if (c == null) c = "1.7.0";
         
         if (bootversion != null)
             p.setProperty("BOOT_VERSION", bootversion);
