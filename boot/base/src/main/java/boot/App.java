@@ -282,7 +282,7 @@ public class App {
 
         String dir_l  = (localrepo == null)
             ? "boot/default"
-            : "boot/custom" + (new File(localrepo)).getCanonicalFile().getPath();
+            : "boot/custom/" + (new File(localrepo)).getCanonicalFile().getPath().replaceAll("[:/\\\\]+", "-");
         
         if (clj_v != null) cljversion = clj_v;
         if (boot_v != null) bootversion = boot_v;
