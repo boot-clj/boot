@@ -176,7 +176,12 @@ public class App {
             ensureResourceFile(aetherjar, aetherfile);
             aethershim = newShim(new File[] { aetherfile }); }
         return aethershim; }
-        
+
+    private static String
+    md5hash(String data) throws Exception {
+        java.security.MessageDigest algo = java.security.MessageDigest.getInstance("MD5");
+        return javax.xml.bind.DatatypeConverter.printHexBinary(algo.digest(data.getBytes())); }
+
     public static void
     extractResource(String resource, File outfile) throws Exception {
         ClassLoader  cl  = Thread.currentThread().getContextClassLoader();
@@ -282,7 +287,7 @@ public class App {
 
         String dir_l  = (localrepo == null)
             ? "boot/default"
-            : "boot/custom" + (new File(localrepo)).getCanonicalFile().getPath();
+            : "boot/custom/" + md5hash((new File(localrepo)).getCanonicalFile().getPath());
         
         if (clj_v != null) cljversion = clj_v;
         if (boot_v != null) bootversion = boot_v;
