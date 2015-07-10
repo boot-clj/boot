@@ -881,6 +881,19 @@
   [names files]
   (by-name names files true))
 
+(defn by-path
+  "This function takes two arguments: `paths` and `files`, where `path` is
+  a seq of path strings like `[\"a/b/c/foo.clj\" \"bar.xml\"]` and `files` is
+  a seq of file objects. Returns a seq of the files in `files` which have file
+  paths listed in `paths`."
+  [paths files & [negate?]]
+  ((file-filter #(fn [f] (= (.getPath f) %))) paths files negate?))
+
+(defn not-by-path
+  "This function is the same as `by-path` but negated."
+  [paths files]
+  (by-path paths files true))
+
 (defn by-ext
   "This function takes two arguments: `exts` and `files`, where `exts` is a seq
   of file extension strings like `[\".clj\" \".cljs\"]` and `files` is a seq of
