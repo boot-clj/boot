@@ -455,8 +455,9 @@
   ([] (init-pod! env (boot.App/newPod)))
   ([{:keys [directories dependencies] :as env}]
      (let [dirs (map io/file directories)
+           cljname (or (boot.App/getClojureName) "org.clojure/clojure")
            dfl  [['boot/pod (boot.App/getBootVersion)]
-                 ['org.clojure/clojure (clojure-version)]]
+                 [(symbol cljname) (clojure-version)]]
            env  (default-dependencies dfl env)
            jars (resolve-dependency-jars env)
            urls (concat dirs jars)]

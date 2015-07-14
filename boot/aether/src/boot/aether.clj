@@ -106,9 +106,11 @@
   It returns a Java array of java.io.File objects corresponding to the resolved
   dependencies."
   ([env] (->> env resolve-dependencies (map :jar)))
-  ([sym-str version cljversion]
-     (->> {:dependencies [['org.clojure/clojure cljversion] [(symbol sym-str) version]]}
-       resolve-dependencies (map (comp io/file :jar)) (into-array java.io.File))))
+  ([sym-str version cljversion] (resolve-dependency-jars sym-str version nil cljversion))
+  ([sym-str version cljname cljversion]
+     (let [cljname (or cljname "org.clojure/clojure")]
+       (->> {:dependencies [[(symbol cljname) cljversion] [(symbol sym-str) version]]}
+            resolve-dependencies (map (comp io/file :jar)) (into-array java.io.File)))))
 
 (defn resolve-nontransitive-dependencies
   "Given an env map and a single dependency coordinates vector, resolves the
