@@ -25,6 +25,7 @@ public class App {
     private static File                    aetherfile  = null;
     private static HashMap<String, File[]> depsCache   = null;
     private static String                  cljversion  = null;
+    private static String                  cljname     = null;
     private static String                  bootversion = null;
     private static String                  localrepo   = null;
     private static String                  appversion  = null;
@@ -41,6 +42,7 @@ public class App {
     public static File   getBootDir()     { return bootdir; }
     public static String getVersion()     { return appversion; }
     public static String getBootVersion() { return bootversion; }
+    public static String getClojureName() { return cljname; }
     public static String propComment()    { return booturl; }
 
     public static class Exit extends Exception {
@@ -58,6 +60,7 @@ public class App {
         ClojureRuntimeShim a = aetherShim();
         Properties         p = new Properties();
         String             c = cljversion;
+        String             n = cljname;
         String             t = null;
         
         if (c == null) c = "1.7.0";
@@ -65,11 +68,14 @@ public class App {
         if (bootversion != null)
             p.setProperty("BOOT_VERSION", bootversion);
         else
-            for (File x : resolveDepJars(a, "boot", channel, c))
+            for (File x : resolveDepJars(a, "boot", channel, n, c))
                 if (null != (t = jarVersion(x, "boot-")))
                     p.setProperty("BOOT_VERSION", t);
 
         p.setProperty("BOOT_CLOJURE_VERSION", c);
+
+        if (n != null)
+            p.setProperty("BOOT_CLOJURE_NAME", n);
 
         try (FileOutputStream file = new FileOutputStream(f)) {
                 p.store(file, propComment()); }
@@ -199,16 +205,16 @@ public class App {
     
     public static File[]
     resolveDepJars(ClojureRuntimeShim shim, String sym) {
-        return resolveDepJars(shim, sym, bootversion, cljversion); }
+        return resolveDepJars(shim, sym, bootversion, cljname, cljversion); }
 
     public static File[]
-    resolveDepJars(ClojureRuntimeShim shim, String sym, String bootversion, String cljversion) {
+    resolveDepJars(ClojureRuntimeShim shim, String sym, String bootversion, String cljname, String cljversion) {
         shim.require("boot.aether");
         if (localrepo != null)
             shim.invoke("boot.aether/set-local-repo!", localrepo);
         shim.invoke("boot.aether/update-always!");
         return (File[]) shim.invoke(
-            "boot.aether/resolve-dependency-jars", sym, bootversion, cljversion); }
+            "boot.aether/resolve-dependency-jars", sym, bootversion, cljname, cljversion); }
     
     public static Future<ClojureRuntimeShim>
     newShimFuture(final File[] jars) throws Exception {
@@ -246,7 +252,9 @@ public class App {
     usage() throws Exception {
         System.out.printf("Boot App Version: %s\n", appversion);
         System.out.printf("Boot Lib Version: %s\n", bootversion);
-        System.out.printf("Clojure Version:  %s\n", cljversion); }
+        System.out.printf("Clojure Version:  %s\n", cljversion);
+        if (cljname != null)
+            System.out.printf("Clojure name: %s\n", cljname); }
                 
     public static String
     readVersion() throws Exception {
@@ -267,6 +275,8 @@ public class App {
         Properties p = new Properties();
         p.setProperty("BOOT_VERSION", bootversion);
         p.setProperty("BOOT_CLOJURE_VERSION", cljversion);
+        if (cljname != null)
+            p.setProperty("BOOT_CLOJURE_NAME", cljname);
         p.store(System.out, propComment());
         System.err.printf("#App version: %s\n", appversion); }
 
@@ -279,6 +289,7 @@ public class App {
         String uname     = System.getProperty("user.name");
         String boot_v    = System.getenv("BOOT_VERSION");
         String clj_v     = System.getenv("BOOT_CLOJURE_VERSION");
+        String clj_n     = System.getenv("BOOT_CLOJURE_NAME");
         String asroot    = System.getenv("BOOT_AS_ROOT");
         boolean isUpdate = false;
         
@@ -290,6 +301,7 @@ public class App {
             : "boot/custom/" + md5hash((new File(localrepo)).getCanonicalFile().getPath());
         
         if (clj_v != null) cljversion = clj_v;
+        if (clj_n != null) cljname = clj_n;
         if (boot_v != null) bootversion = boot_v;
         
         if (bhome != null) bootdir = new File(bhome);
@@ -313,11 +325,12 @@ public class App {
             p.store(System.out, propComment());
             System.err.printf("#App version: %s\n", appversion); }
 
-        if (cljversion == null || bootversion == null) {
+        if (cljversion == null || cljname == null || bootversion == null) {
             Properties q = readProps(bootprops, true);
             Properties p = readProps(projectprops, false);
             p = (p == null) ? q : p;
             if (cljversion == null) cljversion = p.getProperty("BOOT_CLOJURE_VERSION");
+            if (cljname == null) cljname = p.getProperty("BOOT_CLOJURE_NAME");
             if (bootversion == null) bootversion = p.getProperty("BOOT_VERSION"); }
         
         if (args.length > 0
