@@ -53,6 +53,12 @@ Binaries in executable format are available. Follow the instructions for your
 operating system (note: boot requires the Java Development Kit (JDK) version
 1.7 or greater).
 
+__Note:__ The following instructions will install the boot.sh/boot.exe wrapper,
+i.e., a very thin shim on top of Maven to load "the real Boot." After you have
+the wrapper installed, you can run `boot -u` at any time to update Boot's JAR
+files and keep up to date. The wrapper itself changes (and thus requires an
+update) much less frequently.
+
 #### OSX with [Homebrew](https://github.com/homebrew/homebrew)
 
     brew install boot-clj
