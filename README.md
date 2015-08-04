@@ -8,7 +8,7 @@ the project.
 > If you have questions or need help, please [visit our Discourse site](http://hoplon.discoursehosting.net/).
 > You can find other developers and users in [the `#hoplon` channel on freenode IRC](http://webchat.freenode.net/?channels=hoplon).
 
-For a change log, see [CHANGES.md](https://github.com/boot-clj/boot/blob/master/changes.md).
+For a change log, see [CHANGES.md](https://github.com/boot-clj/boot/blob/master/CHANGES.md).
 
 ### Another Build Tool?
 
