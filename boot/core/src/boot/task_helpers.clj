@@ -35,21 +35,11 @@
         (->> sym ns-aliases (into base) (mapcat pubs)))
       (filter task?) (sort-by :name) (group-by :ns*) (into (sorted-map)))))
 
-(defn read-pass
-  [prompt]
-  (String/valueOf (.readPassword (System/console) prompt nil)))
-
-(defn sign-jar [out jar pass keyring user-id]
-  (let [prompt (pod/with-call-worker
-                 (boot.pgp/prompt-for ~keyring ~user-id))
-        pass   (or pass (read-pass prompt))]
-    (pod/with-call-worker
-      (boot.pgp/sign-jar
-        ~(.getPath out)
-        ~(.getPath jar)
-        ~pass
-        :keyring ~keyring
-        :user-id ~user-id))))
+(defn sign-jar [out jar]
+  (pod/with-call-worker
+    (boot.pgp/sign-jar
+     ~(.getPath out)
+     ~(.getPath jar))))
 
 (defn print-fileset
   [fileset]
