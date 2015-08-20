@@ -30,6 +30,7 @@
 (declare ^{:dynamic true :doc "Command line options for boot itself."}   *boot-opts*)
 (declare ^{:dynamic true :doc "Count of warnings during build."}         *warnings*)
 
+(def new-build-at "Latest build occured at time." (atom 0))
 (def last-file-change "Last source file watcher update time." (atom 0))
 
 ;; Internal helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -523,6 +524,11 @@
                     (when-not (empty? changed) (callback changed))
                     (recur (util/guard [(.take q)])))))))
           #(.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)))))
+
+(defn rebuild!
+  "Manually trigger build watch."
+  []
+  (reset! new-build-at (System/currentTimeMillis)))
 
 (defn init!
   "Initialize the boot environment. This is normally run once by boot at

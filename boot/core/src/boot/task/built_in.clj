@@ -197,29 +197,32 @@
   Debouncing time is 10ms by default."
 
   [q quiet         bool "Suppress all output from running jobs."
-   v verbose       bool "Print which files have changed."]
+   v verbose       bool "Print which files have changed."
+   M manual        bool "Use a manual trigger instead of a file watcher."]
 
   (pod/require-in @pod/worker-pod "boot.watcher")
   (fn [next-task]
     (fn [fileset]
-      (let [q        (LinkedBlockingQueue.)
-            k        (gensym)
-            return   (atom fileset)
-            srcdirs  (map (memfn getPath) (core/user-dirs fileset))
-            watcher  (apply file/watcher! :time srcdirs)
-            debounce (core/get-env :watcher-debounce)]
+      (let [q            (LinkedBlockingQueue.)
+            k            (gensym)
+            return       (atom fileset)
+            srcdirs      (map (memfn getPath) (core/user-dirs fileset))
+            watcher      (apply file/watcher! :time srcdirs)
+            debounce     (core/get-env :watcher-debounce)
+            watch-target (if manual core/new-build-at core/last-file-change)]
         (.offer q (System/currentTimeMillis))
-        (add-watch core/last-file-change k #(.offer q %4))
-        (core/cleanup (remove-watch core/last-file-change k))
+        (add-watch watch-target k #(.offer q %4))
+        (core/cleanup (remove-watch watch-target k))
         (when-not quiet (util/info "\nStarting file watcher (CTRL-C to quit)...\n\n"))
         (loop [ret (util/guard [(.take q)])]
           (when ret
             (if-let [more (.poll q (or debounce 10) TimeUnit/MILLISECONDS)]
               (recur (conj ret more))
-              (let [start   (System/currentTimeMillis)
-                    etime   #(- (System/currentTimeMillis) start)
-                    changed (watcher)]
-                (when-not (empty? changed)
+              (let [start        (System/currentTimeMillis)
+                    etime        #(- (System/currentTimeMillis) start)
+                    changed      (watcher)
+                    should-fire? (or manual (not (empty? changed)))]
+                (when should-fire?
                   (when verbose
                     (doseq [[op p _] changed]
                       (util/info (format "\u25C9 %s %s\n" op p)))
