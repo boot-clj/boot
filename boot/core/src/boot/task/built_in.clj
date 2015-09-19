@@ -436,7 +436,9 @@
   scope options may be used to add or remove scope(s) from this set.
 
   The as-jars option pulls in dependency jars without exploding them, such that
-  the jarfiles themselves are copied into the fileset.
+  the jarfiles themselves are copied into the fileset. When using as-jars you
+  need a special classloader like a servlet container (e.g. Tomcat, Jetty) that
+  picks up the packaged jars and places them on the classpath.
 
   When jars are exploded, the include and exclude options control what paths are
   added to the uberjar, with a path only being added if it matches an include
