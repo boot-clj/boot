@@ -255,7 +255,8 @@
   [env & {:keys [snapshots]}]
   (with-call-worker (boot.aether/update-always!))
   (let [v+ (if snapshots "(0,)" "RELEASE")]
-    (->> (for [[p v & _ :as coord] (->> env :dependencies (map canonical-coord))]
+    (->> (for [[p v & _ :as coord] (->> env :dependencies (map canonical-coord))
+                                   :when (not (= v "LATEST"))]
            (util/guard
              (let [env' (-> env (assoc :dependencies [(assoc coord 1 v+)]))
                    [p' v' & _ :as coord'] (->> (map :dep (resolve-dependencies env'))
