@@ -491,12 +491,13 @@
         add-uber   (delay
                      (util/info "Adding uberjar entries...\n")
                      (doseq [jar jars]
-                       (if as-jars
-                         (file/copy-with-lastmod jar (io/file tgt (.getName jar)))
-                         (pod/unpack-jar jar tgt
-                           :mergers merge
-                           :include include
-                           :exclude (or exclude pod/standard-jar-exclusions)))))]
+                       (when-not (.endsWith (.getName jar) ".pom")
+                         (if as-jars
+                           (file/copy-with-lastmod jar (io/file tgt (.getName jar)))
+                           (pod/unpack-jar jar tgt
+                             :mergers merge
+                             :include include
+                             :exclude (or exclude pod/standard-jar-exclusions))))))]
     (core/with-pre-wrap fileset
       @add-uber
       (-> fileset (core/add-resource tgt :mergers merge) core/commit!))))
