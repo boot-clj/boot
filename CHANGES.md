@@ -1,5 +1,14 @@
 # Changes
 
+## 2.3.0
+
+- Stop 'boot show -u' from displaying "LATEST" dependencies as out of date.
+- Add boot.core/rebuild! function and add -M,--manual option to watch task to
+  manually trigger rebuild from REPL instead of when source files change.
+- Fix issue where uber task was trying to explode dependencies that have only
+  a pom file and no jar (fixes #292).
+- Improve uber task docstring/help text.
+
 ## 2.2.0
 
 - Add -A/--add-asset, -R/--add-resource, -S/--add-source options to
