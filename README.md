@@ -6,7 +6,7 @@ Clojure projects from scripts written in Clojure that run in the context of
 the project.
 
 > If you have questions or need help, please [visit our Discourse site](http://hoplon.discoursehosting.net/).
-> You can find other developers and users in [the `#hoplon` channel on freenode IRC](http://webchat.freenode.net/?channels=hoplon) and [the `#hoplon` channel on Clojurians Slack](http://clojurians.net/).
+> You can find other developers and users in [the `#hoplon` channel on freenode IRC](http://webchat.freenode.net/?channels=hoplon) and [the `#boot` channel on Clojurians Slack](http://clojurians.net/).
 
 For a change log, see [CHANGES.md](https://github.com/boot-clj/boot/blob/master/CHANGES.md).
 
