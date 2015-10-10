@@ -61,20 +61,20 @@
 
 (core/deftask checkout
   "Checkout dependencies task.
-  
+
   This task facilitates working on a project and its dependencies at the same
   time, by extracting the dependency jar contents into the fileset. Transitive
   dependencies will be added to the class path automatically.
-  
+
   You'll need at least two boot instances---one to build the dependency jar and
   the other to build the project. For example:
-  
+
       $ boot watch pom -p foo/bar -v 1.2.3-SNAPSHOT jar install
-  
+
   to build the dependency jar, and
-  
+
       $ boot repl -s watch checkout -d foo/bar:1.2.3-SNAPSHOT cljs serve
-  
+
   to build the project with the checkout dependency [foo/bar \"1.2.3\"]."
 
   [d dependencies ID:VER [[sym str]] "The vector of checkout dependencies."]
@@ -579,7 +579,7 @@
                                (into-array File)
                                Arrays/asList
                                (.getJavaFileObjectsFromFiles file-mgr))]
-        (when srcs
+        (when (seq? srcs)
           (util/info "Compiling %d Java source files...\n" (count srcs))
           (-> compiler (.getTask *err* file-mgr diag-coll opts nil srcs) .call)
           (doseq [d (.getDiagnostics diag-coll) :let [k (.getKind d)]]
