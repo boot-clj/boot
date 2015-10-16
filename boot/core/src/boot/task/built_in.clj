@@ -579,7 +579,7 @@
                                (into-array File)
                                Arrays/asList
                                (.getJavaFileObjectsFromFiles file-mgr))]
-        (when (seq? srcs)
+        (when (seq srcs)
           (util/info "Compiling %d Java source files...\n" (count srcs))
           (-> compiler (.getTask *err* file-mgr diag-coll opts nil srcs) .call)
           (doseq [d (.getDiagnostics diag-coll) :let [k (.getKind d)]]
