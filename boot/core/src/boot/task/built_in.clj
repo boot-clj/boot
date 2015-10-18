@@ -13,6 +13,7 @@
    [boot.util            :as util]
    [boot.from.table.core :as table]
    [boot.task-helpers    :as helpers]
+   [boot.gpg             :as gpg]
    [boot.pedantic        :as pedantic])
   (:import
    [java.io File]
@@ -684,17 +685,37 @@
 (core/deftask push
   "Deploy jar file to a Maven repository.
 
-  The repo option is required. If the file option is not specified the task will
+  If the file option is not specified the task will
   look for jar files created by the build pipeline. The jar file(s) must contain
-  pom.xml entries."
+  pom.xml entries.
+
+  The repo option is required. The repo option is used to get repository map
+  from Boot envinronment. Additional repo-map option can be used to add
+  options, like credentials, or to provide complete repo-map if Boot
+  envinronment doesn't hold the named repository.
+
+  Repository map special options:
+
+  - `:creds :gpg`
+    - Username and password are read from encrypted file at ~/.boot/credentials.clj.gpg.
+  - `:username :gpg :password :gpg`
+    - Username and password are read from encrypted file at ~/.boot/credentials.clj.gpg.
+  - `:username :env :password :env`
+    - Username is read from envinronment variable `BOOT_{{REPO_NAME}}_USERNAME` and password from `BOOT_{{REPO_NAME}}_PASSWORD`.
+  - `:username :env/foo :password :env/bar`
+    - Username is read from envinronment variable `FOO` and password from `BAR`.
+  - `:username [:gpg :env :env/foo]`
+    - Username is read from first available source."
 
   [f file PATH            str      "The jar file to deploy."
    F file-regex MATCH     #{regex} "The set of regexes of paths to deploy."
    g gpg-sign             bool     "Sign jar using GPG private key."
-   k gpg-user-id NAME     str      "The name used to find the GPG key."
+   k gpg-user-id KEY      str      "The name or key-id used to select the signing key."
+   ^{:deprecated "Check GPG help about changing GNUPGHOME."}
    K gpg-keyring PATH     str      "The path to secring.gpg file to use for signing."
    p gpg-passphrase PASS  str      "The passphrase to unlock GPG signing key."
-   r repo ALIAS           str      "The alias of the deploy repository."
+   r repo NAME            str      "The name of the deploy repository."
+   e repo-map REPO        edn      "The repository map of the deploy repository."
    t tag                  bool     "Create git tag for this version."
    B ensure-branch BRANCH str      "The required current git branch."
    C ensure-clean         bool     "Ensure that the project git repo is clean."
@@ -712,9 +733,13 @@
                                 (core/by-ext [".jar"])
                                 ((if (seq file-regex) #(core/by-re file-regex %) identity))
                                 (map core/tmp-file)))
-              repo-map (->> (core/get-env :repositories) (into {}))
-              r        (get repo-map repo)]
-          (when-not (and r (seq jarfiles))
+              ; Get options from Boot env by repo name
+              r        (get (->> (core/get-env :repositories) (into {})) repo)
+              repo-map (merge
+                         ; Repo option in env might be given as only url instead of map
+                         (if (map? r) r {:url r})
+                         repo-map)]
+          (when-not (and repo-map (seq jarfiles))
             (throw (Exception. "missing jar file or repo not found")))
           (doseq [f jarfiles]
             (let [{{t :tag} :scm
@@ -726,7 +751,8 @@
                   snapshot?    (.endsWith v "-SNAPSHOT")
                   artifact-map (when gpg-sign
                                  (util/info "Signing %s...\n" (.getName f))
-                                 (helpers/sign-jar tgt f gpg-passphrase gpg-keyring gpg-user-id))]
+                                 (gpg/sign-jar tgt f {:gpg-key gpg-user-id
+                                                      :gpg-passphrase gpg-passphrase}))]
               (assert (or (not ensure-branch) (= b ensure-branch))
                       (format "current git branch is %s but must be %s" b ensure-branch))
               (assert (or (not ensure-clean) clean?)
@@ -743,7 +769,7 @@
                       (format "jar version doesn't match project version (%s, %s)" v ensure-version))
               (util/info "Deploying %s...\n" (.getName f))
               (pod/with-call-worker
-                (boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f) ~artifact-map))
+                (boot.aether/deploy ~(core/get-env) ~[repo repo-map] ~(.getPath f) ~artifact-map))
               (when tag
                 (if (and tags (= commit (get tags tag)))
                   (util/info "Tag %s already created for %s\n" tag commit)
