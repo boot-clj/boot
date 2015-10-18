@@ -1,5 +1,17 @@
 # Changes
 
+## Unreleased
+
+- Added support for reading repository credentials from encrypted file
+(`~/.boot/credentials.clj.gpg`) and environment variables.
+- **BREAKING**: `gpg` binary is now used for signing jars and reading encrypted
+credentials file
+    - Deprecated `push` option `gpg-keyring`
+- `push` task can now be provided with `repo-map` option to set the deployment
+repository. This is useful for example in case a repository needs different
+settings for downloading dependencies and deploying, like additional
+credentials.
+
 ## 2.4.2
 
 - Fix issue where the wrong classloader was being used to

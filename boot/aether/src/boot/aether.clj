@@ -6,11 +6,14 @@
    [cemerick.pomegranate.aether :as aether]
    [boot.util                   :as util]
    [boot.pod                    :as pod]
+   [boot.gpg                    :as gpg]
    [boot.from.io.aviso.ansi     :as ansi]
    [boot.kahnsort               :as ksort])
   (:import
+   [boot App]
    [java.io File]
    [java.util.jar JarFile]
+   [java.util.regex Pattern]
    [org.sonatype.aether.resolution DependencyResolutionException]))
 
 (def offline?             (atom false))
@@ -59,6 +62,67 @@
           :password        password
           :non-proxy-hosts (get-non-proxy-hosts)}))))
 
+(defn ^{:boot/from :technomancy/leiningen} credentials-fn
+  "Decrypt map from credentials.clj.gpg in Boot home if present."
+  ([] (let [cred-file (io/file (App/bootdir) "credentials.clj.gpg")]
+        (if (.exists cred-file)
+          (credentials-fn cred-file))))
+  ([file]
+   (let [{:keys [out err exit]} (gpg/gpg "--quiet" "--batch"
+                                         "--decrypt" "--" (str file))]
+     (if (pos? exit)
+       (binding [*out* *err*]
+         (util/warn (format (str "Could not decrypt credentials from %s\n"
+                                 "%s\n"
+                                 "See `boot gpg --help` for how to install gpg.")
+                            (str file) err)))
+       (read-string out)))))
+
+(def credentials (memoize credentials-fn))
+
+(defn- ^{:boot/from :technomancy/leiningen} match-credentials [settings auth-map]
+  (get auth-map (:url settings)
+       (first (for [[re? cred] auth-map
+                    :when (and (instance? Pattern re?)
+                               (re-find re? (:url settings)))]
+                cred))))
+
+(defn- ^{:boot/from :technomancy/leiningen} resolve-credential
+  "Resolve key-value pair from result into a credential, updating result."
+  [source-settings result [k v]]
+  (letfn [(resolve [v]
+            (cond (= :env v)
+                  (System/getenv (str "BOOT_" (string/upper-case (name k))))
+
+                  (and (keyword? v) (= "env" (namespace v)))
+                  (System/getenv (string/upper-case (name v)))
+
+                  (= :gpg v)
+                  (get (match-credentials source-settings (credentials)) k)
+
+                  (coll? v) ;; collection of places to look
+                  (->> (map resolve v)
+                       (remove nil?)
+                       first)
+
+                  :else v))]
+    (if (#{:username :password :passphrase :private-key-file} k)
+      (assoc result k (resolve v))
+      (assoc result k v))))
+
+(defn ^{:boot/from :technomancy/leiningen} resolve-credentials
+  "Applies credentials from the environment or ~/.boot/credentials.clj.gpg
+  as they are specified and available."
+  [settings]
+  (let [gpg-creds (if (= :gpg (:creds settings))
+                    (match-credentials settings (credentials)))
+        resolved (reduce (partial resolve-credential settings)
+                         (empty settings)
+                         settings)]
+    (if gpg-creds
+      (dissoc (merge gpg-creds resolved) :creds)
+      resolved)))
+
 (defn resolve-dependencies*
   [env]
   (try
@@ -66,6 +130,7 @@
       :coordinates       (:dependencies env)
       :repositories      (->> (or (:repositories env) @default-repositories)
                            (map (juxt first (fn [[x y]] (if (map? y) y {:url y}))))
+                           (map (juxt first (fn [[x y]] (resolve-credentials y))))
                            (map (juxt first (fn [[x y]] (update-in y [:update] #(or % @update?))))))
       :local-repo        (or (:local-repo env) @local-repo nil)
       :offline?          (or @offline? (:offline? env))
@@ -167,17 +232,18 @@
       :local-repo  (or (:local-repo env) @local-repo nil))))
 
 (defn deploy
-  [env repo jarfile & [artifact-map]]
+  [env [repo-id repo-settings] jarfile & [artifact-map]]
   (let [{:keys [project version]}
         (-> jarfile pod/pom-properties pod/pom-properties-map)
         pomfile (doto (File/createTempFile "pom" ".xml")
-                  .deleteOnExit (spit (pod/pom-xml jarfile)))]
+                  .deleteOnExit (spit (pod/pom-xml jarfile)))
+        repo-settings (resolve-credentials repo-settings)]
     (aether/deploy
       :coordinates  [project version]
       :jar-file     (io/file jarfile)
       :pom-file     (io/file pomfile)
       :artifact-map artifact-map
-      :repository   [repo]
+      :repository   {repo-id repo-settings}
       :local-repo   (or (:local-repo env) @local-repo nil))))
 
 (def ^:private wagon-files (atom #{}))
