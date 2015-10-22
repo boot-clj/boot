@@ -239,11 +239,21 @@
    new))
 
 (defn- order-set-env-keys
-  "Ensures that :dependencies are processed last, because changes to other
-  keys affect dependency resolution."
+  "Ensures that
+    - :dependencies are processed last, because changes to other
+      keys affect dependency resolution.
+    - :watcher-debounce and :watcher-exclude settings are processed
+      first because otherwise they're not used when loading input dirs."
   [kvs]
-  (let [dk :dependencies]
-    (->> kvs (sort-by first #(cond (= %1 dk) 1 (= %2 dk) -1 :else 0)))))
+  (let [dk       :dependencies
+        watcher? #{:watcher-debounce :watcher-exclude}]
+    (->> kvs
+         (sort-by first #(cond
+                           (= %1 dk)  1
+                           (= %2 dk) -1
+                           (watcher? %1) -1
+                           (watcher? %2) 1
+                           :else 0)))))
 
 (defn- parse-task-opts
   "Given and argv and a tools.cli type argspec spec, returns a vector of the
