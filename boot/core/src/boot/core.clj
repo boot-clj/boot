@@ -145,13 +145,14 @@
   []
   (@src-watcher)
   (let [debounce  (or (get-env :watcher-debounce) 10)
+        exclude   (or (get-env :watcher-exclude) #{})
         env-keys  [:source-paths :resource-paths :asset-paths]
         dir-paths (set (->> (mapcat get-env env-keys)
                             (filter #(.isDirectory (io/file %)))))
         on-change (fn [_]
                     (sync-user-dirs!)
                     (reset! last-file-change (System/currentTimeMillis)))]
-    (reset! src-watcher (watch-dirs on-change dir-paths :debounce debounce))
+    (reset! src-watcher (watch-dirs on-change dir-paths :debounce debounce :exclude exclude))
     (set-fake-class-path!)
     (sync-user-dirs!)))
 
@@ -517,14 +518,14 @@
   The watcher uses the somewhat quirky native filesystem event APIs. A
   debounce option is provided (in ms, default 10) which can be used to
   tune the watcher sensitivity."
-  [callback dirs & {:keys [debounce]}]
+  [callback dirs & {:keys [debounce exclude]}]
   (if (empty? dirs)
     (constantly true)
     (do (pod/require-in @pod/worker-pod "boot.watcher")
         (let [q       (LinkedBlockingQueue.)
               watcher (apply file/watcher! :time dirs)
               paths   (into-array String dirs)
-              k       (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
+              k       (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths exclude)]
           (daemon
             (loop [ret (util/guard [(.take q)])]
               (when ret
