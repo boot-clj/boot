@@ -100,7 +100,7 @@
 
 (defn pom-properties
   [jarpath]
-  (let [jarfile (JarFile. (io/file jarpath))]
+  (with-open [jarfile (JarFile. (io/file jarpath))]
     (doto (Properties.)
       (.load (->> jarfile .entries enumeration-seq
                (filter #(.endsWith (.getName %) "/pom.properties"))
@@ -141,7 +141,7 @@
 
 (defn pom-xml
   [jarpath]
-  (let [jarfile (JarFile. (io/file jarpath))]
+  (with-open [jarfile (JarFile. (io/file jarpath))]
     (some->> jarfile .entries enumeration-seq
       (filter #(.endsWith (.getName %) "/pom.xml"))
       first (.getInputStream jarfile) slurp)))
