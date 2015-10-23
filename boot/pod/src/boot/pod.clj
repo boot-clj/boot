@@ -467,7 +467,7 @@
 (defn destroy-pod
   [pod]
   (when pod
-    (.invoke pod "clojure.core/shutdown-agents")
+    (.close pod)
     (.. pod getClassLoader close)))
 
 (defn pod-pool
