@@ -18,4 +18,4 @@
   :dependencies [[boot/base                               ~version :scope "provided"]
                  [org.clojure/clojure                     "1.6.0"  :scope "provided"]
                  [org.tcrawley/dynapath                   "0.2.3"  :scope "compile"]
-                 [org.projectodd.shimdandy/shimdandy-impl "1.1.0"  :scope "compile"]])
+                 [org.projectodd.shimdandy/shimdandy-impl "1.2.0"  :scope "compile"]])
