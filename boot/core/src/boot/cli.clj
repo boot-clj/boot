@@ -77,17 +77,25 @@
         (symbol? type) (assoc m k (parse-type type v))
         (coll? type)   (update-in m [k] (fnil conj (empty type)) (parse-type (first type) v))))))
 
-(defn- format-doc [optarg type doc]
+(defn- deprecated [short]
+  (:deprecated (meta short)))
+
+(defn- deprecated-doc [doc]
+  (str "DEPRECATED: " doc))
+
+(defn- format-doc [short optarg type doc]
   (let [atom? (symbol? type)
         flag? (not optarg)
-        incr? (and flag? (= 'int type))]
-    (cond
-      incr? (format "Increase %s" (decap doc))
-      flag? doc
-      atom? (format "Set %s to %s." (depunc (decap doc)) optarg)
-      :else (let [f "Conj %s onto %s"
-                  v ((parse-fn optarg) (str optarg))]
-              (format f (if (string? v) v (pr-str (mapv symbol v))) (decap doc))))))
+        incr? (and flag? (= 'int type))
+        docstring (cond
+                    incr? (format "Increase %s" (decap doc))
+                    flag? doc
+                    atom? (format "Set %s to %s." (depunc (decap doc)) optarg)
+                    :else (let [f "Conj %s onto %s"
+                                v ((parse-fn optarg) (str optarg))]
+                            (format f (if (string? v) v (pr-str (mapv symbol v))) (decap doc))))]
+    (cond-> docstring
+      (deprecated short) deprecated-doc)))
 
 (defn- argspec->cli-argspec
   ([short long type doc]
@@ -99,7 +107,7 @@
       [:id           (keyword long)
        :long-opt     (str "--" long)
        :required     (when optarg (str optarg))
-       :desc         (format-doc optarg type doc)
+       :desc         (format-doc short optarg type doc)
        :parse-fn     `(#'parse-fn ~(when optarg (list 'quote optarg)))
        :assoc-fn     `(#'assoc-fn ~(when optarg (list 'quote optarg)) '~type)]))))
 
@@ -113,11 +121,19 @@
           (throw (IllegalArgumentException.
                    ~(format "option :%s must be of type %s" long type)))))))
 
+(defn- argspec->deprecation-warning
+  ([short long type doc]
+   (argspec->deprecation-warning short long nil type doc))
+  ([short long optarg type doc]
+   (if-let [deprecated (deprecated short)]
+     `(when-not (nil? ~long)
+        (util/warn ~(format "option %s is deprecated. %s\n" long (if (string? deprecated) deprecated "")))))))
+
 (defn- argspec->summary
   ([short long type doc]
      (argspec->summary short long nil type doc))
   ([short long optarg type doc]
-     [(str ":" long) (str (when (:! (meta type)) "^:! ")) (str type) doc]))
+     [(str ":" long) (str (when (:! (meta type)) "^:! ")) (str type) (cond-> doc (deprecated short) deprecated-doc)]))
 
 (defn- argspec-seq [args]
   (when (seq args)
@@ -185,6 +201,7 @@
                    ~'*args*  (:arguments parsed#)
                    ~'*usage* #(print ~cli-doc)]
                ~@(mapv (partial apply argspec->assert) argspecs)
+               ~@(mapv (partial apply argspec->deprecation-warning) argspecs)
                (if-not ~'help (do ~@body) (~'*usage*))))
            (with-meta ~varmeta)))))
 
