@@ -41,11 +41,17 @@
   (file [this] dir))
 
 (defn- dir->tree
-  [dir]
-  (let [file->rel-path #(file/relative-to dir %)
-        file->kv       #(let [p (str (file->rel-path %))]
-                          [p (TmpFile. dir p (digest/md5 %) (.lastModified %))])]
-    (->> dir file-seq (filter (memfn isFile)) (map file->kv) (into {}))))
+  ([dir]
+   (dir->tree dir {:calc-id? true :calc-mod? true}))
+  ([dir {:keys [calc-id? calc-mod?]}]
+   (let [file->rel-path #(file/relative-to dir %)
+         file->kv       #(let [p (str (file->rel-path %))]
+                           [p (TmpFile. dir p (when calc-id? (digest/md5 %))
+                                        (when calc-mod? (.lastModified %)))])]
+     (->> dir file-seq (filter (memfn isFile)) (map file->kv) (into {})))))
+
+(defn dirs->tree [dirs opts]
+  (apply merge (map #(dir->tree % opts) dirs)))
 
 (defn- add-blob!
   [blob src hash]
@@ -58,16 +64,21 @@
         (doto out (write! true) (mod! (mod src)) (write! false)))
       (doto out (#(io/copy src %)) (mod! (mod src)) (write! false)))))
 
-(defrecord TmpFileSet [dirs tree blob]
+(defrecord TmpFileSet [dirs tree stage blob]
   ITmpFileSet
   (ls [this]
     (set (vals tree)))
-  (commit! [this]
-    (util/with-let [{:keys [dirs tree blob]} this]
-      (apply file/empty-dir! (map file dirs))
-      (doseq [[p tmpf] tree]
-        (let [srcf (io/file blob (id tmpf))]
-          (file/copy-with-lastmod srcf (file tmpf))))))
+  (commit! [{:keys [dirs tree stage blob] :as this}]
+    ;; Delete files no longer part of fileset
+    (let [files-in-dirs (dirs->tree dirs {})]
+      (doseq [rm (set/difference (set (keys files-in-dirs))
+                                 (set (keys tree)))]
+        (io/delete-file (get files-in-dirs rm))))
+    ;; Add files who have been staged via add
+    (doseq [p    stage
+            :let [tmpf (get tree p)]]
+      (file/copy-with-lastmod (io/file blob (id tmpf)) (file tmpf)))
+    (assoc this :stage #{}))
   (rm [this tmpfiles]
     (let [{:keys [dirs tree blob]} this
           treefiles (set (vals tree))
@@ -87,7 +98,14 @@
                        (reduce-kv {} (dir->tree src-dir)))]
       (doseq [[path tmpf] src-tree]
         (add-blob! blob (io/file src-dir path) (id tmpf)))
-      (assoc this :tree (merge tree src-tree))))
+      (reduce (fn [fs [path f]]
+                (let [existing (get-in fs [:tree path])]
+                  (if (and existing (= (id existing) (id f)))
+                    (assoc-in fs [:tree path] f)
+                    (-> fs
+                        (assoc-in [:tree path] f)
+                        (update :stage conj path)))))
+              this src-tree)))
   (add-tmp [this dest-dir tmpfiles]
     (assert ((set (map file dirs)) dest-dir)
             (format "dest-dir not in dir set (%s)" dest-dir))
