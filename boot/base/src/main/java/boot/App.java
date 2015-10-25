@@ -1,3 +1,5 @@
+// vim: et:ts=4:sw=4
+
 package boot;
 
 import java.io.*;
@@ -6,7 +8,9 @@ import java.nio.channels.FileChannel;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Map;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,7 +25,8 @@ public class App {
     private static File[]                  podjars     = null;
     private static File[]                  corejars    = null;
     private static File[]                  workerjars  = null;
-    private static File                    bootdir     = null;
+    private static File                    homedir     = new File(System.getProperty("user.home"));
+    private static File                    workdir     = new File(System.getProperty("user.dir"));
     private static File                    aetherfile  = null;
     private static HashMap<String, File[]> depsCache   = null;
     private static String                  cljversion  = null;
@@ -31,6 +36,7 @@ public class App {
     private static String                  appversion  = null;
     private static String                  channel     = "RELEASE";
     private static String                  booturl     = "https://github.com/boot-clj/boot";
+    private static String                  githuburl   = "https://api.github.com/repos/boot-clj/boot/releases";
     private static ClojureRuntimeShim      aethershim  = null;
 
     private static final String            aetherjar   = "aether.uber.jar";
@@ -39,16 +45,133 @@ public class App {
 
     private static long  nextId()         { return counter.addAndGet(1); }
 
-    public static File   getBootDir()     { return bootdir; }
     public static String getVersion()     { return appversion; }
     public static String getBootVersion() { return bootversion; }
     public static String getClojureName() { return cljname; }
     public static String propComment()    { return booturl; }
 
+    public static File
+    getBootDir() throws Exception {
+        return bootdir(); }
+
     public static class Exit extends Exception {
         public Exit(String m) { super(m); }
         public Exit(String m, Throwable c) { super(m, c); }}
-    
+
+    public static boolean
+    isWindows() throws Exception {
+        return (System.getProperty("os.name").toLowerCase().indexOf("win") >= 0); }
+
+    public static File
+    mkFile(File parent, String... kids) throws Exception {
+        File ret = parent;
+        for (String k : kids)
+            ret = new File(ret, k);
+        return ret; }
+
+    public static void
+    mkParents(File f) throws Exception {
+        File ff = f.getCanonicalFile().getParentFile();
+        if (! ff.exists()) ff.mkdirs(); }
+
+    public static ClassLoader
+    tccl() throws Exception {
+        return Thread.currentThread().getContextClassLoader(); }
+
+    public static InputStream
+    resource(String path) throws Exception {
+        return tccl().getResourceAsStream(path); }
+
+    public static Properties
+    propertiesResource(String path) throws Exception {
+        Properties p = new Properties();
+        try (InputStream is = resource(path)) { p.load(is); }
+        return p; }
+
+    public static File
+    bootdir() throws Exception {
+        File   h = new File(System.getProperty("user.home"));
+        String a = System.getProperty("BOOT_HOME");
+        String b = System.getenv("BOOT_HOME");
+        String c = new File(h, ".boot").getCanonicalPath();
+        return new File((a != null) ? a : ((b != null) ? b : c)); }
+
+    public static String
+    md5hash(String data) throws Exception {
+        java.security.MessageDigest algo = java.security.MessageDigest.getInstance("MD5");
+        return javax.xml.bind.DatatypeConverter.printHexBinary(algo.digest(data.getBytes())); }
+
+    public static File
+    projectDir() throws Exception {
+        for (File f = workdir; f != null; f = f.getParentFile()) {
+            File tmp = new File(f, ".git");
+            if (tmp.exists() && tmp.isDirectory()) return f; }
+        return null; }
+
+    public static HashMap<String, String>
+    properties2map(Properties p) throws Exception {
+        HashMap<String, String> m = new HashMap<>();
+        for (Map.Entry<Object, Object> e : p.entrySet())
+            m.put((String) e.getKey(), (String) e.getValue());
+        return m; }
+
+    public static Properties
+    map2properties(HashMap<String, String> m) throws Exception {
+        Properties p = new Properties();
+        for (Map.Entry<String, String> e : m.entrySet())
+            p.setProperty(e.getKey(), e.getValue());
+        return p; }
+
+    public static HashMap<String, File>
+    propertiesFiles() throws Exception {
+        HashMap<String, File> ret = new HashMap<>();
+        String[] names  = new String[]{"old-boot", "boot", "project", "cwd"};
+        File     olddir = new File(bootdir(), "cache");
+        File[]   dirs   = new File[]{olddir, bootdir(), projectDir(), workdir};
+        for (int i = 0; i < dirs.length; i++)
+            ret.put(names[i], new File(dirs[i], "boot.properties"));
+        return ret; }
+
+    public static Properties
+    mergeProperties() throws Exception {
+        Properties p = new Properties();
+        HashMap<String, File> fs = propertiesFiles();
+        for (String k : new String[]{"old-boot", "boot", "project", "cwd"})
+            try (FileInputStream is = new FileInputStream(fs.get(k))) {
+                p.load(is); }
+            catch (FileNotFoundException e) {}
+        return p; }
+
+    public static void
+    setDefaultProperty(Properties p, String k, String dfl) throws Exception {
+        if (p.getProperty(k) == null) p.setProperty(k, dfl); }
+
+    public static HashMap<String, String>
+    config() throws Exception {
+        HashMap<String, String> ret = new HashMap<>();
+
+        ret.putAll(properties2map(mergeProperties()));
+        ret.remove("BOOT_HOME");
+        ret.putAll(System.getenv());
+        ret.putAll(properties2map(System.getProperties()));
+
+        Iterator<String> i = ret.keySet().iterator();
+        while (i.hasNext()) {
+            String k = i.next();
+            if (! k.startsWith("BOOT_")) i.remove(); }
+
+        return ret; }
+
+    public static String
+    config(String k) throws Exception {
+        return config().get(k); }
+
+    public static String
+    config(String k, String dfl) throws Exception {
+        String v = config(k);
+        if (v != null) return v;
+        else { System.setProperty(k, dfl); return dfl; }}
+
     private static String
     jarVersion(File f, String prefix) throws Exception {
         String n = f.getName();
@@ -57,43 +180,41 @@ public class App {
 
     private static Properties
     writeProps(File f) throws Exception {
+        mkParents(f);
         ClojureRuntimeShim a = aetherShim();
         Properties         p = new Properties();
         String             c = cljversion;
         String             n = cljname;
         String             t = null;
-        
-        if (c == null) c = "1.7.0";
-        
-        if (bootversion != null)
-            p.setProperty("BOOT_VERSION", bootversion);
-        else
+
+        try (FileInputStream is = new FileInputStream(f)) {
+            p.load(is); }
+        catch (FileNotFoundException e) {}
+
+        if (bootversion == null)
             for (File x : resolveDepJars(a, "boot", channel, n, c))
-                if (null != (t = jarVersion(x, "boot-")))
-                    p.setProperty("BOOT_VERSION", t);
+                if (null != (t = jarVersion(x, "boot-"))) bootversion = t;
 
-        p.setProperty("BOOT_CLOJURE_VERSION", c);
+        p.setProperty("BOOT_VERSION", bootversion);
+        setDefaultProperty(p, "BOOT_CLOJURE_NAME",    n);
+        setDefaultProperty(p, "BOOT_CLOJURE_VERSION", c);
 
-        if (n != null)
-            p.setProperty("BOOT_CLOJURE_NAME", n);
+        try (FileOutputStream os = new FileOutputStream(f)) {
+                p.store(os, propComment()); }
 
-        try (FileOutputStream file = new FileOutputStream(f)) {
-                p.store(file, propComment()); }
-        
         return p; }
-
-    private static boolean
-    isWindows() throws Exception {
-        return (System.getProperty("os.name").toLowerCase().indexOf("win") >= 0); }
 
     private static Properties
     readProps(File f, boolean create) throws Exception {
+        mkParents(f);
         FileLock lock = null;
+        Properties p  = new Properties();
+
         if (!isWindows() && f.exists())
             lock = (new RandomAccessFile(f, "rw")).getChannel().lock();
-        Properties p = new Properties();
-        try {
-            p.load(new FileInputStream(f));
+
+        try (FileInputStream is = new FileInputStream(f)) {
+            p.load(is);
             if (p.getProperty("BOOT_CLOJURE_VERSION") == null
                 || p.getProperty("BOOT_VERSION") == null)
                 throw new Exception("missing info");
@@ -102,21 +223,21 @@ public class App {
             if (! create) return null;
             else return writeProps(f); }
         finally { if (lock != null) lock.release(); }}
-        
+
     private static HashMap<String, File[]>
     seedCache() throws Exception {
         if (depsCache != null) return depsCache;
         else {
             ClojureRuntimeShim a = aetherShim();
-        
+
             HashMap<String, File[]> cache = new HashMap<>();
-        
+
             cache.put("boot/pod",    resolveDepJars(a, "boot/pod"));
             cache.put("boot/core",   resolveDepJars(a, "boot/core"));
             cache.put("boot/worker", resolveDepJars(a, "boot/worker"));
 
             return depsCache = cache; }}
-    
+
     private static Object
     validateCache(File f, Object cache) throws Exception {
         for (File[] fs : ((HashMap<String, File[]>) cache).values())
@@ -127,12 +248,15 @@ public class App {
 
     private static Object
     writeCache(File f, Object m) throws Exception {
-        try (FileOutputStream file = new FileOutputStream(f)) {
-                (new ObjectOutputStream(file)).writeObject(m); }
+        mkParents(f);
+        try (FileOutputStream os = new FileOutputStream(f);
+                ObjectOutputStream oos = new ObjectOutputStream(os)) {
+            oos.writeObject(m); }
         return m; }
-    
+
     private static Object
     readCache(File f) throws Exception {
+        mkParents(f);
         FileLock lock = null;
         if (!isWindows())
             lock = (new RandomAccessFile(f, "rw")).getChannel().lock();
@@ -140,20 +264,22 @@ public class App {
             long max = 18 * 60 * 60 * 1000;
             long age = System.currentTimeMillis() - f.lastModified();
             if (age > max) throw new Exception("cache age exceeds TTL");
-            return validateCache(f, (new ObjectInputStream(new FileInputStream(f))).readObject()); }
+            try (FileInputStream is = new FileInputStream(f);
+                    ObjectInputStream ois = new ObjectInputStream(is)) {
+                return validateCache(f, ois.readObject()); }}
         catch (Throwable e) { return writeCache(f, seedCache()); }
         finally { if (lock != null) lock.release(); }}
-    
+
     public static ClojureRuntimeShim
     newShim(File[] jarFiles) throws Exception {
         URL[] urls = new URL[jarFiles.length];
-        
+
         for (int i=0; i<jarFiles.length; i++) urls[i] = jarFiles[i].toURI().toURL();
-        
+
         ClassLoader cl = new URLClassLoader(urls, App.class.getClassLoader());
         ClojureRuntimeShim rt = ClojureRuntimeShim.newRuntime(cl);
 
-        File[] hooks = {new File(bootdir, "boot-shim.clj"), new File("boot-shim.clj")};
+        File[] hooks = {new File(bootdir(), "boot-shim.clj"), new File("boot-shim.clj")};
 
         for (File hook : hooks)
           if (hook.exists())
@@ -163,19 +289,19 @@ public class App {
         rt.invoke("boot.pod/seal-app-classloader");
 
         return rt; }
-    
+
     public static ClojureRuntimeShim
     newPod() throws Exception { return newShim(podjars); }
-    
+
     public static ClojureRuntimeShim
     newPod(File[] jarFiles) throws Exception {
         File[] files = new File[jarFiles.length + podjars.length];
-        
+
         for (int i=0; i<podjars.length; i++) files[i] = podjars[i];
         for (int i=0; i<jarFiles.length; i++) files[i + podjars.length] = jarFiles[i];
-        
+
         return newShim(files); }
-    
+
     private static ClojureRuntimeShim
     aetherShim() throws Exception {
         if (aethershim == null) {
@@ -183,26 +309,19 @@ public class App {
             aethershim = newShim(new File[] { aetherfile }); }
         return aethershim; }
 
-    private static String
-    md5hash(String data) throws Exception {
-        java.security.MessageDigest algo = java.security.MessageDigest.getInstance("MD5");
-        return javax.xml.bind.DatatypeConverter.printHexBinary(algo.digest(data.getBytes())); }
-
     public static void
     extractResource(String resource, File outfile) throws Exception {
-        ClassLoader  cl  = Thread.currentThread().getContextClassLoader();
-        InputStream  in  = cl.getResourceAsStream(resource);
-        OutputStream out = new FileOutputStream(outfile);
-        int          n   = 0;
-        byte[]       buf = new byte[4096];
+        mkParents(outfile);
+        int    n   = 0;
+        byte[] buf = new byte[4096];
+        try (InputStream in = resource(resource);
+                OutputStream out = new FileOutputStream(outfile)) {
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n); }}
 
-        try { while ((n = in.read(buf)) > 0) out.write(buf, 0, n); }
-        finally { in.close(); out.close(); }}
-    
     public static void
     ensureResourceFile(String r, File f) throws Exception {
         if (! f.exists()) extractResource(r, f); }
-    
+
     public static File[]
     resolveDepJars(ClojureRuntimeShim shim, String sym) {
         return resolveDepJars(shim, sym, bootversion, cljname, cljversion); }
@@ -215,19 +334,19 @@ public class App {
         shim.invoke("boot.aether/update-always!");
         return (File[]) shim.invoke(
             "boot.aether/resolve-dependency-jars", sym, bootversion, cljname, cljversion); }
-    
+
     public static Future<ClojureRuntimeShim>
     newShimFuture(final File[] jars) throws Exception {
         return ex.submit(new Callable() {
                 public ClojureRuntimeShim
                 call() throws Exception { return newShim(jars); }}); }
-                
+
     public static Future<ClojureRuntimeShim>
     newCore() throws Exception { return newShimFuture(corejars); }
-    
+
     public static Future<ClojureRuntimeShim>
     newWorker() throws Exception { return newShimFuture(workerjars); }
-    
+
     public static int
     runBoot(Future<ClojureRuntimeShim> core,
             Future<ClojureRuntimeShim> worker,
@@ -245,9 +364,9 @@ public class App {
             return (t instanceof Exit) ? Integer.parseInt(t.getMessage()) : -2; }
         finally {
             for (Runnable h : hooks) h.run();
-            try { core.get().invoke("clojure.core/shutdown-agents"); }
+            try { core.get().close(); }
             catch (InterruptedException ie) {}}}
-    
+
     public static void
     usage() throws Exception {
         System.out.printf("Boot App Version: %s\n", appversion);
@@ -255,110 +374,68 @@ public class App {
         System.out.printf("Clojure Version:  %s\n", cljversion);
         if (cljname != null)
             System.out.printf("Clojure name: %s\n", cljname); }
-                
+
     public static String
     readVersion() throws Exception {
-        ClassLoader cl  = Thread.currentThread().getContextClassLoader();
-        InputStream in  = cl.getResourceAsStream("boot/base/version.properties");
-        Properties   p  = new Properties();
-        p.load(in);
+        Properties   p = new Properties();
+        try (InputStream in = resource("boot/base/version.properties")) {
+            p.load(in); }
         return p.getProperty("version"); }
-
-    public static Map<String, String>
-    latestReleaseTag() throws Exception {
-        Future<ClojureRuntimeShim> worker = newWorker();
-        worker.get().require("boot.github");
-        return (Map<String, String>) worker.get().invoke("boot.github/latest-boot-release"); }
 
     public static void
     printVersion() throws Exception {
         Properties p = new Properties();
-        p.setProperty("BOOT_VERSION", bootversion);
-        p.setProperty("BOOT_CLOJURE_VERSION", cljversion);
-        if (cljname != null)
-            p.setProperty("BOOT_CLOJURE_NAME", cljname);
+        for (Map.Entry<String, String> e : config().entrySet())
+            if (! e.getKey().equals("BOOT_HOME"))
+                p.setProperty(e.getKey(), e.getValue());
         p.store(System.out, propComment());
         System.err.printf("#App version: %s\n", appversion); }
 
     public static void
     main(String[] args) throws Exception {
-        appversion       = readVersion();
-        localrepo        = System.getenv("BOOT_LOCAL_REPO");
-        String bhome     = System.getenv("BOOT_HOME");
-        String homed     = System.getProperty("user.home");
-        String uname     = System.getProperty("user.name");
-        String boot_v    = System.getenv("BOOT_VERSION");
-        String clj_v     = System.getenv("BOOT_CLOJURE_VERSION");
-        String clj_n     = System.getenv("BOOT_CLOJURE_NAME");
-        String asroot    = System.getenv("BOOT_AS_ROOT");
-        boolean isUpdate = false;
-        
-        if (uname.equals("root") && (asroot == null || !asroot.equals("yes")))
-            throw new Exception("refusing to run as root (set BOOT_AS_ROOT=yes env var to force)");
+        if (System.getProperty("user.name").equals("root")
+                && ! config("BOOT_AS_ROOT", "no").equals("yes"))
+            throw new Exception("refusing to run as root (set BOOT_AS_ROOT=yes to force)");
 
-        String dir_l  = (localrepo == null)
-            ? "boot/default"
-            : "boot/custom/" + md5hash((new File(localrepo)).getCanonicalFile().getPath());
-        
-        if (clj_v != null) cljversion = clj_v;
-        if (clj_n != null) cljname = clj_n;
-        if (boot_v != null) bootversion = boot_v;
-        
-        if (bhome != null) bootdir = new File(bhome);
-        else bootdir = new File(new File(homed), ".boot");
-        
-        File bootcache = new File(bootdir, "cache");
-        bootcache.mkdirs();
+        File cachehome   = mkFile(bootdir(), "cache");
+        File bootprops   = mkFile(bootdir(), "boot.properties");
+        File jardir      = mkFile(cachehome, "lib", (appversion = readVersion()));
+        File bootcache   = mkFile(cachehome, "cache", "boot");
 
-        File projectprops = new File("boot.properties");
-        File bootprops    = new File(bootcache, "boot.properties");
-        File jardir       = new File(new File(bootcache, "lib"), appversion);
-        aetherfile        = new File(jardir, aetherjar);
+        bootversion      = config("BOOT_VERSION");
+        localrepo        = config("BOOT_LOCAL_REPO");
+        cljversion       = config("BOOT_CLOJURE_VERSION", "1.7.0");
+        cljname          = config("BOOT_CLOJURE_NAME", "org.clojure/clojure");
+        aetherfile       = mkFile(cachehome, "lib", appversion, aetherjar);
 
-        jardir.mkdirs();
+        readProps(bootprops, true);
 
         if (args.length > 0
             && ((args[0]).equals("-u")
                 || (args[0]).equals("--update"))) {
-            isUpdate = true;
+            bootversion  = null;
             Properties p = writeProps(bootprops);
+            bootversion  = p.getProperty("BOOT_VERSION");
             p.store(System.out, propComment());
-            System.err.printf("#App version: %s\n", appversion); }
+            System.exit(0); }
 
-        if (cljversion == null || cljname == null || bootversion == null) {
-            Properties q = readProps(bootprops, true);
-            Properties p = readProps(projectprops, false);
-            p = (p == null) ? q : p;
-            if (cljversion == null) cljversion = p.getProperty("BOOT_CLOJURE_VERSION");
-            if (cljname == null) cljname = p.getProperty("BOOT_CLOJURE_NAME");
-            if (bootversion == null) bootversion = p.getProperty("BOOT_VERSION"); }
-        
         if (args.length > 0
             && ((args[0]).equals("-V")
                 || (args[0]).equals("--version"))) {
             printVersion();
             System.exit(0); }
 
-        File cachedir  = new File(new File(new File(new File(bootcache, "cache"), dir_l), cljversion), bootversion);
-        File cachefile = new File(cachedir, "deps.cache");
-        
-        cachedir.mkdirs();
-        
+        String repo  = (localrepo == null)
+            ? "default"
+            : md5hash((new File(localrepo)).getCanonicalFile().getPath());
+
+        File cachefile = mkFile(bootcache, repo, cljversion, bootversion, "deps.cache");
         HashMap<String, File[]> cache = (HashMap<String, File[]>) readCache(cachefile);
 
         podjars    = cache.get("boot/pod");
         corejars   = cache.get("boot/core");
         workerjars = cache.get("boot/worker");
-        
-        if (isUpdate == false) {
-            Thread shutdown = new Thread() { public void run() { ex.shutdown(); }};
-            Runtime.getRuntime().addShutdownHook(shutdown);
-            System.exit(runBoot(newCore(), newWorker(), args)); }
-        else {
-            try {
-                Map<String, String> release = latestReleaseTag();
-                if (appversion.compareTo(release.get("tag")) < 0) {
-                    System.err.printf("#New boot executable available:\n");
-                    System.err.printf("#%s\n", release.get("url")); }}
-            catch (Throwable t) {}
-            System.exit(0); }}}
+
+        Thread shutdown = new Thread() { public void run() { ex.shutdown(); }};
+        Runtime.getRuntime().addShutdownHook(shutdown);
+        System.exit(runBoot(newCore(), newWorker(), args)); }}

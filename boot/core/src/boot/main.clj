@@ -88,14 +88,19 @@
       (or (re-find full-pat bang-line) (re-find base-pat bang-line)))))
 
 (defn -main [pod-id worker-pod shutdown-hooks [arg0 & args :as args*]]
+  (when (not= (boot.App/getVersion) (boot.App/getBootVersion))
+    (let [url "https://github.com/boot-clj/boot#install"]
+      (throw (Exception. (str "Please download latest Boot binary: " url)))))
+
   (reset! pod/pod-id pod-id)
   (reset! pod/worker-pod worker-pod)
   (reset! pod/shutdown-hooks shutdown-hooks)
+  (reset! util/*colorize?* (util/colorize?-system-default))
 
   (let [[arg0 args args*] (if (seq args*)
                             [arg0 args args*]
                             ["--help" nil ["--help"]])
-        bootscript        (or (System/getenv "BOOT_FILE") "build.boot")
+        bootscript        (App/config "BOOT_FILE" "build.boot")
         exists?           #(when (.isFile (io/file %)) %)
         have-bootscript?  (exists? bootscript)
         [arg0 args]       (cond
@@ -115,7 +120,9 @@
 
     (when (:no-colors opts)
       (reset! util/*colorize?* false))
+
     (swap! util/*verbosity* + verbosity)
+
     (pod/with-eval-in worker-pod
       (require '[boot.util :as util])
       (swap! util/*verbosity* + ~verbosity))
@@ -141,8 +148,8 @@
               userforms   (when profile?
                             (some->> userscript slurp util/read-string-all))
               initial-env (->> [:source-paths :resource-paths :asset-paths :target-path :dependencies]
-                            (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
-                            (merge {} (:set-env opts)))
+                               (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
+                               (merge {} (:set-env opts)))
               import-ns   (export-task-namespaces initial-env)
               scriptforms (emit boot? args userforms bootforms import-ns)
               scriptstr   (binding [*print-meta* true]

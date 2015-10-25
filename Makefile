@@ -1,8 +1,8 @@
 .PHONY: help deps install deploy test clean
 
 SHELL       := /bin/bash
-export PATH := bin:l4j:$(PATH)
-export  LEIN_SNAPSHOTS_IN_RELEASE := yes
+export PATH := bin:launch4j:$(PATH)
+export LEIN_SNAPSHOTS_IN_RELEASE := yes
 
 green        = '\e[0;32m'
 nc           = '\e[0m'
@@ -11,7 +11,9 @@ version      = $(shell grep ^version version.properties |sed 's/.*=//')
 verfile      = version.properties
 bootbin      = $(PWD)/bin/boot.sh
 bootexe      = $(PWD)/bin/boot.exe
-bootjarurl   = https://github.com/boot-clj/boot/releases/download/p1/boot
+distjar      = $(PWD)/bin/boot.jar
+loaderjar    = boot/loader/target/loader.jar
+loadersource = boot/loader/src/boot/Loader.java
 bootjar      = boot/boot/target/boot-$(version).jar
 podjar       = boot/pod/target/pod-$(version).jar
 aetherjar    = boot/aether/target/aether-$(version).jar
@@ -32,6 +34,7 @@ clean:
 	(cd boot/aether && lein clean)
 	(cd boot/pod && lein clean)
 	(cd boot/worker && lein clean)
+	(cd boot/loader && make clean)
 
 bloop:
 	which lein
@@ -42,6 +45,9 @@ bin/lein:
 	chmod 755 bin/lein
 
 deps: bin/lein
+
+$(loaderjar): $(loadersource)
+	(cd boot/loader && make)
 
 $(bootjar): $(verfile) boot/boot/project.clj
 	(cd boot/boot && lein install)
@@ -69,16 +75,16 @@ $(corejar): $(verfile) boot/core/project.clj $(shell find boot/core/src)
 $(baseuber): boot/base/pom.xml $(shell find boot/base/src/main)
 	(cd boot/base && mvn -q assembly:assembly -DdescriptorId=jar-with-dependencies)
 
-$(bootbin): head.sh $(baseuber)
+$(bootbin): head.sh $(loaderjar)
 	mkdir -p bin
-	cat head.sh $(baseuber) > $(bootbin)
-	chmod 0755 $(bootbin)
+	cat $^ > $@
+	chmod 755 $@
 	@echo -e "\033[0;32m<< Created boot executable: $(bootbin) >>\033[0m"
 
 launch4j-config.xml: launch4j-config.in.xml $(verfile)
 	sed -e "s@__VERSION__@`cat $(verfile) |sed 's/.*=//'`@" launch4j-config.in.xml > launch4j-config.xml;
 
-$(bootexe): $(baseuber) launch4j-config.xml
+$(bootexe): $(loaderjar) launch4j-config.xml
 	@if [ -z $$RUNNING_IN_CI ] && which launch4j; then \
 		launch4j launch4j-config.xml; \
 		echo -e "\033[0;32m<< Created boot executable: $(bootexe) >>\033[0m"; \
@@ -86,6 +92,11 @@ $(bootexe): $(baseuber) launch4j-config.xml
 	else true; fi
 
 .installed: $(basejar) $(alljars) $(bootbin) $(bootexe)
+	cp $(baseuber) $(distjar)
+	# FIXME: this is just for testing -- remove before release
+	mkdir -p $$HOME/.boot/cache/bin/$(version)
+	cp $(baseuber) $$HOME/.boot/cache/bin/$(version)/boot.jar
+	# End testing code -- cut above.
 	date > .installed
 
 install: .installed

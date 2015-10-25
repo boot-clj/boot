@@ -1,10 +1,14 @@
 # Changes
 
-## Unreleased
+## 2.4.0
 
-- Fix class leak with pods ([#314](https://github.com/boot-clj/boot/pull/314), [#268](https://github.com/boot-clj/boot/issues/268))
-- Fix issue with PrintWriter not handling optional offset parameter ([#298](https://github.com/boot-clj/boot/issues/298))
-- Fix issue with `javac` task when passed an empty fileset ([#309](https://github.com/boot-clj/boot/pull/309))
+- Self-downloading binaries--no longer need to manually download this when a
+  new version is released. Also the provided binary works with all versions
+  of boot since 2.0.0 inclusive (fixes #300).
+- All boot env vars can now be set in properties files (fixes #229).
+- Fix pod memory leaks (fixes #314 & #268).
+- Fix issue with Cider and boot's auto-flush PrintWriter (fixes #298).
+- Avoid calling javac on a fileset with no Java source files (fixes #309).
 
 ## 2.3.0
 
@@ -20,7 +24,7 @@
 - Add -A/--add-asset, -R/--add-resource, -S/--add-source options to
   sift task (fixes [#212](https://github.com/boot-clj/boot/issues/212)).
 - Add new merge strategy for uber task that concatenates duplicates
-and use it for merging files in `META-INF/services/.*`.
+  and use it for merging files in `META-INF/services/.*`.
 - Support merging duplicate files in uber task, defaulting to standard
   set of mergers. (fixes [#217](https://github.com/boot-clj/boot/issues/217)).
 - Preserve last modified time of files when unpacking JARs (fixes

@@ -26,16 +26,10 @@
   BOOT_COLOR=1 or BOOT_COLOR=yes to turn it on or any other value to
   turn it off."
   []
-  (cond
-    (System/getenv "BOOT_COLOR")
-      (contains? #{"1" "yes"} (System/getenv "BOOT_COLOR"))
-    (.startsWith (System/getProperty "os.name") "Windows")
-      false
-    :else
-      true))
+  (or (#{"1" "yes"} (boot.App/config "BOOT_COLOR")) (not (boot.App/isWindows))))
 
 (def ^:dynamic *verbosity* (atom 1))
-(def ^:dynamic *colorize?* (atom (colorize?-system-default)))
+(def ^:dynamic *colorize?* (atom false))
 
 (defn- print*
   [verbosity color args]

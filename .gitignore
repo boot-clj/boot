@@ -47,4 +47,4 @@ pom.xml.asc
 /boot/*/target/
 /zzz/
 /launch4j-config.xml
-/l4j/
+/launch4j/
