@@ -15,7 +15,7 @@
  (use-fixtures :each (fn [f] (f) #_(cleanup! systmp)))
 
 (defn get-tmp-dir! [name]
-  (doto (io/file systmp name)
+  (doto (io/file systmp (str (gensym)) name)
     (io/make-parents)
     (.mkdir)))
 
@@ -62,13 +62,19 @@
           (is (.exists (io/file (fs/dir dir) foo))))))))
 
 (comment
-  (def blob (fs/map->TmpDir {:dir (get-tmp-dir! "blob")}))
-  (def dir  (fs/map->TmpDir {:dir (get-tmp-dir! "dirs")}))
-  (def fs*  (boot.tmpdir.TmpFileSet. [dir] {} (fs/dir blob)))
-  (def r    (create-random!))
+  (do
+    (def blob (fs/map->TmpDir {:dir (get-tmp-dir! "blob")}))
+    (def dir  (fs/map->TmpDir {:dir (get-tmp-dir! "dirs")}))
+    (def fs*  (boot.tmpdir.TmpFileSet. [dir] {} (fs/dir blob)))
+    (def r1   (create-random!))
+    (def r2   (create-random!)))
 
-  (fs/store!
-   (fs/commit! (fs/add fs* (fs/dir dir) (first r) {})))
+  (fs/commit! (fs/add fs* (fs/dir dir) (first r1) {}))
+
+  (fs/diff*
+   (fs/add fs* (fs/dir dir) (first r1) {})
+   (fs/add fs* (fs/dir dir) (first r2) {}) nil)
+
 
   (fs/last {:dirs [dir]})
 

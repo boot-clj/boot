@@ -66,7 +66,8 @@
 
 (def filesystem (atom {}))
 
-(defn last [{:keys [dirs] :as fileset}]
+(defn get-last-committed
+  [{:keys [dirs] :as fileset}]
   (reduce (fn [fs f]
             (assoc-in fs [:tree (:path f)] f))
           (dissoc fileset :tree)
@@ -75,22 +76,30 @@
                (mapcat val))))
 
 (defn store! [fileset]
-  (swap! filesystem
-         #(reduce (fn [t f]
-                    (update t (:dir f) conj f))
-                  (dissoc % (:dirs fileset))
-                  (vals (:tree fileset)))))
+  (->> #(reduce (fn [t f]
+                  (update t (dir f) conj f))
+                (apply dissoc % (map dir (:dirs fileset)))
+                (ls fileset))
+       (swap! filesystem)))
 
+(declare diff*)
 (defrecord TmpFileSet [dirs tree blob]
   ITmpFileSet
   (ls [this]
     (set (vals tree)))
   (commit! [this]
     (util/with-let [{:keys [dirs tree blob]} this]
-      (apply file/empty-dir! (map file dirs))
-      (doseq [[p tmpf] tree]
-        (let [srcf (io/file blob (id tmpf))]
-          (file/copy-with-lastmod srcf (file tmpf))))))
+      (let [{:keys [changed added removed]}
+            (diff* (get-last-committed this) this nil)
+            to-delete (ls removed)
+            to-link   (mapcat ls [changed added])]
+        (util/dbug "Committing %s deletions & %s links"
+                   (count to-delete) (count to-link))
+        (doseq [rm to-delete]
+          (io/delete-file (file rm)))
+        (doseq [ln to-link]
+          (file/copy-with-lastmod (io/file blob (id ln)) (file ln))))
+      (store! this)))
   (rm [this tmpfiles]
     (let [{:keys [dirs tree blob]} this
           treefiles (set (vals tree))
