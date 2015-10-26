@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased
+
+- Fix class leak with pods ([#314](https://github.com/boot-clj/boot/pull/314), [#268](https://github.com/boot-clj/boot/issues/268))
+- Fix issue with PrintWriter not handling optional offset parameter ([#298](https://github.com/boot-clj/boot/issues/298)])
+- Fix issue with `javac` task when passed an empty fileset ([#309](https://github.com/boot-clj/boot/pull/309))
+
 ## 2.3.0
 
 - Stop 'boot show -u' from displaying "LATEST" dependencies as out of date.
@@ -12,20 +18,22 @@
 ## 2.2.0
 
 - Add -A/--add-asset, -R/--add-resource, -S/--add-source options to
-  sift task (fixes #212).
+  sift task (fixes [#212](https://github.com/boot-clj/boot/issues/212)).
 - Add new merge strategy for uber task that concatenates duplicates
 and use it for merging files in `META-INF/services/.*`.
 - Support merging duplicate files in uber task, defaulting to standard
-  set of mergers. (fixes #217).
+  set of mergers. (fixes [#217](https://github.com/boot-clj/boot/issues/217)).
 - Preserve last modified time of files when unpacking JARs (fixes
-  #211).
-- Improvements to pom task (fixes #220, see #d8782413).
+  [#211](https://github.com/boot-clj/boot/issues/211)).
+- Improvements to pom task (fixes [#220](https://github.com/boot-clj/boot/issues/220),
+  see [d8782413](https://github.com/boot-clj/boot/commit/d8782413a16bfafbc0a069bf2a77ae74c029a5ca)).
 - Fix file handle leaks when unpacking JAR files. (fixes issues
   relating to invalid uberjars being generated).
 - Add support for .cljc files (see reader conditionals introduced in
   Clojure 1.7.0).
 - Support passing arguments to javac in javac task.
 - Update default Clojure version to 1.7.0.
-- Fix `BOOT_LOCAL_REPO` environment variable on Windows (fixes #243).
+- Fix `BOOT_LOCAL_REPO` environment variable on Windows
+  (fixes [#243](https://github.com/boot-clj/boot/issues/243)).
 - Make Clojure artifact name customizable via `BOOT_CLOJURE_NAME`
   environment variable, which defaults to org.clojure/clojure.
