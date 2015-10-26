@@ -64,21 +64,16 @@
         (doto out (write! true) (mod! (mod src)) (write! false)))
       (doto out (#(io/copy src %)) (mod! (mod src)) (write! false)))))
 
-(defrecord TmpFileSet [dirs tree stage blob]
+(defrecord TmpFileSet [dirs tree blob]
   ITmpFileSet
   (ls [this]
     (set (vals tree)))
-  (commit! [{:keys [dirs tree stage blob] :as this}]
-    ;; Delete files no longer part of fileset
-    (let [files-in-dirs (dirs->tree dirs {})]
-      (doseq [rm (set/difference (set (keys files-in-dirs))
-                                 (set (keys tree)))]
-        (io/delete-file (get files-in-dirs rm))))
-    ;; Add files who have been staged via add
-    (doseq [p    stage
-            :let [tmpf (get tree p)]]
-      (file/copy-with-lastmod (io/file blob (id tmpf)) (file tmpf)))
-    (assoc this :stage #{}))
+  (commit! [this]
+    (util/with-let [{:keys [dirs tree blob]} this]
+      (apply file/empty-dir! (map file dirs))
+      (doseq [[p tmpf] tree]
+        (let [srcf (io/file blob (id tmpf))]
+          (file/copy-with-lastmod srcf (file tmpf))))))
   (rm [this tmpfiles]
     (let [{:keys [dirs tree blob]} this
           treefiles (set (vals tree))
@@ -98,14 +93,7 @@
                        (reduce-kv {} (dir->tree src-dir)))]
       (doseq [[path tmpf] src-tree]
         (add-blob! blob (io/file src-dir path) (id tmpf)))
-      (reduce (fn [fs [path f]]
-                (let [existing (get-in fs [:tree path])]
-                  (if (and existing (= (id existing) (id f)))
-                    (assoc-in fs [:tree path] f)
-                    (-> fs
-                        (assoc-in [:tree path] f)
-                        (update :stage conj path)))))
-              this src-tree)))
+      (assoc this :tree (merge tree src-tree))))
   (add-tmp [this dest-dir tmpfiles]
     (assert ((set (map file dirs)) dest-dir)
             (format "dest-dir not in dir set (%s)" dest-dir))
