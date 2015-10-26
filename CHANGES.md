@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Fix class leak with pods ([#314](https://github.com/boot-clj/boot/pull/314), [#268](https://github.com/boot-clj/boot/issues/268))
-- Fix issue with PrintWriter not handling optional offset parameter ([#298](https://github.com/boot-clj/boot/issues/298)])
+- Fix issue with PrintWriter not handling optional offset parameter ([#298](https://github.com/boot-clj/boot/issues/298))
 - Fix issue with `javac` task when passed an empty fileset ([#309](https://github.com/boot-clj/boot/pull/309))
 
 ## 2.3.0
@@ -12,7 +12,7 @@
 - Add boot.core/rebuild! function and add -M,--manual option to watch task to
   manually trigger rebuild from REPL instead of when source files change.
 - Fix issue where uber task was trying to explode dependencies that have only
-  a pom file and no jar (fixes #292).
+  a pom file and no jar (fixes [#292](https://github.com/boot-clj/boot/pull/292)).
 - Improve uber task docstring/help text.
 
 ## 2.2.0
