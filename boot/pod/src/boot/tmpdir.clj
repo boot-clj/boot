@@ -64,9 +64,16 @@
         (doto out (write! true) (mod! (mod src)) (write! false)))
       (doto out (#(io/copy src %)) (mod! (mod src)) (write! false)))))
 
-(def filesystem (atom {}))
+(def ^:private filesystem (atom {}))
 
-(defn get-last-committed
+(defn ^:private store! [fileset]
+  (->> #(reduce (fn [t f]
+                  (update t (dir f) conj f))
+                (apply dissoc % (map dir (:dirs fileset)))
+                (ls fileset))
+       (swap! filesystem)))
+
+(defn prev-committed
   [{:keys [dirs] :as fileset}]
   (reduce (fn [fs f]
             (assoc-in fs [:tree (:path f)] f))
@@ -74,13 +81,6 @@
           (->> (map file dirs)
                (select-keys @filesystem)
                (mapcat val))))
-
-(defn store! [fileset]
-  (->> #(reduce (fn [t f]
-                  (update t (dir f) conj f))
-                (apply dissoc % (map dir (:dirs fileset)))
-                (ls fileset))
-       (swap! filesystem)))
 
 (declare diff*)
 (defrecord TmpFileSet [dirs tree blob]
@@ -90,7 +90,7 @@
   (commit! [this]
     (util/with-let [{:keys [dirs tree blob]} this]
       (let [{:keys [changed added removed]}
-            (diff* (get-last-committed this) this nil)
+            (diff* (prev-committed this) this nil)
             to-delete (ls removed)
             to-link   (mapcat ls [changed added])]
         (util/dbug "Committing %s deletions & %s links"
