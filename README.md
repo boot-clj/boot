@@ -360,7 +360,8 @@ Modify the `build.boot` file to incorporate this new task by removing the defini
 (require '[demo.boot-build :refer :all])
 ```
 
-You can now use the `build` task defined in the project namespace from the command line, as before:
+You can now use the `build` task defined in the project namespace from the
+command line, as before:
 
 ```
 $ boot build
@@ -385,10 +386,28 @@ $ make deps
 $ make install
 ```
 
-Jars for all of the boot components will be created and installed to your local
-Maven repository. Running `boot -u` will upgrade your locally installed boot command
-to use these new artifacts. The executables `bin/boot.sh` and `bin/boot.exe` (if you have
-launch4j available) will be created, as well.
+- Jars for all of the boot components will be built and installed in your
+  local Maven repository.
+- The executables `bin/boot.sh` and `bin/boot.exe` (if you have launch4j
+  available) will be created.
+- The app uberjar will be built and copied to `bin/boot.jar`.
+- The app uberjar will be copied to `$HOME/.boot/cache/bin/<version>/boot.jar`.
+
+Make your build the default:
+
+```
+# <version> is the version of your build
+$ BOOT_VERSION=<version> boot -u
+```
+
+### Launch4J
+
+Launch4J is a program that wraps a Java uberjar in a Windows executable. There
+are versions for Linux, OSX, and Windows.
+
+1. Download the [launch4j tarball][l4j].
+2. Untar it into the project root (it will create a `launch4j` directory).
+3. Done! You can now build the windows .exe file!
 
 ## Attribution
 
@@ -417,8 +436,8 @@ Copyright © 2013 Alan Dipert and Micha Niskin
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
-[2]: https://github.com/boot-clj/boot/releases/download/2.3.0/boot.sh
-[3]: https://github.com/boot-clj/boot/releases/download/2.3.0/boot.exe
+[2]: https://github.com/boot-clj/boot/releases/download/2.4.0/boot.sh
+[3]: https://github.com/boot-clj/boot/releases/download/2.4.0/boot.exe
 [4]: #install
 [5]: https://drone.io/github.com/boot-clj/boot/status.png?camocache=1
 [6]: https://drone.io/github.com/boot-clj/boot/latest
@@ -444,5 +463,6 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [58]: https://github.com/google/hesokuri
 [59]: https://code.google.com/p/barbarywatchservice/
 
+[l4j]: http://sourceforge.net/projects/launch4j/files/launch4j-3/3.8/
 [waffle-badge]: https://badge.waffle.io/boot-clj/boot.svg?label=ready&title=Ready
 [waffle-board]: http://waffle.io/boot-clj/boot

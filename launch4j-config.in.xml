@@ -1,9 +1,9 @@
 <launch4jConfig>
   <headerType>console</headerType>
   <outfile>bin/boot.exe</outfile>
-  <jar>boot/base/target/base-__VERSION__-jar-with-dependencies.jar</jar>
+  <jar>boot/loader/target/loader.jar</jar>
   <classPath>
-    <mainClass>boot.App</mainClass>
+    <mainClass>boot.Loader</mainClass>
   </classPath>
   <jre>
     <path></path>

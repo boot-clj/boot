@@ -3,8 +3,7 @@
    [clojure.java.io  :as io]
    [clojure.set      :as set]
    [clojure.data     :as data]
-   [boot.from.digest :as digest]
-   [clojure.core.reducers :as r])
+   [boot.from.digest :as digest])
   (:import
    [java.net URI]
    [java.nio.file Files]
@@ -139,9 +138,9 @@
     (io/make-parents dst-file)
     (when-not (.canWrite (io/file dst-par))
       (throw (ex-info (format "Can't write to directory (%s)." dst-par) {:dir dst-par})))
-    (when (.exists dst-file) (.delete dst-file))
     (if *hard-link*
-      (hard-link src-file dst-file)
+      (do (when (.exists dst-file) (.delete dst-file))
+          (hard-link src-file dst-file))
       (doto dst-file cp-src! (.setLastModified last-mod)))))
 
 (defn copy-files

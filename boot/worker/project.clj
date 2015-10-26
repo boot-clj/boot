@@ -20,7 +20,7 @@
                  [boot/aether                 ~version]
                  ;; see https://github.com/boot-clj/boot/issues/82
                  [net.cgrand/parsley          "0.9.3" :exclusions [org.clojure/clojure]]
-                 [reply                       "0.3.5"]
+                 [reply                       "0.3.7"]
                  [cheshire                    "5.3.1"]
                  [clj-jgit                    "0.8.0"]
                  [clj-yaml                    "0.4.0"]
