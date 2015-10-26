@@ -31,7 +31,7 @@
   (testing "writes files not in dirs"
     (let [blob  (fs/map->TmpDir {:dir (get-tmp-dir! "blob")})
           dir   (fs/map->TmpDir {:dir (get-tmp-dir! "dirs")})
-          fs*   (boot.tmpdir.TmpFileSet. [dir] {} #{} (fs/dir blob))
+          fs*   (boot.tmpdir.TmpFileSet. [dir] {} (fs/dir blob))
           [d f] (create-random!)]
       (fs/commit! (fs/add fs* (fs/dir dir) d {}))
       (is (= (slurp (io/file (fs/dir dir) f))
@@ -39,7 +39,7 @@
   (testing "removes stale files"
     (let [blob  (fs/map->TmpDir {:dir (get-tmp-dir! "blob")})
           dir   (fs/map->TmpDir {:dir (get-tmp-dir! "dirs")})
-          fs*   (boot.tmpdir.TmpFileSet. [dir] {} #{} (fs/dir blob))
+          fs*   (boot.tmpdir.TmpFileSet. [dir] {} (fs/dir blob))
           [d f] (create-random!)]
       (fs/commit! (fs/add fs* (fs/dir dir) d {}))
       (is (.exists (io/file (fs/dir dir) f)))
@@ -48,7 +48,7 @@
   (testing "..."
     (let [blob  (fs/map->TmpDir {:dir (get-tmp-dir! "blob")})
           dir   (fs/map->TmpDir {:dir (get-tmp-dir! "dirs")})
-          fs*   (boot.tmpdir.TmpFileSet. [dir] {} #{} (fs/dir blob))
+          fs*   (boot.tmpdir.TmpFileSet. [dir] {} (fs/dir blob))
           [d1 foo] (create-random!)
           [d2 bar] (create-random!)]
       (let [with-foo (fs/commit! (fs/add fs* (fs/dir dir) d1 {}))]
