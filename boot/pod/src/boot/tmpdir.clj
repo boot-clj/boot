@@ -64,6 +64,23 @@
         (doto out (write! true) (mod! (mod src)) (write! false)))
       (doto out (#(io/copy src %)) (mod! (mod src)) (write! false)))))
 
+(def filesystem (atom {}))
+
+(defn last [{:keys [dirs] :as fileset}]
+  (reduce (fn [fs f]
+            (assoc-in fs [:tree (:path f)] f))
+          (dissoc fileset :tree)
+          (->> (map file dirs)
+               (select-keys @filesystem)
+               (mapcat val))))
+
+(defn store! [fileset]
+  (swap! filesystem
+         #(reduce (fn [t f]
+                    (update t (:dir f) conj f))
+                  (dissoc % (:dirs fileset))
+                  (vals (:tree fileset)))))
+
 (defrecord TmpFileSet [dirs tree blob]
   ITmpFileSet
   (ls [this]

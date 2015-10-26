@@ -60,3 +60,21 @@
           (fs/commit! with-foo)
           (is (not (.exists (io/file (fs/dir dir) bar))))
           (is (.exists (io/file (fs/dir dir) foo))))))))
+
+(comment
+  (def blob (fs/map->TmpDir {:dir (get-tmp-dir! "blob")}))
+  (def dir  (fs/map->TmpDir {:dir (get-tmp-dir! "dirs")}))
+  (def fs*  (boot.tmpdir.TmpFileSet. [dir] {} (fs/dir blob)))
+  (def r    (create-random!))
+
+  (fs/store!
+   (fs/commit! (fs/add fs* (fs/dir dir) (first r) {})))
+
+  (fs/last {:dirs [dir]})
+
+  (mapcat val (select-keys @fs/filesystem [dir]))
+
+  (keys @fs/filesystem)
+
+  )
+
