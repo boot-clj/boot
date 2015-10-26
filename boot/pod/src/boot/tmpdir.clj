@@ -50,7 +50,7 @@
                                         (when calc-mod? (.lastModified %)))])]
      (->> dir file-seq (filter (memfn isFile)) (map file->kv) (into {})))))
 
-(defn dirs->tree [dirs opts]
+(defn- dirs->tree [dirs opts]
   (apply merge (map #(dir->tree % opts) dirs)))
 
 (defn- add-blob!
