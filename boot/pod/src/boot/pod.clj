@@ -238,8 +238,12 @@
   (with-call-worker (boot.aether/resolve-dependencies ~env)))
 
 (defn resolve-dependency-jars
-  [env]
-  (->> env resolve-dependencies (map (comp io/file :jar))))
+  [env & [ignore-clj?]]
+  (let [clj-dep (symbol (boot.App/config "BOOT_CLOJURE_NAME"))
+        rm-clj  (if-not ignore-clj?
+                  identity
+                  (partial remove #(= clj-dep (first (:dep %)))))]
+    (->> env resolve-dependencies rm-clj (map (comp io/file :jar)))))
 
 (defn resolve-nontransitive-dependencies
   [env dep]
@@ -281,7 +285,7 @@
 
 (defn add-dependencies
   [env]
-  (doseq [jar (resolve-dependency-jars env)] (add-classpath jar)))
+  (doseq [jar (resolve-dependency-jars env true)] (add-classpath jar)))
 
 (defn add-dependencies-in
   [pod env]
