@@ -68,7 +68,7 @@
 
 (defn ^:private store! [fileset]
   (->> #(reduce (fn [t f]
-                  (update t (dir f) conj f))
+                  (update-in t [(dir f)] conj f))
                 (apply dissoc % (map dir (:dirs fileset)))
                 (ls fileset))
        (swap! filesystem)))
