@@ -90,7 +90,8 @@
 (defn -main [pod-id worker-pod shutdown-hooks [arg0 & args :as args*]]
   (when (not= (boot.App/getVersion) (boot.App/getBootVersion))
     (let [url "https://github.com/boot-clj/boot#install"]
-      (throw (Exception. (str "Please download latest Boot binary: " url)))))
+      (util/exit-error
+        (println (format "Please download latest Boot binary: %s" url)))))
 
   (reset! pod/pod-id pod-id)
   (reset! pod/worker-pod worker-pod)
