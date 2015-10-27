@@ -1,5 +1,30 @@
 # Changes
 
+## 2.4.2
+
+- Fix issue where the wrong classloader was being used to
+  load the boot application ([270ec3d][270ec3d])
+- Make sure exceptions during boot startup are flushed
+  stdout before the process exits ([4a20c74][4a20c74])
+
+[270ec3d]: https://github.com/boot-clj/boot/commit/270ec3d85d41766c5d3a72bb4e6ef0f704630d1d
+[4a20c74]: https://github.com/boot-clj/boot/commit/4a20c74b814aab82f3a04706f0116f1857149241
+
+## 2.4.1
+
+**Fix issues with 2.4.0 release** [61c948f][61c948f]
+
+- Need to delete files in the fileset dirs before writing to them
+  because the underlying blob files are immutable.
+- Remove BOOT_CLOJURE_NAME dependency before adding jars to the
+  classpath--this is a workaround for a really weird issue:
+
+      clojure.lang.ExceptionInfo: loader constraint violation:
+      loader (instance of java/net/URLClassLoader) previously initiated
+      loading for a different type with name "clojure/lang/Compiler$Expr"
+
+[61c948f]: https://github.com/boot-clj/boot/commit/61c948fdede178e3364c0238d9f368f180757659
+
 ## 2.4.0
 
 - Self-downloading binaries--no longer need to manually download this when a
