@@ -75,7 +75,7 @@ $(corejar): $(verfile) boot/core/project.clj $(shell find boot/core/src)
 $(baseuber): boot/base/pom.xml $(shell find boot/base/src/main)
 	(cd boot/base && mvn -q assembly:assembly -DdescriptorId=jar-with-dependencies)
 
-$(bootbin): head.sh $(baseuber)
+$(bootbin): head.sh $(loaderjar)
 	mkdir -p bin
 	cat $^ > $@
 	chmod 755 $@
@@ -84,7 +84,7 @@ $(bootbin): head.sh $(baseuber)
 launch4j-config.xml: launch4j-config.in.xml $(verfile)
 	sed -e "s@__VERSION__@`cat $(verfile) |sed 's/.*=//'`@" launch4j-config.in.xml > launch4j-config.xml;
 
-$(bootexe): $(baseuber) launch4j-config.xml
+$(bootexe): $(loaderjar) launch4j-config.xml
 	@if [ -z $$RUNNING_IN_CI ] && which launch4j; then \
 		launch4j launch4j-config.xml; \
 		echo -e "\033[0;32m<< Created boot executable: $(bootexe) >>\033[0m"; \
