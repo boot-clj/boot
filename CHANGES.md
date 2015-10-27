@@ -38,7 +38,7 @@
 [300]: https://github.com/boot-clj/boot/issues/300
 [229]: https://github.com/boot-clj/boot/issues/229
 [314]: https://github.com/boot-clj/boot/pull/314
-[269]: https://github.com/boot-clj/boot/issues/268
+[268]: https://github.com/boot-clj/boot/issues/268
 [298]: https://github.com/boot-clj/boot/issues/298
 [309]: https://github.com/boot-clj/boot/pull/309
 
