@@ -199,6 +199,16 @@ public class Loader {
     latestBinaryFile() throws Exception {
         return binaryFile(latestInstalledVersion(bindir().listFiles())); }
 
+    public static URLClassLoader
+    loadJar(File jar) throws Exception {
+        URLClassLoader cl = (URLClassLoader) ClassLoader.getSystemClassLoader();
+        Class          sc = URLClassLoader.class;
+        Method         cm = sc.getDeclaredMethod("addURL", URL.class);
+
+        cm.setAccessible(true);
+        cm.invoke(cl, new Object[]{jar.toURI().toURL()});
+        return cl; }
+
     public static void
     main(String[] args) throws Exception {
         String[] a = args;
@@ -217,10 +227,8 @@ public class Loader {
             System.setProperty("BOOT_VERSION", initialVersion);
             System.err.println("Running for the first time: updating to latest version."); }
 
-        URL         url = f.toURI().toURL();
-        ClassLoader cl  = new URLClassLoader(new URL[]{url});
-        Class       c   = Class.forName("boot.App", true, cl);
-        Method      m   = c.getMethod("main", String[].class);
+        URLClassLoader cl = loadJar(f);
+        Class          c  = Class.forName("boot.App", true, cl);
+        Method         m  = c.getMethod("main", String[].class);
 
-        tccl(cl);
         m.invoke(null, new Object[]{a}); }}
