@@ -377,7 +377,7 @@ public class App {
 
     public static String
     readVersion() throws Exception {
-        Properties   p = new Properties();
+        Properties p = new Properties();
         try (InputStream in = resource("boot/base/version.properties")) {
             p.load(in); }
         return p.getProperty("version"); }
