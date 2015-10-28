@@ -5,13 +5,15 @@ package boot;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.jar.*;
+import java.util.zip.*;
 import java.util.regex.Pattern;
 import java.lang.reflect.Method;
 
 @SuppressWarnings("unchecked")
 public class Loader {
 
-    public static final String initialVersion = "2.3.0";
+    public static final String initialVersion = "2.4.2";
     public static final File   homedir        = new File(System.getProperty("user.home"));
     public static final File   workdir        = new File(System.getProperty("user.dir"));
 
@@ -161,8 +163,8 @@ public class Loader {
 
     public static File
     download(String url, File f) throws Exception {
-        if (f.exists()) return f;
         mkParents(f);
+        if (f.exists()) f.delete();
         int    n   = -1;
         byte[] buf = new byte[4096];
         System.err.print("Downloading " + url + "...");
@@ -173,31 +175,45 @@ public class Loader {
         System.err.println("done.");
         return f; }
 
+    public static String
+    downloadUrl(String version, String name) throws Exception {
+        return String.format("https://github.com/boot-clj/boot/releases/download/%s/%s", version, name); }
+
+    public static File
+    validateBinaryFile(File f) throws Exception {
+        if (f == null) return null;
+        try (FileInputStream fis = new FileInputStream(f);
+                JarInputStream jis = new JarInputStream(fis)) {
+            for (ZipEntry e = jis.getNextEntry(); e != null; e = jis.getNextEntry()); }
+        catch (IOException ie) { f = null; }
+        return f; }
+
+    public static File
+    binaryFile(String version, boolean mustBeValid) throws Exception {
+        if (version == null) return null;
+        File f = mkFile(bindir(), version, "boot.jar");
+        f = (f.exists() || ! mustBeValid) ? f : null;
+        return mustBeValid ? validateBinaryFile(f) : f; }
+
+    public static File
+    binaryFileCreate(String version) throws Exception {
+        return binaryFile(version, false); }
+
+    public static File
+    binaryFileValidate(String version) throws Exception {
+        return binaryFile(version, true); }
+
+    public static File
+    latestBinaryFile() throws Exception {
+        return binaryFileValidate(latestInstalledVersion(bindir().listFiles())); }
+
     public static File
     install(String version) throws Exception {
         Properties p  = propertiesResource("boot/tag-release.properties");
         String     v  = p.getProperty(version);
         String     vv = (v == null) ? version : v;
         String     nn = "boot." + ((v == null) ? "jar" : "sh");
-        return download(downloadUrl(vv, nn), binaryFile(vv, false)); }
-
-    public static String
-    downloadUrl(String version, String name) throws Exception {
-        return String.format("https://github.com/boot-clj/boot/releases/download/%s/%s", version, name); }
-
-    public static File
-    binaryFile(String version, boolean mustExist) throws Exception {
-        if (version == null) return null;
-        File f = mkFile(bindir(), version, "boot.jar");
-        return (f.exists() || ! mustExist) ? f : null; }
-
-    public static File
-    binaryFile(String version) throws Exception {
-        return binaryFile(version, true); }
-
-    public static File
-    latestBinaryFile() throws Exception {
-        return binaryFile(latestInstalledVersion(bindir().listFiles())); }
+        return download(downloadUrl(vv, nn), binaryFileCreate(vv)); }
 
     public static URLClassLoader
     loadJar(File jar) throws Exception {
@@ -215,7 +231,7 @@ public class Loader {
         File     f = null;
         String   v = config("BOOT_VERSION");
 
-        if (v != null && (f = binaryFile(v)) == null)
+        if (v != null && (f = binaryFileValidate(v)) == null)
             f = install(v);
 
         if (v == null)
