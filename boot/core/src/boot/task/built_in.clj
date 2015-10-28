@@ -728,6 +728,8 @@
             (let [{{t :tag} :scm
                    v :version} (pod/with-call-worker (boot.pom/pom-xml-parse ~(.getPath f)))
                   b            (util/guard (git/branch-current))
+                  commit       (util/guard (git/last-commit))
+                  tags         (util/guard (git/ls-tags))
                   clean?       (util/guard (git/clean?))
                   snapshot?    (.endsWith v "-SNAPSHOT")
                   artifact-map (when gpg-sign
@@ -751,5 +753,8 @@
               (pod/with-call-worker
                 (boot.aether/deploy ~(core/get-env) ~[repo r] ~(.getPath f) ~artifact-map))
               (when tag
-                (util/info "Creating tag %s...\n" v)
-                (git/tag v "release")))))))))
+                (if (and tags (= commit (get tags tag)))
+                  (util/info "Tag %s already created for %s\n" tag commit)
+                  (do
+                    (util/info "Creating tag %s...\n" v)
+                    (git/tag v "release")))))))))))
