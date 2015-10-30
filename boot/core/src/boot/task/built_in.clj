@@ -41,7 +41,6 @@
           files [["" "./boot.properties"       "Specify boot and clj versions for this project."]
                  ["" "$BOOT_HOME/profile.boot" "A script to run before running the build script."]]
           br    #(conj % ["" "" ""])]
-      (boot.App/usage)
       (printf "\n%s\n"
               (-> [["" ""] ["Usage:" "boot OPTS <task> TASK_OPTS <task> TASK_OPTS ..."]]
                   (table/table :style :none)
@@ -171,7 +170,7 @@
     (core/with-pre-wrap fileset'
       (cond
         deps           (print (pod/with-call-worker (boot.aether/dep-tree ~(core/get-env))))
-        env            (println (pretty-str (core/get-env)))
+        env            (println (pretty-str (assoc (core/get-env) :config (boot.App/config))))
         fileset        (helpers/print-fileset fileset')
         classpath      (println (or (System/getProperty "boot.class.path") ""))
         fake-classpath (println (or (System/getProperty "fake.class.path") ""))

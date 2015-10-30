@@ -35,7 +35,7 @@ public class App {
     private static String                  localrepo   = null;
     private static String                  appversion  = null;
     private static String                  channel     = "RELEASE";
-    private static String                  booturl     = "https://github.com/boot-clj/boot";
+    private static String                  booturl     = "http://boot-clj.com";
     private static String                  githuburl   = "https://api.github.com/repos/boot-clj/boot/releases";
     private static ClojureRuntimeShim      aethershim  = null;
 
@@ -367,14 +367,6 @@ public class App {
             try { core.get().close(); }
             catch (InterruptedException ie) {}}}
 
-    public static void
-    usage() throws Exception {
-        System.out.printf("Boot App Version: %s\n", appversion);
-        System.out.printf("Boot Lib Version: %s\n", bootversion);
-        System.out.printf("Clojure Version:  %s\n", cljversion);
-        if (cljname != null)
-            System.out.printf("Clojure name: %s\n", cljname); }
-
     public static String
     readVersion() throws Exception {
         Properties p = new Properties();
@@ -385,11 +377,10 @@ public class App {
     public static void
     printVersion() throws Exception {
         Properties p = new Properties();
-        for (Map.Entry<String, String> e : config().entrySet())
-            if (! e.getKey().equals("BOOT_HOME"))
-                p.setProperty(e.getKey(), e.getValue());
-        p.store(System.out, propComment());
-        System.err.printf("#App version: %s\n", appversion); }
+        p.setProperty("BOOT_VERSION",         config("BOOT_VERSION"));
+        p.setProperty("BOOT_CLOJURE_NAME",    config("BOOT_CLOJURE_NAME"));
+        p.setProperty("BOOT_CLOJURE_VERSION", config("BOOT_CLOJURE_VERSION"));
+        p.store(System.out, propComment()); }
 
     public static void
     main(String[] args) throws Exception {
