@@ -65,7 +65,7 @@ update) much less frequently.
 
 #### Unix, Linux, OSX
 
-Download [boot.sh][2], then:
+Download [boot.sh][boot-sh], then:
 
 ```
 $ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
@@ -73,7 +73,7 @@ $ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
 
 #### Windows
 
-Download [boot.exe][3], then:
+Download [boot.exe][boot-exe], then:
 
 ```
 C:\> move boot.exe C:\Windows\System32
@@ -436,8 +436,8 @@ Copyright © 2013 Alan Dipert and Micha Niskin
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
-[2]: https://github.com/boot-clj/boot/releases/download/2.4.0/boot.sh
-[3]: https://github.com/boot-clj/boot/releases/download/2.4.0/boot.exe
+[boot-sh]: https://github.com/boot-clj/boot-bin/releases/download/2.4.2/boot.sh
+[boot-exe]: https://github.com/boot-clj/boot-bin/releases/download/2.4.2/boot.exe
 [4]: #install
 [5]: https://drone.io/github.com/boot-clj/boot/status.png?camocache=1
 [6]: https://drone.io/github.com/boot-clj/boot/latest
