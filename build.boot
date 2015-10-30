@@ -53,6 +53,7 @@ Install Steps
             :pom  {:project     'boot/aether
                    :description "Boot aether module - performs maven dependency resolution."}
             :deps [['org.clojure/clojure      "1.6.0" :scope "compile"]
+                   ['boot/base                version :scope "provided"]
                    ['boot/pod                 version :scope "compile"]
                    ['com.cemerick/pomegranate "0.3.0" :scope "compile"]]}
    :worker {:dir  {:src #{"boot/worker/src/" "boot/worker/third_party/barbarywatchservice/src/"}}
@@ -68,7 +69,6 @@ Install Steps
                    ['clj-jgit                    "0.8.0"]
                    ['clj-yaml                    "0.4.0"]
                    ['javazoom/jlayer             "1.0.1"]
-                   ['mvxcvi/clj-pgp              "0.5.4"]
                    ['net.java.dev.jna/jna        "4.1.0"]
                    ['alandipert/desiderata       "1.0.2"]
                    ['org.clojure/data.xml        "0.0.8"]
