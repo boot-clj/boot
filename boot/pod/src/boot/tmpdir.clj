@@ -9,6 +9,8 @@
     [boot.file        :as file]
     [boot.from.digest :as digest]))
 
+(def state (atom {}))
+
 (defprotocol ITmpFile
   (id   [this])
   (dir  [this])
@@ -58,16 +60,21 @@
         (doto out (write! true) (mod! (mod src)) (write! false)))
       (doto out (#(io/copy src %)) (mod! (mod src)) (write! false)))))
 
+(declare diff*)
+
 (defrecord TmpFileSet [dirs tree blob]
   ITmpFileSet
   (ls [this]
     (set (vals tree)))
   (commit! [this]
     (util/with-let [{:keys [dirs tree blob]} this]
-      (apply file/empty-dir! (map file dirs))
-      (doseq [[p tmpf] tree]
-        (let [srcf (io/file blob (id tmpf))]
-          (file/copy-with-lastmod srcf (file tmpf))))))
+      (let [prev (@state dirs)
+            {:keys [added removed changed]} (diff* prev this [:hash])]
+        (doseq [tmpf (set/union (ls removed) (ls changed))]
+          (file/delete-file (file tmpf)))
+        (doseq [tmpf (set/union (ls added) (ls changed))]
+          (file/copy-with-lastmod (io/file blob (id tmpf)) (file tmpf)))
+        (swap! state assoc dirs this))))
   (rm [this tmpfiles]
     (let [{:keys [dirs tree blob]} this
           treefiles (set (vals tree))
