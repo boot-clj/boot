@@ -631,12 +631,22 @@
 (defmacro deftask
   "Define a boot task."
   [sym & forms]
-  `(do
-     (when-let [existing-deftask# (resolve '~sym)]
-       (when (= *ns* (-> existing-deftask# meta :ns))
-         (boot.util/warn
-          "Warning: deftask %s/%s was overridden\n" *ns* '~sym)))
-     (cli2/defclifn ~(vary-meta sym assoc ::task true) ~@forms)))
+  (let [[heads [bindings & tails]] (split-with (complement vector?) forms)]
+    `(do
+       (when-let [existing-deftask# (resolve '~sym)]
+         (when (= *ns* (-> existing-deftask# meta :ns))
+           (boot.util/warn
+             "Warning: deftask %s/%s was overridden\n" *ns* '~sym)))
+       (cli2/defclifn ~(vary-meta sym assoc ::task true)
+         ~@heads
+         ~bindings
+         (let [provided# (->> ~'*opts* keys set)
+               optspec#  (->> #'~sym meta :arglists first second)
+               allowed#  (->> optspec# :keys (map (comp keyword str)) set)
+               unknown#  (set/difference provided# allowed#)]
+           (when (seq unknown#)
+             (util/warn "%s: unknown option(s): %s\n" '~sym (string/join ", " unknown#))))
+         ~@tails))))
 
 ;; Boot Lifecycle ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
