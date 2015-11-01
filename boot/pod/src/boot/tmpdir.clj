@@ -41,11 +41,17 @@
   (file [this] dir))
 
 (defn- dir->tree
-  [dir]
-  (let [file->rel-path #(file/relative-to dir %)
-        file->kv       #(let [p (str (file->rel-path %))]
-                          [p (TmpFile. dir p (digest/md5 %) (.lastModified %))])]
-    (->> dir file-seq (filter (memfn isFile)) (map file->kv) (into {}))))
+  ([dir]
+   (dir->tree dir {:calc-id? true :calc-mod? true}))
+  ([dir {:keys [calc-id? calc-mod?]}]
+   (let [file->rel-path #(file/relative-to dir %)
+         file->kv       #(let [p (str (file->rel-path %))]
+                           [p (TmpFile. dir p (when calc-id? (digest/md5 %))
+                                        (when calc-mod? (.lastModified %)))])]
+     (->> dir file-seq (filter (memfn isFile)) (map file->kv) (into {})))))
+
+(defn- dirs->tree [dirs opts]
+  (apply merge (map #(dir->tree % opts) dirs)))
 
 (defn- add-blob!
   [blob src hash]
@@ -58,16 +64,42 @@
         (doto out (write! true) (mod! (mod src)) (write! false)))
       (doto out (#(io/copy src %)) (mod! (mod src)) (write! false)))))
 
+(def ^:private filesystem (atom {}))
+
+(defn ^:private store! [fileset]
+  (->> #(reduce (fn [t f]
+                  (update-in t [(dir f)] conj f))
+                (apply dissoc % (map dir (:dirs fileset)))
+                (ls fileset))
+       (swap! filesystem)))
+
+(defn prev-committed
+  [{:keys [dirs] :as fileset}]
+  (reduce (fn [fs f]
+            (assoc-in fs [:tree (:path f)] f))
+          (dissoc fileset :tree)
+          (->> (map file dirs)
+               (select-keys @filesystem)
+               (mapcat val))))
+
+(declare diff*)
 (defrecord TmpFileSet [dirs tree blob]
   ITmpFileSet
   (ls [this]
     (set (vals tree)))
   (commit! [this]
     (util/with-let [{:keys [dirs tree blob]} this]
-      (apply file/empty-dir! (map file dirs))
-      (doseq [[p tmpf] tree]
-        (let [srcf (io/file blob (id tmpf))]
-          (file/copy-with-lastmod srcf (file tmpf))))))
+      (let [{:keys [changed added removed]}
+            (diff* (prev-committed this) this nil)
+            to-delete (ls removed)
+            to-link   (mapcat ls [changed added])]
+        (util/dbug "Committing %s deletions & %s links"
+                   (count to-delete) (count to-link))
+        (doseq [rm to-delete]
+          (io/delete-file (file rm)))
+        (doseq [ln to-link]
+          (file/copy-with-lastmod (io/file blob (id ln)) (file ln))))
+      (store! this)))
   (rm [this tmpfiles]
     (let [{:keys [dirs tree blob]} this
           treefiles (set (vals tree))
