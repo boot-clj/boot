@@ -5,6 +5,7 @@
     [boot.file                  :as file]
     [boot.from.backtick         :as bt]
     [boot.from.digest           :as digest]
+    [boot.from.io.aviso.exception :as ex]
     [clojure.java.io            :as io]
     [dynapath.util              :as dp]
     [dynapath.dynamic-classpath :as cp])
@@ -162,10 +163,21 @@
               out (io/output-stream (doto (io/file out-path) io/make-parents))]
     (io/copy in out)))
 
-(def  env            nil)
-(def  pod-id         (atom nil))
-(def  worker-pod     (atom nil))
-(def  shutdown-hooks (atom nil))
+(def env            nil)
+(def data           nil)
+(def pod-id         (atom nil))
+(def worker-pod     (atom nil))
+(def shutdown-hooks (atom nil))
+
+(defn get-pods
+  []
+  (->> (boot.App/getPods)
+       (map key)
+       (reduce #(assoc %1 (.getName %2) %2) {})))
+
+(defn set-data!
+  [x]
+  (alter-var-root #'data (constantly x)))
 
 (defn set-worker-pod!
   [pod]
@@ -456,6 +468,15 @@
         dfl-deps  (vec (filter (comp not-given first) deps))]
     (assoc env :dependencies (into dfl-deps dependencies))))
 
+(defmacro caller-namespace
+  []
+  `(let [e# (Exception. "")]
+     (-> (->> (ex/expand-stack-trace e#)
+              (map :name)
+              (remove string/blank?)
+              second)
+         (.replaceAll "/.*$" ""))))
+
 (defn make-pod
   ([] (init-pod! env (boot.App/newPod)))
   ([{:keys [directories dependencies] :as env}]
@@ -466,7 +487,10 @@
            env  (default-dependencies dfl env)
            jars (resolve-dependency-jars env)
            urls (concat dirs jars)]
-       (->> urls (into-array java.io.File) boot.App/newShim (init-pod! env)))))
+       (doto (->> (into-array java.io.File urls)
+                  boot.App/newShim
+                  (init-pod! env))
+         (.setName (caller-namespace))))))
 
 (defn destroy-pod
   [pod]

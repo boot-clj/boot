@@ -156,28 +156,47 @@
 (core/deftask show
   "Print project/build info (e.g. dependency graph, etc)."
 
-  [C fake-classpath   bool "Print the project's fake classpath."
-   c classpath        bool "Print the project's full classpath."
-   d deps             bool "Print project dependency graph."
-   e env              bool "Print the boot env map."
-   f fileset          bool "Print the build fileset object."
-   p pedantic         bool "Print graph of dependency conflicts."
-   U update-snapshots bool "Include snapshot versions in updates searches."
-   u updates          bool "Print newer releases of outdated dependencies."]
+  [C fake-classpath   bool  "Print the project's fake classpath."
+   c classpath        bool  "Print the project's full classpath."
+   d deps             bool  "Print project dependency graph."
+   e env              bool  "Print the boot env map."
+   f fileset          bool  "Print the build fileset object."
+   p pedantic         bool  "Print graph of dependency conflicts."
+   P pods REGEX       regex "The name filter used to select which pods to inspect."
+   U update-snapshots bool  "Include snapshot versions in updates searches."
+   u updates          bool  "Print newer releases of outdated dependencies."]
 
-  (let [updates (or updates update-snapshots)
-        pretty-str #(with-out-str (pp/pprint %))]
+  (let [usage      (delay (*usage*))
+        pretty-str #(with-out-str (pp/pprint %))
+        updates    (or updates update-snapshots)]
     (core/with-pre-wrap fileset'
-      (cond
-        deps           (print (pod/with-call-worker (boot.aether/dep-tree ~(core/get-env))))
-        env            (println (pretty-str (assoc (core/get-env) :config (boot.App/config))))
-        fileset        (helpers/print-fileset fileset')
-        classpath      (println (or (System/getProperty "boot.class.path") ""))
-        fake-classpath (println (or (System/getProperty "fake.class.path") ""))
-        updates        (mapv prn (pod/outdated (core/get-env) :snapshots update-snapshots))
-        pedantic       (pedantic/prn-conflicts (core/get-env))
-        :else          (*usage*))
-      fileset')))
+      (util/with-let [_ fileset']
+        (cond
+          fileset        (helpers/print-fileset fileset')
+          classpath      (println (or (System/getProperty "boot.class.path") ""))
+          fake-classpath (println (or (System/getProperty "fake.class.path") ""))
+          :else
+          (let [pods*     (pod/get-pods)
+                pod-names (if-not pods
+                            ["core"]
+                            (filter #(re-find pods %) (keys pods*)))
+                selected  (->> pod-names
+                               (remove #{"worker" "aether"})
+                               (select-keys pods*)
+                               (into (sorted-map)))]
+            (if-not (seq selected)
+              (println "No pods found.")
+              (doseq [[pod-name p] selected]
+                (let [pod-env (if (= pod-name "core")
+                                (core/get-env)
+                                (pod/with-eval-in p boot.pod/env))]
+                  (when pods (util/info "\nPod: %s\n\n" pod-name))
+                  (cond
+                    deps     (print (pod/with-call-worker (boot.aether/dep-tree ~pod-env)))
+                    env      (println (pretty-str (assoc pod-env :config (boot.App/config))))
+                    updates  (mapv prn (pod/outdated pod-env :snapshots update-snapshots))
+                    pedantic (pedantic/prn-conflicts pod-env)
+                    :else    @usage))))))))))
 
 (core/deftask wait
   "Wait before calling the next handler.

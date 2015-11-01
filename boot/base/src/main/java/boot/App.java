@@ -12,51 +12,61 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Properties;
+import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.projectodd.shimdandy.ClojureRuntimeShim;
 
 @SuppressWarnings("unchecked")
 public class App {
-    private static File[]                  podjars     = null;
-    private static File[]                  corejars    = null;
-    private static File[]                  workerjars  = null;
-    private static File                    homedir     = new File(System.getProperty("user.home"));
-    private static File                    workdir     = new File(System.getProperty("user.dir"));
-    private static File                    aetherfile  = null;
-    private static HashMap<String, File[]> depsCache   = null;
-    private static String                  cljversion  = null;
-    private static String                  cljname     = null;
-    private static String                  bootversion = null;
-    private static String                  localrepo   = null;
-    private static String                  appversion  = null;
-    private static String                  channel     = "RELEASE";
-    private static String                  booturl     = "http://boot-clj.com";
-    private static String                  githuburl   = "https://api.github.com/repos/boot-clj/boot/releases";
-    private static ClojureRuntimeShim      aethershim  = null;
+    private static File                     aetherfile          = null;
+    private static File[]                   podjars             = null;
+    private static File[]                   corejars            = null;
+    private static File[]                   workerjars          = null;
+    private static String                   cljversion          = null;
+    private static String                   cljname             = null;
+    private static String                   bootversion         = null;
+    private static String                   localrepo           = null;
+    private static String                   appversion          = null;
+    private static String                   channel             = "RELEASE";
+    private static String                   booturl             = "http://boot-clj.com";
+    private static String                   githuburl           = "https://api.github.com/repos/boot-clj/boot/releases";
+    private static ClojureRuntimeShim       aethershim          = null;
+    private static HashMap<String, File[]>  depsCache           = null;
 
-    private static final String            aetherjar   = "aether.uber.jar";
-    private static final AtomicLong        counter     = new AtomicLong(0);
-    private static final ExecutorService   ex          = Executors.newCachedThreadPool();
+    private static final File               homedir             = new File(System.getProperty("user.home"));
+    private static final File               workdir             = new File(System.getProperty("user.dir"));
+    private static final String             aetherjar           = "aether.uber.jar";
+    private static final AtomicLong         counter             = new AtomicLong(0);
+    private static final ExecutorService    ex                  = Executors.newCachedThreadPool();
 
-    private static long  nextId()         { return counter.addAndGet(1); }
+    public  static       String             getVersion()        { return appversion; }
+    public  static       String             getBootVersion()    { return bootversion; }
+    public  static       String             getClojureName()    { return cljname; }
 
-    public static String getVersion()     { return appversion; }
-    public static String getBootVersion() { return bootversion; }
-    public static String getClojureName() { return cljname; }
-    public static String propComment()    { return booturl; }
+    private static final ConcurrentHashMap<Object, Object> data = new ConcurrentHashMap<>();
+    public  static       ConcurrentHashMap<Object, Object> getData() { return data; }
+
+    private static final WeakHashMap<ClojureRuntimeShim, Object> pods = new WeakHashMap<>();
+    public  static       WeakHashMap<ClojureRuntimeShim, Object> getPods() { return pods; }
+
+    public static class
+    Exit extends Exception {
+        public Exit(String m) { super(m); }
+        public Exit(String m, Throwable c) { super(m, c); }}
+
+    private static long
+    nextId() {
+        return counter.addAndGet(1); }
 
     public static File
     getBootDir() throws Exception {
         return bootdir(); }
-
-    public static class Exit extends Exception {
-        public Exit(String m) { super(m); }
-        public Exit(String m, Throwable c) { super(m, c); }}
 
     public static boolean
     isWindows() throws Exception {
@@ -200,7 +210,7 @@ public class App {
         setDefaultProperty(p, "BOOT_CLOJURE_VERSION", c);
 
         try (FileOutputStream os = new FileOutputStream(f)) {
-                p.store(os, propComment()); }
+                p.store(os, booturl); }
 
         return p; }
 
@@ -271,13 +281,15 @@ public class App {
         finally { if (lock != null) lock.release(); }}
 
     public static ClojureRuntimeShim
-    newShim(File[] jarFiles) throws Exception {
+    newShim(String name, File[] jarFiles) throws Exception {
         URL[] urls = new URL[jarFiles.length];
 
         for (int i=0; i<jarFiles.length; i++) urls[i] = jarFiles[i].toURI().toURL();
 
         ClassLoader cl = new URLClassLoader(urls, App.class.getClassLoader());
         ClojureRuntimeShim rt = ClojureRuntimeShim.newRuntime(cl);
+
+        rt.setName(name != null ? name : "anonymous");
 
         File[] hooks = {new File(bootdir(), "boot-shim.clj"), new File("boot-shim.clj")};
 
@@ -287,8 +299,14 @@ public class App {
 
         rt.require("boot.pod");
         rt.invoke("boot.pod/seal-app-classloader");
+        rt.invoke("boot.pod/set-data!", data);
 
+        pods.put(rt, new Object());
         return rt; }
+
+    public static ClojureRuntimeShim
+    newShim(File[] jarFiles) throws Exception {
+        return newShim(null, jarFiles); }
 
     public static ClojureRuntimeShim
     newPod() throws Exception { return newShim(podjars); }
@@ -306,7 +324,7 @@ public class App {
     aetherShim() throws Exception {
         if (aethershim == null) {
             ensureResourceFile(aetherjar, aetherfile);
-            aethershim = newShim(new File[] { aetherfile }); }
+            aethershim = newShim("aether", new File[] { aetherfile }); }
         return aethershim; }
 
     public static void
@@ -336,16 +354,20 @@ public class App {
             "boot.aether/resolve-dependency-jars", sym, bootversion, cljname, cljversion); }
 
     public static Future<ClojureRuntimeShim>
-    newShimFuture(final File[] jars) throws Exception {
+    newShimFuture(final String name, final File[] jars) throws Exception {
         return ex.submit(new Callable() {
                 public ClojureRuntimeShim
-                call() throws Exception { return newShim(jars); }}); }
+                call() throws Exception { return newShim(name, jars); }}); }
 
     public static Future<ClojureRuntimeShim>
-    newCore() throws Exception { return newShimFuture(corejars); }
+    newShimFuture(final File[] jars) throws Exception {
+        return newShimFuture(null, jars); }
 
     public static Future<ClojureRuntimeShim>
-    newWorker() throws Exception { return newShimFuture(workerjars); }
+    newCore() throws Exception { return newShimFuture("core", corejars); }
+
+    public static Future<ClojureRuntimeShim>
+    newWorker() throws Exception { return newShimFuture("worker", workerjars); }
 
     public static int
     runBoot(Future<ClojureRuntimeShim> core,
@@ -380,7 +402,7 @@ public class App {
         p.setProperty("BOOT_VERSION",         config("BOOT_VERSION"));
         p.setProperty("BOOT_CLOJURE_NAME",    config("BOOT_CLOJURE_NAME"));
         p.setProperty("BOOT_CLOJURE_VERSION", config("BOOT_CLOJURE_VERSION"));
-        p.store(System.out, propComment()); }
+        p.store(System.out, booturl); }
 
     public static void
     main(String[] args) throws Exception {
@@ -407,7 +429,7 @@ public class App {
             bootversion  = null;
             Properties p = writeProps(bootprops);
             bootversion  = p.getProperty("BOOT_VERSION");
-            p.store(System.out, propComment());
+            p.store(System.out, booturl);
             System.exit(0); }
 
         if (args.length > 0
