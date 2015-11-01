@@ -536,6 +536,7 @@
   [env & {:keys [size init destroy]}]
   (let [size    (or size 2)
         init    (if-not init #(make-pod env) #(doto (make-pod env) init))
-        destroy (if-not destroy destroy-pod #(doto % destroy destroy-pod))]
+        killpod (fn [pod] (future (destroy-pod pod)))
+        destroy (if-not destroy killpod #(doto % destroy killpod))]
     (lifecycle-pool size init destroy)))
 
