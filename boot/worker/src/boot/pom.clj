@@ -19,7 +19,8 @@
 (xml/decelems
   artifactId connection description dependencies dependency exclusion
   exclusions developerConnection enabled groupId id license licenses
-  modelVersion name project scope tag url scm version comments)
+  modelVersion name email project scope tag url scm version comments
+  developer developers)
 
 ;;; private ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -42,6 +43,7 @@
                  st :tag
                  sc :connection
                  sd :developerConnection} :scm
+                ds :developers
                 u :url
                 deps :dependencies
                 :as env}]
@@ -70,6 +72,12 @@
           (when sd (developerConnection sd))
           (when su (url su))
           (when st (tag st))))
+      (when-let [ds (seq ds)]
+        (developers
+          (for [[n e] ds]
+            (developer
+              (name n)
+              (email e)))))
       (dependencies
         (for [[p v & {es :exclusions s :scope}] deps
               :let [[g a] (util/extract-ids p)]]

@@ -16,7 +16,7 @@
    ["-b" "--boot-script"         "Print generated boot script for debugging."]
    ["-B" "--no-boot-script"      "Ignore boot script in current directory."]
    ["-C" "--no-colors"           "Remove ANSI escape codes from printed output."]
-   ["-d" "--dependencies ID:VER" "Add dependency to project (eg. -d foo/bar:1.2.3)."
+   ["-d" "--dependencies SYM:VER" "Add dependency to project (eg. -d foo/bar:1.2.3)."
     :assoc-fn #(let [[p v] (string/split %3 #":" 2)]
                  (update-in %1 [%2] (fnil conj []) [(read-string p) (or v "RELEASE")]))]
    ["-e" "--set-env KEY=VAL"     "Add KEY => VAL to project env map."

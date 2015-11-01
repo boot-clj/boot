@@ -1,6 +1,7 @@
 (ns boot.pod
   (:require
     [clojure.set                :as set]
+    [clojure.string             :as string]
     [boot.util                  :as util]
     [boot.file                  :as file]
     [boot.from.backtick         :as bt]
