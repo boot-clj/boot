@@ -15,6 +15,11 @@
   (pod/with-call-worker
     (boot.jgit/ls-files :ref ~ref :untracked ~untracked)))
 
+(defn ls-tags
+  []
+  (pod/with-call-worker
+    (boot.jgit/ls-tags)))
+
 (defn tag
   [name message]
   (pod/with-call-worker

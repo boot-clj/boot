@@ -102,8 +102,9 @@
   (mv [this from-path to-path]
     (if (= from-path to-path)
       this
-      (if-let [f (assoc (get-in this [:tree from-path]) :path to-path)]
-        (update-in this [:tree] #(-> % (assoc to-path f) (dissoc from-path)))
+      (if-let [from (get-in this [:tree from-path])]
+        (update-in this [:tree] #(-> % (assoc to-path (assoc from :path to-path))
+                                       (dissoc from-path)))
         (throw (Exception. (format "not in fileset (%s)" from-path))))))
   (cp [this src-file dest-tmpfile]
     (let [hash (digest/md5 src-file)
