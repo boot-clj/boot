@@ -239,7 +239,9 @@
 
 (defn require-in
   [pod ns]
-  (doto pod (.require (into-array String [(str ns)]))))
+  (doto pod
+    (with-eval-in
+      (require '~(symbol (str ns))))))
 
 (defn canonical-coord
   [[id & more :as coord]]
