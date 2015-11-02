@@ -145,13 +145,14 @@
   []
   (@src-watcher)
   (let [debounce  (or (get-env :watcher-debounce) 10)
+        exclude   (or (get-env :watcher-exclude) #{})
         env-keys  [:source-paths :resource-paths :asset-paths]
         dir-paths (set (->> (mapcat get-env env-keys)
                             (filter #(.isDirectory (io/file %)))))
         on-change (fn [_]
                     (sync-user-dirs!)
                     (reset! last-file-change (System/currentTimeMillis)))]
-    (reset! src-watcher (watch-dirs on-change dir-paths :debounce debounce))
+    (reset! src-watcher (watch-dirs on-change dir-paths :debounce debounce :exclude exclude))
     (set-fake-class-path!)
     (sync-user-dirs!)))
 
@@ -239,11 +240,21 @@
    new))
 
 (defn- order-set-env-keys
-  "Ensures that :dependencies are processed last, because changes to other
-  keys affect dependency resolution."
+  "Ensures that
+    - :dependencies are processed last, because changes to other
+      keys affect dependency resolution.
+    - :watcher-debounce and :watcher-exclude settings are processed
+      first because otherwise they're not used when loading input dirs."
   [kvs]
-  (let [dk :dependencies]
-    (->> kvs (sort-by first #(cond (= %1 dk) 1 (= %2 dk) -1 :else 0)))))
+  (let [dk       :dependencies
+        watcher? #{:watcher-debounce :watcher-exclude}]
+    (->> kvs
+         (sort-by first #(cond
+                           (= %1 dk)  1
+                           (= %2 dk) -1
+                           (watcher? %1) -1
+                           (watcher? %2) 1
+                           :else 0)))))
 
 (defn- parse-task-opts
   "Given and argv and a tools.cli type argspec spec, returns a vector of the
@@ -507,14 +518,14 @@
   The watcher uses the somewhat quirky native filesystem event APIs. A
   debounce option is provided (in ms, default 10) which can be used to
   tune the watcher sensitivity."
-  [callback dirs & {:keys [debounce]}]
+  [callback dirs & {:keys [debounce exclude]}]
   (if (empty? dirs)
     (constantly true)
     (do (pod/require-in @pod/worker-pod "boot.watcher")
         (let [q       (LinkedBlockingQueue.)
               watcher (apply file/watcher! :time dirs)
               paths   (into-array String dirs)
-              k       (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
+              k       (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths exclude)]
           (daemon
             (loop [ret (util/guard [(.take q)])]
               (when ret

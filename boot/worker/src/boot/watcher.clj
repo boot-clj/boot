@@ -57,12 +57,14 @@
       (get x))))
 
 (defn- register-recursive
-  [service path events]
-  (util/dbug "registering %s %s\n" path events)
-  (register service path events)
-  (doseq [dir (.listFiles (io/file path))]
-    (when (.isDirectory dir)
-      (register-recursive service dir events))))
+  [service path events excludes]
+  (when-not (contains? excludes (.getName path))
+    (util/dbug "registering %s %s\n" path events)
+    (register service path events)
+    (doseq [dir (.listFiles (io/file path))]
+      (when (and (.isDirectory dir)
+                 (not (contains? excludes (.getName dir))))
+        (register-recursive service dir events excludes)))))
 
 (defn- new-watch-service []
   (if (= "Mac OS X" (System/getProperty "os.name"))
@@ -88,9 +90,9 @@
   (.offer queue "changed!"))
 
 (defn- service
-  [queue paths]
+  [queue paths excludes]
   (let [service (new-watch-service)
-        doreg   #(register-recursive %1 %2 [:create :modify])]
+        doreg   #(register-recursive %1 %2 [:create :modify] excludes)]
     (doseq [path paths] (doreg service (io/file path)))
     (-> #(let [watch-key (take-watch-key service)]
            (when-let [path (and watch-key (or (.watchable watch-key) ""))]
@@ -120,9 +122,9 @@
   (when-let [w (@watchers k)] (.close w)))
 
 (defn make-watcher
-  [queue paths]
+  [queue paths excludes]
   (let [k  (str (gensym))
-        s  (service queue paths)
+        s  (service queue paths excludes)
         fs (->> paths (mapcat (comp file-seq io/file)) (filter (memfn isFile)))]
     (swap! watchers assoc k s)
     (send-it! queue)
