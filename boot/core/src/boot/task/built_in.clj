@@ -28,18 +28,20 @@
   (core/with-pre-wrap fileset
     (let [tasks (#'helpers/available-tasks 'boot.user)
           opts  (->> main/cli-opts (mapv (fn [[x y z]] ["" (str x " " y) z])))
-          envs  [["" "BOOT_AS_ROOT"            "Set to 'yes' to allow boot to run as root."]
-                 ["" "BOOT_CLOJURE_VERSION"    "The version of Clojure boot will provide (1.7.0)."]
-                 ["" "BOOT_CLOJURE_NAME"       "The artefact name of Clojure boot will provide (org.clojure/clojure)."]
-                 ["" "BOOT_HOME"               "Directory where boot stores global state (~/.boot)."]
-                 ["" "BOOT_FILE"               "Build script name (build.boot)."]
-                 ["" "BOOT_JAVA_COMMAND"       "Specify the Java executable (java)."]
-                 ["" "BOOT_JVM_OPTIONS"        "Specify JVM options (Unix/Linux/OSX only)."]
-                 ["" "BOOT_LOCAL_REPO"         "The local Maven repo path (~/.m2/repository)."]
-                 ["" "BOOT_VERSION"            "Specify the version of boot core to use."]
-                 ["" "BOOT_COLOR"              "Turn colorized output on or off"]]
-          files [["" "./boot.properties"       "Specify boot and clj versions for this project."]
-                 ["" "$BOOT_HOME/profile.boot" "A script to run before running the build script."]]
+          envs  [["" "BOOT_AS_ROOT"               "Set to 'yes' to allow boot to run as root."]
+                 ["" "BOOT_CLOJURE_VERSION"       "The version of Clojure boot will provide (1.7.0)."]
+                 ["" "BOOT_CLOJURE_NAME"          "The artifact name of Clojure boot will provide (org.clojure/clojure)."]
+                 ["" "BOOT_EMIT_TARGET"           "Set to 'no' to disable automatic writing to target directory."]
+                 ["" "BOOT_HOME"                  "Directory where boot stores global state (~/.boot)."]
+                 ["" "BOOT_FILE"                  "Build script name (build.boot)."]
+                 ["" "BOOT_JAVA_COMMAND"          "Specify the Java executable (java)."]
+                 ["" "BOOT_JVM_OPTIONS"           "Specify JVM options (Unix/Linux/OSX only)."]
+                 ["" "BOOT_LOCAL_REPO"            "The local Maven repo path (~/.m2/repository)."]
+                 ["" "BOOT_VERSION"               "Specify the version of boot core to use."]
+                 ["" "BOOT_COLOR"                 "Set to 'no' to turn colorized output off."]]
+          files [["" "./boot.properties"          "Specify boot options for this project."]
+                 ["" "$BOOT_HOME/boot.properties" "Specify global boot options."]
+                 ["" "$BOOT_HOME/profile.boot"    "A script to run before running the build script."]]
           br    #(conj % ["" "" ""])]
       (printf "\n%s\n"
               (-> [["" ""] ["Usage:" "boot OPTS <task> TASK_OPTS <task> TASK_OPTS ..."]]
@@ -208,6 +210,18 @@
   (if (zero? (or time 0))
     (core/with-post-wrap _ @(promise))
     (core/with-pre-wrap fileset (Thread/sleep time) fileset)))
+
+(core/deftask target
+  "Writes output files to the given directory on the filesystem."
+  [d dirs PATH #{str} "The set of directories to write to."]
+  (core/with-pre-wrap [fs fs]
+    (util/with-let [_ fs]
+      (mapv deref (for [d dirs]
+                    (do (util/info "Writing target dir %s...\n" d)
+                        (future
+                          (binding [file/*hard-link* false]
+                            (apply file/sync! :time d (core/output-dirs fs)))
+                          (file/delete-empty-subdirs! d))))))))
 
 (core/deftask watch
   "Call the next handler when source files change.

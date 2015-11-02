@@ -30,7 +30,7 @@
 (declare ^{:dynamic true :doc "Command line options for boot itself."}   *boot-opts*)
 (declare ^{:dynamic true :doc "Count of warnings during build."}         *warnings*)
 
-(def new-build-at "Latest build occured at time." (atom 0))
+(def new-build-at     "Latest build occured at time."         (atom 0))
 (def last-file-change "Last source file watcher update time." (atom 0))
 
 ;; Internal helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -696,12 +696,13 @@
 (defn- sync-target
   "FIXME: document"
   [before after]
-  (let [tgt  (get-env :target-path)
-        diff (fileset-diff before after)]
-    (when (seq (output-files diff))
-      (binding [file/*hard-link* false]
-        (apply file/sync! :time tgt (output-dirs after)))
-      (file/delete-empty-subdirs! tgt))))
+  (when-not (= "no" (boot.App/config "BOOT_EMIT_TARGET"))
+    (let [tgt  (get-env :target-path)
+          diff (fileset-diff before after)]
+      (when (seq (output-files diff))
+        (binding [file/*hard-link* false]
+          (apply file/sync! :time tgt (output-dirs after)))
+        (file/delete-empty-subdirs! tgt)))))
 
 (defn- run-tasks
   "FIXME: document"
