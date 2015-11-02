@@ -678,7 +678,9 @@
   (reset! *warnings* 0))
 
 (defn- construct-tasks
-  "FIXME: document"
+  "Given command line arguments (strings), constructs a task pipeline by
+  resolving the task vars, calling the task constructors with the arguments
+  for that task, and composing them to form the pipeline."
   [& argv]
   (loop [ret [] [op-str & args] argv]
     (if-not op-str
@@ -694,7 +696,7 @@
             (recur (conj ret (apply (var-get op) opts)) argv)))))))
 
 (defn- sync-target
-  "FIXME: document"
+  "Copy output files to the target directory (if BOOT_EMIT_TARGET is not 'no')."
   [before after]
   (when-not (= "no" (boot.App/config "BOOT_EMIT_TARGET"))
     (let [tgt  (get-env :target-path)
@@ -705,7 +707,8 @@
         (file/delete-empty-subdirs! tgt)))))
 
 (defn- run-tasks
-  "FIXME: document"
+  "Given a task pipeline, builds the initial fileset, sets the initial build
+  state, and runs the pipeline."
   [task-stack]
   (binding [*warnings* (atom 0)]
     (let [fs (commit! (reset-fileset))]
