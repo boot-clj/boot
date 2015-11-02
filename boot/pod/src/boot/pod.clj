@@ -166,27 +166,19 @@
 
 (def env            nil)
 (def data           nil)
-(def pod-id         (atom nil))
-(def worker-pod     (atom nil))
+(def pods           nil)
+(def pod-id         nil)
+(def worker-pod     nil)
 (def shutdown-hooks (atom nil))
 
-(defn get-pods
-  []
-  (->> (boot.App/getPods)
-       (map key)
-       (reduce #(assoc %1 (.getName %2) %2) {})))
-
-(defn set-data!
-  [x]
-  (alter-var-root #'data (constantly x)))
-
-(defn set-worker-pod!
-  [pod]
-  (reset! worker-pod pod))
+(defn set-pods!         [x] (alter-var-root #'pods        (constantly x)))
+(defn set-data!         [x] (alter-var-root #'data        (constantly x)))
+(defn set-pod-id!       [x] (alter-var-root #'pod-id      (constantly x)))
+(defn set-worker-pod!   [x] (alter-var-root #'worker-pod  (constantly x)))
 
 (defn add-shutdown-hook!
   [f]
-  (if (not= 1 @pod-id)
+  (if (not= 1 pod-id)
     (.offer @shutdown-hooks f)
     (->> f Thread. (.addShutdownHook (Runtime/getRuntime)))))
 
@@ -215,7 +207,7 @@
 
 (defmacro with-call-worker
   [expr]
-  `(with-call-in @worker-pod ~expr))
+  `(with-call-in worker-pod ~expr))
 
 (defn eval-in*
   ([expr]
@@ -235,7 +227,7 @@
 
 (defmacro with-eval-worker
   [& body]
-  `(with-eval-in @worker-pod ~@body))
+  `(with-eval-in worker-pod ~@body))
 
 (defn require-in
   [pod ns]
@@ -309,7 +301,7 @@
 
 (defn add-dependencies-worker
   [env]
-  (add-dependencies-in @worker-pod env))
+  (add-dependencies-in worker-pod env))
 
 (defn jar-entries*
   [path-or-jarfile]
@@ -454,7 +446,7 @@
   [env pod]
   (doto pod
     (require-in "boot.pod")
-    (.invoke "boot.pod/set-worker-pod!" @worker-pod)
+    (.invoke "boot.pod/set-worker-pod!" worker-pod)
     (with-eval-in
       (require 'boot.util 'boot.pod)
       (reset! boot.util/*verbosity* ~(deref util/*verbosity*))

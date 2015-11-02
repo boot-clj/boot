@@ -71,7 +71,7 @@
       (let [prev (@state dirs)
             {:keys [added removed changed]} (diff* prev this [:hash])]
         (doseq [tmpf (set/union (ls removed) (ls changed))]
-          (file/delete-file (file tmpf)))
+          (when (.exists (file tmpf)) (file/delete-file (file tmpf))))
         (doseq [tmpf (set/union (ls added) (ls changed))]
           (file/copy-with-lastmod (io/file blob (id tmpf)) (file tmpf)))
         (swap! state assoc dirs this))))

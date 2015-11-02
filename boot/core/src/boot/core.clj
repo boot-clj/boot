@@ -510,11 +510,11 @@
   [callback dirs & {:keys [debounce]}]
   (if (empty? dirs)
     (constantly true)
-    (do (pod/require-in @pod/worker-pod "boot.watcher")
+    (do (pod/require-in pod/worker-pod "boot.watcher")
         (let [q       (LinkedBlockingQueue.)
               watcher (apply file/watcher! :time dirs)
               paths   (into-array String dirs)
-              k       (.invoke @pod/worker-pod "boot.watcher/make-watcher" q paths)]
+              k       (.invoke pod/worker-pod "boot.watcher/make-watcher" q paths)]
           (daemon
             (loop [ret (util/guard [(.take q)])]
               (when ret
@@ -523,7 +523,7 @@
                   (let [changed (watcher)]
                     (when-not (empty? changed) (callback changed))
                     (recur (util/guard [(.take q)])))))))
-          #(.invoke @pod/worker-pod "boot.watcher/stop-watcher" k)))))
+          #(.invoke pod/worker-pod "boot.watcher/stop-watcher" k)))))
 
 (defn rebuild!
   "Manually trigger build watch."

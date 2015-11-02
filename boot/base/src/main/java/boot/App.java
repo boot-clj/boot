@@ -300,6 +300,7 @@ public class App {
         rt.require("boot.pod");
         rt.invoke("boot.pod/seal-app-classloader");
         rt.invoke("boot.pod/set-data!", data);
+        rt.invoke("boot.pod/set-pods!", pods);
 
         pods.put(rt, new Object());
         return rt; }

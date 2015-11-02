@@ -94,8 +94,8 @@
       (util/exit-error
         (println (format "Please download latest Boot binary: %s" url)))))
 
-  (reset! pod/pod-id pod-id)
-  (reset! pod/worker-pod worker-pod)
+  (pod/set-pod-id! pod-id)
+  (pod/set-worker-pod! worker-pod)
   (reset! pod/shutdown-hooks shutdown-hooks)
   (reset! util/*colorize?* (util/colorize?-system-default))
 

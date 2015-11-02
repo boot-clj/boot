@@ -178,27 +178,21 @@
           classpath      (println (or (System/getProperty "boot.class.path") ""))
           fake-classpath (println (or (System/getProperty "fake.class.path") ""))
           :else
-          (let [pods*     (pod/get-pods)
-                pod-names (if-not pods
-                            ["core"]
-                            (filter #(re-find pods %) (keys pods*)))
-                selected  (->> pod-names
-                               (remove #{"worker" "aether"})
-                               (select-keys pods*)
-                               (into (sorted-map)))]
-            (if-not (seq selected)
-              (println "No pods found.")
-              (doseq [[pod-name p] selected]
-                (let [pod-env (if (= pod-name "core")
-                                (core/get-env)
-                                (pod/with-eval-in p boot.pod/env))]
-                  (when pods (util/info "\nPod: %s\n\n" pod-name))
-                  (cond
-                    deps     (print (pod/with-call-worker (boot.aether/dep-tree ~pod-env)))
-                    env      (println (pretty-str (assoc pod-env :config (boot.App/config))))
-                    updates  (mapv prn (pod/outdated pod-env :snapshots update-snapshots))
-                    pedantic (pedantic/prn-conflicts pod-env)
-                    :else    @usage))))))))))
+          (let [pattern (or pods #"^core$")]
+            (doseq [p (->> pod/pods (map key) (sort-by (memfn getName)))
+                    :let  [pod-name (.getName p)]
+                    :when (and (re-find pattern pod-name)
+                               (not (#{"worker" "aether"} pod-name)))]
+              (let [pod-env (if (= pod-name "core")
+                              (core/get-env)
+                              (pod/with-eval-in p boot.pod/env))]
+                (when pods (util/info "\nPod: %s\n\n" pod-name))
+                (cond
+                  deps     (print (pod/with-call-worker (boot.aether/dep-tree ~pod-env)))
+                  env      (println (pretty-str (assoc pod-env :config (boot.App/config))))
+                  updates  (mapv prn (pod/outdated pod-env :snapshots update-snapshots))
+                  pedantic (pedantic/prn-conflicts pod-env)
+                  :else    @usage)))))))))
 
 (core/deftask wait
   "Wait before calling the next handler.
@@ -232,7 +226,7 @@
    v verbose       bool "Print which files have changed."
    M manual        bool "Use a manual trigger instead of a file watcher."]
 
-  (pod/require-in @pod/worker-pod "boot.watcher")
+  (pod/require-in pod/worker-pod "boot.watcher")
   (fn [next-task]
     (fn [fileset]
       (let [q            (LinkedBlockingQueue.)
