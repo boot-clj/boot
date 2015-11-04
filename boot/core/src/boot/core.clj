@@ -662,13 +662,13 @@
   returning a new immutable fileset. When called with no args returns a new
   fileset containing only the latest project files."
   [& [fileset]]
-  (sync-user-dirs!)
-  (-> (if-not fileset
-        (new-fileset)
-        (rm fileset (user-files fileset)))
-      (add-user-asset (first (user-asset-dirs)))
-      (add-user-source (first (user-source-dirs)))
-      (add-user-resource (first (user-resource-dirs)))))
+  (let [fileset (when fileset (rm fileset (user-files fileset)))]
+    (sync-user-dirs!)
+    (-> (new-fileset)
+        (add-user-asset (first (user-asset-dirs)))
+        (add-user-source (first (user-source-dirs)))
+        (add-user-resource (first (user-resource-dirs)))
+        (update-in [:tree] merge (:tree fileset)))))
 
 (defn reset-build!
   "Resets mutable build state to default values. This includes such things as
