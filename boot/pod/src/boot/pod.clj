@@ -473,7 +473,7 @@
          (.replaceAll "/.*$" ""))))
 
 (defn make-pod
-  ([] (init-pod! env (boot.App/newPod)))
+  ([] (init-pod! env (boot.App/newPod nil data)))
   ([{:keys [directories dependencies] :as env}]
      (let [dirs (map io/file directories)
            cljname (or (boot.App/getClojureName) "org.clojure/clojure")
@@ -483,7 +483,7 @@
            jars (resolve-dependency-jars env)
            urls (concat dirs jars)]
        (doto (->> (into-array java.io.File urls)
-                  boot.App/newShim
+                  (boot.App/newShim nil data)
                   (init-pod! env))
          (.setName (caller-namespace))))))
 

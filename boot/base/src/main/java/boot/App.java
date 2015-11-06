@@ -49,9 +49,6 @@ public class App {
     public  static       String             getBootVersion()    { return bootversion; }
     public  static       String             getClojureName()    { return cljname; }
 
-    private static final ConcurrentHashMap<Object, Object> data = new ConcurrentHashMap<>();
-    public  static       ConcurrentHashMap<Object, Object> getData() { return data; }
-
     private static final WeakHashMap<ClojureRuntimeShim, Object> pods = new WeakHashMap<>();
     public  static       WeakHashMap<ClojureRuntimeShim, Object> getPods() { return pods; }
 
@@ -281,7 +278,7 @@ public class App {
         finally { if (lock != null) lock.release(); }}
 
     public static ClojureRuntimeShim
-    newShim(String name, File[] jarFiles) throws Exception {
+    newShim(String name, Object data, File[] jarFiles) throws Exception {
         URL[] urls = new URL[jarFiles.length];
 
         for (int i=0; i<jarFiles.length; i++) urls[i] = jarFiles[i].toURI().toURL();
@@ -306,26 +303,23 @@ public class App {
         return rt; }
 
     public static ClojureRuntimeShim
-    newShim(File[] jarFiles) throws Exception {
-        return newShim(null, jarFiles); }
+    newPod(String name, Object data) throws Exception {
+        return newShim(name, data, podjars); }
 
     public static ClojureRuntimeShim
-    newPod() throws Exception { return newShim(podjars); }
-
-    public static ClojureRuntimeShim
-    newPod(File[] jarFiles) throws Exception {
+    newPod(String name, Object data, File[] jarFiles) throws Exception {
         File[] files = new File[jarFiles.length + podjars.length];
 
         for (int i=0; i<podjars.length; i++) files[i] = podjars[i];
         for (int i=0; i<jarFiles.length; i++) files[i + podjars.length] = jarFiles[i];
 
-        return newShim(files); }
+        return newShim(name, data, files); }
 
     private static ClojureRuntimeShim
     aetherShim() throws Exception {
         if (aethershim == null) {
             ensureResourceFile(aetherjar, aetherfile);
-            aethershim = newShim("aether", new File[] { aetherfile }); }
+            aethershim = newShim("aether", null, new File[] { aetherfile }); }
         return aethershim; }
 
     public static void
@@ -355,20 +349,16 @@ public class App {
             "boot.aether/resolve-dependency-jars", sym, bootversion, cljname, cljversion); }
 
     public static Future<ClojureRuntimeShim>
-    newShimFuture(final String name, final File[] jars) throws Exception {
+    newShimFuture(final String name, final Object data, final File[] jars) throws Exception {
         return ex.submit(new Callable() {
                 public ClojureRuntimeShim
-                call() throws Exception { return newShim(name, jars); }}); }
+                call() throws Exception { return newShim(name, data, jars); }}); }
 
     public static Future<ClojureRuntimeShim>
-    newShimFuture(final File[] jars) throws Exception {
-        return newShimFuture(null, jars); }
+    newCore(Object data) throws Exception { return newShimFuture("core", data, corejars); }
 
     public static Future<ClojureRuntimeShim>
-    newCore() throws Exception { return newShimFuture("core", corejars); }
-
-    public static Future<ClojureRuntimeShim>
-    newWorker() throws Exception { return newShimFuture("worker", workerjars); }
+    newWorker() throws Exception { return newShimFuture("worker", null, workerjars); }
 
     public static int
     runBoot(Future<ClojureRuntimeShim> core,
@@ -452,4 +442,4 @@ public class App {
 
         Thread shutdown = new Thread() { public void run() { ex.shutdown(); }};
         Runtime.getRuntime().addShutdownHook(shutdown);
-        System.exit(runBoot(newCore(), newWorker(), args)); }}
+        System.exit(runBoot(newCore(null), newWorker(), args)); }}
