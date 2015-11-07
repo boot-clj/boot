@@ -394,50 +394,13 @@
    i include MATCH         #{regex}    "The set of regexes that paths must match."
    v invert                bool        "Invert the sense of matching."]
 
-  (core/with-pre-wrap fileset
-    (let [tmp      (core/tmp-dir!)
-          negate   #(if-not invert % (not %))
-          include* (when-not invert include)
-          exclude* (when invert include)
-          keep?    (partial file/keep-filters? include* exclude*)
-          mvpath   (partial reduce-kv #(string/replace %1 %2 %3))
-          mover    #(or (and (not move) %1)
-                        (let [from-path (core/tmp-path %2)
-                              to-path   (mvpath from-path move)]
-                          (core/mv %1 from-path to-path)))
-          findany  #(reduce (fn [xs x] (or (re-find x %2) xs)) false %1)
-          match?   #(and %1 (negate (findany %1 (core/tmp-path %2))))
-          to-src   #(if-not (match? to-source   %2) %1 (core/mv-source   %1 [%2]))
-          to-rsc   #(if-not (match? to-resource %2) %1 (core/mv-resource %1 [%2]))
-          to-ast   #(if-not (match? to-asset    %2) %1 (core/mv-asset    %1 [%2]))
-          remover  #(if (keep? (io/file (core/tmp-path %2))) %1 (core/rm %1 [%2]))
-          pathfor  #(-> (fn [p] (negate (re-find %1 p)))
-                        (filter (map core/tmp-path (core/ls %2))))
-          pathfor  #(filter (partial re-find %1) (map core/tmp-path (core/ls %2)))
-          addmeta  #(-> (fn [meta-map re key]
-                          (-> (fn [meta-map path]
-                                (assoc-in meta-map [path key] true))
-                              (reduce meta-map (pathfor re %))))
-                        (reduce-kv {} add-meta))
-          withmeta #(or (and (not with-meta) %1)
-                        (if (negate (some with-meta (keys %2))) %1 (core/rm %1 [%2])))]
+  (let [v?      (:invert *opts*)
+        *opts*  (dissoc *opts* :invert)
+        action  (partial helpers/sift-action v?)
+        process (reduce-kv #(comp (action %2 %3) %1) identity *opts*)]
+    (core/with-pre-wrap fileset
       (util/info "Sifting output files...\n")
-      (doseq [[proj re] add-jar]
-        (let [inc (when-not invert [re])
-              exc (when invert [re])
-              env (core/get-env)
-              dep (->> env :dependencies (filter #(= proj (first %))) first)
-              jar (pod/resolve-dependency-jar (core/get-env) dep)]
-          (util/info "Adding jar entries from %s...\n" (.getName (io/file jar)))
-          (pod/unpack-jar jar tmp :include inc :exclude exc)))
-      (-> fileset
-          ((partial reduce core/add-asset)    (map io/file add-asset))
-          ((partial reduce core/add-resource) (map io/file add-resource))
-          ((partial reduce core/add-source)   (map io/file add-source))
-          (core/fileset-reduce core/ls remover to-src to-rsc to-ast mover withmeta)
-          (#(core/add-meta % (addmeta %)))
-          (core/add-resource tmp)
-          core/commit!))))
+      (-> fileset process core/commit!))))
 
 (core/deftask add-repo
   "Add all files in project git repo to fileset.
