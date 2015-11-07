@@ -6,10 +6,13 @@
    [boot.from.digest :as digest])
   (:import
    [java.net URI]
-   [java.nio.file Files]
+   [java.io File]
    [java.nio.file.attribute FileAttribute]
+   [java.nio.file Files StandardCopyOption]
    [java.lang.management ManagementFactory])
   (:refer-clojure :exclude [sync name file-seq]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:dynamic *include*     nil)
 (def ^:dynamic *exclude*     nil)
@@ -60,20 +63,20 @@
   (let [{files true dirs' false}
         (->> (map io/file dirs)
              (mapcat (comp rest file-seq-nofollow))
-             (group-by (memfn isFile)))
+             (group-by (fn [^File f] (.isFile f))))
         to-rm (concat files (reverse dirs'))]
     (doseq [f to-rm] (delete-file f))))
 
 (defn delete-empty-subdirs!
   [dir]
-  (let [empty-dir? #(and (.isDirectory %) (empty? (.list %)))
-        subdirs    (->> dir io/file file-seq-nofollow (filter (memfn isDirectory)))]
+  (let [empty-dir? (fn [^File f] (and (.isDirectory f) (empty? (.list f))))
+        subdirs    (->> dir io/file file-seq-nofollow (filter (fn [^File f] (.isDirectory f))))]
     (doseq [f (reverse subdirs)]
       (when (empty-dir? f) (delete-file f)))))
 
 (defn- contains-files?
   [dir]
-  (->> dir file-seq (filter (memfn isFile)) seq))
+  (->> dir file-seq (filter (fn [^File f] (.isFile f))) seq))
 
 (defn parent-seq
   "Return sequence of this file and all it's parent directories"
@@ -85,7 +88,15 @@
 
    e.g. public/js/main.js -> (\"public\" \"js\" \"main.js\")"
   [p]
-  (->> p parent-seq reverse (map (memfn getName))))
+  (->> p parent-seq reverse (map (fn [^File f] (.getName f)))))
+
+(defn move
+  [^File src ^File dest & {:keys [atomic replace]
+                           :or {atomic  StandardCopyOption/ATOMIC_MOVE
+                                replace StandardCopyOption/REPLACE_EXISTING}}]
+  (let [opts (filter identity [atomic replace])
+        opts-array (into-array StandardCopyOption opts)]
+    (Files/move (.toPath src) (.toPath dest) opts-array)))
 
 (defn parent? [parent child]
   (contains? (set (parent-seq child)) parent))
@@ -120,18 +131,19 @@
 (defn delete-all
   [dir]
   (when (exists? dir)
-    (mapv #(.delete %) (-> dir io/file file-seq-nofollow rest reverse))))
+    (mapv (fn [^File f] (.delete f))
+          (-> dir io/file file-seq-nofollow rest reverse))))
 
 (defn hard-link
-  [existing-file link-file]
+  [^File existing-file ^File link-file]
   (Files/createLink (.toPath link-file) (.toPath existing-file)))
 
 (defn sym-link
-  [target-file link-file]
+  [^File target-file ^File link-file]
   (Files/createSymbolicLink (.toPath link-file) (.toPath target-file) (make-array FileAttribute 0)))
 
 (defn copy-with-lastmod
-  [src-file dst-file]
+  [^File src-file ^File dst-file]
   (let [last-mod (.lastModified src-file)
         cp-src!  (partial io/copy src-file)
         dst-par  (.getParent dst-file)]
@@ -146,19 +158,20 @@
 (defn copy-files
   [src dest]
   (if (exists? src)
-    (let [files  (map #(.getPath %) (filter file? (file-seq (io/file src))))
+    (let [files  (map #(.getPath ^File %) (filter file? (file-seq (io/file src))))
           outs   (map #(srcdir->outdir % src dest) files)]
       (mapv copy-with-lastmod (map io/file files) (map io/file outs)))))
 
 (defn tree-for [& dirs]
   (->> (for [dir dirs]
-         (let [path  (-> (if (string? dir) dir (.getPath dir)) (.replaceAll "/$" ""))
+         (let [path  (-> (if (string? dir) dir (.getPath ^File dir))
+                         ((fn [^String s] (.replaceAll s "/$" ""))))
                snip  (count (str path "/"))]
            (->> (file-seq (io/file path))
-                (filter (memfn isFile))
-                (reduce #(let [p (subs (.getPath %2) snip)]
+                (filter (fn [^File f] (.isFile f)))
+                (reduce #(let [p (subs (.getPath ^File %2) snip)]
                            (-> (assoc-in %1 [:file p] %2)
-                               (assoc-in [:time p] (.lastModified %2))))
+                               (assoc-in [:time p] (.lastModified ^File %2))))
                         {}))))
        (reduce (partial merge-with into) {})))
 
@@ -199,7 +212,7 @@
 
 (defn match-filter?
   [filters f]
-  ((apply some-fn (map (partial partial re-find) filters)) (.getPath f)))
+  ((apply some-fn (map (partial partial re-find) filters)) (.getPath ^File f)))
 
 (defn keep-filters?
   [include exclude f]
