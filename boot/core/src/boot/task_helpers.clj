@@ -41,18 +41,6 @@
   [prompt]
   (String/valueOf (.readPassword (System/console) prompt nil)))
 
-(defn sign-jar [out jar pass keyring user-id]
-  (let [prompt (pod/with-call-worker
-                 (boot.pgp/prompt-for ~keyring ~user-id))
-        pass   (or pass (read-pass prompt))]
-    (pod/with-call-worker
-      (boot.pgp/sign-jar
-        ~(.getPath out)
-        ~(.getPath jar)
-        ~pass
-        :keyring ~keyring
-        :user-id ~user-id))))
-
 (defn print-fileset
   [fileset]
   (letfn [(tree [xs]
