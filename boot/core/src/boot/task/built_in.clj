@@ -33,6 +33,7 @@
                  ["" "BOOT_CLOJURE_VERSION"       "The version of Clojure boot will provide (1.7.0)."]
                  ["" "BOOT_CLOJURE_NAME"          "The artifact name of Clojure boot will provide (org.clojure/clojure)."]
                  ["" "BOOT_EMIT_TARGET"           "Set to 'no' to disable automatic writing to target directory."]
+                 ["" "BOOT_GPG"                   "System gpg command (gpg)."]
                  ["" "BOOT_HOME"                  "Directory where boot stores global state (~/.boot)."]
                  ["" "BOOT_FILE"                  "Build script name (build.boot)."]
                  ["" "BOOT_JAVA_COMMAND"          "Specify the Java executable (java)."]
