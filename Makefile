@@ -1,86 +1,72 @@
 .PHONY: help deps install deploy test clean
 
 SHELL       := /bin/bash
-export PATH := bin:$(PATH)
-export LEIN_SNAPSHOTS_IN_RELEASE := yes
+export PATH := bin:launch4j:$(PATH)
 
 version      = $(shell grep ^version version.properties |sed 's/.*=//')
 verfile      = version.properties
 distjar      = $(PWD)/bin/boot.jar
-bootjar      = boot/boot/target/boot-$(version).jar
-podjar       = boot/pod/target/pod-$(version).jar
-aetherjar    = boot/aether/target/aether-$(version).jar
-aetheruber   = aether.uber.jar
-workerjar    = boot/worker/target/worker-$(version).jar
-corejar      = boot/core/target/core-$(version).jar
-basejar      = boot/base/target/base-$(version).jar
-baseuber     = boot/base/target/base-$(version)-jar-with-dependencies.jar
-alljars      = $(podjar) $(aetherjar) $(workerjar) $(corejar) $(baseuber) $(bootjar)
+aetheruber   = boot/base/resources/boot-aether-$(version)-uber.jar
+basejar      = target/base/boot-base-$(version).jar
+podjar       = target/pod/boot-pod-$(version).jar
+corejar      = target/core/boot-core-$(version).jar
+workerjar    = target/worker/boot-worker-$(version).jar
+aetherjar    = target/aether/boot-aether-$(version).jar
+txjar        = target/transaction-jar/boot-$(version).jar
+baseuber     = $(PWD)/target/boot-base-$(version)-uber.jar
+alljars      = $(podjar) $(aetherjar) $(workerjar) $(corejar) $(baseuber) $(txjar)
 
 help:
 	@echo "version =" $(version)
 	@echo "Usage: make {help|deps|install|deploy|test|clean}" 1>&2 && false
 
-clean:
-	(cd boot/base && mvn -q clean && rm -f src/main/resources/$(aetheruber))
-	(cd boot/core && lein clean)
-	(cd boot/aether && lein clean)
-	(cd boot/pod && lein clean)
-	(cd boot/worker && lein clean)
-
-bloop:
-	which lein
-
-bin/lein:
+bin/boot:
 	mkdir -p bin
-	wget https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein -O bin/lein
-	chmod 755 bin/lein
+	curl -L https://github.com/boot-clj/boot/releases/download/2.4.0/boot.sh > bin/boot
+	chmod 755 bin/boot
 
-deps: bin/lein
+deps: bin/boot
 
-$(bootjar): $(verfile) boot/boot/project.clj
-	(cd boot/boot && lein install)
+clean:
+	(rm -rf target/*)
+	(if [ -a $(aetheruber) ]; then rm $(aetheruber); fi;)
 
-boot/base/pom.xml: $(verfile) boot/base/pom.in.xml
-	(cd boot/base && cat pom.in.xml |sed 's/__VERSION__/$(version)/' > pom.xml)
+$(txjar): $(verfile)
+	(boot transaction-jar install)
 
-$(basejar): boot/base/pom.xml $(shell find boot/base/src/main/java)
-	(cd boot/base && mvn -q install)
+$(basejar): $(shell find boot/base/src)
+	(boot base install)
 
-$(podjar): $(verfile) boot/pod/project.clj $(shell find boot/pod/src)
-	(cd boot/pod && lein install)
+$(podjar): $(verfile) $(shell find boot/pod/src)
+	(boot pod install)
 
-$(aetherjar): $(verfile) boot/aether/project.clj $(podjar) $(shell find boot/aether/src)
-	(cd boot/aether && lein install && lein uberjar && \
-		mkdir -p ../base/src/main/resources && \
-		cp target/aether-$(version)-standalone.jar ../base/src/main/resources/$(aetheruber))
+$(aetherjar): $(verfile) $(podjar) $(shell find boot/aether/src)
+	(boot aether install)
 
-$(workerjar): $(verfile) boot/worker/project.clj $(shell find boot/worker/src)
-	(cd boot/worker && lein install)
+$(workerjar): $(verfile) $(shell find boot/worker/src)
+	(boot worker install)
 
-$(corejar): $(verfile) boot/core/project.clj $(shell find boot/core/src)
-	(cd boot/core && lein install)
+$(corejar): $(verfile) $(shell find boot/core/src)
+	(boot core install)
 
-$(baseuber): boot/base/pom.xml $(shell find boot/base/src/main)
-	(cd boot/base && mvn -q assembly:assembly -DdescriptorId=jar-with-dependencies)
+$(aetheruber):
+	(boot aether --uberjar)
+
+$(baseuber): $(aetheruber) $(shell find boot/base/src)
+	(boot base --uberjar install-boot-jar)
 
 .installed: $(basejar) $(alljars)
-	cp $(baseuber) $(distjar)
-	# FIXME: this is just for testing -- remove before release
-	mkdir -p $$HOME/.boot/cache/bin/$(version)
-	cp $(baseuber) $$HOME/.boot/cache/bin/$(version)/boot.jar
-	# End testing code -- cut above.
 	date > .installed
 
 install: .installed
 
-.deployed: .installed
-	(cd boot/base   && lein deploy clojars boot/base $(version) target/base-$(version).jar pom.xml)
-	(cd boot/pod    && lein deploy clojars)
-	(cd boot/aether && lein deploy clojars)
-	(cd boot/worker && lein deploy clojars)
-	(cd boot/core   && lein deploy clojars)
-	(cd boot/boot   && lein deploy clojars)
+.deployed:
+	(boot base push-release)
+	(boot pod push-release)
+	(boot aether push-release)
+	(boot worker push-release)
+	(boot core push-release)
+	(boot transaction-jar push-release)
 	date > .deployed
 
 deploy: .deployed
