@@ -690,6 +690,7 @@
 
   [f file PATH            str      "The jar file to deploy."
    F file-regex MATCH     #{regex} "The set of regexes of paths to deploy."
+   c credentials PATH     str      "The path to credentials file for repositores."
    g gpg-sign             bool     "Sign jar using GPG private key."
    k gpg-user-id NAME     str      "The name used to find the GPG key."
    K gpg-keyring PATH     str      "The path to secring.gpg file to use for signing."
@@ -713,7 +714,12 @@
                                 ((if (seq file-regex) #(core/by-re file-regex %) identity))
                                 (map core/tmp-file)))
               repo-map (->> (core/get-env :repositories) (into {}))
-              r        (get repo-map repo)]
+              r        (get repo-map repo)
+              r        (if (and r credentials)
+                         (->> credentials slurp read-string
+                              (some (fn [[k v]] (when (or (= k (:url r)) (re-find k (:url r))) v)))
+                              (merge r))
+                         r)]
           (when-not (and r (seq jarfiles))
             (throw (Exception. "missing jar file or repo not found")))
           (doseq [f jarfiles]
