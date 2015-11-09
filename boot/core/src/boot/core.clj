@@ -745,6 +745,16 @@
 
 ;; Low-Level Tasks, Helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmacro with-pass-thru
+  "Given a binding and body expressions, constructs a task handler. The body
+  expressions are evaluated for side effects with the current fileset bound
+  to binding. The current fileset is then passed to the next handler and the
+  result is then returned up the handler stack."
+  [bind & body]
+  (let [bind (if (vector? bind) (first bind) bind)]
+    `(boot.core/with-pre-wrap [fs#]
+       (boot.util/with-let [~bind fs#] ~@body))))
+
 (defmacro with-pre-wrap
   "Given a binding and body expressions, constructs a task handler. The body
   expressions are evaluated with the current fileset bound to binding, and the
