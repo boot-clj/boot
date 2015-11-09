@@ -6,6 +6,7 @@
    [clojure.pprint       :as pp]
    [boot.gpg             :as gpg]
    [boot.pod             :as pod]
+   [boot.jar             :as jar]
    [boot.git             :as git]
    [boot.file            :as file]
    [boot.repl            :as repl]
@@ -611,8 +612,7 @@
         (let [entries (core/output-files fileset)
               index   (->> entries (map (juxt core/tmp-path #(.getPath (core/tmp-file %)))))]
           (util/info "Writing %s...\n" (.getName jarfile))
-          (pod/with-call-worker
-            (boot.jar/spit-jar! ~(.getPath jarfile) ~index ~manifest ~main))
+          (jar/spit-jar! (.getPath jarfile) index manifest main)
           (-> fileset (core/add-resource tgt) core/commit!))))))
 
 (core/deftask war
@@ -636,8 +636,7 @@
               entries (core/output-files fileset)
               index   (->> entries (mapv (juxt ->war #(.getPath (core/tmp-file %)))))]
           (util/info "Writing %s...\n" (.getName warfile))
-          (pod/with-call-worker
-            (boot.jar/spit-jar! ~(.getPath warfile) ~index {} nil))
+          (jar/spit-jar! (.getPath warfile) index {} nil)
           (-> fileset (core/add-resource tgt) core/commit!))))))
 
 (core/deftask zip
@@ -654,8 +653,7 @@
           (let [entries (core/output-files fileset)
                 index   (->> entries (map (juxt core/tmp-path #(.getPath (core/tmp-file %)))))]
             (util/info "Writing %s...\n" (.getName zipfile))
-            (pod/with-call-worker
-              (boot.jar/spit-zip! ~(.getPath zipfile) ~index))
+            (jar/spit-zip! (.getPath zipfile) index)
             (-> fileset (core/add-resource tgt) core/commit!)))))))
 
 (core/deftask install

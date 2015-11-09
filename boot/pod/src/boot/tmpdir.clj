@@ -13,7 +13,9 @@
 (set! *warn-on-reflection* true)
 
 (def CACHE_VERSION "1.0.0")
-(def state (atom {:prev {} :manifest {}}))
+(def state (atom {:prev {} :cache {}}))
+
+;; records and protocols ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defprotocol ITmpFile
   (id   [this])
@@ -54,11 +56,17 @@
   (time [this] 0)
   (file [this] dir))
 
+;; helper functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn- file-stat
   [^File f]
   (let [h (digest/md5 f)
         t (.lastModified f)]
     {:id (str h "." t) :hash h :time t}))
+
+(defn- scratch-dir!
+  []
+  (file/tmpdir "boot-scratch"))
 
 (def ^:dynamic *hard-link* nil)
 
@@ -66,12 +74,15 @@
   [^File blob ^File src id]
   (let [out (io/file blob id)]
     (when-not (.exists out)
-      (let [tmp (File/createTempFile (.getName out) nil blob)]
-        (if *hard-link*
-          (do (.setReadOnly src) (file/hard-link src out))
-          (do (io/copy src tmp) (.setReadOnly tmp) (file/move tmp out)))))))
+      (if *hard-link*
+        (do (.setReadOnly src)
+            (file/hard-link src out))
+        (let [tmp (File/createTempFile (.getName out) nil blob)]
+          (io/copy src tmp)
+          (.setReadOnly tmp)
+          (file/move tmp out))))))
 
-(defn- dir->tree
+(defn- dir->tree!
   [^File dir ^File blob]
   (let [->path #(str (file/relative-to dir %))
         ->tmpf (fn [^String p ^File f]
@@ -98,13 +109,13 @@
   (let [prep #(-> % map->TmpFile (assoc :bdir bdir))]
     (->> manifile slurp read-string (reduce-kv #(assoc %1 %2 (prep %3)) {}))))
 
-(defn- write-manifest
+(defn- write-manifest!
   [manifile manifest]
   (let [prep #(-> (into {} %) (dissoc :dir :bdir))]
     (spit manifile (pr-str (reduce-kv #(assoc %1 %2 (prep %3)) {} manifest)))))
 
-(defn- apply-mergers
-  [mergers old-file path new-file merged-file]
+(defn- apply-mergers!
+  [mergers ^File old-file path ^File new-file ^File merged-file]
   (when-let [merger (some (fn [[re v]] (when (re-find re path) v)) mergers)]
     (util/dbug "Merging duplicate entry (%s)\n" path)
     (let [out-file (File/createTempFile (.getName merged-file) nil
@@ -119,37 +130,35 @@
   [tree dir]
   (reduce-kv #(assoc %1 %2 (assoc %3 :dir dir)) {} tree))
 
-(defn- get-cached
+(defn- get-cached!
   [cache-key seedfn]
   (util/dbug "Adding cached fileset %s...\n" cache-key)
-  (or (get-in @state [:manifest cache-key])
+  (or (get-in @state [:cache cache-key])
       (let [cache-dir (cache-dir cache-key)
             manifile  (manifest-file cache-key)
             store!    #(util/with-let [m %]
-                         (swap! state assoc-in [:manifest cache-key] m))]
+                         (swap! state assoc-in [:cache cache-key] m))]
         (or (and (.exists manifile)
                  (store! (read-manifest manifile cache-dir)))
-            (let [tmp-dir (file/tmpdir "boot-scratch")]
+            (let [tmp-dir (scratch-dir!)]
               (util/dbug "Not found in cache: %s...\n" cache-key)
               (.mkdirs cache-dir)
               (seedfn tmp-dir)
               (binding [*hard-link* true]
-                (let [m (dir->tree tmp-dir cache-dir)]
-                  (write-manifest manifile m)
+                (let [m (dir->tree! tmp-dir cache-dir)]
+                  (write-manifest! manifile m)
                   (store! (read-manifest manifile cache-dir)))))))))
 
-(defn- merge-trees
+(defn- merge-trees!
   [old new mergers]
-  (util/with-let [tmp (file/tmpdir "boot-scratch")]
+  (util/with-let [tmp (scratch-dir!)]
     (doseq [[path newtmp] new]
       (when-let [oldtmp (get old path)]
         (util/dbug "Merging %s...\n" path)
-        (prn :xxx newtmp)
-        (prn :yyy oldtmp)
         (let [newf   (io/file (bdir newtmp) (id newtmp))
               oldf   (io/file (bdir oldtmp) (id oldtmp))
               mergef (doto (io/file tmp path) io/make-parents)]
-          (apply-mergers mergers oldf path newf mergef))))))
+          (apply-mergers! mergers oldf path newf mergef))))))
 
 (defn- comp-res
   [regexes]
@@ -163,7 +172,28 @@
         reducer #(if (or (not (incl %2)) (excl %2)) %1 (assoc %1 %2 %3))]
     (reduce-kv reducer {} tree)))
 
-(declare diff*)
+(defn- diff-tree
+  [tree props]
+  (let [->map #(select-keys % props)]
+    (reduce-kv #(assoc %1 %2 (->map %3)) {} tree)))
+
+(defn- diff*
+  [before after props]
+  (if-not before
+    {:added   after
+     :removed (assoc after :tree {})
+     :changed (assoc after :tree {})}
+    (let [props   (or (seq props) [:id])
+          t1      (:tree before)
+          t2      (:tree after)
+          d1      (diff-tree t1 props)
+          d2      (diff-tree t2 props)
+          [x y _] (map (comp set keys) (data/diff d1 d2))]
+      {:added   (->> (set/difference   y x) (select-keys t2) (assoc after :tree))
+       :removed (->> (set/difference   x y) (select-keys t1) (assoc after :tree))
+       :changed (->> (set/intersection x y) (select-keys t2) (assoc after :tree))})))
+
+;; fileset implementation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defrecord TmpFileSet [dirs tree blob]
   ITmpFileSet
@@ -196,10 +226,10 @@
             (format "dest-dir not in dir set (%s)" dest-dir))
     (let [{:keys [dirs tree blob]} this
           {:keys [mergers include exclude]} opts
-          ->tree   #(set-dir (dir->tree % blob) dest-dir)
+          ->tree   #(set-dir (dir->tree! % blob) dest-dir)
           new-tree (-> (->tree src-dir) (filter-tree include exclude))
           mrg-tree (when mergers
-                     (->tree (merge-trees tree new-tree mergers)))]
+                     (->tree (merge-trees! tree new-tree mergers)))]
       (assoc this :tree (merge tree new-tree mrg-tree))))
 
   (add-cached [this dest-dir cache-key cache-fn opts]
@@ -207,12 +237,12 @@
             (format "dest-dir not in dir set (%s)" dest-dir))
     (let [{:keys [dirs tree blob]} this
           {:keys [mergers include exclude]} opts
-          new-tree (let [cached (get-cached cache-key cache-fn)]
+          new-tree (let [cached (get-cached! cache-key cache-fn)]
                      (-> (set-dir cached dest-dir)
                          (filter-tree include exclude)))
           mrg-tree (when mergers
-                     (let [merged (merge-trees tree new-tree mergers)]
-                       (set-dir (dir->tree merged blob) dest-dir)))]
+                     (let [merged (merge-trees! tree new-tree mergers)]
+                       (set-dir (dir->tree! merged blob) dest-dir)))]
       (assoc this :tree (merge tree new-tree mrg-tree))))
 
   (add-tmp [this dest-dir tmpfiles]
@@ -237,6 +267,8 @@
       (add-blob! blob src-file hash)
       (assoc this :tree (merge tree {p' (assoc dest-tmpfile :id hash)})))))
 
+;; additional api functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn tmpfile?
   [x]
   (instance? TmpFile x))
@@ -244,27 +276,6 @@
 (defn tmpfileset?
   [x]
   (instance? TmpFileSet x))
-
-(defn- diff-tree
-  [tree props]
-  (let [->map #(select-keys % props)]
-    (reduce-kv #(assoc %1 %2 (->map %3)) {} tree)))
-
-(defn- diff*
-  [before after props]
-  (if-not before
-    {:added   after
-     :removed (assoc after :tree {})
-     :changed (assoc after :tree {})}
-    (let [props   (or (seq props) [:id])
-          t1      (:tree before)
-          t2      (:tree after)
-          d1      (diff-tree t1 props)
-          d2      (diff-tree t2 props)
-          [x y _] (map (comp set keys) (data/diff d1 d2))]
-      {:added   (->> (set/difference   y x) (select-keys t2) (assoc after :tree))
-       :removed (->> (set/difference   x y) (select-keys t1) (assoc after :tree))
-       :changed (->> (set/intersection x y) (select-keys t2) (assoc after :tree))})))
 
 (defn diff
   [before after & props]
