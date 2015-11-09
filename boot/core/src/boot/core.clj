@@ -411,8 +411,13 @@
 
 (defn add-asset
   "Add the contents of the java.io.File dir to the fileset's assets."
-  [fileset ^File dir & {:keys [mergers] :as opts}]
+  [fileset ^File dir & {:keys [mergers include exclude] :as opts}]
   (tmpd/add fileset (get-add-dir fileset #{:asset}) dir opts))
+
+(defn add-cached-asset
+  "FIXME: document"
+  [fileset cache-key cache-fn & {:keys [mergers include exclude] :as opts}]
+  (tmpd/add-cached fileset (get-add-dir fileset #{:asset}) cache-key cache-fn opts))
 
 (defn mv-asset
   "FIXME: document"
@@ -421,8 +426,13 @@
 
 (defn add-source
   "Add the contents of the java.io.File dir to the fileset's sources."
-  [fileset ^File dir & {:keys [mergers] :as opts}]
+  [fileset ^File dir & {:keys [mergers include exclude] :as opts}]
   (tmpd/add fileset (get-add-dir fileset #{:source}) dir opts))
+
+(defn add-cached-source
+  "FIXME: document"
+  [fileset cache-key cache-fn & {:keys [mergers include exclude] :as opts}]
+  (tmpd/add-cached fileset (get-add-dir fileset #{:source}) cache-key cache-fn opts))
 
 (defn mv-source
   "FIXME: document"
@@ -431,8 +441,13 @@
 
 (defn add-resource
   "Add the contents of the java.io.File dir to the fileset's resources."
-  [fileset ^File dir & {:keys [mergers] :as opts}]
+  [fileset ^File dir & {:keys [mergers include exclude] :as opts}]
   (tmpd/add fileset (get-add-dir fileset #{:resource}) dir opts))
+
+(defn add-cached-resource
+  "FIXME: document"
+  [fileset cache-key cache-fn & {:keys [mergers include exclude] :as opts}]
+  (tmpd/add-cached fileset (get-add-dir fileset #{:resource}) cache-key cache-fn opts))
 
 (defn mv-resource
   "FIXME: document"

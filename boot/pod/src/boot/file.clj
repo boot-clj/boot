@@ -101,7 +101,7 @@
 (defn parent? [parent child]
   (contains? (set (parent-seq child)) parent))
 
-(defn ^java.io.File relative-to
+(defn ^File relative-to
   "Return relative path to f from directory base."
   [base f]
   {:pre [(not (nil? base)) (not (nil? f))]}
@@ -110,7 +110,7 @@
         relpath (.relativize base-path f-path)]
     (.toFile relpath)))
 
-(defn lockfile
+(defn ^File lockfile
   [f]
   (let [f (io/file f)]
     (when (.createNewFile f)
@@ -118,11 +118,17 @@
         .deleteOnExit
         (spit (name (ManagementFactory/getRuntimeMXBean)))))))
 
-(defn tmpfile
+(defn ^File tmpfile
   ([prefix postfix]
    (doto (java.io.File/createTempFile prefix postfix) .deleteOnExit))
   ([prefix postfix dir]
    (doto (java.io.File/createTempFile prefix postfix dir) .deleteOnExit)))
+
+(defn ^File tmpdir
+  ([prefix]
+   (.toFile (Files/createTempDirectory prefix (into-array FileAttribute []))))
+  ([^File dir prefix]
+   (.toFile (Files/createTempDirectory (.toPath dir) prefix (into-array FileAttribute [])))))
 
 (defn srcdir->outdir
   [fname srcdir outdir]

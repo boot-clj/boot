@@ -353,44 +353,20 @@
    [#"META-INF/services/.*" concat-merger]
    [#".*"                   first-wins-merger]])
 
-(defn merge-duplicate-jar-entry
-  [mergers curr-file new-path new-stream-or-url & {:keys [merged-url]}]
-  (let [merged-url (or merged-url curr-file)]
-    (when-let [merger (some (fn [[re v]] (when (re-find re new-path) v)) mergers)]
-      (util/dbug "Merging duplicate jar entry (%s)\n" new-path)
-      (let [out-file (File/createTempFile (.getName curr-file) nil
-                                          (.getParentFile curr-file))]
-        (with-open [curr-stream (io/input-stream curr-file)
-                    new-stream  (io/input-stream new-stream-or-url)
-                    out-stream  (io/output-stream out-file)]
-          (merger curr-stream new-stream out-stream))
-        (Files/move (.toPath out-file) (.toPath merged-url)
-                    (into-array [StandardCopyOption/REPLACE_EXISTING]))))))
-
 (defn unpack-jar
-  [jar-path dir & {:keys [include exclude mergers]}]
+  [jar-path dest-dir & opts]
   (with-open [jf (JarFile. jar-path)]
     (doseq [entry (enumeration-seq (.entries jf))
             :when (not (.isDirectory entry))]
-      (let [path     (.getName entry)
-            out-file (io/file dir path)
-            keep?    (partial file/keep-filters? include exclude)]
-        (when (keep? (io/file path))
-          (try
-            (util/dbug "Unpacking %s from %s...\n" path (.getName jf))
-            (if (.exists out-file)
-              (let [pre (digest/md5 out-file)]
-                (with-open [entry-stream (.getInputStream jf entry)]
-                  (merge-duplicate-jar-entry mergers out-file path entry-stream))
-                (when (not= pre (digest/md5 out-file))
-                  (.setLastModified out-file (.getTime entry)))) 
-              (do
-                (with-open [entry-stream (.getInputStream jf entry)
-                            out (io/output-stream (doto (io/file out-file) io/make-parents))]
-                  (io/copy entry-stream out))
-                (.setLastModified out-file (.getTime entry))))
-            (catch Exception err
-              (util/warn "Error while extracting %s:%s: %s\n" jar-path entry err))))))))
+      (let [ent-name (.getName entry)
+            out-file (doto (io/file dest-dir ent-name) io/make-parents)]
+        (try (util/dbug "Unpacking %s from %s...\n" ent-name (.getName jf))
+             (with-open [in-stream  (.getInputStream jf entry)
+                         out-stream (io/output-stream out-file)]
+               (io/copy in-stream out-stream))
+             (.setLastModified out-file (.getTime entry))
+             (catch Exception err
+               (util/warn "Error extracting %s:%s: %s\n" jar-path entry err)))))))
 
 (defn jars-dep-graph
   [env]

@@ -4,6 +4,7 @@
    [clojure.set          :as set]
    [clojure.string       :as string]
    [clojure.pprint       :as pp]
+   [boot.gpg             :as gpg]
    [boot.pod             :as pod]
    [boot.git             :as git]
    [boot.file            :as file]
@@ -12,8 +13,8 @@
    [boot.main            :as main]
    [boot.util            :as util]
    [boot.from.table.core :as table]
+   [boot.from.digest     :as digest]
    [boot.task-helpers    :as helpers]
-   [boot.gpg             :as gpg]
    [boot.pedantic        :as pedantic])
   (:import
    [java.io File]
@@ -92,7 +93,8 @@
                    (remove pod/dependency-loaded?))
         names (map (memfn getName) jars)
         dirs  (map (memfn getParent) jars)
-        tmps  (reduce #(assoc %1 %2 (core/tmp-dir!)) {} names)]
+        tmps  (reduce #(assoc %1 %2 (core/tmp-dir!)) {} names)
+        adder #(core/add-source %1 %2 :exclude pod/standard-jar-exclusions)]
     (when (seq deps)
       (util/info "Adding checkout dependencies:\n")
       (doseq [dep deps]
@@ -110,9 +112,8 @@
           (let [tmp (tmps path)]
             (core/empty-dir! tmp)
             (util/info "Checking out %s...\n" path)
-            (pod/unpack-jar (.getPath file) tmp
-              :exclude pod/standard-jar-exclusions)))
-        (->> tmps vals (reduce core/add-source fileset) core/commit!)))))
+            (pod/unpack-jar (.getPath file) tmp)))
+        (->> tmps vals (reduce adder fileset) core/commit!)))))
 
 (core/deftask speak
   "Audible notifications during build.
@@ -481,20 +482,16 @@
         jars       (-> (core/get-env)
                        (update-in [:dependencies] (partial filter scope?))
                        pod/resolve-dependency-jars)
+        exclude    (or exclude pod/standard-jar-exclusions)
         merge      (or merge pod/standard-jar-mergers)
-        add-uber   (delay
-                     (util/info "Adding uberjar entries...\n")
-                     (doseq [jar jars]
-                       (when-not (.endsWith (.getName jar) ".pom")
-                         (if as-jars
-                           (file/copy-with-lastmod jar (io/file tgt (.getName jar)))
-                           (pod/unpack-jar jar tgt
-                             :mergers merge
-                             :include include
-                             :exclude (or exclude pod/standard-jar-exclusions))))))]
+        reducer    (fn [xs jar]
+                     (core/add-cached-resource
+                       xs (digest/md5 jar) (partial pod/unpack-jar jar)
+                       :include include :exclude exclude :mergers merge))]
     (core/with-pre-wrap fileset
-      @add-uber
-      (-> fileset (core/add-resource tgt :mergers merge) core/commit!))))
+      (when (seq jars)
+        (util/info "Adding uberjar entries...\n"))
+      (core/commit! (reduce reducer fileset jars)))))
 
 (core/deftask web
   "Create project web.xml file.

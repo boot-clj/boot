@@ -419,7 +419,6 @@ public class App {
                 || (args[0]).equals("--update"))) {
             bootversion  = null;
             Properties p = writeProps(bootprops);
-            bootversion  = p.getProperty("BOOT_VERSION");
             p.store(System.out, booturl);
             System.exit(0); }
 

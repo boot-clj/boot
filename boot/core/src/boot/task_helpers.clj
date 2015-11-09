@@ -5,6 +5,7 @@
     [clojure.string          :as string]
     [clojure.stacktrace      :as trace]
     [boot.from.io.aviso.ansi :as ansi]
+    [boot.from.digest        :as digest]
     [boot.pod                :as pod]
     [boot.core               :as core]
     [boot.file               :as file]
@@ -121,11 +122,11 @@
 (defmethod sift-action :add-jar
   [v? _ args]
   (fn [fileset]
-    (let [tmp (core/tmp-dir!)]
-      (doseq [[sym regex] args]
-        (let [inc (when-not v? [regex])
-              exc (when v? [regex])
-              jar (jar-path sym)]
-          (util/info "Adding jar entries from %s...\n" (.getName (io/file jar)))
-          (pod/unpack-jar jar tmp :include inc :exclude exc)))
-      (core/add-resource fileset tmp))))
+    (-> (fn [fs [sym regex]]
+          (let [incl (when-not v? [regex])
+                excl (when v? [regex])
+                jar  (jar-path sym)]
+            (core/add-cached-resource
+              fs (digest/md5 jar) (partial pod/unpack-jar jar)
+              :include incl :exclude excl :mergers pod/standard-jar-mergers)))
+        (reduce fileset args))))
