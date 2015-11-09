@@ -1,4 +1,7 @@
 language: java
 
+env:
+  - BOOT_VERSION=2.4.2
+
 install: make deps
 script: make install
