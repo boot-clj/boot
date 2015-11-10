@@ -89,34 +89,35 @@
 
 (defn- ^{:boot/from :technomancy/leiningen} resolve-credential
   "Resolve key-value pair from result into a credential, updating result."
-  [source-settings result [k v]]
-  (letfn [(resolve [v]
-            (cond (= :env v)
-                  (System/getenv (str "BOOT_" (string/upper-case (name k))))
+  [id source-settings result [k v]]
+  (let [key-name (string/upper-case (name k))
+        env-name (str "BOOT_" (string/upper-case id) "_" key-name)
+        from-env #(or (System/getProperty %) (System/getenv %))]
+    (letfn [(resolve [v]
+              (cond (= :env v)
+                    (from-env env-name)
 
-                  (and (keyword? v) (= "env" (namespace v)))
-                  (System/getenv (string/upper-case (name v)))
+                    (and (keyword? v) (= "env" (namespace v)))
+                    (from-env key-name)
 
-                  (= :gpg v)
-                  (get (match-credentials source-settings (credentials)) k)
+                    (= :gpg v)
+                    (get (match-credentials source-settings (credentials)) k)
 
-                  (coll? v) ;; collection of places to look
-                  (->> (map resolve v)
-                       (remove nil?)
-                       first)
+                    (coll? v) ;; collection of places to look
+                    (->> (map resolve v) (remove nil?) first)
 
-                  :else v))]
-    (if (#{:username :password :passphrase :private-key-file} k)
-      (assoc result k (resolve v))
-      (assoc result k v))))
+                    :else v))]
+      (if (#{:username :password :passphrase :private-key-file} k)
+        (assoc result k (resolve v))
+        (assoc result k v)))))
 
 (defn ^{:boot/from :technomancy/leiningen} resolve-credentials
   "Applies credentials from the environment or ~/.boot/credentials.clj.gpg
   as they are specified and available."
-  [settings]
+  [id settings]
   (let [gpg-creds (if (= :gpg (:creds settings))
                     (match-credentials settings (credentials)))
-        resolved (reduce (partial resolve-credential settings)
+        resolved (reduce (partial resolve-credential id settings)
                          (empty settings)
                          settings)]
     (if gpg-creds
@@ -130,7 +131,7 @@
       :coordinates       (:dependencies env)
       :repositories      (->> (or (:repositories env) @default-repositories)
                            (map (juxt first (fn [[x y]] (if (map? y) y {:url y}))))
-                           (map (juxt first (fn [[x y]] (resolve-credentials y))))
+                           (map (juxt first (fn [[x y]] (resolve-credentials x y))))
                            (map (juxt first (fn [[x y]] (update-in y [:update] #(or % @update?))))))
       :local-repo        (or (:local-repo env) @local-repo nil)
       :offline?          (or @offline? (:offline? env))
@@ -237,7 +238,7 @@
         (-> jarfile pod/pom-properties pod/pom-properties-map)
         pomfile (doto (File/createTempFile "pom" ".xml")
                   .deleteOnExit (spit (pod/pom-xml jarfile)))
-        repo-settings (resolve-credentials repo-settings)]
+        repo-settings (resolve-credentials repo-id repo-settings)]
     (aether/deploy
       :coordinates  [project version]
       :jar-file     (io/file jarfile)

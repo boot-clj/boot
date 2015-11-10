@@ -28,24 +28,25 @@
 (core/deftask help
   "Print usage info and list available tasks."
   []
-  (core/with-pre-wrap fileset
+  (core/with-pass-thru [_]
     (let [tasks (#'helpers/available-tasks 'boot.user)
           opts  (->> main/cli-opts (mapv (fn [[x y z]] ["" (str x " " y) z])))
-          envs  [["" "BOOT_AS_ROOT"               "Set to 'yes' to allow boot to run as root."]
-                 ["" "BOOT_CLOJURE_VERSION"       "The version of Clojure boot will provide (1.7.0)."]
-                 ["" "BOOT_CLOJURE_NAME"          "The artifact name of Clojure boot will provide (org.clojure/clojure)."]
-                 ["" "BOOT_EMIT_TARGET"           "Set to 'no' to disable automatic writing to target directory."]
-                 ["" "BOOT_GPG"                   "System gpg command (gpg)."]
-                 ["" "BOOT_HOME"                  "Directory where boot stores global state (~/.boot)."]
-                 ["" "BOOT_FILE"                  "Build script name (build.boot)."]
-                 ["" "BOOT_JAVA_COMMAND"          "Specify the Java executable (java)."]
-                 ["" "BOOT_JVM_OPTIONS"           "Specify JVM options (Unix/Linux/OSX only)."]
-                 ["" "BOOT_LOCAL_REPO"            "The local Maven repo path (~/.m2/repository)."]
-                 ["" "BOOT_VERSION"               "Specify the version of boot core to use."]
-                 ["" "BOOT_COLOR"                 "Set to 'no' to turn colorized output off."]]
-          files [["" "./boot.properties"          "Specify boot options for this project."]
-                 ["" "$BOOT_HOME/boot.properties" "Specify global boot options."]
-                 ["" "$BOOT_HOME/profile.boot"    "A script to run before running the build script."]]
+          envs  [["" "BOOT_AS_ROOT"                   "Set to 'yes' to allow boot to run as root."]
+                 ["" "BOOT_CLOJURE_VERSION"           "The version of Clojure boot will provide (1.7.0)."]
+                 ["" "BOOT_CLOJURE_NAME"              "The artifact name of Clojure boot will provide (org.clojure/clojure)."]
+                 ["" "BOOT_EMIT_TARGET"               "Set to 'no' to disable automatic writing to target directory."]
+                 ["" "BOOT_GPG_COMMAND"               "System gpg command (gpg)."]
+                 ["" "BOOT_HOME"                      "Directory where boot stores global state (~/.boot)."]
+                 ["" "BOOT_FILE"                      "Build script name (build.boot)."]
+                 ["" "BOOT_JAVA_COMMAND"              "Specify the Java executable (java)."]
+                 ["" "BOOT_JVM_OPTIONS"               "Specify JVM options (Unix/Linux/OSX only)."]
+                 ["" "BOOT_LOCAL_REPO"                "The local Maven repo path (~/.m2/repository)."]
+                 ["" "BOOT_VERSION"                   "Specify the version of boot core to use."]
+                 ["" "BOOT_COLOR"                     "Set to 'no' to turn colorized output off."]]
+          files [["" "./boot.properties"              "Specify boot options for this project."]
+                 ["" "BOOT_HOME/boot.properties"      "Specify global boot options."]
+                 ["" "BOOT_HOME/profile.boot"         "A script to run before running the build script."]
+                 ["" "BOOT_HOME/credentials.clj.gpg"  "Encrypted file containing Maven repo credentials."]]
           br    #(conj % ["" "" ""])]
       (printf "\n%s\n"
               (-> [["" ""] ["Usage:" "boot OPTS <task> TASK_OPTS <task> TASK_OPTS ..."]]
@@ -666,42 +667,55 @@
 
   [f file PATH str "The jar file to install."]
 
-  (core/with-pre-wrap fileset
-    (util/with-let [_ fileset]
-      (let [jarfiles (or (and file [(io/file file)])
-                         (->> (core/output-files fileset)
-                              (core/by-ext [".jar"])
-                              (map core/tmp-file)))]
-        (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
-        (doseq [jarfile jarfiles]
-          (util/info "Installing %s...\n" (.getName jarfile))
-          (pod/with-call-worker
-            (boot.aether/install ~(core/get-env) ~(.getPath jarfile))))))))
+  (core/with-pass-thru [fs]
+    (let [jarfiles (or (and file [(io/file file)])
+                       (->> (core/output-files fs)
+                            (core/by-ext [".jar"])
+                            (map core/tmp-file)))]
+      (when-not (seq jarfiles) (throw (Exception. "can't find jar file")))
+      (doseq [jarfile jarfiles]
+        (util/info "Installing %s...\n" (.getName jarfile))
+        (pod/with-call-worker
+          (boot.aether/install ~(core/get-env) ~(.getPath jarfile)))))))
 
 (core/deftask push
   "Deploy jar file to a Maven repository.
 
-  If the file option is not specified the task will
-  look for jar files created by the build pipeline. The jar file(s) must contain
-  pom.xml entries.
+  If the file option is not specified the task will look for jar files
+  created by the build pipeline. The jar file(s) must contain pom.xml
+  entries.
 
-  The repo option is required. The repo option is used to get repository map
-  from Boot envinronment. Additional repo-map option can be used to add
-  options, like credentials, or to provide complete repo-map if Boot
+  The repo option is required. The repo option is used to get repository
+  map from Boot envinronment. Additional repo-map option can be used to
+  add options, like credentials, or to provide complete repo-map if Boot
   envinronment doesn't hold the named repository.
+
+  Some of the options will read configuration from an encrypted file at
+  BOOT_HOME/credentials.clj.gpg.
 
   Repository map special options:
 
-  - `:creds :gpg`
-    - Username and password are read from encrypted file at ~/.boot/credentials.clj.gpg.
-  - `:username :gpg :password :gpg`
-    - Username and password are read from encrypted file at ~/.boot/credentials.clj.gpg.
-  - `:username :env :password :env`
-    - Username is read from envinronment variable `BOOT_{{REPO_NAME}}_USERNAME` and password from `BOOT_{{REPO_NAME}}_PASSWORD`.
-  - `:username :env/foo :password :env/bar`
-    - Username is read from envinronment variable `FOO` and password from `BAR`.
-  - `:username [:gpg :env :env/foo]`
-    - Username is read from first available source."
+  :creds :gpg
+    Username and password are read from the credentials file.
+
+  The :username, :password, and/or :passphrase keys in the repo map
+  may have string values (the username, password, etc.) or they may
+  have one of the following special keyword values:
+
+  :gpg
+    The value is read from the credentials file.
+
+  :env
+    The value is read from the system property or environment variable
+    named BOOT_<REPO NAME>_USERNAME, BOOT_<REPO NAME>_PASSWORD, etc.
+    System properties override environment variables.
+
+  :env/foo
+    The value is read from the system property or environment variable
+    named FOO. System properties override environment variables.
+
+  [:gpg :env :env/foo]
+    The value is read from first available source."
 
   [f file PATH            str      "The jar file to deploy."
    F file-regex MATCH     #{regex} "The set of regexes of paths to deploy."
