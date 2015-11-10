@@ -8,7 +8,9 @@
     [boot.util        :as util]
     [boot.file        :as file]
     [boot.from.digest :as digest])
-  (:import [java.io File]))
+  (:import
+    [java.io File]
+    [java.util Properties]))
 
 (set! *warn-on-reflection* true)
 
@@ -102,17 +104,26 @@
 
 (defn- ^File manifest-file
   [cache-key]
-  (io/file (cache-dir cache-key) "manifest.edn"))
+  (io/file (cache-dir cache-key) "manifest.properties"))
 
 (defn- read-manifest
-  [manifile bdir]
-  (let [prep #(-> % map->TmpFile (assoc :bdir bdir))]
-    (->> manifile slurp read-string (reduce-kv #(assoc %1 %2 (prep %3)) {}))))
+  [^File manifile ^File bdir]
+  (with-open [r (io/input-stream manifile)]
+    (let [p (doto (Properties.) (.load r))]
+      (-> #(let [id   (.getProperty p %2)
+                 hash (subs id 0 32)
+                 time (Long/parseLong (subs id 33))
+                 m    {:id id :path %2 :hash hash :time time :bdir bdir}]
+             (->> m map->TmpFile (assoc %1 %2)))
+          (reduce {} (enumeration-seq (.propertyNames p)))))))
 
 (defn- write-manifest!
-  [manifile manifest]
-  (let [prep #(-> (into {} %) (dissoc :dir :bdir))]
-    (spit manifile (pr-str (reduce-kv #(assoc %1 %2 (prep %3)) {} manifest)))))
+  [^File manifile manifest]
+  (let [p (Properties.)]
+    (doseq [[path {:keys [id]}] manifest]
+      (.setProperty p path id))
+    (with-open [w (io/output-stream manifile)]
+      (.store p w nil))))
 
 (defn- apply-mergers!
   [mergers ^File old-file path ^File new-file ^File merged-file]
