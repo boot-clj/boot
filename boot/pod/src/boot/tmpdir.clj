@@ -119,10 +119,10 @@
 
 (defn- write-manifest!
   [^File manifile manifest]
-  (let [p (Properties.)]
-    (doseq [[path {:keys [id]}] manifest]
-      (.setProperty p path id))
-    (with-open [w (io/output-stream manifile)]
+  (with-open [w (io/output-stream manifile)]
+    (let [p (Properties.)]
+      (doseq [[path {:keys [id]}] manifest]
+        (.setProperty p path id))
       (.store p w nil))))
 
 (defn- apply-mergers!
@@ -178,10 +178,10 @@
 
 (defn- filter-tree
   [tree include exclude]
-  (let [incl    (or (comp-res include) (constantly true))
-        excl    (or (comp-res exclude) (constantly false))
-        reducer #(if (or (not (incl %2)) (excl %2)) %1 (assoc %1 %2 %3))]
-    (reduce-kv reducer {} tree)))
+  (let [ex  (comp-res exclude)
+        in  (when-let [in (comp-res include)] (complement in))
+        rm? (or (and in ex #(or (in %) (ex %))) in ex)]
+    (if-not rm? tree (reduce-kv #(if (rm? %2) %1 (assoc %1 %2 %3)) {} tree))))
 
 (defn- diff-tree
   [tree props]
