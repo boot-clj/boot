@@ -12,7 +12,7 @@
     [dynapath.dynamic-classpath :as cp])
   (:import
     [java.util.jar        JarFile]
-    [java.util            Properties]
+    [java.util            Properties UUID]
     [java.net             URL URLClassLoader URLConnection]
     [java.util.concurrent ConcurrentLinkedQueue LinkedBlockingQueue TimeUnit]
     [java.io              File]
@@ -181,6 +181,14 @@
   (if (not= 1 pod-id)
     (.offer @shutdown-hooks f)
     (->> f Thread. (.addShutdownHook (Runtime/getRuntime)))))
+
+(defn send!
+  "This is ALPHA status, it may change, be renamed, or removed."
+  [form]
+  (let [uuid (str (UUID/randomUUID))
+        form (binding [*print-meta* true] (pr-str form))]
+    (boot.App/setRegister uuid form)
+    `(read-string (boot.App/getRegister ~uuid))))
 
 (defn eval-fn-call
   [[f & args]]

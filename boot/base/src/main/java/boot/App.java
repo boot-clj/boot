@@ -49,8 +49,22 @@ public class App {
     public  static       String             getBootVersion()    { return bootversion; }
     public  static       String             getClojureName()    { return cljname; }
 
-    private static final WeakHashMap<ClojureRuntimeShim, Object> pods = new WeakHashMap<>();
-    public  static       WeakHashMap<ClojureRuntimeShim, Object> getPods() { return pods; }
+    private static final ConcurrentHashMap<String, String>       podRegisters = new ConcurrentHashMap<>();
+    private static final WeakHashMap<ClojureRuntimeShim, Object> pods         = new WeakHashMap<>();
+
+    public static WeakHashMap<ClojureRuntimeShim, Object>
+    getPods() {
+        return pods; }
+
+    public static String
+    getRegister(String name) throws Exception {
+        String ret = podRegisters.get(name);
+        podRegisters.remove(name);
+        return ret; }
+
+    public static void
+    setRegister(String name, String value) throws Exception {
+        podRegisters.put(name, value); }
 
     public static class
     Exit extends Exception {
