@@ -185,10 +185,8 @@
 (defn send!
   "This is ALPHA status, it may change, be renamed, or removed."
   [form]
-  (let [uuid (str (UUID/randomUUID))
-        form (binding [*print-meta* true] (pr-str form))]
-    (boot.App/setRegister uuid form)
-    `(read-string (boot.App/getRegister ~uuid))))
+  (let [form (binding [*print-meta* true] (pr-str form))]
+    `(read-string (boot.App/getStash ~(boot.App/setStash form)))))
 
 (defn eval-fn-call
   [[f & args]]

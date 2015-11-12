@@ -9,6 +9,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Map;
 import java.util.Date;
+import java.util.UUID;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Properties;
@@ -49,22 +50,24 @@ public class App {
     public  static       String             getBootVersion()    { return bootversion; }
     public  static       String             getClojureName()    { return cljname; }
 
-    private static final ConcurrentHashMap<String, String>       podRegisters = new ConcurrentHashMap<>();
-    private static final WeakHashMap<ClojureRuntimeShim, Object> pods         = new WeakHashMap<>();
+    private static final WeakHashMap<ClojureRuntimeShim, Object> pods = new WeakHashMap<>();
+    private static final ConcurrentHashMap<String, String> stash = new ConcurrentHashMap<>();
 
     public static WeakHashMap<ClojureRuntimeShim, Object>
     getPods() {
         return pods; }
 
     public static String
-    getRegister(String name) throws Exception {
-        String ret = podRegisters.get(name);
-        podRegisters.remove(name);
+    getStash(String key) throws Exception {
+        String ret = stash.get(key);
+        stash.remove(key);
         return ret; }
 
-    public static void
-    setRegister(String name, String value) throws Exception {
-        podRegisters.put(name, value); }
+    public static String
+    setStash(String value) throws Exception {
+        String key = UUID.randomUUID().toString();
+        stash.put(key, value);
+        return key; }
 
     public static class
     Exit extends Exception {
