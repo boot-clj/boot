@@ -7,6 +7,8 @@
 - Improved sift task performance.
 - Improved fileset performance.
 - Improved pod-pool performance [#271][271].
+- Update tools.nrepl version to support evaluating forms with reader
+  conditionals in the repl [#343][343].
 - Add last modified time to immutable fileset data [#72][72].
 - Add target task and BOOT_EMIT_TARGET env var [#305][305].
 - Add --developers and --dependencies options to pom task [#233][233].
@@ -30,6 +32,7 @@
 
 [72]:  https://github.com/boot-clj/boot/issues/72
 [233]: https://github.com/boot-clj/boot/issues/233
+[271]: https://github.com/boot-clj/boot/issues/271
 [274]: https://github.com/boot-clj/boot/issues/274
 [285]: https://github.com/boot-clj/boot/issues/285
 [294]: https://github.com/boot-clj/boot/issues/294
@@ -40,6 +43,7 @@
 [328]: https://github.com/boot-clj/boot/issues/328
 [330]: https://github.com/boot-clj/boot/issues/330
 [339]: https://github.com/boot-clj/boot/issues/339
+[343]: https://github.com/boot-clj/boot/issues/343
 
 ## 2.4.2
 

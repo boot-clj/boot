@@ -131,7 +131,7 @@
 (defn dependency-pom-properties
   [coord]
   (with-open [props (io/input-stream (dependency-loaded? coord))]
-    (.load (Properties.) props)))
+    (doto (Properties.) (.load props))))
 
 (defn dependency-pom-properties-map
   [coord]
