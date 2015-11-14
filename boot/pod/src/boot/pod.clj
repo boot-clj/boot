@@ -100,14 +100,18 @@
      (distinct (mapcat second (classloader-resources classloaders resource-name))))
   ([resource-name] (resources (classloader-hierarchy) resource-name)))
 
+(defn- find-in-jarfile [jf path]
+  (->> jf .entries enumeration-seq
+       (filter #(.endsWith (.getName %) path))
+       first))
+
 (defn pom-properties
   [jarpath]
-  (let [jarfile (JarFile. (io/file jarpath))]
+  (with-open [jarfile (JarFile. (io/file jarpath))
+              props   (->> (find-in-jarfile jarfile "/pom.properties")
+                           (.getInputStream jarfile))]
     (doto (Properties.)
-      (.load (->> jarfile .entries enumeration-seq
-               (filter #(.endsWith (.getName %) "/pom.properties"))
-               first
-               (.getInputStream jarfile))))))
+      (.load props))))
 
 (defn- pom-prop-map
   [props]
@@ -126,8 +130,8 @@
 
 (defn dependency-pom-properties
   [coord]
-  (doto (Properties.)
-    (.load (io/input-stream (dependency-loaded? coord)))))
+  (with-open [props (io/input-stream (dependency-loaded? coord))]
+    (.load (Properties.) props)))
 
 (defn dependency-pom-properties-map
   [coord]
@@ -143,10 +147,10 @@
 
 (defn pom-xml
   [jarpath]
-  (let [jarfile (JarFile. (io/file jarpath))]
-    (some->> jarfile .entries enumeration-seq
-      (filter #(.endsWith (.getName %) "/pom.xml"))
-      first (.getInputStream jarfile) slurp)))
+  (with-open [jarfile (JarFile. (io/file jarpath))]
+    (some->> (find-in-jarfile jarfile "/pom.xml")
+             (.getImputStream jarfile)
+             slurp)))
 
 (defn copy-resource
   [resource-path out-path]
