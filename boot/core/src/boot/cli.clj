@@ -1,10 +1,11 @@
 (ns boot.cli
+  (:refer-clojure :exclude [assert])
   (:require
-   [boot.util :as util]
-   [clojure.java.io :as io]
-   [clojure.string :as string]
-   [clojure.pprint :as pprint]
-   [boot.from.clojure.tools.cli :as cli]))
+    [boot.util :as util]
+    [clojure.java.io :as io]
+    [clojure.string :as string]
+    [clojure.pprint :as pprint]
+    [boot.from.clojure.tools.cli :as cli]))
 
 (def ^:private A-Z?
   (->> (range (int \A) (inc (int \Z))) (map char) set (partial contains?)))
@@ -169,14 +170,28 @@
         (recur kw (conj cli arg) more)
         (recur (assoc kw arg (first more)) cli (rest more))))))
 
+(defmacro ^:private assert
+  [test fmt & args]
+  `(when-not ~test (throw (Exception. (format ~fmt ~@args)))))
+
 (defn- assert-argspecs [argspecs]
-  (let [opts (->> argspecs
-                  (partition-by string?)
-                  (mapcat (partial take 2))
-                  (filter symbol?))]
+  (let [split (->> argspecs (partition-by string?))
+        opts  (->> split (mapcat #(take 2 %)) (filter symbol?))
+        specs (->> split (partition 2))]
     (when (seq opts)
-      (assert (apply distinct? opts) "cli options must be unique")
-      (assert (not-any? #{'h 'help} opts) "the -h/--help cli option is reserved"))))
+      (assert (apply distinct? opts)
+              "cli options must be unique")
+      (assert (not-any? #{'h 'help} opts)
+              "the -h/--help cli option is reserved"))
+    (doseq [[[short long optarg type & extra] [desc]] specs]
+      (assert (and (every? symbol? [short long])
+                   (nil? (seq extra)))
+              "malformed cli option: %s" long)
+      (assert (or (and type (symbol? optarg))
+                  (#{'int 'bool} optarg))
+              "cli option missing optarg: %s" long)
+      (assert (or (not type) (not= 'bool type))
+              "cli option of bool type should not have optarg: %s" long))))
 
 (defmacro clifn [& forms]
   (let [[doc argspecs & body]

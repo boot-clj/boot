@@ -2,15 +2,44 @@
 
 ## Unreleased
 
+- Improved documentation of core functions [#303][303].
+- Improved uber task performance.
+- Improved sift task performance.
+- Improved fileset performance.
+- Improved pod-pool performance [#271][271].
+- Add last modified time to immutable fileset data [#72][72].
+- Add target task and BOOT_EMIT_TARGET env var [#305][305].
+- Add --developers and --dependencies options to pom task [#233][233].
+- Resetting fileset merges initial fileset over user source files [#330][330].
+- Improved cli option error messages [#285][285] & [#322][322].
+- Throw exception when fileset mv source doesn't exist [#325][325].
+- Prevent duplicate tagging of commits in push task [#328][328].
+- Bind *compile-path* in nREPL server environment [#294][294].
+- Added (ALPHA) send! function to work around issues passing large collections
+  to pods via with-eval-in [#339][339].
+- Added add-cached-{asset,source,resource} core functions.
 - Added support for reading repository credentials from encrypted file
-(`~/.boot/credentials.clj.gpg`) and environment variables.
-- **BREAKING**: `gpg` binary is now used for signing jars and reading encrypted
-credentials file
-    - Deprecated `push` option `gpg-keyring`
-- `push` task can now be provided with `repo-map` option to set the deployment
-repository. This is useful for example in case a repository needs different
-settings for downloading dependencies and deploying, like additional
-credentials.
+  (BOOT_HOME/credentials.clj.gpg) and environment variables [#311][311] & [#274][274].
+  - BREAKING: gpg binary is now used for signing jars and reading encrypted
+    credentials file
+      - Deprecated push option --gpg-keyring
+  - Push task can now be provided with --repo-map option to set the deployment
+    repository. This is useful for example in case a repository needs different
+    settings for downloading dependencies and deploying, like additional
+    credentials.
+
+[72]:  https://github.com/boot-clj/boot/issues/72
+[233]: https://github.com/boot-clj/boot/issues/233
+[274]: https://github.com/boot-clj/boot/issues/274
+[285]: https://github.com/boot-clj/boot/issues/285
+[294]: https://github.com/boot-clj/boot/issues/294
+[303]: https://github.com/boot-clj/boot/issues/303
+[305]: https://github.com/boot-clj/boot/issues/305
+[322]: https://github.com/boot-clj/boot/issues/322
+[325]: https://github.com/boot-clj/boot/issues/325
+[328]: https://github.com/boot-clj/boot/issues/328
+[330]: https://github.com/boot-clj/boot/issues/330
+[339]: https://github.com/boot-clj/boot/issues/339
 
 ## 2.4.2
 
