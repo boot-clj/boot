@@ -14,10 +14,10 @@
    :handler    nil
    :middleware []})
 
-(defn- ^{:boot/from :technomancy/leiningen} wrap-init-ns
-  [init-ns]
+(defn- ^{:boot/from :technomancy/leiningen} wrap-init-vars
+  [init-ns compile-path]
   (with-local-vars
-    [wrap-init-ns'
+    [wrap-init-vars'
      (fn [h]
        ;; this needs to be a var, since it's in the nREPL session
        (with-local-vars [init-ns-sentinel nil]
@@ -25,18 +25,19 @@
            (when-not (@session init-ns-sentinel)
              (swap! session assoc
                     init-ns-sentinel true
+                    (var *compile-path*) compile-path
                     (var *ns*)       (try (require init-ns)
                                           (create-ns init-ns)
                                           (catch Throwable t
                                             (.printStackTrace t)
                                             (create-ns 'user)))))
            (h msg))))]
-    (doto wrap-init-ns'
+    (doto wrap-init-vars'
       ;; set-descriptor! currently nREPL only accepts a var
       (middleware/set-descriptor!
         {:requires #{#'session/session}
          :expects #{"eval"}})
-      (alter-var-root (constantly @wrap-init-ns')))))
+      (alter-var-root (constantly @wrap-init-vars')))))
 
 (middleware/set-descriptor!
   #'pretty/pretty-middleware
@@ -62,10 +63,10 @@
 
 (defn start-server
   [opts]
-  (let [{:keys [bind handler middleware init-ns]
+  (let [{:keys [bind handler middleware init-ns compile-path]
          :as opts}     (merge default-opts opts)
         init-ns        (or init-ns 'boot.user)
-        init-ns-mw     [(wrap-init-ns init-ns)]
+        init-ns-mw     [(wrap-init-vars init-ns compile-path)]
         user-mw        (->mw-list middleware)
         default-mw     (->mw-list @repl/*default-middleware*)
         middleware     (concat init-ns-mw default-mw user-mw)

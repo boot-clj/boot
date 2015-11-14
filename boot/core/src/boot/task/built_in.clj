@@ -288,7 +288,10 @@
    m middleware SYM [sym] "The REPL middleware vector."
    x handler SYM    sym   "The REPL handler (overrides middleware options)."]
 
-  (let [srv-opts (select-keys *opts* [:bind :port :init-ns :middleware :handler])
+  (let [cpl-path (.getPath (core/tmp-dir!))
+        srv-opts (-> *opts*
+                     (select-keys [:bind :port :init-ns :middleware :handler])
+                     (assoc :compile-path cpl-path))
         cli-opts (-> *opts*
                      (select-keys [:host :port :history])
                      (assoc :standalone true
@@ -300,6 +303,7 @@
         repl-svr (delay (when (seq deps)
                           (pod/add-dependencies
                             (assoc (core/get-env) :dependencies deps)))
+                        (pod/add-classpath cpl-path)
                         (require 'boot.repl-server)
                         ((resolve 'boot.repl-server/start-server) srv-opts))
         repl-cli (delay (pod/with-call-worker (boot.repl-client/client ~cli-opts)))]
