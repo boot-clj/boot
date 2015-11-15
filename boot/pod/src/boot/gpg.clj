@@ -50,14 +50,14 @@
     (str file ".asc")))
 
 (defn sign-jar
-  [outdir jarfile opts]
+  [outdir jarfile pompath opts]
   (shell/with-sh-dir
     outdir
     (let [jarname (.getName jarfile)
           jarout  (io/file outdir (str jarname ".asc"))
           pomfile (doto (File/createTempFile "pom" ".xml")
                     (.deleteOnExit)
-                    (spit (pod/pom-xml jarfile)))
+                    (spit (pod/pom-xml jarfile pompath)))
           pomout  (io/file outdir (.replaceAll jarname "\\.jar$" ".pom.asc"))
           sign-it #(sign (.getPath %) opts)]
       (spit pomout (sign-it pomfile))

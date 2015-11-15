@@ -24,8 +24,8 @@
 
 ;;; private ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn pom-xml-parse [jarfile]
-  (let [z   (-> jarfile pod/pom-xml StringBufferInputStream. parse xml-zip)
+(defn pom-xml-parse-string [xml-str]
+  (let [z   (-> xml-str StringBufferInputStream. parse xml-zip)
         gid (util/guard (xml1-> z :groupId text))
         aid (util/guard (xml1-> z :artifactId text))]
     {:project     (util/guard (if (= gid aid) (symbol aid) (symbol gid aid)))
@@ -34,6 +34,12 @@
      :url         (util/guard (xml1-> z :url text))
      :scm         {:url (util/guard (xml1-> z :scm :url text))
                    :tag (util/guard (xml1-> z :scm :tag text))}}))
+
+(defn pom-xml-parse
+  ([jarpath]
+   (pom-xml-parse jarpath nil))
+  ([jarpath pompath]
+   (pom-xml-parse-string (pod/pom-xml jarpath pompath))))
 
 (defn pom-xml [{p :project
                 v :version

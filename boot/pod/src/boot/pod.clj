@@ -101,9 +101,11 @@
   ([resource-name] (resources (classloader-hierarchy) resource-name)))
 
 (defn- find-in-jarfile [jf path]
-  (->> jf .entries enumeration-seq
-       (filter #(.endsWith (.getName %) path))
-       first))
+  (let [entries (->> jf .entries enumeration-seq
+                     (filter #(.endsWith (.getName %) path)))]
+    (when (< 1 (count entries))
+      (throw (Exception. (format "Multiple jar entries match: .*%s" path))))
+    (first entries)))
 
 (defn pom-properties
   [jarpath]
@@ -146,11 +148,19 @@
         (doto (Properties.) (.load pom-input-stream))))))
 
 (defn pom-xml
-  [jarpath]
-  (with-open [jarfile (JarFile. (io/file jarpath))]
-    (some->> (find-in-jarfile jarfile "/pom.xml")
-             (.getImputStream jarfile)
-             slurp)))
+  ([jarpath]
+   (pom-xml jarpath nil))
+  ([jarpath pompath]
+   (if (and pompath (.exists (io/file pompath)))
+     (slurp pompath)
+     (with-open [jarfile (JarFile. (io/file jarpath))]
+       (let [pompath (when pompath
+                       (format "META-INF/maven/%s/pom.xml" pompath))
+             entry   (if pompath
+                       (.getJarEntry jarfile pompath)
+                       (find-in-jarfile jarfile "/pom.xml"))]
+         (with-open [in (.getInputStream jarfile entry)]
+           (slurp in)))))))
 
 (defn copy-resource
   [resource-path out-path]
@@ -339,7 +349,6 @@
 
 (def standard-jar-exclusions
   #{#"(?i)^META-INF/[^/]*\.(MF|SF|RSA|DSA)$"
-    #"^((?i)META-INF)/.*pom\.(properties|xml)$"
     #"(?i)^META-INF/INDEX.LIST$"})
 
 (defn into-merger [prev new out]

@@ -220,32 +220,52 @@
     util/print-tree
     with-out-str))
 
+(defn- pom-xml-parse-string
+  [pom-str]
+  ;; boot.pom is not available from the aether uberjar that is used the
+  ;; first time boot is run (a minimal environment just containing enough
+  ;; clojure to get pomegranate working to resolve boot's own maven deps).
+  ;; We don't call any functions that use this in that case, but we need
+  ;; to dynamically :require the boot.pom namespace here.
+  (require 'boot.pom)
+  (@(resolve 'boot.pom/pom-xml-parse-string) pom-str))
+
+(defn- pom-xml-tmp
+  [pom-str]
+  (doto (File/createTempFile "pom" ".xml") (.deleteOnExit) (spit pom-str)))
+
 (defn install
-  [env jarfile]
-  (let [{:keys [project version]}
-        (-> jarfile pod/pom-properties pod/pom-properties-map)
-        pomfile (doto (File/createTempFile "pom" ".xml")
-                  .deleteOnExit (spit (pod/pom-xml jarfile)))]
-    (aether/install
-      :coordinates [project version]
-      :jar-file    (io/file jarfile)
-      :pom-file    (io/file pomfile)
-      :local-repo  (or (:local-repo env) @local-repo nil))))
+  ([env jarpath]
+   (install env jarpath nil))
+  ([env jarpath pompath]
+   (let [pom-str                   (pod/pom-xml jarpath pompath)
+         {:keys [project version]} (pom-xml-parse-string pom-str)
+         pomfile                   (pom-xml-tmp pom-str)]
+     (aether/install
+       :coordinates [project version]
+       :jar-file    (io/file jarpath)
+       :pom-file    (io/file pomfile)
+       :local-repo  (or (:local-repo env) @local-repo nil)))))
 
 (defn deploy
-  [env [repo-id repo-settings] jarfile & [artifact-map]]
-  (let [{:keys [project version]}
-        (-> jarfile pod/pom-properties pod/pom-properties-map)
-        pomfile (doto (File/createTempFile "pom" ".xml")
-                  .deleteOnExit (spit (pod/pom-xml jarfile)))
-        repo-settings (resolve-credentials repo-id repo-settings)]
-    (aether/deploy
-      :coordinates  [project version]
-      :jar-file     (io/file jarfile)
-      :pom-file     (io/file pomfile)
-      :artifact-map artifact-map
-      :repository   {repo-id repo-settings}
-      :local-repo   (or (:local-repo env) @local-repo nil))))
+  ([env repo jarpath]
+   (deploy env repo jarpath nil))
+  ([env repo jarpath pom-or-artifacts]
+   (if (map? pom-or-artifacts)
+     (deploy env repo jarpath nil pom-or-artifacts)
+     (deploy env repo jarpath pom-or-artifacts nil)))
+  ([env [repo-id repo-settings] jarpath pompath artifact-map]
+   (let [pom-str                   (pod/pom-xml jarpath pompath)
+         {:keys [project version]} (pom-xml-parse-string pom-str)
+         pomfile                   (pom-xml-tmp pom-str)
+         repo-settings             (resolve-credentials repo-id repo-settings)]
+     (aether/deploy
+       :coordinates  [project version]
+       :jar-file     (io/file jarpath)
+       :pom-file     (io/file pomfile)
+       :artifact-map artifact-map
+       :repository   {repo-id repo-settings}
+       :local-repo   (or (:local-repo env) @local-repo nil)))))
 
 (def ^:private wagon-files (atom #{}))
 

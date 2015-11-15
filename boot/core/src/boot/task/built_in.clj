@@ -424,46 +424,51 @@
 (core/deftask uber
   "Add jar entries from dependencies to fileset.
 
-  Use this task before the packaging task (jar, war, etc.) to create uberjars,
-  uberwars, etc. This provides the means to package the project with all of its
-  dependencies included.
+  Use this task before the packaging task (jar, war, etc.) to create
+  uberjars, uberwars, etc. This provides the means to package the project
+  with all of its dependencies included.
 
-  By default, entries from dependencies with the following scopes will be copied
-  to the fileset: compile, runtime, and provided. The include-scope and exclude-
-  scope options may be used to add or remove scope(s) from this set.
+  By default, entries from dependencies with the following scopes will be
+  copied to the fileset: compile, runtime, and provided. The --include-scope
+  and --exclude-scope options may be used to add or remove scope(s) from this
+  set.
 
-  The as-jars option pulls in dependency jars without exploding them, such that
-  the jarfiles themselves are copied into the fileset. When using as-jars you
-  need a special classloader like a servlet container (e.g. Tomcat, Jetty) that
-  picks up the packaged jars and places them on the classpath.
+  The --as-jars option pulls in dependency jars without exploding them such
+  that the jarfiles themselves are copied into the fileset. When using the
+  --as-jars option you need a special classloader like a servlet container
+  (e.g. Tomcat, Jetty) that will add the jars to the application classloader.
 
-  When jars are exploded, the include and exclude options control what paths are
-  added to the uberjar, with a path only being added if it matches an include
-  regex and does not match any exclude regexes. exclude defaults to:
+  When jars are exploded, the --include and --exclude options control which
+  paths are added to the uberjar; a path is only added if it matches an
+  --include regex and does not match any --exclude regexes.
 
-      #{#\"(?i)^META-INF/[^/]*\\.(MF|SF|RSA|DSA)$\"
-        #\"^((?i)META-INF)/.*pom\\.(properties|xml)$\"
-        #\"(?i)^META-INF/INDEX.LIST$\"}
+  The --exclude option default is:
 
-  And include-path defaults to:
+      #{ #\"(?i)^META-INF/INDEX.LIST$\"
+         #\"(?i)^META-INF/[^/]*\\.(MF|SF|RSA|DSA)$\" }
 
-      #{#\".*\"}
+  And --include option default is:
 
-  If exploding the jars results in duplicate entries, they will be merged using
-  the rules specified by the merge option. A merge rule is a [regex fn] pair,
-  where fn takes three parameters: an InputStream for the previous entry, an
-  InputStream of the new entry, and an OutputStream that will replace the entry.
-  merge defaults to:
+      #{ #\".*\" }
 
-      [[#\"data_readers.clj$\"    into-merger]
-       [#\"META-INF/services/.*\" concat-merger]
-       [#\".*\"                   first-wins-merger]]
+  If exploding the jars results in duplicate entries, they will be merged
+  using the rules specified by the --merge option. A merge rule is a
+  [regex fn] pair, where fn takes three parameters:
 
-  The merge rule regular expressions are tested in order, and the fn from the
-  first match is applied.
+    - an InputStream for the previous entry,
+    - an InputStream of the new entry,
+    - and an OutputStream that will replace the entry.
 
-  Setting the include, exclude, or merge options replaces the appropriate
-  default."
+  The --merge option default is:
+
+      [[ #\"data_readers.clj$\"    into-merger       ]
+       [ #\"META-INF/services/.*\" concat-merger     ]
+       [ #\".*\"                   first-wins-merger ]]
+
+  The merge rule regular expressions are tested in order, and the fn from
+  the first match is applied.
+
+  Setting the --include, --exclude, or --merge options replaces the default."
 
   [j as-jars                bool           "Copy entire jar files instead of exploding them."
    s include-scope SCOPE    #{str}         "The set of scopes to add."
@@ -598,15 +603,15 @@
   (let [tgt (core/tmp-dir!)]
     (core/with-pre-wrap [fs]
       (core/empty-dir! tgt)
-      (let [pomprop (->> (core/output-files fs)
-                         (map core/tmp-file)
-                         (core/by-name ["pom.properties"])
-                         first)
-            [aid v] (some->> pomprop
-                             pod/pom-properties-map
-                             ((juxt :artifact-id :version)))
-            jarname (or file (and aid v (str aid "-" v ".jar")) "project.jar")
-            jarfile (io/file tgt jarname)]
+      (let [[p & ps] (->> (core/output-files fs)
+                          (map core/tmp-file)
+                          (core/by-name ["pom.xml"]))
+            [aid v]  (when (and p (not (seq ps)))
+                       (->> (pod/with-call-worker
+                              (boot.pom/pom-xml-parse-string ~(slurp p)))
+                            ((juxt (comp name :project) :version))))
+            jarname  (or file (and aid v (str aid "-" v ".jar")) "project.jar")
+            jarfile  (io/file tgt jarname)]
         (let [entries (core/output-files fs)
               index   (->> entries (map (juxt core/tmp-path #(.getPath (core/tmp-file %)))))]
           (util/info "Writing %s...\n" (.getName jarfile))
@@ -657,12 +662,40 @@
 (core/deftask install
   "Install project jar to local Maven repository.
 
-  The file option allows installation of arbitrary jar files. If no file option
-  is given then any jar artifacts created during the build will be installed.
+  The --file option allows installation of arbitrary jar files. If no
+  file option is given then any jar artifacts created during the build
+  will be installed.
 
-  Note that installation requires the jar to contain a pom.xml file."
+  The pom.xml file that's required when installing a jar can usually be
+  found in the jar itself. However, sometimes a jar might contain more
+  than one pom.xml file or may not contain one at all.
 
-  [f file PATH str "The jar file to install."]
+  The --pom option can be used in these situations to specify which
+  pom.xml file to use. The optarg denotes either the path to a pom.xml
+  file in the filesystem or a subdir of the META-INF/maven/ dir in which
+  the pom.xml contained in the jar resides.
+
+  Example:
+
+    Given a jar file (warp-0.1.0.jar) with the following contents:
+
+        .
+        ├── META-INF
+        │   ├── MANIFEST.MF
+        │   └── maven
+        │       └── tailrecursion
+        │           └── warp
+        │               ├── pom.properties
+        │               └── pom.xml
+        └── tailrecursion
+            └── warp.clj
+
+    The jar could be installed with the following boot command:
+
+        $ boot install -f warp-0.1.0.jar -p tailrecursion/warp"
+
+  [f file PATH str "The jar file to install."
+   p pom PATH  str "The pom.xml file to use."]
 
   (core/with-pass-thru [fs]
     (let [jarfiles (or (and file [(io/file file)])
@@ -673,7 +706,7 @@
       (doseq [jarfile jarfiles]
         (util/info "Installing %s...\n" (.getName jarfile))
         (pod/with-call-worker
-          (boot.aether/install ~(core/get-env) ~(.getPath jarfile)))))))
+          (boot.aether/install ~(core/get-env) ~(.getPath jarfile) ~pom))))))
 
 (core/deftask push
   "Deploy jar file to a Maven repository.
@@ -693,28 +726,29 @@
   Repository map special options:
 
   :creds :gpg
-    Username and password are read from the credentials file.
+  Username and password are read from the credentials file.
 
   The :username, :password, and/or :passphrase keys in the repo map
   may have string values (the username, password, etc.) or they may
   have one of the following special keyword values:
 
   :gpg
-    The value is read from the credentials file.
+  The value is read from the credentials file.
 
   :env
-    The value is read from the system property or environment variable
-    named BOOT_<REPO NAME>_USERNAME, BOOT_<REPO NAME>_PASSWORD, etc.
-    System properties override environment variables.
+  The value is read from the system property or environment variable
+  named BOOT_<REPO NAME>_USERNAME, BOOT_<REPO NAME>_PASSWORD, etc.
+  System properties override environment variables.
 
   :env/foo
-    The value is read from the system property or environment variable
-    named FOO. System properties override environment variables.
+  The value is read from the system property or environment variable
+  named FOO. System properties override environment variables.
 
   [:gpg :env :env/foo]
-    The value is read from first available source."
+  The value is read from first available source."
 
   [f file PATH            str      "The jar file to deploy."
+   P pom PATH             str      "The pom.xml file to use (see install task)."
    F file-regex MATCH     #{regex} "The set of regexes of paths to deploy."
    g gpg-sign             bool     "Sign jar using GPG private key."
    k gpg-user-id KEY      str      "The name or key-id used to select the signing key."
@@ -748,8 +782,10 @@
         (when-not (and repo-map (seq jarfiles))
           (throw (Exception. "missing jar file or repo not found")))
         (doseq [f jarfiles]
-          (let [{{t :tag} :scm
-                 v :version} (pod/with-call-worker (boot.pom/pom-xml-parse ~(.getPath f)))
+          (let [pom-str (pod/pom-xml f pom)
+                {{t :tag} :scm
+                 v :version} (pod/with-call-worker
+                               (boot.pom/pom-xml-parse-string ~pom-str))
                 b            (util/guard (git/branch-current))
                 commit       (util/guard (git/last-commit))
                 tags         (util/guard (git/ls-tags))
@@ -757,8 +793,8 @@
                 snapshot?    (.endsWith v "-SNAPSHOT")
                 artifact-map (when gpg-sign
                                (util/info "Signing %s...\n" (.getName f))
-                               (gpg/sign-jar tgt f {:gpg-key gpg-user-id
-                                                    :gpg-passphrase gpg-passphrase}))]
+                               (gpg/sign-jar tgt f pom {:gpg-key gpg-user-id
+                                                        :gpg-passphrase gpg-passphrase}))]
             (assert (or (not ensure-branch) (= b ensure-branch))
                     (format "current git branch is %s but must be %s" b ensure-branch))
             (assert (or (not ensure-clean) clean?)
@@ -775,10 +811,10 @@
                     (format "jar version doesn't match project version (%s, %s)" v ensure-version))
             (util/info "Deploying %s...\n" (.getName f))
             (pod/with-call-worker
-              (boot.aether/deploy ~(core/get-env) ~[repo repo-map] ~(.getPath f) ~artifact-map))
+              (boot.aether/deploy
+                ~(core/get-env) ~[repo repo-map] ~(.getPath f) ~pom ~artifact-map))
             (when tag
               (if (and tags (= commit (get tags tag)))
                 (util/info "Tag %s already created for %s\n" tag commit)
-                (do
-                  (util/info "Creating tag %s...\n" v)
-                  (git/tag v "release"))))))))))
+                (do (util/info "Creating tag %s...\n" v)
+                    (git/tag v "release"))))))))))
