@@ -42,7 +42,7 @@
     (pod/with-eval-worker
       (require '[clojure.tools.namespace.find :as nsf])
       (with-open [jf (java.util.jar.JarFile. ~(.getPath (io/file jar)))]
-        (nsf/find-ns-decls-in-jarfile jf)))))
+        (into [] (nsf/find-ns-decls-in-jarfile jf))))))
 
 (defn- export-tasks?
   [[_ name docstring? attr-map?]]
