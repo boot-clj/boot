@@ -4,31 +4,31 @@
 
 #### Breaking
 
-- The gpg binary is now used instead of bouncycastle for signing jars
-  and reading encrypted credentials files. There may be different be-
-  havior when resolving default keys, etc.
+- The `gpg` binary is now used instead of bouncycastle for signing
+  jars and reading encrypted credentials files. There may be different
+  behavior when resolving default keys, etc.
 
 #### Added
 
-- Added target task and BOOT_EMIT_TARGET env var [#305][305].
-- Added --developers and --dependencies options to pom task [#233][233].
-- Added (ALPHA) send! function to work around issues passing large
-  collections to pods via with-eval-in [#339][339].
-- Added add-cached-{asset,source,resource} core functions.
+- Added `target` task and `BOOT_EMIT_TARGET` env var [#305][305].
+- Added `--developers` and `--dependencies` options to `pom` task [#233][233].
+- Added (ALPHA) `send!` function to work around issues passing large
+  collections to pods via `with-eval-in` [#339][339].
+- Added `add-cached-{asset,source,resource}` core functions.
 - Added support for reading repository credentials from encrypted file
-  (BOOT_HOME/credentials.clj.gpg) and environment variables [#311][311]
+  (`BOOT_HOME/credentials.clj.gpg`) and environment variables [#311][311]
   & [#274][274].
-- Push task can now be provided with --repo-map option to set the
+- The `push` task can now be provided with `--repo-map` option to set the
   deployment repository. This is useful for example in case a repository
   needs different settings for downloading dependencies and deploying,
   like additional credentials.
-- Install and push tasks now accept a --pom option which can be used to
-  specify the pom.xml file to use [#112][112] & [#278][278].
+- The `install` and `push` tasks now accept a `--pom` option which can be
+  used to specify which `pom.xml` file to use [#112][112] & [#278][278].
 
 #### Improved
 
-- Better uber task performance [#94][94].
-- Better sift task performance.
+- Better `uber` task performance [#94][94].
+- Better `sift` task performance.
 - Better fileset performance.
 - Better pod-pool performance [#271][271].
 - Better cli option error messages [#285][285] & [#322][322].
@@ -37,21 +37,22 @@
 
 - Added last modified time to immutable fileset data [#72][72].
 - Resetting fileset merges initial fileset over user source files [#330][330].
-- Throw exception when fileset mv source doesn't exist [#325][325].
-- Prevent duplicate tagging of commits in push task [#328][328].
-- Bind *compile-path* in nREPL server environment [#294][294].
-- Updated tools.nrepl version to support evaluating forms with reader
+- Throw exception when fileset `mv` source doesn't exist [#325][325].
+- Prevent duplicate tagging of commits in `push` task [#328][328].
+- Bind `*compile-path*` in nREPL server environment [#294][294].
+- Updated `tools.nrepl` version to support evaluating forms with reader
   conditionals in the repl [#343][343].
-- Default jar exclusions no longer exclude pom.{xml,properties} [#278][278].
-- Jars built without the --file option that contain multiple pom.xml files
-  are now named "project.jar" instead of named for a random pom [#278].
-- Installing or pushing a jar without the --pom option that contains more
-  than one pom.xml now results in an exception instead of installing to
+- Default jar exclusions no longer exclude `pom.{xml,properties}` [#278][278].
+- Jars built without the `--file` option that contain multiple `pom.xml`
+  files are now named _project.jar_ instead of named for coordinates derived
+  from an arbitrarily selected pom [#278].
+- Installing or pushing a jar without the `--pom` option that contains more
+  than one `pom.xml` now results in an exception instead of installing to
   coordinates derived from an arbitrarily selected pom [#278].
 
 #### Deprecated
 
-- The push task option --gpg-keyring.
+- The `push` task option `--gpg-keyring`.
 
 [72]:  https://github.com/boot-clj/boot/issues/72
 [94]:  https://github.com/boot-clj/boot/issues/94
@@ -64,6 +65,7 @@
 [294]: https://github.com/boot-clj/boot/issues/294
 [303]: https://github.com/boot-clj/boot/issues/303
 [305]: https://github.com/boot-clj/boot/issues/305
+[311]: https://github.com/boot-clj/boot/issues/311
 [322]: https://github.com/boot-clj/boot/issues/322
 [325]: https://github.com/boot-clj/boot/issues/325
 [328]: https://github.com/boot-clj/boot/issues/328
