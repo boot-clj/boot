@@ -149,9 +149,8 @@ public class App {
     public static HashMap<String, File>
     propertiesFiles() throws Exception {
         HashMap<String, File> ret = new HashMap<>();
-        String[] names  = new String[]{"old-boot", "boot", "project", "cwd"};
-        File     olddir = new File(bootdir(), "cache");
-        File[]   dirs   = new File[]{olddir, bootdir(), projectDir(), workdir};
+        String[] names  = new String[]{"boot", "project", "cwd"};
+        File[]   dirs   = new File[]{bootdir(), projectDir(), workdir};
         for (int i = 0; i < dirs.length; i++)
             ret.put(names[i], new File(dirs[i], "boot.properties"));
         return ret; }
@@ -160,7 +159,7 @@ public class App {
     mergeProperties() throws Exception {
         Properties p = new Properties();
         HashMap<String, File> fs = propertiesFiles();
-        for (String k : new String[]{"old-boot", "boot", "project", "cwd"})
+        for (String k : new String[]{"boot", "project", "cwd"})
             try (FileInputStream is = new FileInputStream(fs.get(k))) {
                 p.load(is); }
             catch (FileNotFoundException e) {}
