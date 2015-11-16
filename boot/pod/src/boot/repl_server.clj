@@ -1,7 +1,7 @@
 (ns boot.repl-server
   (:require
-   [boot.core                              :as core]
    [boot.repl                              :as repl]
+   [boot.util                              :as util]
    [boot.from.io.aviso.nrepl               :as pretty]
    [clojure.java.io                        :as io]
    [clojure.tools.nrepl.server             :as server]
@@ -24,13 +24,13 @@
          (fn [{:keys [session] :as msg}]
            (when-not (@session init-ns-sentinel)
              (swap! session assoc
-                    init-ns-sentinel true
-                    (var *compile-path*) compile-path
-                    (var *ns*)       (try (require init-ns)
-                                          (create-ns init-ns)
-                                          (catch Throwable t
-                                            (.printStackTrace t)
-                                            (create-ns 'user)))))
+                    init-ns-sentinel      true
+                    (var *compile-path*)  compile-path
+                    (var *ns*)            (try (require init-ns)
+                                               (create-ns init-ns)
+                                               (catch Throwable t
+                                                 (.printStackTrace t)
+                                                 (create-ns 'user)))))
            (h msg))))]
     (doto wrap-init-vars'
       ;; set-descriptor! currently nREPL only accepts a var
@@ -63,7 +63,7 @@
 
 (defn start-server
   [opts]
-  (let [{:keys [bind handler middleware init-ns compile-path]
+  (let [{:keys [bind handler middleware init-ns compile-path default-middleware]
          :as opts}     (merge default-opts opts)
         init-ns        (or init-ns 'boot.user)
         init-ns-mw     [(wrap-init-vars init-ns compile-path)]
@@ -78,6 +78,7 @@
                                 (select-keys [:bind :port :handler])
                                 (update-in [:bind] #(or % "127.0.0.1")))
                             (reduce-kv #(if-not %3 %1 (assoc %1 %2 %3)) {}))
-        {:keys [port]} (apply server/start-server (mapcat identity opts))]
+        {:keys [port]
+         :as server}   (apply server/start-server (mapcat identity opts))]
     (doto (io/file ".nrepl-port") .deleteOnExit (spit port))
-    (printf "nREPL server started on port %d on host %s - nrepl://%s:%d\n" port bind bind port)))
+    (util/info "nREPL server started on port %d on host %s - nrepl://%s:%d\n" port bind bind port)))

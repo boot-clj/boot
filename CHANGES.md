@@ -15,6 +15,8 @@
 - Added (ALPHA) `send!` function to work around issues passing large
   collections to pods via `with-eval-in` [#339][339].
 - Added `add-cached-{asset,source,resource}` core functions.
+- Added `launch-nrepl` core function for starting repl servers in pods from
+  the repl.
 - Added support for reading repository credentials from encrypted file
   (`BOOT_HOME/credentials.clj.gpg`) and environment variables [#311][311]
   & [#274][274].
@@ -24,6 +26,10 @@
   like additional credentials.
 - The `install` and `push` tasks now accept a `--pom` option which can be
   used to specify which `pom.xml` file to use [#112][112] & [#278][278].
+- The `repl` task now accepts a `--pod` option which can be used to start
+  a repl in a specific pod.
+- The `show` task now accepts a `--list-pods` option to show the names of
+  all active pods.
 
 #### Improved
 

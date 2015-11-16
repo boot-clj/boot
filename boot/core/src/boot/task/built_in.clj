@@ -167,6 +167,7 @@
    d deps             bool  "Print project dependency graph."
    e env              bool  "Print the boot env map."
    f fileset          bool  "Print the build fileset object."
+   l list-pods        bool  "Print the names of all active pods."
    p pedantic         bool  "Print graph of dependency conflicts."
    P pods REGEX       regex "The name filter used to select which pods to inspect."
    U update-snapshots bool  "Include snapshot versions in updates searches."
@@ -179,12 +180,12 @@
       (cond fileset        (helpers/print-fileset fs)
             classpath      (println (or (System/getProperty "boot.class.path") ""))
             fake-classpath (println (or (System/getProperty "fake.class.path") ""))
+            list-pods      (doseq [p (->> pod/pods (map key))] (println (.getName p)))
             :else
             (let [pattern (or pods #"^core$")]
-              (doseq [p (->> pod/pods (map key) (sort-by (memfn getName)))
+              (doseq [p (->> pattern pod/get-pods (sort-by (memfn getName)))
                       :let  [pod-name (.getName p)]
-                      :when (and (re-find pattern pod-name)
-                                 (not (#{"worker" "aether"} pod-name)))]
+                      :when (not (#{"worker" "aether"} pod-name))]
                 (let [pod-env (if (= pod-name "core")
                                 (core/get-env)
                                 (pod/with-eval-in p boot.pod/env))]
@@ -284,14 +285,14 @@
    i init PATH      str   "The file to evaluate in the boot.user ns."
    I skip-init      bool  "Skip default client initialization code."
    p port PORT      int   "The port to listen on and/or connect to."
+   P pod NAME       str   "The name of the pod to start nREPL server in (core)."
    n init-ns NS     sym   "The initial REPL namespace."
    m middleware SYM [sym] "The REPL middleware vector."
    x handler SYM    sym   "The REPL handler (overrides middleware options)."]
 
   (let [cpl-path (.getPath (core/tmp-dir!))
-        srv-opts (-> *opts*
-                     (select-keys [:bind :port :init-ns :middleware :handler])
-                     (assoc :compile-path cpl-path))
+        srv-opts (->> [:bind :port :init-ns :middleware :handler :pod]
+                      (select-keys *opts*))
         cli-opts (-> *opts*
                      (select-keys [:host :port :history])
                      (assoc :standalone true
@@ -300,12 +301,7 @@
                             :color @util/*colorize?*
                             :skip-default-init skip-init))
         deps     (remove pod/dependency-loaded? @repl/*default-dependencies*)
-        repl-svr (delay (when (seq deps)
-                          (pod/add-dependencies
-                            (assoc (core/get-env) :dependencies deps)))
-                        (pod/add-classpath cpl-path)
-                        (require 'boot.repl-server)
-                        ((resolve 'boot.repl-server/start-server) srv-opts))
+        repl-svr (delay (apply core/launch-nrepl (mapcat identity srv-opts)))
         repl-cli (delay (pod/with-call-worker (boot.repl-client/client ~cli-opts)))]
     (comp (core/with-pass-thru [fs]
             (when (or server (not client)) @repl-svr))

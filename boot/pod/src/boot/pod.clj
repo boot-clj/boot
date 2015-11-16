@@ -190,6 +190,18 @@
 (defn set-pod-id!       [x] (alter-var-root #'pod-id      (constantly x)))
 (defn set-worker-pod!   [x] (alter-var-root #'worker-pod  (constantly x)))
 
+(defn get-pods
+  ([name-or-pattern]
+   (get-pods name-or-pattern false))
+  ([name-or-pattern unique?]
+   (let [p? (-> (if (string? name-or-pattern) = re-find)
+                (partial name-or-pattern)
+                (comp (memfn getName)))
+         [p & ps] (->> pods (map key) (filter p?))]
+     (when (and unique? (seq ps))
+       (throw (Exception. "More than one pod name matches: %s" name-or-pattern)))
+     (if unique? p (cons p ps)))))
+
 (defn add-shutdown-hook!
   [f]
   (if (not= 1 pod-id)
@@ -526,4 +538,3 @@
         killpod (fn [pod] (future (destroy-pod pod)))
         destroy (if-not destroy killpod #(doto % destroy killpod))]
     (lifecycle-pool size init destroy)))
-
