@@ -175,15 +175,17 @@
 
   (let [usage      (delay (*usage*))
         pretty-str #(with-out-str (pp/pprint %))
-        updates    (or updates update-snapshots)]
+        updates    (or updates update-snapshots)
+        sort-pods  #(sort-by (memfn getName) %)]
     (core/with-pass-thru [fs]
       (cond fileset        (helpers/print-fileset fs)
             classpath      (println (or (System/getProperty "boot.class.path") ""))
             fake-classpath (println (or (System/getProperty "fake.class.path") ""))
-            list-pods      (doseq [p (->> pod/pods (map key))] (println (.getName p)))
+            list-pods      (doseq [p (->> pod/pods (map key) sort-pods)]
+                             (println (.getName p)))
             :else
             (let [pattern (or pods #"^core$")]
-              (doseq [p (->> pattern pod/get-pods (sort-by (memfn getName)))
+              (doseq [p (->> pattern pod/get-pods sort-pods)
                       :let  [pod-name (.getName p)]
                       :when (not (#{"worker" "aether"} pod-name))]
                 (let [pod-env (if (= pod-name "core")
