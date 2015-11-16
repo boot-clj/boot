@@ -417,12 +417,19 @@ public class App {
                 && ! config("BOOT_AS_ROOT", "no").equals("yes"))
             throw new Exception("refusing to run as root (set BOOT_AS_ROOT=yes to force)");
 
+        // BOOT_VERSION is decided by the loader; it will respect the
+        // boot.properties files, env vars, system properties, etc.
+        // or it will use the latest installed version.
+        //
+        // Since 2.4.0 we can assume that bootversion and appversion
+        // are the same (or boot.main will throw an exception).
+        bootversion = appversion = readVersion();
+
         File cachehome   = mkFile(bootdir(), "cache");
         File bootprops   = mkFile(bootdir(), "boot.properties");
-        File jardir      = mkFile(cachehome, "lib", (appversion = readVersion()));
+        File jardir      = mkFile(cachehome, "lib", appversion);
         File bootcache   = mkFile(cachehome, "cache", "boot");
 
-        bootversion      = config("BOOT_VERSION");
         localrepo        = config("BOOT_LOCAL_REPO");
         cljversion       = config("BOOT_CLOJURE_VERSION", "1.7.0");
         cljname          = config("BOOT_CLOJURE_NAME", "org.clojure/clojure");
