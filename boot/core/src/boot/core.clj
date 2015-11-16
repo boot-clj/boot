@@ -971,11 +971,13 @@
   "Launches an nREPL server in a pod. See the repl task for options."
   [& {:keys [pod] :as opts}]
   (require 'boot.repl)
-  (let [mw   @@(resolve 'boot.repl/*default-middleware*)
-        deps @@(resolve 'boot.repl/*default-dependencies*)
-        opts (-> (dissoc opts :pod)
-                 (update-in [:init-ns] #(or % (when pod 'boot.pod)))
-                 (assoc :default-middleware mw :default-dependencies deps))]
+  (let [mw      @@(resolve 'boot.repl/*default-middleware*)
+        deps    @@(resolve 'boot.repl/*default-dependencies*)
+        pod-ns? (complement #{"aether" "worker"})
+        pod-ns  #(when % (if (pod-ns? %) 'pod 'boot.pod))
+        opts    (-> (dissoc opts :pod)
+                    (update-in [:init-ns] #(or % (pod-ns pod)))
+                    (assoc :default-middleware mw :default-dependencies deps))]
     (if (or (not pod) (= pod "core"))
       (@(resolve 'boot.repl/launch-nrepl) opts)
       (pod/with-eval-in (pod/get-pods pod true)

@@ -198,8 +198,10 @@
                 (partial name-or-pattern)
                 (comp (memfn getName)))
          [p & ps] (->> pods (map key) (filter p?))]
+     (when (and unique? (not p))
+       (throw (Exception. (format "No pod matches: %s" name-or-pattern))))
      (when (and unique? (seq ps))
-       (throw (Exception. "More than one pod name matches: %s" name-or-pattern)))
+       (throw (Exception. (format "More than one pod name matches: %s" name-or-pattern))))
      (if unique? p (cons p ps)))))
 
 (defn add-shutdown-hook!
