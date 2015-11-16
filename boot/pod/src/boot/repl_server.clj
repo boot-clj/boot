@@ -77,8 +77,7 @@
          :as opts}     (->> (-> (assoc opts :handler handler)
                                 (select-keys [:bind :port :handler])
                                 (update-in [:bind] #(or % "127.0.0.1")))
-                            (reduce-kv #(if-not %3 %1 (assoc %1 %2 %3)) {}))
-        {:keys [port]
-         :as server}   (apply server/start-server (mapcat identity opts))]
-    (doto (io/file ".nrepl-port") .deleteOnExit (spit port))
-    (util/info "nREPL server started on port %d on host %s - nrepl://%s:%d\n" port bind bind port)))
+                            (reduce-kv #(if-not %3 %1 (assoc %1 %2 %3)) {}))]
+    (util/with-let [{:keys [port]} (apply server/start-server (mapcat identity opts))]
+      (doto (io/file ".nrepl-port") .deleteOnExit (spit port))
+      (util/info "nREPL server started on port %d on host %s - nrepl://%s:%d\n" port bind bind port))))

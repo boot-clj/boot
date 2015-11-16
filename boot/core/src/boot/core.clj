@@ -972,6 +972,7 @@
   [& {:keys [pod] :as opts}]
   (require 'boot.repl)
   (let [mw      @@(resolve 'boot.repl/*default-middleware*)
+        pod-id  (gensym "boot-pod-repl")
         deps    @@(resolve 'boot.repl/*default-dependencies*)
         pod-ns? (complement #{"aether" "worker"})
         pod-ns  #(when % (if (pod-ns? %) 'pod 'boot.pod))
@@ -979,7 +980,10 @@
                     (update-in [:init-ns] #(or % (pod-ns pod)))
                     (assoc :default-middleware mw :default-dependencies deps))]
     (if (or (not pod) (= pod "core"))
-      (@(resolve 'boot.repl/launch-nrepl) opts)
-      (pod/with-eval-in (pod/get-pods pod true)
-        (require 'boot.repl)
-        (boot.repl/launch-nrepl '~opts)))))
+      (let [server (@(resolve 'boot.repl/launch-nrepl) opts)]
+        #(.close server))
+      (let [p (pod/get-pods pod true)]
+        (pod/with-eval-in p
+          (require 'boot.repl)
+          (def ~pod-id (boot.repl/launch-nrepl '~opts)))
+        #(pod/with-eval-in p (.close ~pod-id))))))
