@@ -51,10 +51,11 @@
 - Default jar exclusions no longer exclude `pom.{xml,properties}` [#278][278].
 - Jars built without the `--file` option that contain multiple `pom.xml`
   files are now named _project.jar_ instead of named for coordinates derived
-  from an arbitrarily selected pom [#278].
+  from an arbitrarily selected pom [#278][278].
 - Installing or pushing a jar without the `--pom` option that contains more
   than one `pom.xml` now results in an exception instead of installing to
-  coordinates derived from an arbitrarily selected pom [#278].
+  coordinates derived from an arbitrarily selected pom [#278][278].
+- `Stream Closed` exceptions when multiple pod pools are used [#270][270]
 
 #### Deprecated
 
@@ -64,6 +65,7 @@
 [94]:  https://github.com/boot-clj/boot/issues/94
 [112]: https://github.com/boot-clj/boot/issues/112
 [233]: https://github.com/boot-clj/boot/issues/233
+[270]: https://github.com/boot-clj/boot/issues/270
 [271]: https://github.com/boot-clj/boot/issues/271
 [274]: https://github.com/boot-clj/boot/issues/274
 [278]: https://github.com/boot-clj/boot/issues/278
