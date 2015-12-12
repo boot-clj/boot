@@ -59,8 +59,16 @@
                     (.deleteOnExit)
                     (spit (pod/pom-xml jarfile pompath)))
           pomout  (io/file outdir (.replaceAll jarname "\\.jar$" ".pom.asc"))
-          sign-it #(sign (.getPath %) opts)]
+          sign-it #(slurp (sign (.getPath %) opts))]
       (spit pomout (sign-it pomfile))
       (spit jarout (sign-it jarfile))
       {[:extension "jar.asc"] (.getPath jarout)
        [:extension "pom.asc"] (.getPath pomout)})))
+
+(defn decrypt
+  "Use gpg to decrypt a file -- returns string contents of file."
+  [file]
+  (let [path (.getPath (io/file file))
+        {:keys [out err exit]} (gpg "--quiet" "--batch" "--decrypt" "--" path)]
+    (assert (zero? exit) err)
+    out))
