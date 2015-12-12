@@ -1,9 +1,9 @@
 (ns boot.task.built-in
   (:require
+   [clojure.pprint       :as pp]
    [clojure.java.io      :as io]
    [clojure.set          :as set]
    [clojure.string       :as string]
-   [clojure.pprint       :as pp]
    [boot.gpg             :as gpg]
    [boot.pod             :as pod]
    [boot.jar             :as jar]
@@ -13,6 +13,7 @@
    [boot.core            :as core]
    [boot.main            :as main]
    [boot.util            :as util]
+   [boot.tmpdir          :as tmpd]
    [boot.from.table.core :as table]
    [boot.from.digest     :as digest]
    [boot.task-helpers    :as helpers]
@@ -20,8 +21,8 @@
   (:import
    [java.io File]
    [java.util Arrays]
-   [javax.tools ToolProvider DiagnosticCollector Diagnostic$Kind]
-   [java.util.concurrent LinkedBlockingQueue TimeUnit]))
+   [java.util.concurrent LinkedBlockingQueue TimeUnit]
+   [javax.tools ToolProvider DiagnosticCollector Diagnostic$Kind]))
 
 ;; Tasks ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -324,23 +325,22 @@
    o developers NAME:EMAIL {str str}   "The map {name email} of project developers."
    D dependencies SYM:VER  [[sym str]] "The project dependencies vector (overrides boot env dependencies)."]
 
-  (let [tgt (core/tmp-dir!)]
-    (core/with-pre-wrap [fs]
-      (let [tag  (or (:tag scm) (util/guard (git/last-commit)))
-            scm  (when scm (assoc scm :tag tag))
-            deps (or dependencies (:dependencies (core/get-env)))
-            opts (assoc *opts* :scm scm :dependencies deps :developers developers)]
-      (core/empty-dir! tgt)
-      (when-not (and project version)
-        (throw (Exception. "need project and version to create pom.xml")))
-      (let [[gid aid] (util/extract-ids project)
-            pomdir    (io/file tgt "META-INF" "maven" gid aid)
-            xmlfile   (io/file pomdir "pom.xml")
-            propfile  (io/file pomdir "pom.properties")]
+  (let [tgt  (core/tmp-dir!)
+        tag  (or (:tag scm) (util/guard (git/last-commit)))
+        scm  (when scm (assoc scm :tag tag))
+        deps (or dependencies (:dependencies (core/get-env)))
+        opts (assoc *opts* :scm scm :dependencies deps :developers developers)]
+    (when-not (and project version)
+      (throw (Exception. "need project and version to create pom.xml")))
+    (let [[gid aid] (util/extract-ids project)
+          pomdir    (io/file tgt "META-INF" "maven" gid aid)
+          xmlfile   (io/file pomdir "pom.xml")
+          propfile  (io/file pomdir "pom.properties")]
+      (pod/with-call-worker
+        (boot.pom/spit-pom! ~(.getPath xmlfile) ~(.getPath propfile) ~opts))
+      (core/with-pre-wrap [fs]
         (util/info "Writing %s and %s...\n" (.getName xmlfile) (.getName propfile))
-        (pod/with-call-worker
-          (boot.pom/spit-pom! ~(.getPath xmlfile) ~(.getPath propfile) ~opts))
-        (-> fs (core/add-resource tgt) core/commit!))))))
+        (-> fs (core/add-resource tgt) core/commit!)))))
 
 (core/deftask sift
   "Transform the fileset, matching paths against regexes.
@@ -598,23 +598,15 @@
    M manifest KEY=VAL {str str} "The jar manifest map."
    m main MAIN        sym       "The namespace containing the -main function."]
 
-  (let [tgt (core/tmp-dir!)]
+  (let [old-fs (atom nil)
+        tgt    (core/tmp-dir!)
+        fname  (or file "project.jar")
+        out    (io/file tgt fname)]
     (core/with-pre-wrap [fs]
-      (core/empty-dir! tgt)
-      (let [[p & ps] (->> (core/output-files fs)
-                          (map core/tmp-file)
-                          (core/by-name ["pom.xml"]))
-            [aid v]  (when (and p (not (seq ps)))
-                       (->> (pod/with-call-worker
-                              (boot.pom/pom-xml-parse-string ~(slurp p)))
-                            ((juxt (comp name :project) :version))))
-            jarname  (or file (and aid v (str aid "-" v ".jar")) "project.jar")
-            jarfile  (io/file tgt jarname)]
-        (let [entries (core/output-files fs)
-              index   (->> entries (map (juxt core/tmp-path #(.getPath (core/tmp-file %)))))]
-          (util/info "Writing %s...\n" (.getName jarfile))
-          (jar/spit-jar! (.getPath jarfile) index manifest main)
-          (-> fs (core/add-resource tgt) core/commit!))))))
+      (let [new-fs (core/output-fileset fs)]
+        (util/info "Writing %s...\n" fname)
+        (jar/update-jar! out @old-fs (reset! old-fs new-fs) manifest main)
+        (-> fs (core/add-resource tgt) core/commit!)))))
 
 (core/deftask war
   "Create war file for web deployment."
@@ -645,17 +637,15 @@
 
   [f file PATH str "The target zip file name."]
 
-  (let [tgt (core/tmp-dir!)]
+  (let [old-fs (atom nil)
+        tgt    (core/tmp-dir!)
+        fname  (or file "project.zip")
+        out    (io/file tgt fname)]
     (core/with-pre-wrap [fs]
-      (core/empty-dir! tgt)
-      (let [zipname (or file "project.zip")
-            zipfile (io/file tgt zipname)]
-        (when-not (.exists zipfile)
-          (let [entries (core/output-files fs)
-                index   (->> entries (map (juxt core/tmp-path #(.getPath (core/tmp-file %)))))]
-            (util/info "Writing %s...\n" (.getName zipfile))
-            (jar/spit-zip! (.getPath zipfile) index)
-            (-> fs (core/add-resource tgt) core/commit!)))))))
+      (let [new-fs (core/output-fileset fs)]
+        (util/info "Writing %s...\n" fname)
+        (jar/update-zip! out @old-fs (reset! old-fs new-fs))
+        (-> fs (core/add-resource tgt) core/commit!)))))
 
 (core/deftask install
   "Install project jar to local Maven repository.

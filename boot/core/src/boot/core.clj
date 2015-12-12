@@ -358,10 +358,20 @@
   [fileset]
   (get-files fileset #{:input}))
 
+(defn input-fileset
+  "FIXME: document"
+  [fileset]
+  (tmpd/restrict-dirs fileset (input-dirs fileset)))
+
 (defn output-files
   "Get a set of TmpFile objects corresponding to files with output role."
   [fileset]
   (get-files fileset #{:output}))
+
+(defn output-fileset
+  "FIXME: document"
+  [fileset]
+  (tmpd/restrict-dirs fileset (output-dirs fileset)))
 
 (defn ls
   "Get a set of TmpFile objects for all files in the fileset."

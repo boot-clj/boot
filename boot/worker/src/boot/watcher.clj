@@ -90,7 +90,7 @@
 (defn- service
   [queue paths]
   (let [service (new-watch-service)
-        doreg   #(register-recursive %1 %2 [:create :modify])]
+        doreg   #(register-recursive %1 %2 [:create :modify :delete])]
     (doseq [path paths] (doreg service (io/file path)))
     (-> #(let [watch-key (take-watch-key service)]
            (when-let [path (and watch-key (or (.watchable watch-key) ""))]
