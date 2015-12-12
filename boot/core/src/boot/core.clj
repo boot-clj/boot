@@ -6,6 +6,7 @@
     [clojure.walk                 :as walk]
     [clojure.repl                 :as repl]
     [clojure.string               :as string]
+    [boot.gpg                     :as gpg]
     [boot.pod                     :as pod]
     [boot.git                     :as git]
     [boot.cli                     :as cli2]
@@ -892,6 +893,12 @@
        nil))
 
 ;; Task Utility Functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn gpg-decrypt
+  "Uses gpg(1) to decrypt a file and returns its contents as a string. The
+  :as :edn option can be passed to read the contents as an EDN form."
+  [path-or-file & {:keys [as]}]
+  ((case as :edn read-string identity) (gpg/decrypt path-or-file)))
 
 (defn json-generate
   "Same as cheshire.core/generate-string."

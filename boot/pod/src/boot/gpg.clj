@@ -47,7 +47,7 @@
       (util/fail (str "Could not sign " file "\n" err
                       "\n\nIf you don't expect people to need to verify the "
                       "authorship of your jar, don't set :gpg-sign option of push task to true.\n")))
-    (str file ".asc")))
+    (slurp (str file ".asc"))))
 
 (defn sign-jar
   [outdir jarfile pompath opts]
@@ -64,3 +64,11 @@
       (spit jarout (sign-it jarfile))
       {[:extension "jar.asc"] (.getPath jarout)
        [:extension "pom.asc"] (.getPath pomout)})))
+
+(defn decrypt
+  "Use gpg to decrypt a file -- returns string contents of file."
+  [file]
+  (let [path (.getPath (io/file file))
+        {:keys [out err exit]} (gpg "--quiet" "--batch" "--decrypt" "--" path)]
+    (assert (zero? exit) err)
+    out))
