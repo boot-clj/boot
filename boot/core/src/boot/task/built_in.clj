@@ -706,34 +706,7 @@
   The repo option is required. The repo option is used to get repository
   map from Boot envinronment. Additional repo-map option can be used to
   add options, like credentials, or to provide complete repo-map if Boot
-  envinronment doesn't hold the named repository.
-
-  Some of the options will read configuration from an encrypted file at
-  BOOT_HOME/credentials.clj.gpg.
-
-  Repository map special options:
-
-  :creds :gpg
-  Username and password are read from the credentials file.
-
-  The :username, :password, and/or :passphrase keys in the repo map
-  may have string values (the username, password, etc.) or they may
-  have one of the following special keyword values:
-
-  :gpg
-  The value is read from the credentials file.
-
-  :env
-  The value is read from the system property or environment variable
-  named BOOT_<REPO NAME>_USERNAME, BOOT_<REPO NAME>_PASSWORD, etc.
-  System properties override environment variables.
-
-  :env/foo
-  The value is read from the system property or environment variable
-  named FOO. System properties override environment variables.
-
-  [:gpg :env :env/foo]
-  The value is read from first available source."
+  envinronment doesn't hold the named repository."
 
   [f file PATH            str      "The jar file to deploy."
    P pom PATH             str      "The pom.xml file to use (see install task)."
@@ -763,10 +736,7 @@
                               (map core/tmp-file)))
             ; Get options from Boot env by repo name
             r        (get (->> (core/get-env :repositories) (into {})) repo)
-            repo-map (merge
-                       ; Repo option in env might be given as only url instead of map
-                       (if (map? r) r {:url r})
-                       repo-map)]
+            repo-map (merge r (when repo-map ((core/configure-repositories!) repo-map)))]
         (when-not (and repo-map (seq jarfiles))
           (throw (Exception. "missing jar file or repo not found")))
         (doseq [f jarfiles]

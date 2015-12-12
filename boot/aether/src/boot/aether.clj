@@ -62,76 +62,13 @@
           :password        password
           :non-proxy-hosts (get-non-proxy-hosts)}))))
 
-(defn ^{:boot/from :technomancy/leiningen} credentials-fn
-  "Decrypt map from credentials.clj.gpg in Boot home if present."
-  ([] (let [cred-file (io/file (App/bootdir) "credentials.clj.gpg")]
-        (if (.exists cred-file)
-          (credentials-fn cred-file))))
-  ([file]
-   (let [{:keys [out err exit]} (gpg/gpg "--quiet" "--batch"
-                                         "--decrypt" "--" (str file))]
-     (if (pos? exit)
-       (binding [*out* *err*]
-         (util/warn (format (str "Could not decrypt credentials from %s\n"
-                                 "%s\n"
-                                 "See `boot gpg --help` for how to install gpg.")
-                            (str file) err)))
-       (read-string out)))))
-
-(def credentials (memoize credentials-fn))
-
-(defn- ^{:boot/from :technomancy/leiningen} match-credentials [settings auth-map]
-  (get auth-map (:url settings)
-       (first (for [[re? cred] auth-map
-                    :when (and (instance? Pattern re?)
-                               (re-find re? (:url settings)))]
-                cred))))
-
-(defn- ^{:boot/from :technomancy/leiningen} resolve-credential
-  "Resolve key-value pair from result into a credential, updating result."
-  [id source-settings result [k v]]
-  (let [key-name (string/upper-case (name k))
-        env-name (str "BOOT_" (string/upper-case id) "_" key-name)
-        from-env #(or (System/getProperty %) (System/getenv %))]
-    (letfn [(resolve [v]
-              (cond (= :env v)
-                    (from-env env-name)
-
-                    (and (keyword? v) (= "env" (namespace v)))
-                    (from-env key-name)
-
-                    (= :gpg v)
-                    (get (match-credentials source-settings (credentials)) k)
-
-                    (coll? v) ;; collection of places to look
-                    (->> (map resolve v) (remove nil?) first)
-
-                    :else v))]
-      (if (#{:username :password :passphrase :private-key-file} k)
-        (assoc result k (resolve v))
-        (assoc result k v)))))
-
-(defn ^{:boot/from :technomancy/leiningen} resolve-credentials
-  "Applies credentials from the environment or ~/.boot/credentials.clj.gpg
-  as they are specified and available."
-  [id settings]
-  (let [gpg-creds (if (= :gpg (:creds settings))
-                    (match-credentials settings (credentials)))
-        resolved (reduce (partial resolve-credential id settings)
-                         (empty settings)
-                         settings)]
-    (if gpg-creds
-      (dissoc (merge gpg-creds resolved) :creds)
-      resolved)))
-
 (defn resolve-dependencies*
   [env]
   (try
     (aether/resolve-dependencies
       :coordinates       (:dependencies env)
-      :repositories      (->> (or (:repositories env) @default-repositories)
+      :repositories      (->> (or (seq (:repositories env)) @default-repositories)
                            (map (juxt first (fn [[x y]] (if (map? y) y {:url y}))))
-                           (map (juxt first (fn [[x y]] (resolve-credentials x y))))
                            (map (juxt first (fn [[x y]] (update-in y [:update] #(or % @update?))))))
       :local-repo        (or (:local-repo env) @local-repo nil)
       :offline?          (or @offline? (:offline? env))
@@ -257,8 +194,7 @@
   ([env [repo-id repo-settings] jarpath pompath artifact-map]
    (let [pom-str                   (pod/pom-xml jarpath pompath)
          {:keys [project version]} (pom-xml-parse-string pom-str)
-         pomfile                   (pom-xml-tmp pom-str)
-         repo-settings             (resolve-credentials repo-id repo-settings)]
+         pomfile                   (pom-xml-tmp pom-str)]
      (aether/deploy
        :coordinates  [project version]
        :jar-file     (io/file jarpath)

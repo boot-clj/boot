@@ -42,6 +42,9 @@
 (def ^:private tempdirs          (atom #{}))
 (def ^:private tempdirs-lock     (Semaphore. 1 true))
 (def ^:private src-watcher       (atom (constantly nil)))
+(def ^:private repo-config-fn    (atom identity))
+(def ^:private default-repos     [["clojars"       "https://clojars.org/repo/"]
+                                  ["maven-central" "https://repo1.maven.org/maven2"]])
 
 (def ^:private masks
   {:user     {:user true}
@@ -575,8 +578,7 @@
              :resource-paths   #{}
              :asset-paths      #{}
              :target-path      "target"
-             :repositories     [["clojars"       "https://clojars.org/repo/"]
-                                ["maven-central" "https://repo1.maven.org/maven2/"]]})
+             :repositories     default-repos})
     (add-watch ::boot #(configure!* %3 %4)))
   (set-fake-class-path!)
   (tmp-dir** nil :asset)
@@ -610,6 +612,7 @@
 (defn- merge-or-replace [x y]   (if-not (coll? x) y (into x y)))
 (defn- merge-if-coll    [x y]   (if-not (coll? x) x (into x y)))
 (defn- assert-set       [k new] (assert (set? new) (format "env %s must be a set" k)))
+(defn- canonical-repo   [repo]  (if (map? repo) repo {:url repo}))
 
 (defmethod pre-env! ::default       [key old new env] new)
 (defmethod pre-env! :directories    [key old new env] (set/union old new))
@@ -618,6 +621,17 @@
 (defmethod pre-env! :asset-paths    [key old new env] (assert-set key new) new)
 (defmethod pre-env! :wagons         [key old new env] (add-wagon! old new env))
 (defmethod pre-env! :dependencies   [key old new env] (add-dependencies! old new env))
+(defmethod pre-env! :repositories   [key old new env] (->> new (mapv (fn [[k v]] [k (@repo-config-fn (canonical-repo v))]))))
+
+(add-watch repo-config-fn (gensym) (fn [& _] (set-env! :repositories identity)))
+
+(defn configure-repositories!
+  "Get or set the repository configuration callback function. The function
+  will be applied to all repositories added to the boot env, it should return
+  the repository map with any additional configuration (like credentials, for
+  example)."
+  ([ ] @repo-config-fn)
+  ([f] (reset! repo-config-fn f)))
 
 (defn get-env
   "Returns the value associated with the key `k` in the boot environment, or
@@ -635,11 +649,11 @@
   clojure.core/update-in works."
   [& kvs]
   (doseq [[k v] (order-set-env-keys (partition 2 kvs))]
-    (let [v'  (if-not (fn? v) v (v (get-env k)))
-          v'' (if-let [b (get @cli-base k)] (merge-if-coll b v') v')]
-      (assert (printable-readable? v'')
-              (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v'')))
-      (swap! boot-env update-in [k] (partial pre-env! k) v'' @boot-env))))
+      (let [v'  (if-not (fn? v) v (v (get-env k)))
+            v'' (if-let [b (get @cli-base k)] (merge-if-coll b v') v')]
+        (assert (printable-readable? v'')
+                (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v'')))
+        (swap! boot-env update-in [k] (partial pre-env! k) v'' @boot-env))))
 
 (defn merge-env!
   "Merges the new values into the current values for the given keys in the env

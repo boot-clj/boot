@@ -17,9 +17,9 @@
 - Added `add-cached-{asset,source,resource}` core functions.
 - Added `launch-nrepl` core function for starting repl servers in pods from
   the repl.
-- Added support for reading repository credentials from encrypted file
-  (`BOOT_HOME/credentials.clj.gpg`) and environment variables [#311][311]
-  & [#274][274].
+- Added `gpg-decrypt` core function to decrypt gpg encrypted files.
+- Added `configure-repositories!` core function to configure maven repos
+  dynamically (as a callback to add credentials, etc).
 - The `push` task can now be provided with `--repo-map` option to set the
   deployment repository. This is useful for example in case a repository
   needs different settings for downloading dependencies and deploying,
@@ -38,6 +38,7 @@
 - Better fileset performance.
 - Better pod-pool performance [#271][271].
 - Better cli option error messages [#285][285] & [#322][322].
+- Throw exception when source, resource, or asset paths overlap [#235][235].
 
 #### Fixed
 
@@ -65,6 +66,7 @@
 [94]:  https://github.com/boot-clj/boot/issues/94
 [112]: https://github.com/boot-clj/boot/issues/112
 [233]: https://github.com/boot-clj/boot/issues/233
+[235]: https://github.com/boot-clj/boot/issues/235
 [270]: https://github.com/boot-clj/boot/issues/270
 [271]: https://github.com/boot-clj/boot/issues/271
 [274]: https://github.com/boot-clj/boot/issues/274
