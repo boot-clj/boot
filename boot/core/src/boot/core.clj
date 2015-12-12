@@ -615,11 +615,22 @@
 (defn- assert-set       [k new] (assert (set? new) (format "env %s must be a set" k)))
 (defn- canonical-repo   [repo]  (if (map? repo) repo {:url repo}))
 
+(defn- assert-disjoint
+  [env key new]
+  (util/with-let [_ new]
+    (let [paths   (set (->> (assoc env key new)
+                            ((juxt :source-paths :resource-paths :asset-paths))
+                            (reduce into #{})
+                            (keep #(some-> % io/file .getCanonicalFile))))
+          parents (set (mapcat (comp rest file/parent-seq) paths))]
+      (assert (empty? (set/intersection paths parents))
+              "The :source-paths, :resource-paths, and :asset-paths must not overlap."))))
+
 (defmethod pre-env! ::default       [key old new env] new)
 (defmethod pre-env! :directories    [key old new env] (set/union old new))
-(defmethod pre-env! :source-paths   [key old new env] (assert-set key new) new)
-(defmethod pre-env! :resource-paths [key old new env] (assert-set key new) new)
-(defmethod pre-env! :asset-paths    [key old new env] (assert-set key new) new)
+(defmethod pre-env! :source-paths   [key old new env] (assert-set key new) (assert-disjoint env key new))
+(defmethod pre-env! :resource-paths [key old new env] (assert-set key new) (assert-disjoint env key new))
+(defmethod pre-env! :asset-paths    [key old new env] (assert-set key new) (assert-disjoint env key new))
 (defmethod pre-env! :wagons         [key old new env] (add-wagon! old new env))
 (defmethod pre-env! :dependencies   [key old new env] (add-dependencies! old new env))
 (defmethod pre-env! :repositories   [key old new env] (->> new (mapv (fn [[k v]] [k (@repo-config-fn (canonical-repo v))]))))
