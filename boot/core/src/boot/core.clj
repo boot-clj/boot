@@ -677,6 +677,26 @@
        (mapcat (fn [[k v]] [k #(merge-or-replace % v)]))
        (apply set-env!)))
 
+(defn get-sys-env
+  "Returns the value associated with the system property k, the environment
+  variable k, or not-found if neither of those are set. If not-found is the
+  keyword :required, an exception will be thrown when there is no value for
+  either the system property or environment variable k."
+  ([ ] (merge {} (System/getenv) (System/getProperties)))
+  ([k] (get-sys-env k nil))
+  ([k not-found]
+   (util/with-let [v ((get-sys-env) k not-found)]
+     (when (= v not-found :required)
+       (throw (ex-info (format "Required env var: %s" k) {}))))))
+
+(defn set-sys-env!
+  "For each key value pair in kvs the system property corresponding to the key
+  is set. Keys and values must be strings, but the value can be nil or false
+  to remove the system property."
+  [& kvs]
+  (doseq [[^String k ^String v] (partition 2 kvs)]
+    (if v (System/setProperty k v) (System/clearProperty k))))
+
 ;; Defining Tasks ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro deftask
