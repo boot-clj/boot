@@ -4,6 +4,7 @@
    [clojure.java.io      :as io]
    [clojure.set          :as set]
    [clojure.string       :as string]
+   [boot.filesystem      :as fs]
    [boot.gpg             :as gpg]
    [boot.pod             :as pod]
    [boot.jar             :as jar]
@@ -213,13 +214,10 @@
 (core/deftask target
   "Writes output files to the given directory on the filesystem."
   [d dir PATH #{str} "The set of directories to write to."]
-  (core/with-pass-thru [fs]
-    (let [showmsg (delay (util/info "Writing target dir(s)...\n"))]
-      (mapv deref (for [d dir]
-                    (do @showmsg
-                        (future (binding [file/*hard-link* false]
-                                  (apply file/sync! :time d (core/output-dirs fs)))
-                                (file/delete-empty-subdirs! d))))))))
+  (let [sync! (#'core/fileset-syncer dir)]
+    (core/with-pass-thru [fs]
+      (util/info "Writing target dir(s)...\n")
+      (sync! fs))))
 
 (core/deftask watch
   "Call the next handler when source files change.

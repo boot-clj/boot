@@ -299,15 +299,21 @@
     (update-in added [:tree] merge (:tree changed))))
 
 (defn patch
-  [before after]
+  [before after & {:keys [link]}]
   (let [{:keys [added removed changed]}
         (diff* before after [:hash :time])
+        link    (#{:tmp :all} link) ; only :tmp or :all are valid
+        link?   #(and link (or (= :all link) (= (:blob after) (:bdir %))))
         add-ops (->> added   :tree vals (map (partial vector :write)))
+        add-ops (for [x (->> added :tree vals)]
+                  [(if (link? x) :link :write) x])
         rem-ops (->> removed :tree vals (map (partial vector :delete)))
         chg-ops (->> changed :tree vals
                      (map (fn [{:keys [hash path] :as f}]
                             (let [hash' (get-in before [:tree path :hash])]
-                              [(if (= hash hash') :set-time :write) f]))))]
+                              (cond (= hash hash') [:touch f]
+                                    (link? f)      [:link  f]
+                                    :else          [:write f])))))]
     (reduce into [] [add-ops rem-ops chg-ops])))
 
 (defn removed
