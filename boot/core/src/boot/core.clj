@@ -771,12 +771,15 @@
   "Given a seq of directories dirs, returns a stateful function of one
   argument. Each time this function is called with a fileset argument it
   updates each of the dirs such that changes to the fileset are also
-  applied to them."
+  applied to them. The :link option will enable the use of hard links
+  where possible."
   [dirs]
   (let [prev (atom nil)
         dirs (delay (mapv #(doto (io/file %) .mkdirs empty-dir!) dirs))]
-    #(let [[a b] [@prev (reset! prev (output-fileset %))]]
-       (mapv deref (for [d @dirs] (future (fs/patch! (fs/mkfs d) a b :link :tmp)))))))
+    (fn [fs & {:keys [link]}]
+      (let [link  (when link :tmp)
+            [a b] [@prev (reset! prev (output-fileset fs))]]
+        (mapv deref (for [d @dirs] (future (fs/patch! (fs/mkfs d) a b :link link))))))))
 
 (defn- run-tasks
   "Given a task pipeline, builds the initial fileset, sets the initial build
@@ -785,7 +788,12 @@
   (binding [*warnings* (atom 0)]
     (let [fs      (commit! (reset-fileset))
           target? (not= "no" (boot.App/config "BOOT_EMIT_TARGET"))
-          sync!   (if-not target? identity (fileset-syncer [(get-env :target-path)]))]
+          depr    (delay (util/warn "Implicit target dir is deprecated, please use the target task instead.\n")
+                         (util/warn "Set BOOT_EMIT_TARGET='no' to disable implicit target dir.\n"))
+          sync!   (if-not target?
+                    identity
+                    (comp (fn [_] @depr)
+                          (fileset-syncer [(get-env :target-path)])))]
       ((task-stack #(do (sync! %) (sync-user-dirs!) %)) fs))))
 
 (defn boot

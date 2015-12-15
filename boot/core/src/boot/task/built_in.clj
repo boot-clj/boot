@@ -213,11 +213,12 @@
 
 (core/deftask target
   "Writes output files to the given directory on the filesystem."
-  [d dir PATH #{str} "The set of directories to write to."]
+  [d dir PATH #{str} "The set of directories to write to."
+   L no-link  bool   "Don't create hard links."]
   (let [sync! (#'core/fileset-syncer dir)]
     (core/with-pass-thru [fs]
       (util/info "Writing target dir(s)...\n")
-      (sync! fs))))
+      (sync! fs :link (not no-link)))))
 
 (core/deftask watch
   "Call the next handler when source files change.

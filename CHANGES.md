@@ -61,6 +61,7 @@
 #### Deprecated
 
 - The `push` task option `--gpg-keyring`.
+- Implicit writing of artifacts to target directory.
 
 [72]:  https://github.com/boot-clj/boot/issues/72
 [94]:  https://github.com/boot-clj/boot/issues/94
