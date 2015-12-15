@@ -28,9 +28,6 @@ clean:
 	(cd boot/pod && lein clean)
 	(cd boot/worker && lein clean)
 
-bloop:
-	which lein
-
 bin/lein:
 	mkdir -p bin
 	wget https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein -O bin/lein
