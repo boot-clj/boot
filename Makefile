@@ -16,6 +16,7 @@ corejar      = boot/core/target/core-$(version).jar
 basejar      = boot/base/target/base-$(version).jar
 baseuber     = boot/base/target/base-$(version)-jar-with-dependencies.jar
 alljars      = $(podjar) $(aetherjar) $(workerjar) $(corejar) $(baseuber) $(bootjar)
+java_version = $(shell java -version 2>&1 | awk -F '"' '/version/ {print $$2}' |awk -F. '{print $$1 "." $$2}')
 
 help:
 	@echo "version =" $(version)
@@ -72,6 +73,9 @@ $(baseuber): boot/base/pom.xml $(shell find boot/base/src/main)
 install: .installed
 
 .deployed: .installed
+	@echo -e "\033[0;33m<< Java version: $(java_version) >>\033[0m"
+	@[ "$(java_version)" == "1.7" ] \
+		|| (echo -e "\033[0;31mYou must build with Java version 1.7 only.\033[0m" && false)
 	(cd boot/base   && lein deploy clojars boot/base $(version) target/base-$(version).jar pom.xml)
 	(cd boot/pod    && lein deploy clojars)
 	(cd boot/aether && lein deploy clojars)
