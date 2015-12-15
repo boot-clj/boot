@@ -6,6 +6,7 @@
     [clojure.walk                 :as walk]
     [clojure.repl                 :as repl]
     [clojure.string               :as string]
+    [boot.filesystem              :as fs]
     [boot.gpg                     :as gpg]
     [boot.pod                     :as pod]
     [boot.git                     :as git]
@@ -766,24 +767,26 @@
           (let [[opts argv] (parse-task-opts args spec)]
             (recur (conj ret (apply (var-get op) opts)) argv)))))))
 
-(defn- sync-target
-  "Copy output files to the target directory (if BOOT_EMIT_TARGET is not 'no')."
-  [before after]
-  (when-not (= "no" (boot.App/config "BOOT_EMIT_TARGET"))
-    (let [tgt  (get-env :target-path)
-          diff (fileset-diff before after)]
-      (when (seq (output-files diff))
-        (binding [file/*hard-link* false]
-          (apply file/sync! :time tgt (output-dirs after)))
-        (file/delete-empty-subdirs! tgt)))))
+(defn- fileset-syncer
+  "Given a seq of directories dirs, returns a stateful function of one
+  argument. Each time this function is called with a fileset argument it
+  updates each of the dirs such that changes to the fileset are also
+  applied to them."
+  [dirs]
+  (let [prev (atom nil)
+        dirs (delay (mapv #(doto (io/file %) .mkdirs empty-dir!) dirs))]
+    #(let [[a b] [@prev (reset! prev (output-fileset %))]]
+       (mapv deref (for [d @dirs] (future (fs/patch! (fs/mkfs d) a b :link :tmp)))))))
 
 (defn- run-tasks
   "Given a task pipeline, builds the initial fileset, sets the initial build
   state, and runs the pipeline."
   [task-stack]
   (binding [*warnings* (atom 0)]
-    (let [fs (commit! (reset-fileset))]
-      ((task-stack #(do (sync-target fs %) (sync-user-dirs!) %)) fs))))
+    (let [fs      (commit! (reset-fileset))
+          target? (not= "no" (boot.App/config "BOOT_EMIT_TARGET"))
+          sync!   (if-not target? identity (fileset-syncer [(get-env :target-path)]))]
+      ((task-stack #(do (sync! %) (sync-user-dirs!) %)) fs))))
 
 (defn boot
   "The REPL equivalent to the command line 'boot'. If all arguments are
