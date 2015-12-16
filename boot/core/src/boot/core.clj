@@ -45,8 +45,8 @@
 (def ^:private tempdirs-lock     (Semaphore. 1 true))
 (def ^:private src-watcher       (atom (constantly nil)))
 (def ^:private repo-config-fn    (atom identity))
-(def ^:private default-repos     [["clojars"       "https://clojars.org/repo/"]
-                                  ["maven-central" "https://repo1.maven.org/maven2"]])
+(def ^:private default-repos     [["clojars"       {:url "https://clojars.org/repo/"}]
+                                  ["maven-central" {:url "https://repo1.maven.org/maven2"}]])
 
 (def ^:private masks
   {:user     {:user true}

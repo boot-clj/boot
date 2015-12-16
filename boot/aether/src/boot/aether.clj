@@ -19,8 +19,8 @@
 (def offline?             (atom false))
 (def update?              (atom :daily))
 (def local-repo           (atom nil))
-(def default-repositories (atom [["clojars"       "https://clojars.org/repo/"]
-                                 ["maven-central" "https://repo1.maven.org/maven2/"]]))
+(def default-repositories (atom [["clojars"       {:url "https://clojars.org/repo/"}]
+                                 ["maven-central" {:url "https://repo1.maven.org/maven2/"}]]))
 
 (defn set-offline!    [x] (reset! offline? x))
 (defn set-update!     [x] (reset! update? x))
