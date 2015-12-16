@@ -128,7 +128,7 @@
   ([short long optarg type doc]
    (if-let [deprecated (deprecated short)]
      `(when-not (nil? ~long)
-        (util/warn ~(format "option %s is deprecated. %s\n" long (if (string? deprecated) deprecated "")))))))
+        (util/warn-deprecated ~(format "option %s is deprecated. %s\n" long (if (string? deprecated) deprecated "")))))))
 
 (defn- argspec->summary
   ([short long type doc]
@@ -172,26 +172,31 @@
 
 (defmacro ^:private assert
   [test fmt & args]
-  `(when-not ~test (throw (Exception. (format ~fmt ~@args)))))
+  `(when-not ~test (throw (Exception. (apply format ~fmt (map pr-str [~@args]))))))
 
 (defn- assert-argspecs [argspecs]
   (let [split (->> argspecs (partition-by string?))
-        opts  (->> split (mapcat #(take 2 %)) (filter symbol?))
-        specs (->> split (partition 2))]
-    (when (seq opts)
-      (assert (apply distinct? opts)
-              "cli options must be unique")
-      (assert (not-any? #{'h 'help} opts)
-              "the -h/--help cli option is reserved"))
+        specs (->> split (partition 2))
+        dupes (->> (mapcat (partial take 2) split)
+                   (filter symbol?)
+                   (group-by identity)
+                   (reduce-kv #(if (< (count %3) 2) %1 (conj %1 %2)) []))]
     (doseq [[[short long optarg type & extra] [desc]] specs]
-      (assert (and (every? symbol? [short long])
-                   (nil? (seq extra)))
-              "malformed cli option: %s" long)
+      (assert (and (not= 'h short) (not= 'help long))
+              "cli: the -h/--help option is reserved")
+      (assert ((some-fn nil? (every-pred symbol? #(= 1 (count (name %))))) short)
+              "cli: expected short option, got %s" short)
+      (assert (symbol? long)
+              "cli: expected long option, got %s" long)
+      (assert (nil? (seq extra))
+              "cli: option %s: expected description, got %s" long (first extra))
       (assert (or (and type (symbol? optarg))
                   (#{'int 'bool} optarg))
-              "cli option missing optarg: %s" long)
+              "cli: option %s: expected optarg, got %s" long (or optarg desc))
       (assert (or (not type) (not= 'bool type))
-              "cli option of bool type should not have optarg: %s" long))))
+              "cli: option %s: flags should not have optargs, got %s" long optarg))
+    (assert (not (seq dupes))
+            (format "cli: options must be unique: %s" (string/join ", " dupes)))))
 
 (defmacro clifn [& forms]
   (let [[doc argspecs & body]

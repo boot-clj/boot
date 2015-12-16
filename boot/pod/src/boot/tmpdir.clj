@@ -183,6 +183,10 @@
         rm? (or (and in ex #(or (in %) (ex %))) in ex)]
     (if-not rm? tree (reduce-kv #(if (rm? %2) %1 (assoc %1 %2 %3)) {} tree))))
 
+(defn- index
+  [key tree]
+  (reduce-kv #(assoc %1 (get %3 key) %3) {} tree))
+
 (defn- diff-tree
   [tree props]
   (let [->map #(select-keys % props)]
@@ -294,6 +298,24 @@
         (diff* before after props)]
     (update-in added [:tree] merge (:tree changed))))
 
+(defn patch
+  [before after & {:keys [link]}]
+  (let [{:keys [added removed changed]}
+        (diff* before after [:hash :time])
+        link    (#{:tmp :all} link) ; only :tmp or :all are valid
+        link?   #(and link (or (= :all link) (= (:blob after) (:bdir %))))
+        add-ops (->> added   :tree vals (map (partial vector :write)))
+        add-ops (for [x (->> added :tree vals)]
+                  [(if (link? x) :link :write) x])
+        rem-ops (->> removed :tree vals (map (partial vector :delete)))
+        chg-ops (->> changed :tree vals
+                     (map (fn [{:keys [hash path] :as f}]
+                            (let [hash' (get-in before [:tree path :hash])]
+                              (cond (= hash hash') [:touch f]
+                                    (link? f)      [:link  f]
+                                    :else          [:write f])))))]
+    (reduce into [] [add-ops rem-ops chg-ops])))
+
 (defn removed
   [before after & props]
   (:removed (diff* before after props)))
@@ -305,3 +327,10 @@
 (defn changed
   [before after & props]
   (:changed (diff* before after props)))
+
+(defn restrict-dirs
+  [fileset allowed-dirs]
+  (let [dirs    (set allowed-dirs)
+        reducer (fn [xs k {:keys [dir] :as v}]
+                  (if-not (dirs dir) xs (assoc xs k v)))]
+    (update-in fileset [:tree] (partial reduce-kv reducer {}))))

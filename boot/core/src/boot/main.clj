@@ -68,11 +68,12 @@
     forms
     [`(comment ~(format "end %s" tag))]))
 
-(defn emit [boot? argv userscript bootscript import-ns]
+(defn emit [boot? argv userscript localscript bootscript import-ns]
   (let [boot-use '[boot.core boot.util boot.task.built-in]]
     `(~(list 'ns 'boot.user
          (list* :use (concat boot-use import-ns)))
-      ~@(when userscript (with-comments "profile" userscript))
+      ~@(when userscript (with-comments "global profile" userscript))
+      ~@(when localscript (with-comments "local profile" localscript))
       ~@(with-comments "boot script" bootscript)
       (let [boot?# ~boot?]
         (if-not boot?#
@@ -148,15 +149,18 @@
                               (util/warn "** Please use $BOOT_HOME/profile.boot instead.\n")
                               (util/warn "** See: https://github.com/boot-clj/boot/issues/157\n")))
               userscript  (or userscript (exists? (io/file (App/getBootDir) "profile.boot")))
+              localscript (exists? (io/file "profile.boot"))
               profile?    (not (:no-profile opts))
               bootforms   (some->> arg0 slurp util/read-string-all)
               userforms   (when profile?
                             (some->> userscript slurp util/read-string-all))
+              localforms  (when profile?
+                            (some->> localscript slurp util/read-string-all))
               initial-env (->> [:source-paths :resource-paths :asset-paths :target-path :dependencies]
                                (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
                                (merge {} (:set-env opts)))
               import-ns   (export-task-namespaces initial-env)
-              scriptforms (emit boot? args userforms bootforms import-ns)
+              scriptforms (emit boot? args userforms localforms bootforms import-ns)
               scriptstr   (binding [*print-meta* true]
                             (str (string/join "\n\n" (map pr-str scriptforms)) "\n"))]
 

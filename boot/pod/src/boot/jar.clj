@@ -1,28 +1,20 @@
 (ns boot.jar
   (:require
    [clojure.java.io :as io]
-   [boot.pod        :as pod]
-   [boot.file       :as file]
-   [boot.util       :as util])
+   [boot.util       :as util]
+   [boot.filesystem :as fs])
   (:import
-   [java.io File]
    [java.util.zip ZipEntry ZipOutputStream ZipException]
    [java.util.jar JarEntry JarOutputStream Manifest Attributes$Name]))
 
-(def ^:private dfl-attr
-  {"Created-By" "Tailrecursion Boot Build Tool"
-   "Built-By"   (System/getProperty "user.name")
-   "Build-Jdk"  (System/getProperty "java.version")})
-
 (defn- create-manifest [main ext-attrs]
-  (let [extra-attr  (merge-with into dfl-attr ext-attrs)
-        manifest    (Manifest.) 
-        attributes  (.getMainAttributes manifest)]
-    (.put attributes Attributes$Name/MANIFEST_VERSION "1.0")
-    (when-let [m (and main (.replaceAll (str main) "-" "_"))]
-      (.put attributes Attributes$Name/MAIN_CLASS m))
-    (doseq [[k v] extra-attr] (.put attributes (Attributes$Name. (name k)) v))
-    manifest))
+  (util/with-let [manifest (Manifest.)]
+    (let [attributes (.getMainAttributes manifest)]
+      (.put attributes Attributes$Name/MANIFEST_VERSION "1.0")
+      (when-let [m (and main (.replaceAll (str main) "-" "_"))]
+        (.put attributes Attributes$Name/MAIN_CLASS m))
+      (doseq [[k v] ext-attrs]
+        (.put attributes (Attributes$Name. (name k)) v)))))
 
 (defn- write! [stream file]
   (let [buf (byte-array 1024)]
@@ -71,3 +63,16 @@
               (doto s (.putNextEntry entry) (write! (io/input-stream srcpath)) .closeEntry)
               (catch Throwable t
                 (if-not (dupe? t) (throw t) (util/warn "%s\n" (.getMessage t)))))))))))
+
+;; new jar fns ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn update-zip!
+  [zipfile old-fs new-fs]
+  (with-open [fs (fs/mkjarfs zipfile)]
+    (fs/patch! fs old-fs new-fs)))
+
+(defn update-jar!
+  [jarfile old-fs new-fs attr main]
+  (with-open [fs (fs/mkjarfs jarfile)]
+    (fs/write! fs (create-manifest main attr) (io/file "META-INF" "MANIFEST.MF"))
+    (fs/patch! fs old-fs new-fs)))

@@ -6,6 +6,8 @@
     [clojure.walk                 :as walk]
     [clojure.repl                 :as repl]
     [clojure.string               :as string]
+    [boot.filesystem              :as fs]
+    [boot.gpg                     :as gpg]
     [boot.pod                     :as pod]
     [boot.git                     :as git]
     [boot.cli                     :as cli2]
@@ -42,6 +44,9 @@
 (def ^:private tempdirs          (atom #{}))
 (def ^:private tempdirs-lock     (Semaphore. 1 true))
 (def ^:private src-watcher       (atom (constantly nil)))
+(def ^:private repo-config-fn    (atom identity))
+(def ^:private default-repos     [["clojars"       "https://clojars.org/repo/"]
+                                  ["maven-central" "https://repo1.maven.org/maven2"]])
 
 (def ^:private masks
   {:user     {:user true}
@@ -267,7 +272,7 @@
 
 (defmacro ^:private deprecate! [was is]
   `(let [msg# (format "%s was deprecated, please use %s instead\n" '~was '~is)
-         warn# (delay (util/warn msg#))]
+         warn# (delay (util/warn-deprecated msg#))]
      (defn ^:deprecated ~was [& args#]
        @warn#
        (util/dbug (ex/format-exception (Exception. msg#)))
@@ -358,10 +363,20 @@
   [fileset]
   (get-files fileset #{:input}))
 
+(defn input-fileset
+  "FIXME: document"
+  [fileset]
+  (tmpd/restrict-dirs fileset (input-dirs fileset)))
+
 (defn output-files
   "Get a set of TmpFile objects corresponding to files with output role."
   [fileset]
   (get-files fileset #{:output}))
+
+(defn output-fileset
+  "FIXME: document"
+  [fileset]
+  (tmpd/restrict-dirs fileset (output-dirs fileset)))
 
 (defn ls
   "Get a set of TmpFile objects for all files in the fileset."
@@ -565,8 +580,7 @@
              :resource-paths   #{}
              :asset-paths      #{}
              :target-path      "target"
-             :repositories     [["clojars"       "https://clojars.org/repo/"]
-                                ["maven-central" "https://repo1.maven.org/maven2/"]]})
+             :repositories     default-repos})
     (add-watch ::boot #(configure!* %3 %4)))
   (set-fake-class-path!)
   (tmp-dir** nil :asset)
@@ -600,14 +614,37 @@
 (defn- merge-or-replace [x y]   (if-not (coll? x) y (into x y)))
 (defn- merge-if-coll    [x y]   (if-not (coll? x) x (into x y)))
 (defn- assert-set       [k new] (assert (set? new) (format "env %s must be a set" k)))
+(defn- canonical-repo   [repo]  (if (map? repo) repo {:url repo}))
+
+(defn- assert-disjoint
+  [env key new]
+  (util/with-let [_ new]
+    (let [paths   (set (->> (assoc env key new)
+                            ((juxt :source-paths :resource-paths :asset-paths))
+                            (reduce into #{})
+                            (keep #(some-> % io/file .getCanonicalFile))))
+          parents (set (mapcat (comp rest file/parent-seq) paths))]
+      (assert (empty? (set/intersection paths parents))
+              "The :source-paths, :resource-paths, and :asset-paths must not overlap."))))
 
 (defmethod pre-env! ::default       [key old new env] new)
 (defmethod pre-env! :directories    [key old new env] (set/union old new))
-(defmethod pre-env! :source-paths   [key old new env] (assert-set key new) new)
-(defmethod pre-env! :resource-paths [key old new env] (assert-set key new) new)
-(defmethod pre-env! :asset-paths    [key old new env] (assert-set key new) new)
+(defmethod pre-env! :source-paths   [key old new env] (assert-set key new) (assert-disjoint env key new))
+(defmethod pre-env! :resource-paths [key old new env] (assert-set key new) (assert-disjoint env key new))
+(defmethod pre-env! :asset-paths    [key old new env] (assert-set key new) (assert-disjoint env key new))
 (defmethod pre-env! :wagons         [key old new env] (add-wagon! old new env))
 (defmethod pre-env! :dependencies   [key old new env] (add-dependencies! old new env))
+(defmethod pre-env! :repositories   [key old new env] (->> new (mapv (fn [[k v]] [k (@repo-config-fn (canonical-repo v))]))))
+
+(add-watch repo-config-fn (gensym) (fn [& _] (set-env! :repositories identity)))
+
+(defn configure-repositories!
+  "Get or set the repository configuration callback function. The function
+  will be applied to all repositories added to the boot env, it should return
+  the repository map with any additional configuration (like credentials, for
+  example)."
+  ([ ] @repo-config-fn)
+  ([f] (reset! repo-config-fn f)))
 
 (defn get-env
   "Returns the value associated with the key `k` in the boot environment, or
@@ -625,11 +662,11 @@
   clojure.core/update-in works."
   [& kvs]
   (doseq [[k v] (order-set-env-keys (partition 2 kvs))]
-    (let [v'  (if-not (fn? v) v (v (get-env k)))
-          v'' (if-let [b (get @cli-base k)] (merge-if-coll b v') v')]
-      (assert (printable-readable? v'')
-              (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v'')))
-      (swap! boot-env update-in [k] (partial pre-env! k) v'' @boot-env))))
+      (let [v'  (if-not (fn? v) v (v (get-env k)))
+            v'' (if-let [b (get @cli-base k)] (merge-if-coll b v') v')]
+        (assert (printable-readable? v'')
+                (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v'')))
+        (swap! boot-env update-in [k] (partial pre-env! k) v'' @boot-env))))
 
 (defn merge-env!
   "Merges the new values into the current values for the given keys in the env
@@ -640,6 +677,26 @@
   (->> (partition 2 kvs)
        (mapcat (fn [[k v]] [k #(merge-or-replace % v)]))
        (apply set-env!)))
+
+(defn get-sys-env
+  "Returns the value associated with the system property k, the environment
+  variable k, or not-found if neither of those are set. If not-found is the
+  keyword :required, an exception will be thrown when there is no value for
+  either the system property or environment variable k."
+  ([ ] (merge {} (System/getenv) (System/getProperties)))
+  ([k] (get-sys-env k nil))
+  ([k not-found]
+   (util/with-let [v ((get-sys-env) k not-found)]
+     (when (= v not-found :required)
+       (throw (ex-info (format "Required env var: %s" k) {}))))))
+
+(defn set-sys-env!
+  "For each key value pair in kvs the system property corresponding to the key
+  is set. Keys and values must be strings, but the value can be nil or false
+  to remove the system property."
+  [& kvs]
+  (doseq [[^String k ^String v] (partition 2 kvs)]
+    (if v (System/setProperty k v) (System/clearProperty k))))
 
 ;; Defining Tasks ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -710,24 +767,34 @@
           (let [[opts argv] (parse-task-opts args spec)]
             (recur (conj ret (apply (var-get op) opts)) argv)))))))
 
-(defn- sync-target
-  "Copy output files to the target directory (if BOOT_EMIT_TARGET is not 'no')."
-  [before after]
-  (when-not (= "no" (boot.App/config "BOOT_EMIT_TARGET"))
-    (let [tgt  (get-env :target-path)
-          diff (fileset-diff before after)]
-      (when (seq (output-files diff))
-        (binding [file/*hard-link* false]
-          (apply file/sync! :time tgt (output-dirs after)))
-        (file/delete-empty-subdirs! tgt)))))
+(defn- fileset-syncer
+  "Given a seq of directories dirs, returns a stateful function of one
+  argument. Each time this function is called with a fileset argument it
+  updates each of the dirs such that changes to the fileset are also
+  applied to them. The :link option will enable the use of hard links
+  where possible."
+  [dirs]
+  (let [prev (atom nil)
+        dirs (delay (mapv #(doto (io/file %) .mkdirs empty-dir!) dirs))]
+    (fn [fs & {:keys [link]}]
+      (let [link  (when link :tmp)
+            [a b] [@prev (reset! prev (output-fileset fs))]]
+        (mapv deref (for [d @dirs] (future (fs/patch! (fs/mkfs d) a b :link link))))))))
 
 (defn- run-tasks
   "Given a task pipeline, builds the initial fileset, sets the initial build
   state, and runs the pipeline."
   [task-stack]
   (binding [*warnings* (atom 0)]
-    (let [fs (commit! (reset-fileset))]
-      ((task-stack #(do (sync-target fs %) (sync-user-dirs!) %)) fs))))
+    (let [fs      (commit! (reset-fileset))
+          target? (not= "no" (boot.App/config "BOOT_EMIT_TARGET"))
+          depr    (delay (util/warn-deprecated "Implicit target dir is deprecated, please use the target task instead.\n")
+                         (util/warn-deprecated "Set BOOT_EMIT_TARGET='no' to disable implicit target dir.\n"))
+          sync!   (if-not target?
+                    identity
+                    (comp (fn [_] @depr)
+                          (fileset-syncer [(get-env :target-path)])))]
+      ((task-stack #(do (sync! %) (sync-user-dirs!) %)) fs))))
 
 (defn boot
   "The REPL equivalent to the command line 'boot'. If all arguments are
@@ -868,6 +935,12 @@
        nil))
 
 ;; Task Utility Functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn gpg-decrypt
+  "Uses gpg(1) to decrypt a file and returns its contents as a string. The
+  :as :edn option can be passed to read the contents as an EDN form."
+  [path-or-file & {:keys [as]}]
+  ((case as :edn read-string identity) (gpg/decrypt path-or-file)))
 
 (defn json-generate
   "Same as cheshire.core/generate-string."
