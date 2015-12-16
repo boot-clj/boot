@@ -1,6 +1,6 @@
 # Changes
 
-## 2.5.0-SNAPSHOT (unreleased)
+## 2.5.0
 
 #### Breaking
 
