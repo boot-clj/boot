@@ -128,7 +128,7 @@
   ([short long optarg type doc]
    (if-let [deprecated (deprecated short)]
      `(when-not (nil? ~long)
-        (util/warn ~(format "option %s is deprecated. %s\n" long (if (string? deprecated) deprecated "")))))))
+        (util/warn-deprecated ~(format "option %s is deprecated. %s\n" long (if (string? deprecated) deprecated "")))))))
 
 (defn- argspec->summary
   ([short long type doc]

@@ -272,7 +272,7 @@
 
 (defmacro ^:private deprecate! [was is]
   `(let [msg# (format "%s was deprecated, please use %s instead\n" '~was '~is)
-         warn# (delay (util/warn msg#))]
+         warn# (delay (util/warn-deprecated msg#))]
      (defn ^:deprecated ~was [& args#]
        @warn#
        (util/dbug (ex/format-exception (Exception. msg#)))
@@ -788,8 +788,8 @@
   (binding [*warnings* (atom 0)]
     (let [fs      (commit! (reset-fileset))
           target? (not= "no" (boot.App/config "BOOT_EMIT_TARGET"))
-          depr    (delay (util/warn "Implicit target dir is deprecated, please use the target task instead.\n")
-                         (util/warn "Set BOOT_EMIT_TARGET='no' to disable implicit target dir.\n"))
+          depr    (delay (util/warn-deprecated "Implicit target dir is deprecated, please use the target task instead.\n")
+                         (util/warn-deprecated "Set BOOT_EMIT_TARGET='no' to disable implicit target dir.\n"))
           sync!   (if-not target?
                     identity
                     (comp (fn [_] @depr)

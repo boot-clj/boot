@@ -43,6 +43,11 @@
 (defn warn [& more] (print* 1 ansi/bold-yellow more))
 (defn fail [& more] (print* 1 ansi/bold-red    more))
 
+(defn warn-deprecated
+  [& args]
+  (when-not (= "no" (boot.App/config "BOOT_WARN_DEPRECATED"))
+    (apply warn args)))
+
 (defmacro with-semaphore
   [sem & body]
   `(let [sem# ~sem]
