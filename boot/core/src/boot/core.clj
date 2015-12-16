@@ -789,7 +789,7 @@
     (let [fs      (commit! (reset-fileset))
           target? (not= "no" (boot.App/config "BOOT_EMIT_TARGET"))
           depr    (delay (util/warn-deprecated "Implicit target dir is deprecated, please use the target task instead.\n")
-                         (util/warn-deprecated "Set BOOT_EMIT_TARGET='no' to disable implicit target dir.\n"))
+                         (util/warn-deprecated "Set BOOT_EMIT_TARGET=no to disable implicit target dir.\n"))
           sync!   (if-not target?
                     identity
                     (comp (fn [_] @depr)
