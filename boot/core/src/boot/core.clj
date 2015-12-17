@@ -79,7 +79,8 @@
 (def new-fileset
   (memoize
     (fn []
-      (boot.tmpdir.TmpFileSet. @tempdirs {} (tmp-dir* ::blob)))))
+      (boot.tmpdir.TmpFileSet.
+        @tempdirs {} (tmp-dir* ::blob) (tmp-dir* ::scratch)))))
 
 (defn- tmp-dir**
   [key & masks+]

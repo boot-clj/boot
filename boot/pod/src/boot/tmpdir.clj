@@ -67,8 +67,8 @@
     {:id (str h "." t) :hash h :time t}))
 
 (defn- scratch-dir!
-  []
-  (file/tmpdir "boot-scratch"))
+  [^File scratch]
+  (file/tmpdir scratch "boot-scratch"))
 
 (def ^:dynamic *hard-link* nil)
 
@@ -142,7 +142,7 @@
   (reduce-kv #(assoc %1 %2 (assoc %3 :dir dir)) {} tree))
 
 (defn- get-cached!
-  [cache-key seedfn]
+  [cache-key seedfn scratch]
   (util/dbug "Adding cached fileset %s...\n" cache-key)
   (or (get-in @state [:cache cache-key])
       (let [cache-dir (cache-dir cache-key)
@@ -151,7 +151,7 @@
                          (swap! state assoc-in [:cache cache-key] m))]
         (or (and (.exists manifile)
                  (store! (read-manifest manifile cache-dir)))
-            (let [tmp-dir (scratch-dir!)]
+            (let [tmp-dir (scratch-dir! scratch)]
               (util/dbug "Not found in cache: %s...\n" cache-key)
               (.mkdirs cache-dir)
               (seedfn tmp-dir)
@@ -161,8 +161,8 @@
                   (store! (read-manifest manifile cache-dir)))))))))
 
 (defn- merge-trees!
-  [old new mergers]
-  (util/with-let [tmp (scratch-dir!)]
+  [old new mergers scratch]
+  (util/with-let [tmp (scratch-dir! scratch)]
     (doseq [[path newtmp] new]
       (when-let [oldtmp (get old path)]
         (util/dbug "Merging %s...\n" path)
@@ -210,7 +210,7 @@
 
 ;; fileset implementation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defrecord TmpFileSet [dirs tree blob]
+(defrecord TmpFileSet [dirs tree blob scratch]
   ITmpFileSet
 
   (ls [this]
@@ -239,24 +239,24 @@
   (add [this dest-dir src-dir opts]
     (assert ((set (map file dirs)) dest-dir)
             (format "dest-dir not in dir set (%s)" dest-dir))
-    (let [{:keys [dirs tree blob]} this
+    (let [{:keys [dirs tree blob scratch]} this
           {:keys [mergers include exclude]} opts
           ->tree   #(set-dir (dir->tree! % blob) dest-dir)
           new-tree (-> (->tree src-dir) (filter-tree include exclude))
           mrg-tree (when mergers
-                     (->tree (merge-trees! tree new-tree mergers)))]
+                     (->tree (merge-trees! tree new-tree mergers scratch)))]
       (assoc this :tree (merge tree new-tree mrg-tree))))
 
   (add-cached [this dest-dir cache-key cache-fn opts]
     (assert ((set (map file dirs)) dest-dir)
             (format "dest-dir not in dir set (%s)" dest-dir))
-    (let [{:keys [dirs tree blob]} this
+    (let [{:keys [dirs tree blob scratch]} this
           {:keys [mergers include exclude]} opts
-          new-tree (let [cached (get-cached! cache-key cache-fn)]
+          new-tree (let [cached (get-cached! cache-key cache-fn scratch)]
                      (-> (set-dir cached dest-dir)
                          (filter-tree include exclude)))
           mrg-tree (when mergers
-                     (let [merged (merge-trees! tree new-tree mergers)]
+                     (let [merged (merge-trees! tree new-tree mergers scratch)]
                        (set-dir (dir->tree! merged blob) dest-dir)))]
       (assoc this :tree (merge tree new-tree mrg-tree))))
 
@@ -302,7 +302,7 @@
   [before after & {:keys [link]}]
   (let [{:keys [added removed changed]}
         (diff* before after [:hash :time])
-        link    (#{:tmp :all} link) ; only :tmp or :all are valid
+        link    (#{:tmp :all} link) ; only nil, :tmp, or :all are valid
         link?   #(and link (or (= :all link) (= (:blob after) (:bdir %))))
         add-ops (->> added   :tree vals (map (partial vector :write)))
         add-ops (for [x (->> added :tree vals)]
