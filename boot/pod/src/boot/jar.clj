@@ -74,5 +74,5 @@
 (defn update-jar!
   [jarfile old-fs new-fs attr main]
   (with-open [fs (fs/mkjarfs jarfile)]
-    (fs/write! fs (create-manifest main attr) (io/file "META-INF" "MANIFEST.MF"))
-    (fs/patch! fs old-fs new-fs)))
+    (fs/patch! fs old-fs new-fs)
+    (fs/write! fs (create-manifest main attr) (io/file "META-INF" "MANIFEST.MF"))))
