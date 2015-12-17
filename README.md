@@ -143,13 +143,13 @@ from the command line:
 
 ```
 # The -- args below are optional. We use them here to visually separate the tasks.
-$ boot -s src -d me.raynes/conch:0.8.0 -- pom -p my-project -v 0.1.0 -- jar -M Foo=bar -- install
+$ boot -r src -d me.raynes/conch:0.8.0 -- pom -p my-project -v 0.1.0 -- jar -M Foo=bar -- install
 ```
 
 What we did here was we built a pipeline on the command line and ran it to
 build our project. 
 
-* We specified the source directory via boot's `-s` option.
+* We specified the resource directory (files that will end up in the jar) via boot's `-r` option.
 * We added the `conch` dependency via boot's `-d` option.
 
 This sets up the build environment. Then we constructed a pipeline of tasks:
