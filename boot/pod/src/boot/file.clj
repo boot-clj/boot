@@ -142,6 +142,7 @@
 
 (defn hard-link
   [^File existing-file ^File link-file]
+  (Files/deleteIfExists (.toPath link-file))
   (Files/createLink (.toPath link-file) (.toPath existing-file)))
 
 (defn sym-link
