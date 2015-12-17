@@ -4,14 +4,14 @@
 
 #### Fixed
 
-- Misleading warning about BOOT_EMIT_TARGET [#356][356].
+- Misleading warning about `BOOT_EMIT_TARGET` [#356][356].
 - Cross-device link errors when moving files from temp dirs [#362][362].
 - Issue with `--repo-map` option for `push` task [#358][358].
 - Jar task not creating `MANIFEST.MF` in uberjar [#360][360].
 - Jar task not using "friendly name" when there is exactly one pom.xml.
 - Issue where `target` task would do nothing when no `--dir` option given.
 - Add `--no-clean` option to disable cleaning of destination in `target` task.
-- Don't throw exception when deftask argument specs are invalid; warn instead.
+- Don't throw exception when `deftask` argument specs are invalid; warn instead.
 
 [356]: https://github.com/boot-clj/boot/issues/356
 [358]: https://github.com/boot-clj/boot/issues/358
@@ -37,11 +37,11 @@
   the repl.
 - Added `gpg-decrypt` core function to decrypt gpg encrypted files.
 - Added `configure-repositories!` core function to configure maven repos
-  dynamically (as a callback to add credentials, etc).
+  dynamically (as a callback to add credentials, etc) [#274][274][#311][311].
 - The `push` task can now be provided with `--repo-map` option to set the
   deployment repository. This is useful for example in case a repository
   needs different settings for downloading dependencies and deploying,
-  like additional credentials.
+  like additional credentials [#274][274][#311][311].
 - The `install` and `push` tasks now accept a `--pom` option which can be
   used to specify which `pom.xml` file to use [#112][112] & [#278][278].
 - The `repl` task now accepts a `--pod` option which can be used to start
