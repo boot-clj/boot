@@ -601,12 +601,26 @@
 
   (let [old-fs (atom nil)
         tgt    (core/tmp-dir!)
-        fname  (or file "project.jar")
-        out    (io/file tgt fname)]
+        out    (atom nil)]
     (core/with-pre-wrap [fs]
-      (let [new-fs (core/output-fileset fs)]
+      (let [new-fs    (core/output-fileset fs)
+            [pom & p] (->> (core/output-files fs)
+                           (core/by-name ["pom.xml"])
+                           (map core/tmp-file))
+            {:keys [project version]}
+            (when (not (seq p))
+              (pod/with-call-worker
+                (boot.pom/pom-xml-parse-string ~(slurp pom))))
+            pomname (when (and project version)
+                      (str (name project) "-" version ".jar"))
+            fname   (or file pomname "project.jar")
+            out*    (io/file tgt fname)]
+        (when (not= @out out*)
+          (when (and @out (.exists @out))
+            (file/move @out out*))
+          (reset! out out*))
         (util/info "Writing %s...\n" fname)
-        (jar/update-jar! out @old-fs (reset! old-fs new-fs) manifest main)
+        (jar/update-jar! @out @old-fs (reset! old-fs new-fs) manifest main)
         (-> fs (core/add-resource tgt) core/commit!)))))
 
 (core/deftask war
@@ -741,10 +755,8 @@
         (when-not (and repo-map (seq jarfiles))
           (throw (Exception. "missing jar file or repo not found")))
         (doseq [f jarfiles]
-          (let [pom-str (pod/pom-xml f pom)
-                {{t :tag} :scm
-                 v :version} (pod/with-call-worker
-                               (boot.pom/pom-xml-parse-string ~pom-str))
+          (let [{{t :tag} :scm
+                 v :version} (pod/pom-xml-map f pom)
                 b            (util/guard (git/branch-current))
                 commit       (util/guard (git/last-commit))
                 tags         (util/guard (git/ls-tags))

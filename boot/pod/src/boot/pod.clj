@@ -243,6 +243,14 @@
   [expr]
   `(with-call-in worker-pod ~expr))
 
+(defn pom-xml-map
+  ([jarpath]
+   (pom-xml-map jarpath nil))
+  ([jarpath pompath]
+   (with-call-worker
+     (boot.pom/pom-xml-parse-string
+       ~(pom-xml (io/file jarpath) pompath)))))
+
 (defn eval-in*
   ([expr]
      (let [{:keys [meta? expr]} (read-string expr)]
