@@ -772,10 +772,12 @@
   argument. Each time this function is called with a fileset argument it
   updates each of the dirs such that changes to the fileset are also
   applied to them. The :link option will enable the use of hard links
-  where possible."
-  [dirs]
-  (let [prev (atom nil)
-        dirs (delay (mapv #(doto (io/file %) .mkdirs empty-dir!) dirs))]
+  where possible. The :clean option to the constructor enables or disables
+  cleaning out the target directory on initialization."
+  [dirs & {:keys [clean]}]
+  (let [prev   (atom nil)
+        clean! (if clean empty-dir! identity)
+        dirs   (delay (mapv #(doto (io/file %) .mkdirs clean!) dirs))]
     (fn [fs & {:keys [link]}]
       (let [link  (when link :tmp)
             [a b] [@prev (reset! prev (output-fileset fs))]]
@@ -793,7 +795,7 @@
           sync!   (if-not target?
                     identity
                     (comp (fn [_] @depr)
-                          (fileset-syncer [(get-env :target-path)])))]
+                          (fileset-syncer [(get-env :target-path)] :clean true)))]
       ((task-stack #(do (sync! %) (sync-user-dirs!) %)) fs))))
 
 (defn boot

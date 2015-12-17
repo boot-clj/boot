@@ -213,9 +213,11 @@
 
 (core/deftask target
   "Writes output files to the given directory on the filesystem."
-  [d dir PATH #{str} "The set of directories to write to."
-   L no-link  bool   "Don't create hard links."]
-  (let [sync! (#'core/fileset-syncer dir)]
+  [d dir PATH #{str} "The set of directories to write to (target)."
+   L no-link  bool   "Don't create hard links."
+   C no-clean bool   "Don't clean target before writing project files."]
+  (let [dir   (or (seq dir) ["target"])
+        sync! (#'core/fileset-syncer dir :clean (not no-clean))]
     (core/with-pass-thru [fs]
       (util/info "Writing target dir(s)...\n")
       (sync! fs :link (not no-link)))))
