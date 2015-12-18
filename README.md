@@ -5,10 +5,11 @@ provides a runtime environment that includes all of the tools needed to build
 Clojure projects from scripts written in Clojure that run in the context of
 the project.
 
-> If you have questions or need help, please [visit our Discourse site](http://hoplon.discoursehosting.net/).
-> You can find other developers and users in [the `#hoplon` channel on freenode IRC](http://webchat.freenode.net/?channels=hoplon) and [the `#boot` channel on Clojurians Slack](http://clojurians.net/).
+> If you have questions or need help, please [visit our Discourse site][discourse].
+> You can find other developers and users in [the `#hoplon` channel on freenode IRC][irc]
+> and [the `#boot` channel on Clojurians Slack][slack].
 
-For a change log, see [CHANGES.md](https://github.com/boot-clj/boot/blob/master/CHANGES.md).
+For a change log, see [CHANGES.md][changes].
 
 ### Another Build Tool?
 
@@ -59,7 +60,7 @@ the wrapper installed, you can run `boot -u` at any time to update Boot's JAR
 files and keep up to date. The wrapper itself changes (and thus requires an
 update) much less frequently.
 
-#### OSX with [Homebrew](https://github.com/homebrew/homebrew)
+#### OSX with [Homebrew][brew]
 
     brew install boot-clj
 
@@ -67,25 +68,20 @@ update) much less frequently.
 
 Download [boot.sh][boot-sh], then:
 
-```
-$ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
-```
+    # Using /usr/local/bin here, but can be any directory on user's $PATH.
+    $ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
 
 #### Windows
 
 Download [boot.exe][boot-exe], then:
 
-```
-C:\> move boot.exe C:\Windows\System32
-```
+    C:\> move boot.exe %SystemRoot%
 
 ## Getting Started
 
 Once boot is installed (see [Install][4] above) do this in a terminal:
 
-```
-$ boot -h
-```
+    boot -h
 
 You should see the boot manual page printed to the terminal. This information
 includes command line options recognized by boot, a list of available tasks,
@@ -94,9 +90,7 @@ variables.
 
 You can also get help for a specific task, for example the `repl` task:
 
-```
-$ boot repl -h
-```
+    boot repl -h
 
 You should see usage info and command line options for the specified task.
 
@@ -104,13 +98,11 @@ You should see usage info and command line options for the specified task.
 
 You can also get help in the REPL. First start a REPL session:
 
-```
-$ boot repl
-```
+    boot repl
 
 Then, to get help for the `repl` task, do:
 
-```
+```clojure
 boot.user=> (doc repl)
 ```
 
@@ -123,28 +115,22 @@ Let's build a simple project to get our feet wet. We'll create a new directory,
 say `my-project`, and a source directory in there named `src` with a source
 file, `hello.txt`:
 
-```
-$ mkdir -p my-project/src
-$ cd my-project
-$ echo "hi there" > src/hello.txt
-```
+    mkdir -p my-project/src
+    cd my-project
+    echo "hi there" > src/hello.txt
 
 The directory should now have the following structure:
 
-```
-my-project
-└── src
-    └── hello.txt
-```
+    my-project
+    └── src
+        └── hello.txt
 
 Suppose we want to build a jar file now, and install it to our local Maven
 repository. We'll use the `pom`, `jar`, and `install` tasks to accomplish this
 from the command line:
 
-```
-# The -- args below are optional. We use them here to visually separate the tasks.
-$ boot -r src -d me.raynes/conch:0.8.0 -- pom -p my-project -v 0.1.0 -- jar -M Foo=bar -- install
-```
+    # The -- args below are optional. We use them here to visually separate the tasks.
+    boot -r src -d me.raynes/conch:0.8.0 -- pom -p my-project -v 0.1.0 -- jar -M Foo=bar -- install
 
 What we did here was we built a pipeline on the command line and ran it to
 build our project. 
@@ -169,9 +155,7 @@ also be found in the default output directory: `target`.
 Anything done on the command line can be done in the REPL or in a build script.
 Fire up a REPL in the project directory:
 
-```
-$ boot repl
-```
+    boot repl
 
 The default namespace is `boot.user`, which is the namespace given to the build
 script. Building the project in the REPL is almost identical to what we did on
@@ -261,15 +245,11 @@ contents:
 Now we can build the project without specifying the options for each task on
 the command line–we only need to specify the tasks to create the pipeline.
 
-```
-$ boot pom jar install
-```
+    boot pom jar install
 
 And we can override these options on the command line as we did in the REPL:
 
-```
-$ boot -- pom -v 0.1.1 -- jar -- install
-```
+    boot -- pom -v 0.1.1 -- jar -- install
 
 Notice how we did not need a `(boot ...)` expression in the `build.boot` script.
 Boot constructs that at runtime from the command line arguments.
@@ -314,9 +294,7 @@ Now we should be able to see the `build` task listed among the available tasks
 in the output of `boot -h`, and we can run the task from the command line as we
 would run any other task:
 
-```
-$ boot build
-```
+    boot build
 
 Tasks are functions that return pipelines. Pipelines compose functionally to
 produce new pipelines. If you've used [transducers][7] or [ring middleware][8]
@@ -363,9 +341,7 @@ Modify the `build.boot` file to incorporate this new task by removing the defini
 You can now use the `build` task defined in the project namespace from the
 command line, as before:
 
-```
-$ boot build
-```
+    boot build
 
 ...
 
@@ -381,10 +357,8 @@ To build boot from source you will need:
 
 In a terminal in the project directory do:
 
-```
-$ make deps
-$ make install
-```
+    make deps
+    make install
 
 - Jars for all of the boot components will be built and installed in your
   local Maven repository.
@@ -395,10 +369,8 @@ $ make install
 
 Make your build the default:
 
-```
-# <version> is the version of your build
-$ BOOT_VERSION=<version> boot -u
-```
+    # <version> is the version of your build
+    BOOT_VERSION=<version> boot -u
 
 ### Launch4J
 
@@ -466,3 +438,8 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [l4j]: http://sourceforge.net/projects/launch4j/files/launch4j-3/3.8/
 [waffle-badge]: https://badge.waffle.io/boot-clj/boot.svg?label=ready&title=Ready
 [waffle-board]: http://waffle.io/boot-clj/boot
+[discourse]: http://hoplon.discoursehosting.net/
+[irc]: http://webchat.freenode.net/?channels=hoplon
+[slack]: http://clojurians.net/
+[changes]: https://github.com/boot-clj/boot/blob/master/CHANGES.md
+[brew]: https://github.com/homebrew/homebrew
