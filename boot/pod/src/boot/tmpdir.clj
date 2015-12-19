@@ -15,7 +15,7 @@
 (set! *warn-on-reflection* true)
 
 (def CACHE_VERSION "1.0.0")
-(def state (atom {:prev {} :cache {}}))
+(def state         (atom {:prev {} :cache {}}))
 
 ;; records and protocols ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -208,6 +208,15 @@
        :removed (->> (set/difference   x y) (select-keys t1) (assoc after :tree))
        :changed (->> (set/intersection x y) (select-keys t2) (assoc after :tree))})))
 
+(defn- fatal-conflict?
+  [^File dest]
+  (if (.isDirectory dest)
+    (let [tree (->> dest file-seq reverse)]
+      (or (not (every? #(.isDirectory ^File %) tree))
+          (doseq [^File f tree] (.delete f))))
+    (not (let [d (.getParentFile dest)]
+           (or (.isDirectory d) (.mkdirs d))))))
+
 ;; fileset implementation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defrecord TmpFileSet [dirs tree blob scratch]
@@ -225,9 +234,14 @@
           (when (.exists ^File (file prev))
             (util/dbug "Removing %s...\n" (path prev))
             (file/delete-file (file prev))))
-        (doseq [tmpf (set/union (ls added) (ls changed))]
+        (doseq [tmpf (->> (set/union (ls added) (ls changed))
+                          (sort-by (comp count path) >))]
           (util/dbug "Adding %s...\n" (path tmpf))
-          (file/copy-with-lastmod (io/file (bdir tmpf) (id tmpf)) (file tmpf)))
+          (let [src (io/file (bdir tmpf) (id tmpf))
+                dst (file tmpf)]
+            (if (fatal-conflict? dst)
+              (util/warn "Merge conflict: %s\n" (path tmpf))
+              (file/hard-link src dst))))
         (swap! state assoc-in [:prev dirs] this))))
 
   (rm [this tmpfiles]
