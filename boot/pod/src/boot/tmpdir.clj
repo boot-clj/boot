@@ -127,17 +127,15 @@
 
 (defn- apply-mergers!
   [mergers ^File old-file path ^File new-file ^File merged-file]
-  (if (some (memfn isDirectory) [old-file new-file])
-    (util/warn "Can't merge: entry is both file and directory: %s" path)
-    (when-let [merger (some (fn [[re v]] (when (re-find re path) v)) mergers)]
-      (util/dbug "Merging duplicate entry (%s)\n" path)
-      (let [out-file (File/createTempFile (.getName merged-file) nil
-                                          (.getParentFile merged-file))]
-        (with-open [curr-stream (io/input-stream old-file)
-                    new-stream  (io/input-stream new-file)
-                    out-stream  (io/output-stream out-file)]
-          (merger curr-stream new-stream out-stream))
-        (file/move out-file merged-file)))))
+  (when-let [merger (some (fn [[re v]] (when (re-find re path) v)) mergers)]
+    (util/dbug "Merging duplicate entry (%s)\n" path)
+    (let [out-file (File/createTempFile (.getName merged-file) nil
+                                        (.getParentFile merged-file))]
+      (with-open [curr-stream (io/input-stream old-file)
+                  new-stream  (io/input-stream new-file)
+                  out-stream  (io/output-stream out-file)]
+        (merger curr-stream new-stream out-stream))
+      (file/move out-file merged-file))))
 
 (defn- set-dir
   [tree dir]
