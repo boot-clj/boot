@@ -477,6 +477,7 @@
    m merge         REGEX=FN [[regex code]] "The list of duplicate file mergers."]
 
   (let [tgt        (core/tmp-dir!)
+        cache      (core/cache-dir! ::uber :global true)
         dfl-scopes #{"compile" "runtime" "provided"}
         scopes     (-> dfl-scopes
                        (set/union include-scope)
@@ -496,8 +497,15 @@
         (util/info "Adding uberjar entries...\n"))
       (when as-jars
         (doseq [jar jars]
-          (let [name (str (digest/md5 jar) "-" (.getName jar))]
-            (file/copy-with-lastmod jar (io/file tgt name)))))
+          (let [hash (digest/md5 jar)
+                name (str hash "-" (.getName jar))
+                src  (io/file cache hash)]
+            (when-not (.exists src)
+              (util/dbug "Caching jar %s...\n" name)
+              (binding [file/*hard-link* false]
+                (file/copy-with-lastmod jar src)))
+            (util/dbug "Adding cached jar %s...\n" name)
+            (file/hard-link src (io/file tgt name)))))
       (core/commit! (if as-jars
                       (core/add-resource fs tgt)
                       (reduce reducer fs jars))))))
