@@ -494,7 +494,13 @@
     (core/with-pre-wrap [fs]
       (when (seq jars)
         (util/info "Adding uberjar entries...\n"))
-      (core/commit! (reduce reducer fs jars)))))
+      (when as-jars
+        (doseq [jar jars]
+          (let [name (str (digest/md5 jar) "-" (.getName jar))]
+            (file/copy-with-lastmod jar (io/file tgt name)))))
+      (core/commit! (if as-jars
+                      (core/add-resource fs tgt)
+                      (reduce reducer fs jars))))))
 
 (core/deftask web
   "Create project web.xml file.
