@@ -198,6 +198,19 @@
     (assert (not (seq dupes))
             (format "cli: options must be unique: %s\n" (string/join ", " dupes)))))
 
+(defn- separate-cli-opts
+  "Given and argv and a tools.cli type argspec spec, returns a vector of the
+  parsed option map and a list of remaining non-option arguments. This is how
+  tasks in a pipeline created on the cli are separated into individual tasks
+  and task options."
+  [argv spec]
+  (loop [opts [] [car & cdr :as argv] argv]
+    (if-not car
+      [opts argv]
+      (let [opts* (conj opts car)
+            parsd (cli/parse-opts opts* spec :in-order true)]
+        (if (seq (:arguments parsd)) [opts argv] (recur opts* cdr))))))
+
 (defmacro clifn [& forms]
   (let [[doc argspecs & body]
         (if (string? (first forms))
@@ -216,10 +229,13 @@
           varmeta  {:doc clj-doc :arglists arglists :argspec cli-args}]
       `(-> (fn [& args#]
              (let [{kws# :kw clis# :cli} (split-args args#)
-                   parsed#   (cli/parse-opts clis# ~cli-args)
+                   [opts# args#] (#'separate-cli-opts clis# ~cli-args)
+                   parsed#   (cli/parse-opts opts# ~cli-args)
                    ~bindings (merge kws# (:options parsed#))
-                   ~'*args*  (:arguments parsed#)
+                   ~'*args*  args#
                    ~'*usage* #(print ~cli-doc)]
+               (when-let [e# (seq (:errors parsed#))]
+                 (throw (IllegalArgumentException. (string/join "\n" e#))))
                ~@(mapv (partial apply argspec->assert) argspecs)
                ~@(mapv (partial apply argspec->deprecation-warning) argspecs)
                (if-not ~'help (do ~@body) (~'*usage*))))

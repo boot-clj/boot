@@ -251,19 +251,6 @@
   (let [dk :dependencies]
     (->> kvs (sort-by first #(cond (= %1 dk) 1 (= %2 dk) -1 :else 0)))))
 
-(defn- parse-task-opts
-  "Given and argv and a tools.cli type argspec spec, returns a vector of the
-  parsed option map and a list of remaining non-option arguments. This is how
-  tasks in a pipeline created on the cli are separated into individual tasks
-  and task options."
-  [argv spec]
-  (loop [opts [] [car & cdr :as argv] argv]
-    (if-not car
-      [opts argv]
-      (let [opts* (conj opts car)
-            parsd (cli/parse-opts opts* spec :in-order true)]
-        (if (seq (:arguments parsd)) [opts argv] (recur opts* cdr))))))
-
 (defmacro ^:private daemon
   "Evaluate the body in a new daemon thread."
   [& body]
@@ -765,7 +752,7 @@
               parsed (cli/parse-opts args spec :in-order true)]
           (when (seq (:errors parsed))
             (throw (IllegalArgumentException. (string/join "\n" (:errors parsed)))))
-          (let [[opts argv] (parse-task-opts args spec)]
+          (let [[opts argv] (#'cli2/separate-cli-opts args spec)]
             (recur (conj ret (apply (var-get op) opts)) argv)))))))
 
 (defn- fileset-syncer
