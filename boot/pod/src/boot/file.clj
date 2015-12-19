@@ -176,13 +176,15 @@
                snip  (count (str path "/"))]
            (->> (file-seq (io/file path))
                 (reduce (fn [xs ^File f]
-                          (let [p (.getPath f)
-                                r #(re-find % p)]
-                            (cond (not (.isFile f)) xs
-                                  (some r *ignore*) xs
-                                  :else (let [p (subs (.getPath f) snip)]
-                                          (-> (assoc-in xs [:file p] f)
-                                              (assoc-in [:time p] (.lastModified f)))))))
+                          (if-not (.isFile f)
+                            xs
+                            (let [p  (.getPath f)
+                                  p' (subs p snip)
+                                  r  #(re-find % p')]
+                              (if (some r *ignore*)
+                                xs
+                                (-> (assoc-in xs [:file p'] f)
+                                    (assoc-in [:time p'] (.lastModified f)))))))
                         {}))))
        (reduce (partial merge-with into) {})))
 

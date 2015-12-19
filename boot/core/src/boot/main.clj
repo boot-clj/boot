@@ -100,10 +100,7 @@
 
 (defn parse-bootignore [f]
   (when (.isFile f)
-    (->> (string/split (slurp f) #"\n")
-         (remove #(or (string/blank? %) (.startsWith % "#")))
-         (map re-pattern)
-         set)))
+    (->> (string/split (slurp f) #"\n") (remove string/blank?) (map re-pattern) set)))
 
 (defn -main [pod-id worker-pod shutdown-hooks [arg0 & args :as args*]]
   (when (not= (boot.App/getVersion) (boot.App/getBootVersion))
