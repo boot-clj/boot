@@ -614,7 +614,7 @@
                            (core/by-name ["pom.xml"])
                            (map core/tmp-file))
             {:keys [project version]}
-            (when (not (seq p))
+            (when (and pom (not (seq p)))
               (pod/with-call-worker
                 (boot.pom/pom-xml-parse-string ~(slurp pom))))
             pomname (when (and project version)
