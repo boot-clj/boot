@@ -26,14 +26,15 @@
 
 (declare watch-dirs sync! post-env! get-env set-env! tmp-file tmp-dir ls)
 
-(declare ^{:dynamic true :doc "The running version of boot app."}        *app-version*)
-(declare ^{:dynamic true :doc "The script's name (when run as script)."} *boot-script*)
-(declare ^{:dynamic true :doc "The running version of boot core."}       *boot-version*)
-(declare ^{:dynamic true :doc "Command line options for boot itself."}   *boot-opts*)
-(declare ^{:dynamic true :doc "Count of warnings during build."}         *warnings*)
+(declare ^{:dynamic true :doc "The running version of boot app."}         *app-version*)
+(declare ^{:dynamic true :doc "The script's name (when run as script)."}  *boot-script*)
+(declare ^{:dynamic true :doc "The running version of boot core."}        *boot-version*)
+(declare ^{:dynamic true :doc "Command line options for boot itself."}    *boot-opts*)
+(declare ^{:dynamic true :doc "Count of warnings during build."}          *warnings*)
 
-(def new-build-at     "Latest build occured at time."         (atom 0))
-(def last-file-change "Last source file watcher update time." (atom 0))
+(def new-build-at     "Latest build occured at time."                     (atom 0))
+(def last-file-change "Last source file watcher update time."             (atom 0))
+(def bootignore       "Set of regexes source file paths must not match."  (atom nil))
 
 ;; Internal helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -116,7 +117,8 @@
                       (filter #(.isDirectory (io/file %)))
                       seq)]
       (util/dbug "Syncing project dirs to temp dirs...\n")
-      (binding [file/*hard-link* false]
+      (binding [file/*hard-link* false
+                file/*ignore*    @bootignore]
         (util/with-semaphore tempdirs-lock
           (apply file/sync! :time (first d) s))))))
 

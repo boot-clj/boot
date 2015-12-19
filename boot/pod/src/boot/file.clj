@@ -175,10 +175,14 @@
                          ((fn [^String s] (.replaceAll s "/$" ""))))
                snip  (count (str path "/"))]
            (->> (file-seq (io/file path))
-                (filter (fn [^File f] (.isFile f)))
-                (reduce #(let [p (subs (.getPath ^File %2) snip)]
-                           (-> (assoc-in %1 [:file p] %2)
-                               (assoc-in [:time p] (.lastModified ^File %2))))
+                (reduce (fn [xs ^File f]
+                          (let [p (.getPath f)
+                                r #(re-find % p)]
+                            (cond (not (.isFile f)) xs
+                                  (some r *ignore*) xs
+                                  :else (let [p (subs (.getPath f) snip)]
+                                          (-> (assoc-in xs [:file p] f)
+                                              (assoc-in [:time p] (.lastModified f)))))))
                         {}))))
        (reduce (partial merge-with into) {})))
 

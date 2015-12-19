@@ -98,6 +98,13 @@
         (format ";; %s" msg)
         (with-out-str (pp/write form :dispatch pp/code-dispatch))))))
 
+(defn parse-bootignore [f]
+  (when (.isFile f)
+    (->> (string/split (slurp f) #"\n")
+         (remove #(or (string/blank? %) (.startsWith % "#")))
+         (map re-pattern)
+         set)))
+
 (defn -main [pod-id worker-pod shutdown-hooks [arg0 & args :as args*]]
   (when (not= (boot.App/getVersion) (boot.App/getBootVersion))
     (let [url "https://github.com/boot-clj/boot#install"]
@@ -176,6 +183,8 @@
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
 
           (when (:version opts) (util/exit-ok (boot.App/printVersion)))
+
+          (reset! core/bootignore (parse-bootignore (io/file ".bootignore")))
 
           (#'core/init!)
 
