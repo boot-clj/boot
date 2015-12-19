@@ -4,6 +4,7 @@
   (:require
     [clojure.java.io             :as io]
     [clojure.string              :as string]
+    [clojure.pprint              :as pp]
     [boot.pod                    :as pod]
     [boot.core                   :as core]
     [boot.file                   :as file]
@@ -89,6 +90,14 @@
           base-pat  (re-pattern (format "^#!\\s*/usr/bin/env\\s+\\Q%s\\E(?:\\s+.*)?$" base-path))]
       (or (re-find full-pat bang-line) (re-find base-pat bang-line)))))
 
+(defn pr-boot-form [form]
+  (if (<= @util/*verbosity* 1)
+    (pr-str form)
+    (let [[op & [msg & more]] form]
+      (if (and (= op 'clojure.core/comment) (not more) (string? msg))
+        (format ";; %s" msg)
+        (with-out-str (pp/write form :dispatch pp/code-dispatch))))))
+
 (defn -main [pod-id worker-pod shutdown-hooks [arg0 & args :as args*]]
   (when (not= (boot.App/getVersion) (boot.App/getBootVersion))
     (let [url "https://github.com/boot-clj/boot#install"]
@@ -162,7 +171,7 @@
               import-ns   (export-task-namespaces initial-env)
               scriptforms (emit boot? args userforms localforms bootforms import-ns)
               scriptstr   (binding [*print-meta* true]
-                            (str (string/join "\n\n" (map pr-str scriptforms)) "\n"))]
+                            (str (string/join "\n\n" (map pr-boot-form scriptforms)) "\n"))]
 
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
 
