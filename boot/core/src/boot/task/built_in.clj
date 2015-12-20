@@ -502,8 +502,7 @@
                 src  (io/file cache hash)]
             (when-not (.exists src)
               (util/dbug "Caching jar %s...\n" name)
-              (binding [file/*hard-link* false]
-                (file/copy-with-lastmod jar src)))
+              (file/copy-atomically jar src))
             (util/dbug "Adding cached jar %s...\n" name)
             (file/hard-link src (io/file tgt name)))))
       (core/commit! (if as-jars

@@ -162,6 +162,13 @@
       (hard-link src-file dst-file)
       (doto dst-file cp-src! (.setLastModified last-mod)))))
 
+(defn copy-atomically
+  [^File src-file ^File dst-file]
+  (let [tmp (tmpfile (.getName dst-file) nil (.getParentFile dst-file))]
+    (binding [*hard-link* false]
+      (copy-with-lastmod src-file tmp))
+    (move tmp dst-file)))
+
 (defn copy-files
   [src dest]
   (if (exists? src)
