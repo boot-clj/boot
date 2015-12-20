@@ -260,19 +260,21 @@
 
 ;; Tempdir and Fileset API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmacro ^:private deprecate! [was is]
-  `(let [msg# (format "%s was deprecated, please use %s instead\n" '~was '~is)
-         warn# (delay (util/warn-deprecated msg#))]
-     (defn ^:deprecated ~was [& args#]
-       @warn#
-       (util/dbug (ex/format-exception (Exception. msg#)))
-       (apply ~is args#))))
+(defmacro ^:private deprecate! [version was is]
+  (let [msg (format "%%s was deprecated, please use %s instead\n" (resolve is))]
+    `(let [msg#  (delay (format ~msg (resolve '~was)))
+           warn# (delay (util/warn-deprecated @msg#))]
+       (do (defn ~(with-meta was {:deprecated version}) [& args#]
+             @warn#
+             (util/dbug (ex/format-exception (Exception. @msg#)))
+             (apply ~is args#))
+           (alter-meta! #'~was assoc :doc @msg#)))))
 
 (defn tmp-dir!
   "Creates a boot-managed temporary directory, returning a java.io.File."
   []
   (tmp-dir** nil :cache))
-(deprecate! temp-dir! tmp-dir!)
+(deprecate! "2.0.0" temp-dir! tmp-dir!)
 
 (defn cache-dir!
   "Returns a directory which is managed by boot but whose contents will not be
@@ -297,25 +299,25 @@
   "Returns the tmpfile's path relative to the fileset root."
   [tmpfile]
   (tmpd/path tmpfile))
-(deprecate! tmppath tmp-path)
+(deprecate! "2.0.0" tmppath tmp-path)
 
 (defn tmp-dir
   "Returns the temporary directory containing the tmpfile."
   [tmpfile]
   (tmpd/dir tmpfile))
-(deprecate! tmpdir tmp-dir)
+(deprecate! "2.0.0" tmpdir tmp-dir)
 
 (defn tmp-file
   "Returns the java.io.File object for the tmpfile."
   [tmpfile]
   (tmpd/file tmpfile))
-(deprecate! tmpfile tmp-file)
+(deprecate! "2.0.0" tmpfile tmp-file)
 
 (defn tmp-time
   "Returns the last modified timestamp for the tmpfile."
   [tmpfile]
   (tmpd/time tmpfile))
-(deprecate! tmptime tmp-time)
+(deprecate! "2.0.0" tmptime tmp-time)
 
 ;; TmpFileSet API
 
@@ -325,7 +327,7 @@
   not-found is returned, otherwise nil."
   [fileset path & [not-found]]
   (get-in fileset [:tree path] not-found))
-(deprecate! tmpget tmp-get)
+(deprecate! "2.0.0" tmpget tmp-get)
 
 (defn user-dirs
   "Get a list of directories containing files that originated in the project's
@@ -829,7 +831,6 @@
            (next-task# result#))))))
 
 (defmacro with-post-wrap
-  [bind & body]
   "Given a binding and body expressions, constructs a task handler. The next
   handler is called with the current fileset, and the result is bound to
   binding. The body expressions are then evaluated for side effects and the
@@ -842,6 +843,7 @@
             binding)))
 
   where ... are the given body expressions."
+  [bind & body]
   (let [bind (if (vector? bind) (first bind) bind)]
     `(fn [next-task#]
        (fn [fileset#]

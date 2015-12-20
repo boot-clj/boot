@@ -162,7 +162,7 @@
   (let [cli-args (mapv (partial apply argspec->cli-argspec) argspecs)]
     (:summary (cli/parse-opts [] cli-args))))
 
-(defn split-args [args]
+(defn- split-args [args]
   (loop [kw {} cli [] [arg & more] args]
     (if-not arg
       {:kw kw :cli cli}
@@ -228,7 +228,7 @@
           clj-doc  (format "%s\n\nKeyword Args:\n%s\n" doc (clj-summary argspecs))
           varmeta  {:doc clj-doc :arglists arglists :argspec cli-args}]
       `(-> (fn [& args#]
-             (let [{kws# :kw clis# :cli} (split-args args#)
+             (let [{kws# :kw clis# :cli} (#'split-args args#)
                    [opts# args#] (#'separate-cli-opts clis# ~cli-args)
                    parsed#   (cli/parse-opts opts# ~cli-args)
                    ~bindings (merge kws# (:options parsed#))

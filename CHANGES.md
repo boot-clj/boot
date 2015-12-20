@@ -1,5 +1,27 @@
 # Changes
 
+## 2.5.2
+
+#### Fixed
+
+- Warn and remove conflicting files from the fileset [#361][361], [#364][364].
+- Restore `--as-jars` option to `uber` task that was accidentally removed.
+- Don't try to read `pom.xml` if there are none in the fileset.
+- Correctly handle extra arguments to `clifn` and throw on unknown options [#346][346].
+
+#### Improved
+
+- Pretty-print boot script when `--verbose` boot option is specified [#315][315].
+- Copy jars into cache when using the `--as-jars` option to `uber` [#290][290].
+- Ignore source files matching regexes specified in `.bootignore` file [#348][348].
+
+[290]: https://github.com/boot-clj/boot/issues/290
+[315]: https://github.com/boot-clj/boot/issues/315
+[346]: https://github.com/boot-clj/boot/issues/346
+[348]: https://github.com/boot-clj/boot/issues/348
+[361]: https://github.com/boot-clj/boot/issues/361
+[364]: https://github.com/boot-clj/boot/issues/364
+
 ## 2.5.1
 
 #### Fixed
@@ -37,13 +59,13 @@
   the repl.
 - Added `gpg-decrypt` core function to decrypt gpg encrypted files.
 - Added `configure-repositories!` core function to configure maven repos
-  dynamically (as a callback to add credentials, etc) [#274][274][#311][311].
+  dynamically (as a callback to add credentials, etc) [#274][274], [#311][311].
 - The `push` task can now be provided with `--repo-map` option to set the
   deployment repository. This is useful for example in case a repository
   needs different settings for downloading dependencies and deploying,
-  like additional credentials [#274][274][#311][311].
+  like additional credentials [#274][274], [#311][311].
 - The `install` and `push` tasks now accept a `--pom` option which can be
-  used to specify which `pom.xml` file to use [#112][112] & [#278][278].
+  used to specify which `pom.xml` file to use [#112][112], [#278][278].
 - The `repl` task now accepts a `--pod` option which can be used to start
   a repl in a specific pod.
 - The `show` task now accepts a `--list-pods` option to show the names of
