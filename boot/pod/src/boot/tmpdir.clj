@@ -226,23 +226,31 @@
     (set (vals tree)))
 
   (commit! [this]
-    (util/with-let [{:keys [dirs tree blob]} this]
-      (let [prev (get-in @state [:prev dirs])
-            {:keys [added removed changed]} (diff* prev this [:id :dir])]
-        (doseq [tmpf (set/union (ls removed) (ls changed))
-                :let [prev (get-in prev [:tree (path tmpf)])]]
-          (when (.exists ^File (file prev))
-            (util/dbug "Removing %s...\n" (path prev))
-            (file/delete-file (file prev))))
-        (doseq [tmpf (->> (set/union (ls added) (ls changed))
-                          (sort-by (comp count path) >))]
-          (util/dbug "Adding %s...\n" (path tmpf))
-          (let [src (io/file (bdir tmpf) (id tmpf))
-                dst (file tmpf)]
-            (if (fatal-conflict? dst)
-              (util/warn "Merge conflict: %s\n" (path tmpf))
-              (file/hard-link src dst))))
-        (swap! state assoc-in [:prev dirs] this))))
+    (let [{:keys [dirs tree blob]} this
+          prev (get-in @state [:prev dirs])
+          {:keys [added removed changed]} (diff* prev this [:id :dir])]
+      (doseq [tmpf (set/union (ls removed) (ls changed))
+              :let [prev (get-in prev [:tree (path tmpf)])]]
+        (when (.exists ^File (file prev))
+          (util/dbug "Removing %s...\n" (path prev))
+          (file/delete-file (file prev))))
+      (let [this (loop [this this
+                        [tmpf & tmpfs]
+                        (->> (set/union (ls added) (ls changed))
+                             (sort-by (comp count path) >))]
+                   (or (and (not tmpf) this)
+                       (let [p    (path tmpf)
+                             dst  (file tmpf)
+                             src  (io/file (bdir tmpf) (id tmpf))
+                             err? (fatal-conflict? dst)
+                             this (or (and (not err?) this)
+                                      (update-in this [:tree] dissoc p))]
+                         (if err? 
+                           (util/warn "Merge conflict: not adding %s\n" p)
+                           (do (util/dbug "Adding %s...\n" p)
+                               (file/hard-link src dst)))
+                         (recur this tmpfs))))]
+        (util/with-let [_ this] (swap! state assoc-in [:prev dirs] this)))))
 
   (rm [this tmpfiles]
     (let [{:keys [dirs tree blob]} this
