@@ -310,7 +310,7 @@ Now let's define a task in a namespace in our project and use it from the comman
 
 Create the namespace with the task:
 
-```
+```clojure
 (ns demo.boot-build
   (:require [boot.core :as core]
             [boot.task.built-in :as task]))
@@ -325,7 +325,7 @@ and write it to `src/demo/boot_build.clj` in your project.
 
 Modify the `build.boot` file to incorporate this new task by removing the definition for `build`. The new `build.boot` file will look like this:
 
-```
+```clojure
 (set-env!
   :resource-paths #{"src"}
   :dependencies '[[me.raynes/conch "0.8.0"]])
