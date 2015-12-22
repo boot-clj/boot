@@ -40,6 +40,11 @@ public class App {
     private static ClojureRuntimeShim       aethershim          = null;
     private static HashMap<String, File[]>  depsCache           = null;
 
+    private static File                     cachehome           = null;
+    private static File                     bootprops           = null;
+    private static File                     jardir              = null;
+    private static File                     bootcache           = null;
+
     private static final File               homedir             = new File(System.getProperty("user.home"));
     private static final File               workdir             = new File(System.getProperty("user.dir"));
     private static final String             aetherjar           = "aether.uber.jar";
@@ -412,30 +417,46 @@ public class App {
         p.store(System.out, booturl); }
 
     public static void
+    setup(String[] args) throws Exception {
+      // BOOT_VERSION is decided by the loader; it will respect the
+      // boot.properties files, env vars, system properties, etc.
+      // or it will use the latest installed version.
+      //
+      // Since 2.4.0 we can assume that bootversion and appversion
+      // are the same (or boot.main will throw an exception).
+      bootversion = appversion = readVersion();
+
+      cachehome   = mkFile(bootdir(), "cache");
+      bootprops   = mkFile(bootdir(), "boot.properties");
+      jardir      = mkFile(cachehome, "lib", appversion);
+      bootcache   = mkFile(cachehome, "cache", "boot");
+
+      localrepo        = config("BOOT_LOCAL_REPO");
+      cljversion       = config("BOOT_CLOJURE_VERSION", "1.7.0");
+      cljname          = config("BOOT_CLOJURE_NAME", "org.clojure/clojure");
+      aetherfile       = mkFile(cachehome, "lib", appversion, aetherjar);
+
+      readProps(bootprops, true);
+
+      String repo  = (localrepo == null)
+        ? "default"
+        : md5hash((new File(localrepo)).getCanonicalFile().getPath());
+
+      File cachefile = mkFile(bootcache, repo, cljversion, bootversion, "deps.cache");
+      HashMap<String, File[]> cache = (HashMap<String, File[]>) readCache(cachefile);
+
+      podjars    = cache.get("boot/pod");
+      corejars   = cache.get("boot/core");
+      workerjars = cache.get("boot/worker");
+
+      Thread shutdown = new Thread() { public void run() { ex.shutdown(); }};
+      Runtime.getRuntime().addShutdownHook(shutdown); }
+
+    public static void
     main(String[] args) throws Exception {
         if (System.getProperty("user.name").equals("root")
                 && ! config("BOOT_AS_ROOT", "no").equals("yes"))
             throw new Exception("refusing to run as root (set BOOT_AS_ROOT=yes to force)");
-
-        // BOOT_VERSION is decided by the loader; it will respect the
-        // boot.properties files, env vars, system properties, etc.
-        // or it will use the latest installed version.
-        //
-        // Since 2.4.0 we can assume that bootversion and appversion
-        // are the same (or boot.main will throw an exception).
-        bootversion = appversion = readVersion();
-
-        File cachehome   = mkFile(bootdir(), "cache");
-        File bootprops   = mkFile(bootdir(), "boot.properties");
-        File jardir      = mkFile(cachehome, "lib", appversion);
-        File bootcache   = mkFile(cachehome, "cache", "boot");
-
-        localrepo        = config("BOOT_LOCAL_REPO");
-        cljversion       = config("BOOT_CLOJURE_VERSION", "1.7.0");
-        cljname          = config("BOOT_CLOJURE_NAME", "org.clojure/clojure");
-        aetherfile       = mkFile(cachehome, "lib", appversion, aetherjar);
-
-        readProps(bootprops, true);
 
         if (args.length > 0
             && ((args[0]).equals("-u")
@@ -451,17 +472,6 @@ public class App {
             printVersion();
             System.exit(0); }
 
-        String repo  = (localrepo == null)
-            ? "default"
-            : md5hash((new File(localrepo)).getCanonicalFile().getPath());
+        setup(args);
 
-        File cachefile = mkFile(bootcache, repo, cljversion, bootversion, "deps.cache");
-        HashMap<String, File[]> cache = (HashMap<String, File[]>) readCache(cachefile);
-
-        podjars    = cache.get("boot/pod");
-        corejars   = cache.get("boot/core");
-        workerjars = cache.get("boot/worker");
-
-        Thread shutdown = new Thread() { public void run() { ex.shutdown(); }};
-        Runtime.getRuntime().addShutdownHook(shutdown);
         System.exit(runBoot(newCore(null), newWorker(), args)); }}
