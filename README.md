@@ -408,8 +408,8 @@ Copyright © 2013 Alan Dipert and Micha Niskin
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
-[boot-sh]: https://github.com/boot-clj/boot-bin/releases/download/2.4.2/boot.sh
-[boot-exe]: https://github.com/boot-clj/boot-bin/releases/download/2.4.2/boot.exe
+[boot-sh]: https://github.com/boot-clj/boot-bin/releases/download/latest/boot.sh
+[boot-exe]: https://github.com/boot-clj/boot-bin/releases/download/latest/boot.exe
 [4]: #install
 [5]: https://drone.io/github.com/boot-clj/boot/status.png?camocache=1
 [6]: https://drone.io/github.com/boot-clj/boot/latest
