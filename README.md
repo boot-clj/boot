@@ -58,7 +58,10 @@ __Note:__ The following instructions will install the boot.sh/boot.exe wrapper,
 i.e., a very thin shim on top of Maven to load "the real Boot." After you have
 the wrapper installed, you can run `boot -u` at any time to update Boot's JAR
 files and keep up to date. The wrapper itself changes (and thus requires an
-update) much less frequently.
+update) much less frequently. **The wrapper is compatible with all versions
+of Boot 2.0.0 and later.** The `2.0.0-pre*` and `2.0.0-rc*` versions of Boot
+are no longer supported and will be updated automatically to a supported
+version.
 
 #### OSX with [Homebrew][brew]
 
