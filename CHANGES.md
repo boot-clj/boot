@@ -1,5 +1,11 @@
 # Changes
 
+## 2.5.3
+
+#### Improved
+
+- Added docstrings to all previously undocumented vars in API namespaces.
+
 ## 2.5.2
 
 #### Fixed

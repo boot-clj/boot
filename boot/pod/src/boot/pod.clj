@@ -20,12 +20,26 @@
   (:refer-clojure :exclude [add-classpath]))
 
 (defn extract-ids
+  "Given a dependency symbol sym, returns a vector of [group-id artifact-id]."
   [sym]
   (let [[group artifact] ((juxt namespace name) sym)]
     [(or group artifact) artifact]))
 
 (defn seal-app-classloader
-  "see https://github.com/clojure-emacs/cider-nrepl#with-immutant"
+  "Implements the DynamicClasspath protocol to the AppClassLoader class such
+  that instances of this class will refuse attempts at runtime modification
+  by libraries that do so via dynapath[1]. The system class loader is of the
+  type AppClassLoader.
+
+  The purpose of this is to ensure that Clojure libraries do not pollute the
+  higher-level class loaders with classes and interfaces created dynamically
+  in their Clojure runtime. This is essential for pods to work properly[2].
+
+  This function is called during Boot's bootstrapping phase, and shouldn't
+  be needed in client code under normal circumstances.
+
+  [1]: https://github.com/tobias/dynapath
+  [2]: https://github.com/clojure-emacs/cider-nrepl/blob/36333cae25fd510747321f86e2f0369fcb7b4afd/README.md#with-jboss-asjboss-eapwildfly"
   []
   (extend sun.misc.Launcher$AppClassLoader
     cp/DynamicClasspath
@@ -78,12 +92,11 @@
   ([] (get-classpath (classloader-hierarchy))))
 
 (defn ^{:boot/from :cemerick/pomegranate} classloader-resources
-  "Returns a sequence of [classloader url-seq] pairs representing all
-   of the resources of the specified name on the classpath of each
-   classloader. If no classloaders are given, uses the
-   classloader-heirarchy, in which case the order of pairs will be
-   such that the first url mentioned will in most circumstances match
-   what clojure.java.io/resource returns."
+  "Returns a sequence of [classloader url-seq] pairs representing all of the
+  resources of the specified name on the classpath of each classloader. If no
+  classloaders are given, uses the classloader-heirarchy, in which case the
+  order of pairs will be such that the first url mentioned will in most
+  circumstances match what clojure.java.io/resource returns."
   ([classloaders resource-name]
      (for [classloader (reverse classloaders)]
        [classloader (enumeration-seq
@@ -92,10 +105,10 @@
 
 (defn ^{:boot/from :cemerick/pomegranate} resources
   "Returns a sequence of URLs representing all of the resources of the
-   specified name on the effective classpath. This can be useful for
-   finding name collisions among items on the classpath. In most
-   circumstances, the first of the returned sequence will be the same
-   as what clojure.java.io/resource returns."
+   specified name on the effective classpath. This can be useful for finding
+  name collisions among items on the classpath. In most circumstances, the
+  first of the returned sequence will be the same as what clojure.java.io/resource
+  returns."
   ([classloaders resource-name]
      (distinct (mapcat second (classloader-resources classloaders resource-name))))
   ([resource-name] (resources (classloader-hierarchy) resource-name)))
@@ -108,6 +121,9 @@
     (first entries)))
 
 (defn pom-properties
+  "Given a path or File jarpath, finds the jar's pom.properties file, reads
+  it, and returns the loaded Properties object. An exception is thrown if
+  multiple pom.properties files are present in the jar."
   [jarpath]
   (with-open [jarfile (JarFile. (io/file jarpath))
               props   (->> (find-in-jarfile jarfile "/pom.properties")
@@ -126,20 +142,29 @@
      :version     ver}))
 
 (defn dependency-loaded?
+  "Given a dependency coordinate of the form [id version ...], returns a URL
+  for the pom.properties file in the dependency jar, or nil if the dependency
+  isn't on the classpath."
   [[project & _]]
   (let [[aid gid] (util/extract-ids project)]
     (io/resource (format "META-INF/maven/%s/%s/pom.properties" aid gid))))
 
 (defn dependency-pom-properties
+  "Given a dependency coordinate of the form [id version ...], returns a
+  Properties object corresponding to the dependency jar's pom.properties file."
   [coord]
   (with-open [props (io/input-stream (dependency-loaded? coord))]
     (doto (Properties.) (.load props))))
 
 (defn dependency-pom-properties-map
+  "Given a dependency coordinate of the form [id version ...], returns a map
+  of the contents of the jar's pom.properties file."
   [coord]
   (pom-prop-map (dependency-pom-properties coord)))
 
 (defn pom-properties-map
+  "Returns a map of the contents of the pom.properties pom-or-jarpath, where
+  pom-or-jarpath is either a slurpable thing or a Properties object."
   [prop-or-jarpath]
   (pom-prop-map
     (if (instance? Properties prop-or-jarpath)
@@ -148,6 +173,10 @@
         (doto (Properties.) (.load pom-input-stream))))))
 
 (defn pom-xml
+  "Returns a the pom.xml contents as a string. If only jarpath is given the
+  jar must contain exactly one pom.xml file. If pompath is a file that exists
+  the contents of that file will be returned. Otherwise, pompath must be the
+  resource path of the pom.xml file in the jar."
   ([jarpath]
    (pom-xml jarpath nil))
   ([jarpath pompath]
@@ -163,27 +192,56 @@
            (slurp in)))))))
 
 (defn copy-resource
+  "Copies the contents of the jar resource at resource-path to the path or File
+  out-path on the filesystem. The copy operation is not atomic."
   [resource-path out-path]
   (with-open [in  (io/input-stream (io/resource resource-path))
               out (io/output-stream (doto (io/file out-path) io/make-parents))]
     (io/copy in out)))
 
 (defn non-caching-url-input-stream
+  "Returns an InputStream from the URL constructed from url-str, with caching
+  disabled. This is useful for example when accessing jar entries in jars that
+  may change."
   [url-str]
   (.getInputStream (doto (.openConnection (URL. url-str)) (.setUseCaches false))))
 
 (defn copy-url
+  "Copies the URL constructed from url-str to the path or File out-path. When
+  the :cache option is false caching of URLs is disabled."
   [url-str out-path & {:keys [cache] :or {cache true}}]
   (with-open [in  ((if cache io/input-stream non-caching-url-input-stream) url-str)
               out (io/output-stream (doto (io/file out-path) io/make-parents))]
     (io/copy in out)))
 
-(def env            nil)
-(def data           nil)
-(def pods           nil)
-(def pod-id         nil)
-(def worker-pod     nil)
-(def shutdown-hooks (atom nil))
+(def env
+  "This pod's boot environment."
+  nil)
+
+(def data
+  "Set by boot.App/newCore, may be a ConcurrentHashMap for sharing data between
+  instances of Boot that are running inside of Boot."
+  nil)
+
+(def pods
+  "A WeakHashMap whose keys are all of the currently running pods."
+  nil)
+
+(def pod-id
+  "Each pod is numbered in the order in which it was created."
+  nil)
+
+(def worker-pod
+  "A reference to the boot worker pod. All pods share access to the worker
+  pod singleton instance."
+  nil)
+
+(def shutdown-hooks
+  "Atom containing shutdown hooks to be performed at exit. This is used instead
+  of Runtime.getRuntime().addShutdownHook() by boot so that these hooks can be
+  called without exiting the JVM process, for example when boot is running in
+  boot. See #'boot.pod/add-shutdown-hook! for more info."
+  (atom nil))
 
 (defn set-pods!         [x] (alter-var-root #'pods        (constantly x)))
 (defn set-data!         [x] (alter-var-root #'data        (constantly x)))
@@ -191,6 +249,10 @@
 (defn set-worker-pod!   [x] (alter-var-root #'worker-pod  (constantly x)))
 
 (defn get-pods
+  "Returns a seq of pod references whose names match name-or-pattern, which
+  can be a string or a Pattern. Strings are matched by equality, and Patterns
+  by re-find. The unique? option, if given, will cause an exception to be
+  thrown unless exactly one pod matches."
   ([name-or-pattern]
    (get-pods name-or-pattern false))
   ([name-or-pattern unique?]
@@ -205,6 +267,14 @@
      (if unique? p (cons p ps)))))
 
 (defn add-shutdown-hook!
+  "Adds f to the global queue of shutdown hooks for this instance of boot. Note
+  that boot may be running inside another instance of boot, so shutdown hooks
+  must be handled carefully as the JVM will not necessarily exit when this boot
+  instance is finished.
+  
+  Functions added via add-shutdown-hook! will be processed at the correct time
+  (i.e. when boot is finished in the case of nested instances of boot, or when
+  the JVM exits otherwise)."
   [f]
   (if (not= 1 pod-id)
     (.offer @shutdown-hooks f)
@@ -217,6 +287,7 @@
     `(read-string (boot.App/getStash ~(boot.App/setStash form)))))
 
 (defn eval-fn-call
+  "Given an expression of the form (f & args), resolves f and applies f to args."
   [[f & args]]
   (when-let [ns (namespace f)] (require (symbol ns)))
   (if-let [f (resolve f)]
@@ -224,6 +295,20 @@
     (throw (Exception. (format "can't resolve symbol (%s)" f)))))
 
 (defn call-in*
+  "Low-level interface by which expressions are evaluated in other pods. The
+  two-arity version is invoked in the caller with a pod instance and an expr
+  form. The form is serialized and the one-arity version is invoked in the
+  pod with the serialized expr, which is deserialized and evaluated. The result
+  is then serialized and returned to the two-arity where it is deserialized
+  and returned to the caller. The *print-meta* binding determines whether
+  metadata is transmitted between pods.
+
+  The expr is expected to be of the form (f & args). It is evaluated in the
+  pod by resolving f and applying it to args.
+  
+  Note: Since forms must be serialized to pass from one pod to another it is
+  not always appropriate to include metadata, as metadata may contain eg. File
+  objects which are not printable/readable by Clojure."
   ([expr]
      (let [{:keys [meta? expr]} (read-string expr)]
        (binding [*print-meta* meta?]
@@ -234,16 +319,28 @@
        (util/guard (read-string ret)))))
 
 (defmacro with-call-in
+  "Given a pod and an expr of the form (f & args), resolves f in the pod,
+  applies it to args, and returns the result to the caller. The expr may be a
+  template containing the ~ (unqupte) and ~@ (unquote-splicing) reader macros.
+  These will be evaluated in the calling scope and substituted in the template
+  like the ` (syntax-quote) reader macro.
+
+  Note: Unlike syntax-quote, no name resolution is done on the template forms."
   [pod expr]
   `(if-not ~pod
      (eval-fn-call (bt/template ~expr))
      (call-in* ~pod (bt/template ~expr))))
 
 (defmacro with-call-worker
+  "Like with-call-in, evaluating expr in the worker pod."
   [expr]
   `(with-call-in worker-pod ~expr))
 
 (defn pom-xml-map
+  "Returns a map of pom data from the pom.xml in the jar specified jarpath,
+  which can be a string or File. If pompath is not specified there must be
+  exactly one pom.xml in the jar. Otherwise, the pom.xml will be extracted
+  from the jar by the resource path specified by pompath."
   ([jarpath]
    (pom-xml-map jarpath nil))
   ([jarpath pompath]
@@ -252,6 +349,20 @@
        ~(pom-xml (io/file jarpath) pompath)))))
 
 (defn eval-in*
+  "Low-level interface by which expressions are evaluated in other pods. The
+  two-arity version is invoked in the caller with a pod instance and an expr
+  form. The form is serialized and the one-arity version is invoked in the
+  pod with the serialized expr, which is deserialized and evaluated. The result
+  is then serialized and returned to the two-arity where it is deserialized
+  and returned to the caller. The *print-meta* binding determines whether
+  metadata is transmitted between pods.
+
+  Unlike call-in*, expr can be any expression, without the restriction that it
+  be of the form (f & args).
+  
+  Note: Since forms must be serialized to pass from one pod to another it is
+  not always appropriate to include metadata, as metadata may contain eg. File
+  objects which are not printable/readable by Clojure."
   ([expr]
      (let [{:keys [meta? expr]} (read-string expr)]
        (binding [*print-meta* meta?]
@@ -262,31 +373,52 @@
        (util/guard (read-string ret)))))
 
 (defmacro with-eval-in
+  "Given a pod and an expr, evaluates expr in the pod and returns the result
+  to the caller. The expr may be a template containing the ~ (unqupte) and
+  ~@ (unquote-splicing) reader macros. These will be evaluated in the calling
+  scope and substituted in the template like the ` (syntax-quote) reader macro.
+
+  Note: Unlike syntax-quote, no name resolution is done on the template forms."
   [pod & body]
   `(if-not ~pod
      (eval (bt/template (do ~@body)))
      (eval-in* ~pod (bt/template (do ~@body)))))
 
 (defmacro with-eval-worker
+  "Like with-eval-in, evaluating expr in the worker pod."
   [& body]
   `(with-eval-in worker-pod ~@body))
 
 (defn require-in
+  "Evaluates (require 'ns) in the pod. Avoid this function."
   [pod ns]
   (doto pod
     (with-eval-in
       (require '~(symbol (str ns))))))
 
 (defn canonical-coord
+  "Given a dependency coordinate of the form [id version ...], returns the
+  canonical form, i.e. the id symbol is always fully qualified.
+  
+  For example: (canonical-coord '[foo \"1.2.3\"]) ;=> [foo/foo \"1.2.3\"]"
   [[id & more :as coord]]
   (let [[ns nm] ((juxt namespace name) id)]
     (assoc-in (vec coord) [0] (if (not= ns nm) id (symbol nm)))))
 
 (defn resolve-dependencies
+  "Returns a seq of maps of the form {:jar <path> :dep <dependency vector>}
+  corresponding to the fully resolved dependency graph as specified in the
+  env, where env is the boot environment (see boot.core/get-env). The seq of
+  dependencies includes all transitive dependencies."
   [env]
   (with-call-worker (boot.aether/resolve-dependencies ~env)))
 
 (defn resolve-dependency-jars
+  "Returns a seq of File objects corresponding to the jar files associated with
+  the fully resolved dependency graph as specified in the env, where env is the
+  boot environment (see boot.core/get-env). If ignore-clj? is specified Clojure
+  will be excluded from the result (the clojure dependency is identified by the
+  BOOT_CLOJURE_NAME environment setting, which defaults to org.clojure.clojure)."
   [env & [ignore-clj?]]
   (let [clj-dep (symbol (boot.App/config "BOOT_CLOJURE_NAME"))
         rm-clj  (if-not ignore-clj?
@@ -295,16 +427,25 @@
     (->> env resolve-dependencies rm-clj (map (comp io/file :jar)))))
 
 (defn resolve-nontransitive-dependencies
+  "Returns a seq of maps of the form {:jar <path> :dep <dependency vector>}
+  for the dependencies of dep, excluding transitive dependencies (i.e. the
+  dependencies of dep's dependencies)."
   [env dep]
   (with-call-worker (boot.aether/resolve-nontransitive-dependencies ~env ~dep)))
 
 (defn resolve-dependency-jar
+  "Returns the path to the jar file associated with the dependency specified
+  by coord, given the boot environment configuration env."
   [env coord]
   (let [coord (canonical-coord coord)]
     (->> [coord] (assoc env :dependencies) resolve-dependencies
       (filter #(= (first coord) (first (:dep %)))) first :jar)))
 
 (defn outdated
+  "Returns a seq of dependency vectors corresponding to outdated dependencies
+  in the dependency graph associated with the boot environment env. If the
+  :snapshots option is given SNAPSHOT versions will be considered, otherwise
+  only release versions will be considered."
   [env & {:keys [snapshots]}]
   (with-call-worker (boot.aether/update-always!))
   (let [v+ (if snapshots "(0,)" "RELEASE")]
@@ -318,6 +459,8 @@
          (filter identity))))
 
 (defn apply-exclusions
+  "Merges the seq of dependency ids excl into the :exclusions of the dependency
+  vector dep, creating the :exclusions key and deduplicating as necessary."
   [excl [p v & opts :as dep]]
   (let [excl'  (:exclusions (apply hash-map opts))
         excl'' (-> excl' set (into excl) (disj p) vec)
@@ -329,23 +472,33 @@
            (into [p v])))))
 
 (defn apply-global-exclusions
+  "Merges the seq of dependency ids excl into all dependency vectors in deps.
+  See apply-exclusions."
   [excl deps]
   (mapv (partial apply-exclusions excl) deps))
 
 (defn add-dependencies
+  "Resolve dependencies specified in the boot environment env and add their
+  jars to the classpath."
   [env]
   (doseq [jar (resolve-dependency-jars env true)] (add-classpath jar)))
 
 (defn add-dependencies-in
+  "Resolve dependencies specified in the boot environment env and add their
+  jars to the classpath in the pod."
   [pod env]
   (with-call-in pod
     (boot.pod/add-dependencies ~env)))
 
 (defn add-dependencies-worker
+  "Resolve dependencies specified in the boot environment env and add their
+  jars to the classpath in the worker pod."
   [env]
   (add-dependencies-in worker-pod env))
 
 (defn jar-entries*
+  "Returns a vector containing vectors of the form [name url-string] for each
+  entry in the jar path-or-jarfile, which can be a string or File."
   [path-or-jarfile]
   (when path-or-jarfile
     (let [f    (io/file path-or-jarfile)
@@ -361,7 +514,9 @@
                                        .toURI .toURL .toString (str "jar:"))])))
                  (into []))))))))
 
-(def jar-entries-memoized* (memoize jar-entries*))
+(def jar-entries-memoized*
+  "Memoized version of jar-entries*."
+  (memoize jar-entries*))
 
 (defn jar-entries
   "Given a path to a jar file, returns a list of [resource-path, resource-url]
@@ -370,31 +525,49 @@
   ((if cache jar-entries-memoized* jar-entries*) path-or-jarfile))
 
 (def standard-jar-exclusions
+  "Entries matching these Patterns will not be extracted from jars when they
+  are exploded during uberjar construction."
   #{#"(?i)^META-INF/[^/]*\.(MF|SF|RSA|DSA)$"
     #"(?i)^META-INF/INDEX.LIST$"})
 
-(defn into-merger [prev new out]
+(defn into-merger
+  "Reads the InputStreams prev and new as EDN, uses clojure.core/into to merge
+  the data from new into prev, and writes the result to the OutputStream out."
+  [prev new out]
   (let [read' (comp read-string slurp io/reader)]
     (-> (read' prev)
       (into (read' new))
       pr-str
       (io/copy out))))
 
-(defn concat-merger [prev new out]
+(defn concat-merger
+  "Reads the InputStreams prev and new as strings and appends new to prev,
+  separated by a single newline character. The result is written to the
+  OutputStream out."
+  [prev new out]
   (let [read' (comp slurp io/reader)]
     (-> (read' prev)
         (str \newline (read' new))
         (io/copy out))))
 
-(defn first-wins-merger [prev _ out]
+(defn first-wins-merger
+  "Writes the InputStream prev to the OutputStream out."
+  [prev _ out]
   (io/copy prev out))
 
 (def standard-jar-mergers
+  "A vector containing vectors of the form [<path-matcher> <merger-fn>]. These
+  pairs will be used to decide how to merge conflicting entries when exploding
+  or creating jar files. See boot.task.built-in/uber for more info."
   [[#"data_readers.clj$"    into-merger]
    [#"META-INF/services/.*" concat-merger]
    [#".*"                   first-wins-merger]])
 
 (defn unpack-jar
+  "Explodes the jar identified by the string or File jar-path, copying all jar
+  entries to the directory given by the string or File dest-dir. The directory
+  will be created if it does not exist and jar entry modification times will
+  be preserved. Files will not be written atomically."
   [jar-path dest-dir & opts]
   (with-open [jf (JarFile. jar-path)]
     (doseq [entry (enumeration-seq (.entries jf))
@@ -410,14 +583,27 @@
                (util/warn "Error extracting %s:%s: %s\n" jar-path entry err)))))))
 
 (defn jars-dep-graph
+  "Returns a dependency graph for all jar file dependencies specified in the
+  boot environment map env, including transitive dependencies."
   [env]
   (with-call-worker (boot.aether/jars-dep-graph ~env)))
 
 (defn jars-in-dep-order
+  "Returns a seq of all jar file dependencies specified in the boot environment
+  map env, including transitive dependencies, and in dependency order.
+ 
+  Dependency order means, eg. if jar B depends on jar A then jar A will appear
+  before jar B in the returned list."
   [env]
   (map io/file (with-call-worker (boot.aether/jars-in-dep-order ~env))))
 
 (defn copy-dependency-jar-entries
+  "Resolve all dependencies and transitive dependencies of the dependency given
+  by the dep vector coord (given the boot environment configuration env), and
+  explode them into the outdir directory. The outdir directory will be created
+  if necessary and last modified times of jar entries will be preserved. If the
+  optional Patterns, regexes, are specified only entries whose paths match at
+  least one regex will be extracted to outdir."
   [env outdir coord & regexes]
   (let [keep? (if-not (seq regexes)
                 (constantly true)
@@ -433,6 +619,29 @@
           (.setLastModified out-file (.getTime entry)))))))
 
 (defn lifecycle-pool
+  "Creates a function implementing a lifecycle protocol on a pool of stateful
+  objects. The pool will attempt to maintain at least size objects, creating
+  new objects via the create function as needed. The objects are retired when
+  no longer needed, using the given destroy function. The :priority option can
+  be given to specify the priority of the worker thread (default NORM_PRIORITY).
+
+  The pool maintains a queue of objects with the head of the queue being the
+  \"current\" object. The pool may be \"refreshed\": the current object is
+  destroyed and the next object in the queue is promoted to current object.
+
+  The returned function accepts one argument, which can be :shutdown, :take,
+  or :refresh, or no arguments.
+
+    none          Returns the current object.
+
+    :shutdown     Stop worker thread and destroy all objects in the pool.
+
+    :take         Remove the current object from the pool and return it to
+                  the caller without destroying it. The next object in the
+                  pool will be promoted. Note that it is the responsibility
+                  of the caller to properly dispose of the returned object.
+
+    :refresh      Destroy the current object and promote the next object."
   [size create destroy & {:keys [priority]}]
   (let [run? (atom true)
         pri  (or priority Thread/NORM_PRIORITY)
@@ -474,6 +683,8 @@
       (clojure.core/refer-clojure))))
 
 (defn default-dependencies
+  "Adds default dependencies given by deps to the :dependencies in env, but
+  favoring dependency versions in env over deps in case of conflict."
   [deps {:keys [dependencies] :as env}]
   (let [not-given (set/difference (set (map first deps))
                                   (set (map first dependencies)))
@@ -481,6 +692,8 @@
     (assoc env :dependencies (into dfl-deps dependencies))))
 
 (defmacro caller-namespace
+  "When this macro is used in a function, it returns the namespace of the
+  caller of the function."
   []
   `(let [e# (Exception. "")]
      (-> (->> (ex/expand-stack-trace e#)
@@ -490,6 +703,8 @@
          (.replaceAll "/.*$" ""))))
 
 (defn make-pod
+  "Returns a newly constructed pod. A boot environment configuration map, env,
+  may be given to initialize the pod with dependencies, directories, etc."
   ([] (init-pod! env (boot.App/newPod nil data)))
   ([{:keys [directories dependencies] :as env}]
      (let [dirs (map io/file directories)
@@ -505,6 +720,7 @@
          (.setName (caller-namespace))))))
 
 (defn destroy-pod
+  "Closes open resources held by the pod, making the pod eligible for GC."
   [pod]
   (when pod
     (.close pod)
