@@ -97,11 +97,15 @@
         names (map (memfn getName) jars)
         dirs  (map (memfn getParent) jars)
         tmps  (reduce #(assoc %1 %2 (core/tmp-dir!)) {} names)
-        adder #(core/add-source %1 %2 :exclude pod/standard-jar-exclusions)]
+        adder #(core/add-source %1 %2 :exclude pod/standard-jar-exclusions)
+        not-checkout? (fn [[proj ver]]
+                        (let [keyset (map first dependencies)]
+                         (not (contains? (into #{} keyset) proj))))]
     (when (seq deps)
       (util/info "Adding checkout dependencies:\n")
       (doseq [dep deps]
         (util/info "\u2022 %s\n" (pr-str dep))))
+    (core/set-env!   :dependencies #(into (vec (filter not-checkout? %)) (vec dependencies)))
     (core/merge-env! :dependencies (vec deps)
                      :source-paths (set dirs))
     (core/cleanup (core/set-env! :source-paths #(apply disj % dirs)))
