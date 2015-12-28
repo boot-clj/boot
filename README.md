@@ -1,5 +1,7 @@
 # Boot [![Build Status](https://travis-ci.org/boot-clj/boot.svg?branch=master)](https://travis-ci.org/boot-clj/boot) [![Stories in Ready][waffle-badge]][waffle-board]
 
+[change log][changes] | [installation][4] | [getting started][start] | [documentation][wiki] | [API docs][api-docs]
+
 Boot is a Clojure build framework and ad-hoc Clojure script evaluator. Boot
 provides a runtime environment that includes all of the tools needed to build
 Clojure projects from scripts written in Clojure that run in the context of
@@ -8,8 +10,6 @@ the project.
 > If you have questions or need help, please [visit our Discourse site][discourse].
 > You can find other developers and users in [the `#hoplon` channel on freenode IRC][irc]
 > and [the `#boot` channel on Clojurians Slack][slack].
-
-For a change log, see [CHANGES.md][changes].
 
 ### Another Build Tool?
 
@@ -79,6 +79,9 @@ Download [boot.sh][boot-sh], then:
 Download [boot.exe][boot-exe], then:
 
     C:\> move boot.exe %SystemRoot%
+
+> **Note:** Windows 10 is fully supported. For other versions please see
+> [these outstanding issues][win-issues] for specific limitations.
 
 ## Getting Started
 
@@ -309,7 +312,8 @@ function.
 
 ### Define Tasks In Project
 
-Now let's define a task in a namespace in our project and use it from the command line.
+Now let's define a task in a namespace in our project and use it from the
+command line.
 
 Create the namespace with the task:
 
@@ -319,14 +323,15 @@ Create the namespace with the task:
             [boot.task.built-in :as task]))
 
 (core/deftask build
-  "Print a friendly greeting."
+  "Build my project."
   []
-  (comp (task/pom) (task/jar) (task/install))
+  (comp (task/pom) (task/jar) (task/install)))
 ```
 
 and write it to `src/demo/boot_build.clj` in your project.
 
-Modify the `build.boot` file to incorporate this new task by removing the definition for `build`. The new `build.boot` file will look like this:
+Modify the `build.boot` file to incorporate this new task by removing the
+definition for `build`. The new `build.boot` file will look like this:
 
 ```clojure
 (set-env!
@@ -370,10 +375,10 @@ In a terminal in the project directory do:
 - The app uberjar will be built and copied to `bin/boot.jar`.
 - The app uberjar will be copied to `$HOME/.boot/cache/bin/<version>/boot.jar`.
 
-Make your build the default:
+Make your build the default by editing your `~/.boot/boot.properties` file:
 
     # <version> is the version of your build
-    BOOT_VERSION=<version> boot -u
+    BOOT_VERSION=<version>
 
 ### Launch4J
 
@@ -446,3 +451,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [slack]: http://clojurians.net/
 [changes]: https://github.com/boot-clj/boot/blob/master/CHANGES.md
 [brew]: https://github.com/homebrew/homebrew
+[win-issues]: https://github.com/boot-clj/boot/issues?q=is%3Aopen+is%3Aissue+label%3Awindows
+[start]: #getting-started
+[wiki]: https://github.com/boot-clj/boot/wiki
+[api-docs]: https://github.com/boot-clj/boot/tree/master/doc
