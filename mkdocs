@@ -2,14 +2,16 @@
 
 ;; vim: set ft=clojure:
 
-(set-env!  :dependencies '[[adzerk/clj-github-docs "0.1.0"]])
+(set-env!
+  :dependencies '[[adzerk/clj-github-docs "0.1.0"]])
 
-(require '[adzerk.clj-github-docs :refer :all])
+(require
+  '[adzerk.clj-github-docs :refer :all])
 
-(defn -main [& args]
+(defn -main [& _]
 
   (write-docs
-    :ns  boot.util
+    :ns boot.util
     :tag *boot-version*
     :src "boot/pod/src"
     :doc "Namespace containing various utility functions and macros to make
@@ -17,64 +19,36 @@
 
     (section
       "Settings (read-only)"
-      *colorize?*
-      *verbosity*
-      colorize?-system-default)
+      *colorize?* *verbosity* colorize?-system-default)
 
     (section
       "Shell"
-      dosh
-      sh
-      *sh-dir*)
+      dosh sh *sh-dir*)
 
     (section
       "Exit"
-      exit-ok
-      exit-error)
+      exit-ok exit-error)
 
     (section
       "Logging"
-      dbug
-      info
-      warn
-      fail
-      warn-deprecated)
+      dbug info warn fail warn-deprecated)
 
     (section
       "Useful Macros"
-      guard
-      while-let
-      with-err-str
-      with-let
-      with-resolve
-      with-rethrow
-      without-exiting
-      dotoseq
-      do-while-let)
+      guard while-let with-err-str with-let with-resolve with-rethrow
+      without-exiting dotoseq do-while-let)
 
     (section
       "Printing"
-      pp*
-      pp-str
-      print-ex
-      print-tree)
+      pp* pp-str print-ex print-tree)
 
     (section
       "Miscellaneous"
-      extract-ids
-      auto-flush
-      bind-syms
-      dep-as-map
-      let-assert-keys
-      index-of
-      jarname
-      path->ns
-      read-string-all
-      with-semaphore
-      with-semaphore-noblock))
+      extract-ids auto-flush bind-syms dep-as-map let-assert-keys index-of
+      jarname path->ns read-string-all with-semaphore with-semaphore-noblock))
 
   (write-docs
-    :ns  boot.pod
+    :ns boot.pod
     :tag *boot-version*
     :src "boot/pod/src"
     :doc "Namespace containing functions and vars related to pods, dependencies,
@@ -82,226 +56,120 @@
 
     (section
       "Settings (read-only)"
-      env
-      data
-      pods
-      pod-id
-      worker-pod
-      shutdown-hooks)
+      env data pods pod-id worker-pod shutdown-hooks)
 
     (section
       "Pods"
-      get-pods
-      call-in*
-      with-call-in
-      with-call-worker
-      eval-in*
-      with-eval-in
-      with-eval-worker
-      eval-fn-call
-      get-pods
-      make-pod
-      require-in
-      send!
-      destroy-pod
-      pod-pool)
+      get-pods call-in* with-call-in with-call-worker eval-in* with-eval-in
+      with-eval-worker eval-fn-call get-pods make-pod require-in send!
+      destroy-pod pod-pool)
 
     (section
       "Classpath"
-      add-classpath
-      add-dependencies
-      add-dependencies-in
-      add-dependencies-worker
-      dependency-loaded?
-      get-classpath
-      modifiable-classloader?
-      resources
-      seal-app-classloader
-      classloader-hierarchy
-      classloader-resources
-      copy-resource)
+      add-classpath add-dependencies add-dependencies-in add-dependencies-worker
+      dependency-loaded? get-classpath modifiable-classloader? resources
+      seal-app-classloader classloader-hierarchy classloader-resources copy-resource)
 
     (section
       "Dependencies"
-      resolve-dependencies
-      resolve-dependency-jar
-      resolve-dependency-jars
-      resolve-nontransitive-dependencies
-      apply-exclusions
-      apply-global-exclusions
-      canonical-coord
-      copy-dependency-jar-entries
-      default-dependencies
-      dependency-pom-properties
-      dependency-pom-properties-map
-      outdated
-      extract-ids
-      jars-dep-graph
-      jars-in-dep-order)
+      resolve-dependencies resolve-dependency-jar resolve-dependency-jars
+      resolve-nontransitive-dependencies apply-exclusions apply-global-exclusions
+      canonical-coord copy-dependency-jar-entries default-dependencies
+      dependency-pom-properties dependency-pom-properties-map outdated
+      extract-ids jars-dep-graph jars-in-dep-order)
 
     (section
       "Jars"
-      copy-url
-      jar-entries
-      jar-entries*
-      jar-entries-memoized*
-      pom-properties
-      pom-properties-map
-      pom-xml
-      pom-xml-map
-      unpack-jar)
+      copy-url jar-entries jar-entries* jar-entries-memoized* pom-properties
+      pom-properties-map pom-xml pom-xml-map unpack-jar)
 
     (section
       "Jar Exclusions & Mergers"
-      concat-merger
-      first-wins-merger
-      into-merger
-      standard-jar-mergers
+      concat-merger first-wins-merger into-merger standard-jar-mergers
       standard-jar-exclusions)
 
     (section
       "Misc. Utility"
-      lifecycle-pool
-      add-shutdown-hook!
-      caller-namespace
-      non-caching-url-input-stream)
+      lifecycle-pool add-shutdown-hook! caller-namespace non-caching-url-input-stream)
 
     (section
       "Deprecated / Internal"
-      set-pods!
-      set-data!
-      set-pod-id!
-      set-worker-pod!))
+      set-pods! set-data! set-pod-id! set-worker-pod!))
 
   (write-docs
-    :ns  boot.task.built-in
+    :ns boot.task.built-in
     :tag *boot-version*
     :src "boot/core/src"
     :doc "Boot built-in tasks.")
 
   (write-docs
-    :ns  boot.core
+    :ns boot.core
     :tag *boot-version*
     :src "boot/core/src"
     :doc "The Boot core namespace, containing most of Boot's public API."
 
     (section
       "Settings (read-only)"
-      *app-version*
-      *boot-script*
-      *boot-version*
-      *boot-opts*
-      *warnings*
-      new-build-at
-      last-file-change
-      bootignore)
+      *app-version* *boot-script* *boot-version* *boot-opts* *warnings*
+      new-build-at last-file-change bootignore)
 
     (section
       "Configuration Helpers"
-      load-data-readers!
-      configure-repositories!)
+      load-data-readers! configure-repositories!)
 
     (section
       "Boot Environment"
-      get-env set-env! merge-env!
-      get-sys-env set-sys-env!
-      pre-env! post-env!)
+      get-env set-env! merge-env! get-sys-env set-sys-env! pre-env! post-env!)
 
     (section
       "Define Tasks"
-      deftask
-      cleanup
-      reset-build!
-      reset-fileset
-      with-pre-wrap
-      with-pass-thru
+      deftask cleanup reset-build! reset-fileset with-pre-wrap with-pass-thru
       with-post-wrap)
 
     (section
       "Manipulate Task Options"
-      task-options!
-      replace-task!
-      disable-task!)
+      task-options! replace-task! disable-task!)
 
     (section
       "REPL Integration"
-      boot
-      rebuild!
-      launch-nrepl)
+      boot rebuild! launch-nrepl)
 
     (section
       "Create Temp Directories"
-      tmp-dir!
-      cache-dir!)
+      tmp-dir! cache-dir!)
 
     (section
       "TmpFile API"
-      tmp-path
-      tmp-dir
-      tmp-file
-      tmp-time)
+      tmp-path tmp-dir tmp-file tmp-time)
 
     (section
       "Query Fileset For TmpFiles"
-      tmp-get
-      user-files
-      input-files
-      output-files)
+      tmp-get user-files input-files output-files)
 
     (section
       "Filter Sequences Of TmpFiles"
-      file-filter
-      by-ext by-name by-path by-re
-      not-by-ext not-by-name not-by-path not-by-re)
+      file-filter by-ext by-name by-path by-re not-by-ext not-by-name
+      not-by-path not-by-re)
 
     (section
       "Other Fileset Queries"
-      ls
-      fileset-namespaces
-      input-fileset
-      output-fileset
-      user-dirs
-      input-dirs
+      ls fileset-namespaces input-fileset output-fileset user-dirs input-dirs
       output-dirs)
 
     (section
       "Manipulate Fileset"
-      new-fileset
-      commit!
-      rm mv cp
-      add-meta
-      add-asset add-cached-asset
-      add-source add-cached-source
-      add-resource add-cached-resource
-      mv-asset
-      mv-source
-      mv-resource)
+      new-fileset commit! rm mv cp add-meta add-asset add-cached-asset add-source
+      add-cached-source add-resource add-cached-resource mv-asset mv-source mv-resource)
 
     (section
       "Fileset Diffs"
-      fileset-diff
-      fileset-added
-      fileset-removed
-      fileset-changed)
+      fileset-diff fileset-added fileset-removed fileset-changed)
 
     (section
       "Misc. Helpers"
-      gpg-decrypt
-      json-generate json-parse
-      yaml-generate yaml-parse
-      touch
-      git-files
-      empty-dir!
-      sync!
-      watch-dirs)
+      gpg-decrypt json-generate json-parse yaml-generate yaml-parse touch
+      git-files empty-dir! sync! watch-dirs)
 
     (section
       "Deprecated / Internal"
-      tmppath
-      tmpdir
-      tmpget
-      tmpfile
-      tmptime
-      temp-dir!
-      fileset-reduce
-      init!)))
+      tmppath tmpdir tmpget tmpfile tmptime temp-dir! fileset-reduce init!)))
