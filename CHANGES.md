@@ -7,6 +7,7 @@
 - `boot.pod/this-pod` &mdash; a `WeakReference` to the current pod
 - `boot.pod/with-invoke-in` &mdash; low-level invocation, no serialization
 - `boot.pod/with-invoke-worker` &mdash; as above but invokes in the worker pod
+- `boot.pod/pod-name` &mdash; get/set the name of a pod
 
 ## 2.5.3
 

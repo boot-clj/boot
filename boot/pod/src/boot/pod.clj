@@ -321,6 +321,14 @@
   [[sym & args]]
   `(with-invoke-in worker-pod (~sym ~@args)))
 
+(defn pod-name
+  "Returns pod's name if called with one argument, sets pod's name to new-name
+  and returns new-name if called with two arguments."
+  ([pod]
+   (.getName pod))
+  ([pod new-name]
+   (.setName pod new-name) new-name))
+
 (defn call-in*
   "Low-level interface by which expressions are evaluated in other pods. The
   two-arity version is invoked in the caller with a pod instance and an expr
@@ -744,7 +752,7 @@
        (doto (->> (into-array java.io.File urls)
                   (boot.App/newShim nil data)
                   (init-pod! env))
-         (.setName (caller-namespace))))))
+         (pod-name (caller-namespace))))))
 
 (defn destroy-pod
   "Closes open resources held by the pod, making the pod eligible for GC."
