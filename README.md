@@ -360,34 +360,34 @@ To build boot from source you will need:
 * JDK 1.7
 * GNU make
 * maven 3
-* launch4j (optional, for windows support only)
 * bash shell, wget
+* [boot.sh][boot-sh] (Unix) or [boot.exe][boot-exe] (Windows)
 
-In a terminal in the project directory do:
+You may increment Boot's version by editing `version.properties`:
+
+```properties
+# <version> is the version of your build
+version=<version>
+```
+
+Then, in a terminal in the project directory do:
 
     make deps
     make install
 
 - Jars for all of the boot components will be built and installed in your
   local Maven repository.
-- The executables `bin/boot.sh` and `bin/boot.exe` (if you have launch4j
-  available) will be created.
 - The app uberjar will be built and copied to `bin/boot.jar`.
 - The app uberjar will be copied to `$HOME/.boot/cache/bin/<version>/boot.jar`.
 
-Make your build the default by editing your `~/.boot/boot.properties` file:
+Make your build the default by editing your `$HOME/.boot/boot.properties` file:
 
-    # <version> is the version of your build
-    BOOT_VERSION=<version>
+```properties
+# <version> is the version of your build
+BOOT_VERSION=<version>
+```
 
-### Launch4J
-
-Launch4J is a program that wraps a Java uberjar in a Windows executable. There
-are versions for Linux, OSX, and Windows.
-
-1. Download the [launch4j tarball][l4j].
-2. Untar it into the project root (it will create a `launch4j` directory).
-3. Done! You can now build the windows .exe file!
+Have fun!
 
 ## Attribution
 
