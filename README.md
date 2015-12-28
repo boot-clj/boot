@@ -24,10 +24,10 @@ needs to be. Static build specifications become less and less useful as the
 project moves toward completion. Being Lispers we know what to do: Lambda is
 the ultimate declarative.
 
-Instead of building the project based on a global configuration map,
-boot provides a runtime environment in which a build script written in
-Clojure can be evaluated. It is this script -- a
-Turing-complete build specification -- which builds the project.
+Instead of building the project based on a global configuration map, boot
+provides a runtime environment in which a build script written in Clojure
+can be evaluated. It is this script&mdash;a Turing-complete build
+specification&mdash;which builds the project.
 
 ### Features
 
@@ -54,15 +54,6 @@ Binaries in executable format are available. Follow the instructions for your
 operating system (note: boot requires the Java Development Kit (JDK) version
 1.7 or greater).
 
-__Note:__ The following instructions will install the boot.sh/boot.exe wrapper,
-i.e., a very thin shim on top of Maven to load "the real Boot." After you have
-the wrapper installed, you can run `boot -u` at any time to update Boot's JAR
-files and keep up to date. The wrapper itself changes (and thus requires an
-update) much less frequently. **The wrapper is compatible with all versions
-of Boot 2.0.0 and later.** The `2.0.0-pre*` and `2.0.0-rc*` versions of Boot
-are no longer supported and will be updated automatically to a supported
-version.
-
 #### OSX with [Homebrew][brew]
 
     brew install boot-clj
@@ -71,17 +62,34 @@ version.
 
 Download [boot.sh][boot-sh], then:
 
-    # Using /usr/local/bin here, but can be any directory on user's $PATH.
-    $ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
+```sh
+# Using /usr/local/bin here, but can be any directory on user's $PATH.
+$ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
+```
 
 #### Windows
 
 Download [boot.exe][boot-exe], then:
 
-    C:\> move boot.exe %SystemRoot%
+```bat
+:: Using %SystemRoot% here, but can be any folder on user's %PATH%
+C:\> move boot.exe %SystemRoot%
+```
 
 > **Note:** Windows 10 is fully supported. For other versions please see
 > [these outstanding issues][win-issues] for specific limitations.
+
+## Update
+
+The boot.sh/boot.exe wrapper is a very thin shim used to load "the real Boot"
+from Maven. With the wrapper installed you can update Boot's JAR files and
+keep up to date with the following command:
+
+    boot -u
+
+The boot.sh/boot.exe wrapper itself changes (and thus requires updating) much
+less frequently, and will remain compatible with future versions of the JAR
+files.
 
 ## Getting Started
 
@@ -135,8 +143,10 @@ Suppose we want to build a jar file now, and install it to our local Maven
 repository. We'll use the `pom`, `jar`, and `install` tasks to accomplish this
 from the command line:
 
-    # The -- args below are optional. We use them here to visually separate the tasks.
-    boot -r src -d me.raynes/conch:0.8.0 -- pom -p my-project -v 0.1.0 -- jar -M Foo=bar -- install
+```bash
+# The -- args below are optional. We use them here to visually separate the tasks.
+boot -r src -d me.raynes/conch:0.8.0 -- pom -p my-project -v 0.1.0 -- jar -M Foo=bar -- install
+```
 
 What we did here was we built a pipeline on the command line and ran it to
 build our project. 
@@ -387,8 +397,6 @@ Make your build the default by editing your `$HOME/.boot/boot.properties` file:
 BOOT_VERSION=<version>
 ```
 
-Have fun!
-
 ## Attribution
 
 Code from other projects was incorporated into boot wherever necessary to
@@ -451,7 +459,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [slack]: http://clojurians.net/
 [changes]: https://github.com/boot-clj/boot/blob/master/CHANGES.md
 [brew]: https://github.com/homebrew/homebrew
-[win-issues]: https://github.com/boot-clj/boot/issues?q=is%3Aopen+is%3Aissue+label%3Awindows
+[win-issues]: https://github.com/boot-clj/boot/issues?q=is%3Aopen+is%3Aissue+label%3Awindows+label%3Ablocked
 [start]: #getting-started
 [wiki]: https://github.com/boot-clj/boot/wiki
 [api-docs]: https://github.com/boot-clj/boot/tree/master/doc
