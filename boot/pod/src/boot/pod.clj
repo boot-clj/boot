@@ -231,6 +231,10 @@
   "Each pod is numbered in the order in which it was created."
   nil)
 
+(def this-pod
+  "A WeakReference to this pod's shim instance."
+  nil)
+
 (def worker-pod
   "A reference to the boot worker pod. All pods share access to the worker
   pod singleton instance."
@@ -246,6 +250,7 @@
 (defn set-pods!         [x] (alter-var-root #'pods        (constantly x)))
 (defn set-data!         [x] (alter-var-root #'data        (constantly x)))
 (defn set-pod-id!       [x] (alter-var-root #'pod-id      (constantly x)))
+(defn set-this-pod!     [x] (alter-var-root #'this-pod    (constantly x)))
 (defn set-worker-pod!   [x] (alter-var-root #'worker-pod  (constantly x)))
 
 (defn get-pods
@@ -294,6 +299,28 @@
     (apply f args)
     (throw (Exception. (format "can't resolve symbol (%s)" f)))))
 
+(defmacro with-invoke-in
+  "Given a pod, a fully-qualified symbol sym, and args which are Java objects,
+  invokes the function denoted by sym with the given args. This is a low-level
+  interface--args are not serialized before being passed to the pod and the
+  result is not deserialized before being returned. Passing Clojure objects as
+  arguments or returning Clojure objects from the pod will result in undefined
+  behavior.
+
+  This macro correctly handles the case where pod is the current pod without
+  thread binding issues: in this case the invocation will be done in another
+  thread."
+  [pod [sym & args]]
+  `(let [pod# ~pod]
+     (if (not= pod# (.get this-pod))
+       (.invoke pod# ~(str sym) ~@args)
+       (deref (future (.invoke pod# ~(str sym) ~@args))))))
+
+(defmacro with-invoke-worker
+  "Like with-invoke-in, invoking the function in the worker pod."
+  [[sym & args]]
+  `(with-invoke-in worker-pod (~sym ~@args)))
+
 (defn call-in*
   "Low-level interface by which expressions are evaluated in other pods. The
   two-arity version is invoked in the caller with a pod instance and an expr
@@ -314,8 +341,8 @@
        (binding [*print-meta* meta?]
          (pr-str (eval-fn-call expr)))))
   ([pod expr]
-     (let [ret (.invoke pod "boot.pod/call-in*"
-                 (pr-str {:meta? *print-meta* :expr expr}))]
+     (let [arg (pr-str {:meta? *print-meta* :expr expr})
+           ret (with-invoke-in pod (boot.pod/call-in* arg))]
        (util/guard (read-string ret)))))
 
 (defmacro with-call-in
@@ -368,8 +395,8 @@
        (binding [*print-meta* meta?]
          (pr-str (eval expr)))))
   ([pod expr]
-     (let [ret (.invoke pod "boot.pod/eval-in*"
-                 (pr-str {:meta? *print-meta* :expr expr}))]
+     (let [arg (pr-str {:meta? *print-meta* :expr expr})
+           ret (with-invoke-in pod (boot.pod/eval-in* arg))]
        (util/guard (read-string ret)))))
 
 (defmacro with-eval-in
@@ -672,7 +699,7 @@
   [env pod]
   (doto pod
     (require-in "boot.pod")
-    (.invoke "boot.pod/set-worker-pod!" worker-pod)
+    (with-invoke-in (boot.pod/set-worker-pod! worker-pod))
     (with-eval-in
       (require 'boot.util 'boot.pod)
       (reset! boot.util/*verbosity* ~(deref util/*verbosity*))

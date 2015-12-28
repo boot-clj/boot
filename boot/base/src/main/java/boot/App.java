@@ -5,6 +5,7 @@ package boot;
 import java.io.*;
 import java.nio.channels.FileLock;
 import java.nio.channels.FileChannel;
+import java.lang.ref.WeakReference;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Map;
@@ -314,6 +315,7 @@ public class App {
         rt.invoke("boot.pod/seal-app-classloader");
         rt.invoke("boot.pod/set-data!", data);
         rt.invoke("boot.pod/set-pods!", pods);
+        rt.invoke("boot.pod/set-this-pod!", new WeakReference<ClojureRuntimeShim>(rt));
 
         pods.put(rt, new Object());
         return rt; }
