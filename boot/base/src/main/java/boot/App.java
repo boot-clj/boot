@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.WeakHashMap;
+import java.util.jar.JarFile;
+import java.util.jar.JarEntry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -197,10 +199,17 @@ public class App {
         else { System.setProperty(k, dfl); return dfl; }}
 
     private static String
-    jarVersion(File f, String prefix) throws Exception {
-        String n = f.getName();
-        if (! n.startsWith(prefix)) return null;
-        else return n.substring(prefix.length()).replaceAll(".jar$", ""); }
+    jarVersion(File f) throws Exception {
+        String ret = null;
+        JarEntry e = null;
+        String pat = "META-INF/maven/boot/boot/pom.properties";
+        try (JarFile jar = new JarFile(f)) {
+            if ((e = jar.getJarEntry(pat)) != null) {
+                try (InputStream is = jar.getInputStream(e)) {
+                    Properties p = new Properties();
+                    p.load(is);
+                    ret = p.getProperty("version"); }}}
+        return ret; }
 
     private static Properties
     writeProps(File f) throws Exception {
@@ -217,7 +226,7 @@ public class App {
 
         if (bootversion == null)
             for (File x : resolveDepJars(a, "boot", channel, n, c))
-                if (null != (t = jarVersion(x, "boot-"))) bootversion = t;
+                if (null != (t = jarVersion(x))) bootversion = t;
 
         p.setProperty("BOOT_VERSION", bootversion);
         setDefaultProperty(p, "BOOT_CLOJURE_NAME",    n);
@@ -414,6 +423,13 @@ public class App {
         p.store(System.out, booturl); }
 
     public static void
+    updateBoot(File bootprops, String version, String chan) throws Exception {
+        bootversion  = version;
+        channel      = chan;
+        Properties p = writeProps(bootprops);
+        p.store(System.out, booturl); }
+
+    public static void
     main(String[] args) throws Exception {
         if (System.getProperty("user.name").equals("root")
                 && ! config("BOOT_AS_ROOT", "no").equals("yes"))
@@ -442,9 +458,13 @@ public class App {
         if (args.length > 0
             && ((args[0]).equals("-u")
                 || (args[0]).equals("--update"))) {
-            bootversion  = null;
-            Properties p = writeProps(bootprops);
-            p.store(System.out, booturl);
+            updateBoot(bootprops, (args.length > 1) ? args[1] : null, "RELEASE");
+            System.exit(0); }
+
+        if (args.length > 0
+            && ((args[0]).equals("-U")
+                || (args[0]).equals("--update-snapshot"))) {
+            updateBoot(bootprops, null, "(0,)");
             System.exit(0); }
 
         if (args.length > 0

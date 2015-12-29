@@ -38,6 +38,7 @@
    ["-t" "--target-path PATH"    "Set the target directory to PATH."]
    ["-T" "--no-target"           "Don't automatically write files to the target directory."]
    ["-u" "--update"              "Update boot to latest release version."]
+   ["-U" "--update-snapshot"     "Update boot to latest snapshot version."]
    ["-v" "--verbose"             "More error info (-vv more verbose, etc.)"
     :assoc-fn (fn [x y _] (update-in x [y] (fnil inc 0)))]
    ["-V" "--version"             "Print boot version info."]])

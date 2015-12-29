@@ -10,6 +10,8 @@
 - `boot.pod/pod-name` &mdash; get/set the name of a pod
 - `-c`, `--checkouts` option / `:checkouts` env key &mdash; deeper integration
   for checkout dependencies
+- `-U`, `--update-snapshot` option &mdash; updates boot to latest snapshot version
+- optional argument to `-u`, `--update` &mdash; sets global default boot version
 
 #### Deprecated
 
