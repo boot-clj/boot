@@ -8,6 +8,12 @@
 - `boot.pod/with-invoke-in` &mdash; low-level invocation, no serialization
 - `boot.pod/with-invoke-worker` &mdash; as above but invokes in the worker pod
 - `boot.pod/pod-name` &mdash; get/set the name of a pod
+- `-c`, `--checkouts` option / `:checkouts` env key &mdash; deeper integration
+  for checkout dependencies
+
+#### Deprecated
+
+- The `checkout` task, replaced by the `--checkouts` boot option
 
 ## 2.5.3
 

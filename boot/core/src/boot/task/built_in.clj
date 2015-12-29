@@ -66,8 +66,8 @@
                    (map string/trimr)
                    (string/join "\n"))))))
 
-(core/deftask checkout
-  "Checkout dependencies task.
+(core/deftask ^{:deprecated "2.6.0"} checkout
+  "Checkout dependencies task. DEPRECATED.
 
   This task facilitates working on a project and its dependencies at the same
   time, by extracting the dependency jar contents into the fileset. Transitive
@@ -97,8 +97,12 @@
         names (map (memfn getName) jars)
         dirs  (map (memfn getParent) jars)
         tmps  (reduce #(assoc %1 %2 (core/tmp-dir!)) {} names)
+        warn  (delay
+                (util/warn-deprecated
+                  "The checkout task is deprecated. Please use the --checkouts boot option instead.\n"))
         adder #(core/add-source %1 %2 :exclude pod/standard-jar-exclusions)]
     (when (seq deps)
+      @warn
       (util/info "Adding checkout dependencies:\n")
       (doseq [dep deps]
         (util/info "\u2022 %s\n" (pr-str dep))))

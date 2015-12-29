@@ -16,10 +16,15 @@
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
    ["-b" "--boot-script"         "Print generated boot script for debugging."]
    ["-B" "--no-boot-script"      "Ignore boot script in current directory."]
+   ["-c" "--checkouts SYM:VER"   "Add checkout dependency (eg. -c foo/bar:1.2.3)."
+    :assoc-fn #(let [[p v] (string/split %3 #":" 2)]
+                 (update-in %1 [%2] (fnil conj [])
+                            (pod/canonical-coord [(read-string p) (or v "(0,)")])))]
    ["-C" "--no-colors"           "Remove ANSI escape codes from printed output."]
    ["-d" "--dependencies SYM:VER" "Add dependency to project (eg. -d foo/bar:1.2.3)."
     :assoc-fn #(let [[p v] (string/split %3 #":" 2)]
-                 (update-in %1 [%2] (fnil conj []) [(read-string p) (or v "RELEASE")]))]
+                 (update-in %1 [%2] (fnil conj [])
+                            (pod/canonical-coord [(read-string p) (or v "RELEASE")])))]
    ["-e" "--set-env KEY=VAL"     "Add KEY => VAL to project env map."
     :assoc-fn #(let [[k v] (string/split %3 #"=" 2)]
                  (update-in %1 [%2] (fnil assoc {}) (keyword k) v))]
@@ -134,7 +139,7 @@
       (util/exit-error
         (println (apply str (interpose "\n" errs)))))
 
-    (when (:no-target opts)
+    (when (or (:no-target opts) (boot.App/isWindows))
       (System/setProperty "BOOT_EMIT_TARGET" "no"))
 
     (when (:no-colors opts)
@@ -169,7 +174,8 @@
                             (some->> userscript slurp util/read-string-all))
               localforms  (when profile?
                             (some->> localscript slurp util/read-string-all))
-              initial-env (->> [:source-paths :resource-paths :asset-paths :target-path :dependencies]
+              initial-env (->> [:source-paths :resource-paths :asset-paths
+                                :target-path :dependencies :checkouts]
                                (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
                                (merge {} (:set-env opts)))
               import-ns   (export-task-namespaces initial-env)

@@ -94,12 +94,13 @@
   "Given an env map, returns a list of maps of the form
      {:dep [foo/bar \"1.2.3\"], :jar \"file:...\"}
    corresponding to the resolved dependencies (including transitive deps)."
-  [env]
-  (->> [:dependencies :repositories :local-repo :offline? :mirrors :proxy]
-    (select-keys env)
-    resolve-dependencies-memoized*
-    ksort/topo-sort
-    (map (fn [x] {:dep x :jar (dep->path x)}))))
+  [{:keys [checkouts] :as env}]
+  (let [checkouts (set (map first checkouts))]
+    (->> [:dependencies :repositories :local-repo :offline? :mirrors :proxy]
+         (select-keys env)
+         resolve-dependencies-memoized*
+         ksort/topo-sort
+         (keep (fn [[p :as x]] (when-not (checkouts p) {:dep x :jar (dep->path x)}))))))
 
 (defn resolve-dependency-jars
   "Given an env map, resolves dependencies and returns a list of dependency jar 
