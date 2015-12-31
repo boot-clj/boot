@@ -773,10 +773,10 @@
     (fn [fs & {:keys [link]}]
       (let [link  (when link :tmp)
             [a b] [@prev (reset! prev (output-fileset fs))]]
-        (doseq [d @dirs :let [p! (partial fs/patch! (fs/mkfs d) a b :link)]]
-          (future (try (p! link)
-                       (catch Throwable t
-                         (if-not link (throw t) (p! nil))))))))))
+        (mapv deref (for [d @dirs :let [p! (partial fs/patch! (fs/mkfs d) a b :link)]]
+                      (future (try (p! link)
+                                   (catch Throwable t
+                                     (if-not link (throw t) (p! nil)))))))))))
 
 (defn- run-tasks
   "Given a task pipeline, builds the initial fileset, sets the initial build
