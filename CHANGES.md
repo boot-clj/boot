@@ -12,10 +12,31 @@
   for checkout dependencies
 - `-U`, `--update-snapshot` option &mdash; updates boot to latest snapshot version
 - optional argument to `-u`, `--update` &mdash; sets global default boot version
+- `-v`, `--verify-deps` option to `show` task &mdash; verify jar signatures and show deps tree [#375][375]
 
 #### Deprecated
 
 - The `checkout` task, replaced by the `--checkouts` boot option
+
+[345]: https://github.com/boot-clj/boot/issues/345
+
+## 2.5.5
+
+#### Fixed
+
+- Issue with 2.5.4 where it was possible for boot to exit before all files
+  were written to target dir.
+
+## 2.5.4
+
+#### Fixed
+
+- The `target` task falls back to copying when hardlinks aren't possible
+  [#373][373].
+- Use a `ByteArrayInputStream` instead of a `StringBufferInputStream` when
+  parsing `pom.xml` strings.
+
+[373]: https://github.com/boot-clj/boot/issues/373
 
 ## 2.5.3
 

@@ -149,13 +149,90 @@
   [env]
   (->> env jars-dep-graph ksort/topo-sort reverse))
 
+(defn dep-spec->map [dep]
+  (let [[name version & rest] dep
+        meta (apply hash-map rest)]
+    (assoc meta :name name :version version)))
+
+(defn map->dep-spec [{:keys [name version] :as m}]
+  (into [name version] (apply concat (dissoc m :name :version))))
+
+(declare check-signature)
+
+(defn- ^{:boot/from :technomancy/leiningen} fetch-key
+  [signature err]
+  (if (or (re-find #"Can't check signature: public key not found" err)
+        (re-find #"Can't check signature: No public key" err))
+    (let [key (second (re-find #"using \w+ key ID (.+)" err))
+          {:keys [exit]} (gpg/gpg "--recv-keys" "--" key)]
+      (if (zero? exit)
+        (check-signature signature)
+        :no-key))
+    :bad-sig))
+
+(defn- ^{:boot/from :technomancy/leiningen} check-signature
+  [signature]
+  (let [{:keys [err exit]} (gpg/gpg "--verify" "--" (str signature))]
+    (if (zero? exit)
+      :signed ; TODO distinguish between signed and trusted
+      (fetch-key signature err))))
+
+(defn ignore-checksum [[name settings]]
+  [name (assoc
+          (if (string? settings) {:url settings} settings)
+          :checksum :ignore)])
+
+(defn ^{:boot/from :technomancy/leiningen} get-signature
+  ;; TODO: check pom signature too
+  [dep {:keys [repositories mirrors]}]
+  (try
+    (->> (aether/resolve-dependencies
+           :repositories (map ignore-checksum repositories)
+           :mirrors      mirrors
+           :coordinates  [(-> dep
+                            dep-spec->map
+                            (assoc :extension "jar.asc")
+                            map->dep-spec)])
+      (aether/dependency-files)
+      (filter #(.endsWith (.getName %) ".asc"))
+      (first))
+    (catch DependencyResolutionException _)))
+
+(def verify-colors {:signed   ansi/bold-cyan
+                    :unsigned ansi/bold-red
+                    :no-key   ansi/bold-yellow
+                    :bad-sig  ansi/bold-yellow})
+
+(defn verify-dep [env dep]
+  (vary-meta dep #(assoc %
+                    :verification (if-let [signature (get-signature dep env)]
+                                    (check-signature signature)
+                                    :unsigned))))
+
+(defn map-tree [f tree]
+  (map (fn [[parent children]]
+         [(f parent) (map-tree f children)]) tree))
+
+(defn- verify-deps [tree env]
+  (map-tree (partial verify-dep env) tree))
+
+(defn sig-status-prefix [dep]
+  (when-let [verification (:verification (meta dep))]
+    ((verify-colors verification) (format "%-9s " verification))))
+
+(defn colorize-dep [dep]
+  (if-let [verification (:verification (meta dep))]
+    ((verify-colors verification) (pr-str dep))
+    (pr-str dep)))
+
 (defn dep-tree
   "Returns the printed dependency graph as a string."
-  [env]
-  (->> env
+  [env & [verify?]]
+  (-> env
     resolve-dependencies-memoized*
-    (aether/dependency-hierarchy (:dependencies env))
-    util/print-tree
+    (->> (aether/dependency-hierarchy (:dependencies env)))
+    (cond-> verify? (verify-deps env))
+    (util/print-tree (when verify? sig-status-prefix) colorize-dep)
     with-out-str))
 
 (defn- pom-xml-parse-string

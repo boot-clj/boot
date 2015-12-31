@@ -177,7 +177,8 @@
    p pedantic         bool  "Print graph of dependency conflicts."
    P pods REGEX       regex "The name filter used to select which pods to inspect."
    U update-snapshots bool  "Include snapshot versions in updates searches."
-   u updates          bool  "Print newer releases of outdated dependencies."]
+   u updates          bool  "Print newer releases of outdated dependencies."
+   v verify-deps      bool  "Include signature status of each dependency in graph."]
 
   (let [usage      (delay (*usage*))
         pretty-str #(with-out-str (pp/pprint %))
@@ -198,11 +199,11 @@
                                 (core/get-env)
                                 (pod/with-eval-in p boot.pod/env))]
                   (when pods (util/info "\nPod: %s\n\n" pod-name))
-                  (cond deps     (print (pod/with-call-worker (boot.aether/dep-tree ~pod-env)))
-                        env      (println (pretty-str (assoc pod-env :config (boot.App/config))))
-                        updates  (mapv prn (pod/outdated pod-env :snapshots update-snapshots))
-                        pedantic (pedantic/prn-conflicts pod-env)
-                        :else    @usage))))))))
+                  (cond (or deps verify-deps) (print (pod/with-call-worker (boot.aether/dep-tree ~pod-env ~verify-deps)))
+                        env                   (println (pretty-str (assoc pod-env :config (boot.App/config))))
+                        updates               (mapv prn (pod/outdated pod-env :snapshots update-snapshots))
+                        pedantic              (pedantic/prn-conflicts pod-env)
+                        :else                 @usage))))))))
 
 (core/deftask wait
   "Wait before calling the next handler.

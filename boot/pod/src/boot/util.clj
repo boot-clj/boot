@@ -218,7 +218,7 @@
 (defn print-tree
   "Pretty prints tree, with the optional prefixes prepended to each line. The
   output is similar to the tree(1) unix program.
-  
+
   A tree consists of a graph of nodes of the format [<name> <nodes>], where
   <name> is a string and <nodes> is a set of nodes (the children of this node).
   
@@ -230,17 +230,26 @@
 
       --XX└── foo
       --XX    └── bar
-      --XX        └── baz"
-  [tree & [prefixes]]
-  (loop [[[node branch] & more] (seq tree)]
-    (when node
-      (let [pfx      (cond (not prefixes) "" (seq more) "├── " :else "└── ")
-            pfx      (ansi/blue (str (apply str prefixes) pfx))]
-        (println (str pfx node)))
-      (when branch
-        (let [pfx (cond (not prefixes) "" (seq more) "│   " :else "    ")]
-          (print-tree branch (concat prefixes (list pfx)))))
-      (recur more))))
+      --XX        └── baz
+
+  You can also pass a function to generate the prefix instead of a
+  collection of prefixes that will be passed the node. Passing a
+  function to generate the string representation of the node itself is
+  also an option."
+  [tree & [prefixes node-fn]]
+  (let [prefix-fn (if (fn? prefixes)
+                    prefixes
+                    (constantly (ansi/blue (apply str prefixes))))
+        node-fn (if node-fn node-fn str)]
+    (loop [[[node branch] & more] (seq tree)]
+      (when node
+        (let [pfx (cond (not prefixes) "" (seq more) "├── " :else "└── ")
+              pfx (str (prefix-fn node) (ansi/blue pfx))]
+          (println (str pfx (node-fn node))))
+        (when branch
+          (let [pfx (cond (not prefixes) "" (seq more) "│   " :else "    ")]
+            (print-tree branch #(str (prefix-fn %) (ansi/blue pfx)) node-fn)))
+        (recur more)))))
 
 (defn path->ns
   "Returns the namespace symbol corresponding to the source file path."

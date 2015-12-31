@@ -33,7 +33,7 @@ life easier in Boot scripts.
 
 <hr>
 
-### [`*colorize?*`](../../2.5.3/boot/pod/src/boot/util.clj#L45)
+### [`*colorize?*`](../../2.5.5/boot/pod/src/boot/util.clj#L45)
 
 ```
 Atom containing the value that determines whether ANSI colors escape codes
@@ -42,7 +42,7 @@ will be printed with boot output.
 
 <hr>
 
-### [`*sh-dir*`](../../2.5.3/boot/pod/src/boot/util.clj#L314)
+### [`*sh-dir*`](../../2.5.5/boot/pod/src/boot/util.clj#L314)
 
 ```
 The directory to use as CWD for shell commands.
@@ -50,7 +50,7 @@ The directory to use as CWD for shell commands.
 
 <hr>
 
-### [`*verbosity*`](../../2.5.3/boot/pod/src/boot/util.clj#L31)
+### [`*verbosity*`](../../2.5.5/boot/pod/src/boot/util.clj#L31)
 
 ```
 Atom containing the verbosity level, 1 is lowest, 3 highest. Level 2
@@ -68,7 +68,7 @@ Levels:
 
 <hr>
 
-### [`auto-flush`](../../2.5.3/boot/pod/src/boot/util.clj#L251)
+### [`auto-flush`](../../2.5.5/boot/pod/src/boot/util.clj#L251)
 
 ```clojure
 (auto-flush writer)
@@ -82,7 +82,7 @@ boot exits, even if output was written from a background thread.
 
 <hr>
 
-### [`bind-syms`](../../2.5.3/boot/pod/src/boot/util.clj#L293)
+### [`bind-syms`](../../2.5.5/boot/pod/src/boot/util.clj#L293)
 
 ```clojure
 (bind-syms form)
@@ -94,7 +94,7 @@ Returns the names bound in the given destructuring form.
 
 <hr>
 
-### [`colorize?-system-default`](../../2.5.3/boot/pod/src/boot/util.clj#L21)
+### [`colorize?-system-default`](../../2.5.5/boot/pod/src/boot/util.clj#L21)
 
 ```clojure
 (colorize?-system-default)
@@ -111,7 +111,7 @@ turn it off.
 
 <hr>
 
-### [`dbug`](../../2.5.3/boot/pod/src/boot/util.clj#L57)
+### [`dbug`](../../2.5.5/boot/pod/src/boot/util.clj#L57)
 
 ```clojure
 (dbug & more)
@@ -124,7 +124,7 @@ passing to clojure.core/format.
 
 <hr>
 
-### [`dep-as-map`](../../2.5.3/boot/pod/src/boot/util.clj#L274)
+### [`dep-as-map`](../../2.5.5/boot/pod/src/boot/util.clj#L274)
 
 ```clojure
 (dep-as-map [project version & kvs])
@@ -137,7 +137,7 @@ keys plus any modifiers (eg. :scope, :exclusions, etc).
 
 <hr>
 
-### [`do-while-let`](../../2.5.3/boot/pod/src/boot/util.clj#L126)
+### [`do-while-let`](../../2.5.5/boot/pod/src/boot/util.clj#L126)
 
 ```clojure
 (do-while-let [binding test] & body)
@@ -149,7 +149,7 @@ Like while-let, except that the body is executed at least once.
 
 <hr>
 
-### [`dosh`](../../2.5.3/boot/pod/src/boot/util.clj#L330)
+### [`dosh`](../../2.5.5/boot/pod/src/boot/util.clj#L330)
 
 ```clojure
 (dosh & args)
@@ -163,7 +163,7 @@ stdout and stderr as it is produced.
 
 <hr>
 
-### [`dotoseq`](../../2.5.3/boot/pod/src/boot/util.clj#L133)
+### [`dotoseq`](../../2.5.5/boot/pod/src/boot/util.clj#L133)
 
 ```clojure
 (dotoseq obj seq-exprs & body)
@@ -180,7 +180,7 @@ A cross between doto and doseq. For example:
 
 <hr>
 
-### [`exit-error`](../../2.5.3/boot/pod/src/boot/util.clj#L173)
+### [`exit-error`](../../2.5.5/boot/pod/src/boot/util.clj#L173)
 
 ```clojure
 (exit-error & body)
@@ -196,7 +196,7 @@ is called which handles the exit behavior (calling shutdown hooks etc.).
 
 <hr>
 
-### [`exit-ok`](../../2.5.3/boot/pod/src/boot/util.clj#L184)
+### [`exit-ok`](../../2.5.5/boot/pod/src/boot/util.clj#L184)
 
 ```clojure
 (exit-ok & body)
@@ -212,7 +212,7 @@ is called which handles the exit behavior (calling shutdown hooks etc.).
 
 <hr>
 
-### [`extract-ids`](../../2.5.3/boot/pod/src/boot/util.clj#L267)
+### [`extract-ids`](../../2.5.5/boot/pod/src/boot/util.clj#L267)
 
 ```clojure
 (extract-ids sym)
@@ -225,7 +225,7 @@ non-namespaced symbols have group-id the same as artifact-id.
 
 <hr>
 
-### [`fail`](../../2.5.3/boot/pod/src/boot/util.clj#L75)
+### [`fail`](../../2.5.5/boot/pod/src/boot/util.clj#L75)
 
 ```clojure
 (fail & more)
@@ -238,7 +238,7 @@ passing to clojure.core/format.
 
 <hr>
 
-### [`guard`](../../2.5.3/boot/pod/src/boot/util.clj#L160)
+### [`guard`](../../2.5.5/boot/pod/src/boot/util.clj#L160)
 
 ```clojure
 (guard expr & [default])
@@ -251,7 +251,7 @@ not given) if an exception is thrown, otherwise returns the result.
 
 <hr>
 
-### [`index-of`](../../2.5.3/boot/pod/src/boot/util.clj#L288)
+### [`index-of`](../../2.5.5/boot/pod/src/boot/util.clj#L288)
 
 ```clojure
 (index-of v val)
@@ -263,7 +263,7 @@ Find the index of val in the sequential collection v, or nil if not found.
 
 <hr>
 
-### [`info`](../../2.5.3/boot/pod/src/boot/util.clj#L63)
+### [`info`](../../2.5.5/boot/pod/src/boot/util.clj#L63)
 
 ```clojure
 (info & more)
@@ -276,7 +276,7 @@ passing to clojure.core/format.
 
 <hr>
 
-### [`jarname`](../../2.5.3/boot/pod/src/boot/util.clj#L282)
+### [`jarname`](../../2.5.5/boot/pod/src/boot/util.clj#L282)
 
 ```clojure
 (jarname project version)
@@ -289,7 +289,7 @@ symbol and version.
 
 <hr>
 
-### [`let-assert-keys`](../../2.5.3/boot/pod/src/boot/util.clj#L150)
+### [`let-assert-keys`](../../2.5.5/boot/pod/src/boot/util.clj#L150)
 
 ```clojure
 (let-assert-keys binding & body)
@@ -302,7 +302,7 @@ is missing.
 
 <hr>
 
-### [`path->ns`](../../2.5.3/boot/pod/src/boot/util.clj#L245)
+### [`path->ns`](../../2.5.5/boot/pod/src/boot/util.clj#L245)
 
 ```clojure
 (path->ns path)
@@ -314,7 +314,7 @@ Returns the namespace symbol corresponding to the source file path.
 
 <hr>
 
-### [`pp*`](../../2.5.3/boot/pod/src/boot/util.clj#L299)
+### [`pp*`](../../2.5.5/boot/pod/src/boot/util.clj#L299)
 
 ```clojure
 (pp* expr)
@@ -326,7 +326,7 @@ Pretty-print expr using the code dispatch.
 
 <hr>
 
-### [`pp-str`](../../2.5.3/boot/pod/src/boot/util.clj#L304)
+### [`pp-str`](../../2.5.5/boot/pod/src/boot/util.clj#L304)
 
 ```clojure
 (pp-str expr)
@@ -338,7 +338,7 @@ Pretty-print expr to a string using the code dispatch.
 
 <hr>
 
-### [`print-ex`](../../2.5.3/boot/pod/src/boot/util.clj#L208)
+### [`print-ex`](../../2.5.5/boot/pod/src/boot/util.clj#L208)
 
 ```clojure
 (print-ex ex)
@@ -350,7 +350,7 @@ Print exception to *err* as appropriate for the current *verbosity* level.
 
 <hr>
 
-### [`print-tree`](../../2.5.3/boot/pod/src/boot/util.clj#L218)
+### [`print-tree`](../../2.5.5/boot/pod/src/boot/util.clj#L218)
 
 ```clojure
 (print-tree tree & [prefixes])
@@ -376,7 +376,7 @@ prints:
 
 <hr>
 
-### [`read-string-all`](../../2.5.3/boot/pod/src/boot/util.clj#L309)
+### [`read-string-all`](../../2.5.5/boot/pod/src/boot/util.clj#L309)
 
 ```clojure
 (read-string-all s)
@@ -388,7 +388,7 @@ Reads all forms from the string s, by wrapping in parens before reading.
 
 <hr>
 
-### [`sh`](../../2.5.3/boot/pod/src/boot/util.clj#L318)
+### [`sh`](../../2.5.5/boot/pod/src/boot/util.clj#L318)
 
 ```clojure
 (sh & args)
@@ -402,7 +402,7 @@ to stdout and stderr as it is produced.
 
 <hr>
 
-### [`warn`](../../2.5.3/boot/pod/src/boot/util.clj#L69)
+### [`warn`](../../2.5.5/boot/pod/src/boot/util.clj#L69)
 
 ```clojure
 (warn & more)
@@ -415,7 +415,7 @@ passing to clojure.core/format.
 
 <hr>
 
-### [`warn-deprecated`](../../2.5.3/boot/pod/src/boot/util.clj#L81)
+### [`warn-deprecated`](../../2.5.5/boot/pod/src/boot/util.clj#L81)
 
 ```clojure
 (warn-deprecated & args)
@@ -429,7 +429,7 @@ variable, which if set to no suppresses these messages.
 
 <hr>
 
-### [`while-let`](../../2.5.3/boot/pod/src/boot/util.clj#L119)
+### [`while-let`](../../2.5.5/boot/pod/src/boot/util.clj#L119)
 
 ```clojure
 (while-let [binding test] & body)
@@ -442,7 +442,7 @@ bound to binding.
 
 <hr>
 
-### [`with-err-str`](../../2.5.3/boot/pod/src/boot/util.clj#L199)
+### [`with-err-str`](../../2.5.5/boot/pod/src/boot/util.clj#L199)
 
 ```clojure
 (with-err-str & body)
@@ -457,7 +457,7 @@ Returns the string created by any nested printing calls.
 
 <hr>
 
-### [`with-let`](../../2.5.3/boot/pod/src/boot/util.clj#L113)
+### [`with-let`](../../2.5.5/boot/pod/src/boot/util.clj#L113)
 
 ```clojure
 (with-let [binding resource] & body)
@@ -470,7 +470,7 @@ a cross between doto and with-open.
 
 <hr>
 
-### [`with-resolve`](../../2.5.3/boot/pod/src/boot/util.clj#L143)
+### [`with-resolve`](../../2.5.5/boot/pod/src/boot/util.clj#L143)
 
 ```clojure
 (with-resolve bindings & body)
@@ -483,7 +483,7 @@ namespaces as necessary, binds them, and evaluates the body.
 
 <hr>
 
-### [`with-rethrow`](../../2.5.3/boot/pod/src/boot/util.clj#L166)
+### [`with-rethrow`](../../2.5.5/boot/pod/src/boot/util.clj#L166)
 
 ```clojure
 (with-rethrow expr message)
@@ -497,7 +497,7 @@ exception is rethrown.
 
 <hr>
 
-### [`with-semaphore`](../../2.5.3/boot/pod/src/boot/util.clj#L89)
+### [`with-semaphore`](../../2.5.5/boot/pod/src/boot/util.clj#L89)
 
 ```clojure
 (with-semaphore sem & body)
@@ -511,7 +511,7 @@ will be released before returning.
 
 <hr>
 
-### [`with-semaphore-noblock`](../../2.5.3/boot/pod/src/boot/util.clj#L101)
+### [`with-semaphore-noblock`](../../2.5.5/boot/pod/src/boot/util.clj#L101)
 
 ```clojure
 (with-semaphore-noblock sem & body)
@@ -525,7 +525,7 @@ will be released before returning.
 
 <hr>
 
-### [`without-exiting`](../../2.5.3/boot/pod/src/boot/util.clj#L342)
+### [`without-exiting`](../../2.5.5/boot/pod/src/boot/util.clj#L342)
 
 ```clojure
 (without-exiting & body)
