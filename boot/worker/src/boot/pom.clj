@@ -11,7 +11,7 @@
    [clojure.data.zip.xml :refer [attr text xml-> xml1->]])
   (:import
    [java.util     Properties]
-   [java.io       StringBufferInputStream]
+   [java.io       ByteArrayInputStream]
    [java.util.jar JarEntry JarOutputStream]))
 
 ;;; elements ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -25,7 +25,7 @@
 ;;; private ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn pom-xml-parse-string [xml-str]
-  (let [z   (-> xml-str StringBufferInputStream. parse xml-zip)
+  (let [z   (-> xml-str .getBytes ByteArrayInputStream. parse xml-zip)
         gid (util/guard (xml1-> z :groupId text))
         aid (util/guard (xml1-> z :artifactId text))]
     {:project     (util/guard (if (= gid aid) (symbol aid) (symbol gid aid)))

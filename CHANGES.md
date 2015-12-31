@@ -1,5 +1,16 @@
 # Changes
 
+## 2.5.4
+
+#### Fixed
+
+- The `target` task falls back to copying when hardlinks aren't possible
+  [#373][373].
+- Use a `ByteArrayInputStream` instead of a `StringBufferInputStream` when
+  parsing `pom.xml` strings.
+
+[373]: https://github.com/boot-clj/boot/issues/373
+
 ## 2.5.3
 
 #### Improved
