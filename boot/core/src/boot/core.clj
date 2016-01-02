@@ -776,10 +776,9 @@
   fileset containing only the latest project files."
   [& [fileset]]
   (let [fileset (when fileset (rm fileset (user-files fileset)))]
-    (sync-user-dirs!)
     (-> (new-fileset)
-        (add-user-asset (first (user-asset-dirs)))
-        (add-user-source (first (user-source-dirs)))
+        (add-user-asset    (first (user-asset-dirs)))
+        (add-user-source   (first (user-source-dirs)))
         (add-user-resource (first (user-resource-dirs)))
         (add-user-checkout (first (user-checkout-dirs)))
         (update-in [:tree] merge (:tree fileset)))))

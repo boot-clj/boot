@@ -651,19 +651,19 @@
       (core/empty-dir! tgt)
       (let [warname (or file "project.war")
             warfile (io/file tgt warname)
-            inf?    #(contains? #{"META-INF" "WEB-INF"} %)]
-        (let [->war   #(let [r    (core/tmp-path %)
-                             r'   (file/split-path r)
-                             path (->> (if (.endsWith r ".jar")
-                                         ["lib" (last r')]
-                                         (into ["classes"] r'))
-                                       (into ["WEB-INF"]))]
-                         (if (inf? (first r')) r (.getPath (apply io/file path))))
-              entries (core/output-files fs)
-              index   (->> entries (mapv (juxt ->war #(.getPath (core/tmp-file %)))))]
-          (util/info "Writing %s...\n" (.getName warfile))
-          (jar/spit-jar! (.getPath warfile) index {} nil)
-          (-> fs (core/add-resource tgt) core/commit!))))))
+            inf?    #(contains? #{"META-INF" "WEB-INF"} %)
+            ->war   #(let [r    (core/tmp-path %)
+                           r'   (file/split-path r)
+                           path (->> (if (.endsWith r ".jar")
+                                       ["lib" (last r')]
+                                       (into ["classes"] r'))
+                                     (into ["WEB-INF"]))]
+                       (if (inf? (first r')) r (.getPath (apply io/file path))))
+            entries (core/output-files fs)
+            index   (->> entries (mapv (juxt ->war #(.getPath (core/tmp-file %)))))]
+        (util/info "Writing %s...\n" (.getName warfile))
+        (jar/spit-jar! (.getPath warfile) index {} nil)
+        (-> fs (core/add-resource tgt) core/commit!)))))
 
 (core/deftask zip
   "Build a zip file for the project."
