@@ -2,6 +2,10 @@
 
 ## 2.6.0
 
+#### Improved
+
+- More efficient syncing of project directories with Boot's internal ones.
+
 #### Added
 
 - `boot.pod/this-pod` &mdash; a `WeakReference` to the current pod
@@ -12,7 +16,8 @@
   for checkout dependencies
 - `-U`, `--update-snapshot` option &mdash; updates boot to latest snapshot version
 - optional argument to `-u`, `--update` &mdash; sets global default boot version
-- `-v`, `--verify-deps` option to `show` task &mdash; verify jar signatures and show deps tree [#375][375]
+- `-v`, `--verify-deps` option to `show` task &mdash; verify jar signatures and
+  show deps tree [#375][375]
 
 #### Deprecated
 

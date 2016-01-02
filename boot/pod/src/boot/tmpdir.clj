@@ -1,13 +1,14 @@
 (ns boot.tmpdir
   (:refer-clojure :exclude [time hash])
   (:require
-    [clojure.java.io  :as io]
-    [clojure.set      :as set]
-    [clojure.data     :as data]
-    [boot.pod         :as pod]
-    [boot.util        :as util]
-    [boot.file        :as file]
-    [boot.from.digest :as digest])
+    [clojure.java.io        :as io]
+    [clojure.set            :as set]
+    [clojure.data           :as data]
+    [boot.filesystem.patch  :as fsp]
+    [boot.pod               :as pod]
+    [boot.util              :as util]
+    [boot.file              :as file]
+    [boot.from.digest       :as digest])
   (:import
     [java.io File]
     [java.util Properties]))
@@ -229,10 +230,11 @@
     (let [{:keys [dirs tree blob]} this
           prev (get-in @state [:prev dirs])
           {:keys [added removed changed]} (diff* prev this [:id :dir])]
+      (util/dbug "Committing fileset...\n")
       (doseq [tmpf (set/union (ls removed) (ls changed))
               :let [prev (get-in prev [:tree (path tmpf)])]]
         (when (.exists ^File (file prev))
-          (util/dbug "Removing %s...\n" (path prev))
+          (util/dbug "Commit: removing %s %s...\n" (id prev) (path prev))
           (file/delete-file (file prev))))
       (let [this (loop [this this
                         [tmpf & tmpfs]
@@ -247,7 +249,7 @@
                                       (update-in this [:tree] dissoc p))]
                          (if err? 
                            (util/warn "Merge conflict: not adding %s\n" p)
-                           (do (util/dbug "Adding %s...\n" p)
+                           (do (util/dbug "Commit: adding   %s %s...\n" (id tmpf) p)
                                (file/hard-link src dst)))
                          (recur this tmpfs))))]
         (util/with-let [_ this] (swap! state assoc-in [:prev dirs] this)))))
@@ -320,23 +322,25 @@
         (diff* before after props)]
     (update-in added [:tree] merge (:tree changed))))
 
-(defn patch
-  [before after & {:keys [link]}]
+(defn fileset-patch
+  [before after link]
   (let [{:keys [added removed changed]}
         (diff* before after [:hash :time])
         link    (#{:tmp :all} link) ; only nil, :tmp, or :all are valid
-        link?   #(and link (or (= :all link) (= (:blob after) (:bdir %))))
-        add-ops (->> added   :tree vals (map (partial vector :write)))
-        add-ops (for [x (->> added :tree vals)]
-                  [(if (link? x) :link :write) x])
-        rem-ops (->> removed :tree vals (map (partial vector :delete)))
-        chg-ops (->> changed :tree vals
-                     (map (fn [{:keys [hash path] :as f}]
-                            (let [hash' (get-in before [:tree path :hash])]
-                              (cond (= hash hash') [:touch f]
-                                    (link? f)      [:link  f]
-                                    :else          [:write f])))))]
-    (reduce into [] [add-ops rem-ops chg-ops])))
+        link?   #(and link (or (= :all link) (= (:blob after) (:bdir %))))]
+    (-> (->> removed :tree vals (map #(vector :delete (path %))))
+        (into (for [x (->> added :tree vals)]
+                [(if (link? x) :link :write) (path x) (file x) (time x)]))
+        (into (->> changed :tree vals
+                   (map (fn [{:keys [hash path file time] :as f}]
+                          (let [hash' (get-in before [:tree path :hash])]
+                            (cond (= hash hash') [:touch path time]
+                                  (link? f)      [:link  path file time]
+                                  :else          [:write path file time])))))))))
+
+(defmethod fsp/patch TmpFileSet
+  [before after link]
+  (fileset-patch before after link))
 
 (defn removed
   [before after & props]

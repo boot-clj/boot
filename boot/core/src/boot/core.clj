@@ -122,18 +122,26 @@
                                   (apply set/union)
                                   (#(set/difference % (user-temp-dirs)))))
 
-(defn- sync-user-dirs!
-  []
-  (doseq [[k d] {:asset-paths    (user-asset-dirs)
-                 :source-paths   (user-source-dirs)
-                 :resource-paths (user-resource-dirs)
-                 :checkout-paths (user-checkout-dirs)}]
-    (when-let [s (->> (get-env k) (filter #(.isDirectory (io/file %))) seq)]
-      (util/dbug "Syncing project dirs to temp dirs...\n")
-      (binding [file/*hard-link* false
-                file/*ignore*    @bootignore]
-        (util/with-semaphore tempdirs-lock
-          (apply file/sync! :time (first d) s))))))
+(let [sync-state (atom {})]
+  (defn- sync-user-dirs!
+    []
+    (locking sync-state
+      (let [debug-mesg (delay (util/dbug "Syncing project dirs to temp dirs...\n"))
+            make-tree  #(fs/mktree (.toPath %) :ignore @bootignore)
+            merge-tree #(let [f (io/file %2)]
+                          (if (not (.isDirectory f))
+                            %1
+                            (fs/merge-trees %1 (make-tree f))))]
+        (doseq [[k d] {:asset-paths    (user-asset-dirs)
+                       :source-paths   (user-source-dirs)
+                       :resource-paths (user-resource-dirs)
+                       :checkout-paths (user-checkout-dirs)}]
+          (let [d (first d)]
+            @debug-mesg
+            (let [tree1 (@sync-state k)
+                  tree2 (->> k get-env (reduce merge-tree (fs/mktree)))]
+              (fs/patch! (fs/mkfs d) tree1 tree2)
+              (swap! sync-state assoc k tree2))))))))
 
 (defn- set-fake-class-path!
   "Sets the fake.class.path system property to reflect all JAR files on the
