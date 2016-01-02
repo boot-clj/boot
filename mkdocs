@@ -11,6 +11,12 @@
 (defn -main [& _]
 
   (write-docs
+    :ns boot.task.built-in
+    :tag *boot-version*
+    :src "boot/core/src"
+    :doc "Boot built-in tasks.")
+
+  (write-docs
     :ns boot.util
     :tag *boot-version*
     :src "boot/pod/src"
@@ -76,7 +82,7 @@
       resolve-nontransitive-dependencies apply-exclusions apply-global-exclusions
       canonical-coord copy-dependency-jar-entries default-dependencies
       dependency-pom-properties dependency-pom-properties-map outdated
-      extract-ids jars-dep-graph jars-in-dep-order)
+      extract-ids jars-dep-graph jars-in-dep-order coord->map map->coord)
 
     (section
       "Jars"
@@ -95,12 +101,6 @@
     (section
       "Deprecated / Internal"
       set-pods! set-data! set-pod-id! set-worker-pod!))
-
-  (write-docs
-    :ns boot.task.built-in
-    :tag *boot-version*
-    :src "boot/core/src"
-    :doc "Boot built-in tasks.")
 
   (write-docs
     :ns boot.core

@@ -149,6 +149,20 @@
   (let [[aid gid] (util/extract-ids project)]
     (io/resource (format "META-INF/maven/%s/%s/pom.properties" aid gid))))
 
+(defn coord->map
+  "Returns the map representation for the given dependency vector. The map
+  will include :project and :version keys in addition to any other keys in
+  the dependency vector (eg., :scope, :exclusions, etc)."
+  [[p v & more]]
+  (merge {:project p :version v} (apply hash-map more)))
+
+(defn map->coord
+  "Returns the dependency vector for the given map representation. The project
+  and version will be taken from the values of the :project and :version keys
+  and all other keys will be appended pairwise."
+  [{:keys [project version] :as more}]
+  (into [project version] (mapcat identity (dissoc more :project :version))))
+
 (defn dependency-pom-properties
   "Given a dependency coordinate of the form [id version ...], returns a
   Properties object corresponding to the dependency jar's pom.properties file."

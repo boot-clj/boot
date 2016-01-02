@@ -14,6 +14,8 @@
 - `boot.pod/with-invoke-in` &mdash; low-level invocation, no serialization
 - `boot.pod/with-invoke-worker` &mdash; as above but invokes in the worker pod
 - `boot.pod/pod-name` &mdash; get/set the name of a pod
+- `boot.pod/coord->map` &mdash; dependency vector to map helper function
+- `boot.pod/map->coord` &mdash; map to dependency vector helper function
 - `-c`, `--checkouts` boot option / `:checkouts` env key &mdash; deeper
   integration for checkout dependencies
 - `-o`, `--offline` boot option &mdash; disable downloading Maven dependencies
