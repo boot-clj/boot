@@ -5,6 +5,8 @@
 #### Improved
 
 - More efficient syncing of project directories with Boot's internal ones.
+- Call `boot.core/load-data-readers!` automatically when new dependencies are
+  loaded via `boot.core/set-env!`.
 
 #### Added
 

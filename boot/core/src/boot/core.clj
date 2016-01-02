@@ -269,6 +269,7 @@
     (report-version-conflicts (find-version-conflicts old new env))
     (->> new (assoc env :dependencies) pod/add-dependencies)
     (add-checkout-dependencies! env)
+    (load-data-readers!)
     (set-fake-class-path!)
     new))
 
