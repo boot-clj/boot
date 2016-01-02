@@ -293,8 +293,10 @@
    (add-wagon! old new env nil))
   ([old new env scheme-map]
    (doseq [maven-coord new]
-     (pod/with-call-worker
-       (boot.aether/add-wagon ~env ~maven-coord ~scheme-map)))
+     (let [{:keys [schemes] :as coord-map} (pod/coord->map maven-coord)
+           maven-coord (pod/map->coord (dissoc coord-map :schemes))]
+       (pod/with-call-worker
+         (boot.aether/add-wagon ~env ~maven-coord ~(or scheme-map schemes)))))
    new))
 
 (defn- order-set-env-keys

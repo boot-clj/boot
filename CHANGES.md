@@ -25,6 +25,8 @@
 - optional argument to `-u`, `--update` &mdash; sets global default boot version
 - `-v`, `--verify-deps` option to `show` task &mdash; verify jar signatures and
   show deps tree [#375][375]
+- wagon dependencies now accept a `:schemes` key &mdash; specify the handler
+  classes for the wagon when the wagon jar has no `leiningen/wagons.clj` entry.
 
 #### Deprecated
 
