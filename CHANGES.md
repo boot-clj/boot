@@ -8,6 +8,11 @@
 - Call `boot.core/load-data-readers!` automatically when new dependencies are
   loaded via `boot.core/set-env!`.
 
+#### Fixed
+
+- Don't set :update :always in aether when resolving Boot's own dependencies
+  unless Boot is being updated.
+
 #### Added
 
 - `boot.pod/this-pod` &mdash; a `WeakReference` to the current pod

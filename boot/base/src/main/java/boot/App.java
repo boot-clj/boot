@@ -40,6 +40,7 @@ public class App {
     private static String                   channel             = "RELEASE";
     private static String                   booturl             = "http://boot-clj.com";
     private static String                   githuburl           = "https://api.github.com/repos/boot-clj/boot/releases";
+    private static boolean                  update_always       = false;
     private static ClojureRuntimeShim       aethershim          = null;
     private static HashMap<String, File[]>  depsCache           = null;
 
@@ -371,7 +372,8 @@ public class App {
         shim.require("boot.aether");
         if (localrepo != null)
             shim.invoke("boot.aether/set-local-repo!", localrepo);
-        shim.invoke("boot.aether/update-always!");
+        if (update_always)
+            shim.invoke("boot.aether/update-always!");
         return (File[]) shim.invoke(
             "boot.aether/resolve-dependency-jars", sym, bootversion, cljname, cljversion); }
 
@@ -424,9 +426,10 @@ public class App {
 
     public static void
     updateBoot(File bootprops, String version, String chan) throws Exception {
-        bootversion  = version;
-        channel      = chan;
-        Properties p = writeProps(bootprops);
+        update_always = true;
+        bootversion   = version;
+        channel       = chan;
+        Properties p  = writeProps(bootprops);
         p.store(System.out, booturl); }
 
     public static void
