@@ -12,9 +12,12 @@
 - `boot.pod/with-invoke-in` &mdash; low-level invocation, no serialization
 - `boot.pod/with-invoke-worker` &mdash; as above but invokes in the worker pod
 - `boot.pod/pod-name` &mdash; get/set the name of a pod
-- `-c`, `--checkouts` option / `:checkouts` env key &mdash; deeper integration
-  for checkout dependencies
-- `-U`, `--update-snapshot` option &mdash; updates boot to latest snapshot version
+- `-c`, `--checkouts` boot option / `:checkouts` env key &mdash; deeper
+  integration for checkout dependencies
+- `-o`, `--offline` boot option &mdash; disable downloading Maven dependencies
+  from remote repositories (doesn't apply to Boot's own dependencies)
+- `-U`, `--update-snapshot` boot option &mdash; updates boot to latest snapshot
+  version
 - optional argument to `-u`, `--update` &mdash; sets global default boot version
 - `-v`, `--verify-deps` option to `show` task &mdash; verify jar signatures and
   show deps tree [#375][375]

@@ -29,6 +29,7 @@
     :assoc-fn #(let [[k v] (string/split %3 #"=" 2)]
                  (update-in %1 [%2] (fnil assoc {}) (keyword k) v))]
    ["-h" "--help"                "Print basic usage and help info."]
+   ["-o" "--offline"             "Don't attempt to access remote repositories." :id :offline?]
    ["-P" "--no-profile"          "Skip loading of profile.boot script."]
    ["-r" "--resource-paths PATH" "Add PATH to set of resource directories."
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
@@ -176,7 +177,7 @@
               localforms  (when profile?
                             (some->> localscript slurp util/read-string-all))
               initial-env (->> [:source-paths :resource-paths :asset-paths
-                                :target-path :dependencies :checkouts]
+                                :target-path :dependencies :checkouts :offline?]
                                (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
                                (merge {} (:set-env opts)))
               import-ns   (export-task-namespaces initial-env)
