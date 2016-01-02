@@ -34,6 +34,7 @@
     (let [tasks (#'helpers/available-tasks 'boot.user)
           opts  (->> main/cli-opts (mapv (fn [[x y z]] ["" (str x " " y) z])))
           envs  [["" "BOOT_AS_ROOT"              "Set to 'yes' to allow boot to run as root."]
+                 ["" "BOOT_CLOJARS_MIRROR"       "Specify mirror for clojars.org for boot's own dependencies."]
                  ["" "BOOT_CLOJURE_VERSION"      "The version of Clojure boot will provide (1.7.0)."]
                  ["" "BOOT_CLOJURE_NAME"         "The artifact name of Clojure boot will provide (org.clojure/clojure)."]
                  ["" "BOOT_COLOR"                "Set to 'no' to turn colorized output off."]
@@ -44,6 +45,7 @@
                  ["" "BOOT_JAVA_COMMAND"         "Specify the Java executable (java)."]
                  ["" "BOOT_JVM_OPTIONS"          "Specify JVM options (Unix/Linux/OSX only)."]
                  ["" "BOOT_LOCAL_REPO"           "The local Maven repo path (~/.m2/repository)."]
+                 ["" "BOOT_MAVEN_CENTRAL_MIRROR" "Specify mirror for repo1.maven.org for boot's own dependencies."]
                  ["" "BOOT_VERSION"              "Specify the version of boot core to use."]
                  ["" "BOOT_WARN_DEPRECATED"      "Set to 'no' to suppress deprecation warnings."]]
           files [["" "./boot.properties"         "Specify boot options for this project."]

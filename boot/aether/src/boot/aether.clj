@@ -21,6 +21,10 @@
 (def local-repo           (atom nil))
 (def default-repositories (atom [["clojars"       {:url "https://clojars.org/repo/"}]
                                  ["maven-central" {:url "https://repo1.maven.org/maven2/"}]]))
+(def default-mirrors      (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
+                                       m (boot.App/config "BOOT_MAVEN_CENTRAL_MIRROR")
+                                       f #(when %1 {%2 {:name (str %2 " mirror") :url %1}})]
+                                   (merge {} (f c "clojars") (f m "maven-central")))))
 
 (defn set-offline!    [x] (reset! offline? x))
 (defn set-update!     [x] (reset! update? x))
@@ -72,7 +76,7 @@
                            (map (juxt first (fn [[x y]] (update-in y [:update] #(or % @update?))))))
       :local-repo        (or (:local-repo env) @local-repo nil)
       :offline?          (or @offline? (:offline? env))
-      :mirrors           (:mirrors env)
+      :mirrors           (merge @default-mirrors (:mirrors env))
       :proxy             (or (:proxy env) (get-proxy-settings))
       :transfer-listener transfer-listener
       :repository-session-fn (if (= @update? :always)
@@ -112,9 +116,9 @@
   ([env] (->> env resolve-dependencies (map :jar)))
   ([sym-str version cljversion] (resolve-dependency-jars sym-str version nil cljversion))
   ([sym-str version cljname cljversion]
-     (let [cljname (or cljname "org.clojure/clojure")]
-       (->> {:dependencies [[(symbol cljname) cljversion] [(symbol sym-str) version]]}
-            resolve-dependencies (map (comp io/file :jar)) (into-array java.io.File)))))
+   (let [cljname (or cljname "org.clojure/clojure")]
+     (->> {:dependencies [[(symbol cljname) cljversion] [(symbol sym-str) version]]}
+          resolve-dependencies (map (comp io/file :jar)) (into-array java.io.File)))))
 
 (defn resolve-nontransitive-dependencies
   "Given an env map and a single dependency coordinates vector, resolves the

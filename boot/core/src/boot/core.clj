@@ -56,6 +56,10 @@
 (def ^:private loaded-checkouts  (atom #{}))
 (def ^:private default-repos     [["clojars"       {:url "https://clojars.org/repo/"}]
                                   ["maven-central" {:url "https://repo1.maven.org/maven2"}]])
+(def ^:private default-mirrors   (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
+                                              m (boot.App/config "BOOT_MAVEN_CENTRAL_MIRROR")
+                                              f #(when %1 {%2 {:name (str %2 " mirror") :url %1}})]
+                                          (merge {} (f c "clojars") (f m "maven-central")))))
 
 (def ^:private masks
   {:user     {:user true}
@@ -619,7 +623,8 @@
              :asset-paths      #{}
              :target-path      "target"
              :exclusions       #{}
-             :repositories     default-repos})
+             :repositories     default-repos
+             :mirrors          @default-mirrors})
     (add-watch ::boot #(configure!* %3 %4)))
   (set-fake-class-path!)
   (tmp-dir** nil :asset)

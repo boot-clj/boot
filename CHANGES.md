@@ -13,12 +13,17 @@
 
 #### Added
 
+##### API Functions
+
 - `boot.pod/this-pod` &mdash; a `WeakReference` to the current pod
 - `boot.pod/with-invoke-in` &mdash; low-level invocation, no serialization
 - `boot.pod/with-invoke-worker` &mdash; as above but invokes in the worker pod
 - `boot.pod/pod-name` &mdash; get/set the name of a pod
 - `boot.pod/coord->map` &mdash; dependency vector to map helper function
 - `boot.pod/map->coord` &mdash; map to dependency vector helper function
+
+##### Boot Options
+
 - `-c`, `--checkouts` boot option / `:checkouts` env key &mdash; deeper
   integration for checkout dependencies
 - `-o`, `--offline` boot option &mdash; disable downloading Maven dependencies
@@ -26,10 +31,18 @@
 - `-U`, `--update-snapshot` boot option &mdash; updates boot to latest snapshot
   version
 - optional argument to `-u`, `--update` &mdash; sets global default boot version
+
+##### Task Options
+
 - `-v`, `--verify-deps` option to `show` task &mdash; verify jar signatures and
   show deps tree [#375][375]
+
+##### Boot Environment
+
 - wagon dependencies now accept a `:schemes` key &mdash; specify the handler
   classes for the wagon when the wagon jar has no `leiningen/wagons.clj` entry.
+- `BOOT_CLOJARS_MIRROR` &mdash; specify Maven mirror for Boot's own dependencies.
+- `BOOT_MAVEN_CENTRAL_MIRROR` &mdash; specify Maven mirror for Boot's own dependencies.
 
 #### Deprecated
 
