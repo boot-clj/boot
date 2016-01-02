@@ -232,10 +232,11 @@
           {:keys [added removed changed]} (diff* prev this [:id :dir])]
       (util/dbug "Committing fileset...\n")
       (doseq [tmpf (set/union (ls removed) (ls changed))
-              :let [prev (get-in prev [:tree (path tmpf)])]]
-        (when (.exists ^File (file prev))
-          (util/dbug "Commit: removing %s %s...\n" (id prev) (path prev))
-          (file/delete-file (file prev))))
+              :let [prev (get-in prev [:tree (path tmpf)])
+                    exists? (.exists ^File (file prev))
+                    op (if exists? "removing" "no-op")]]
+        (util/dbug "Commit: %-8s %s %s...\n" op (id prev) (path prev))
+        (when exists? (file/delete-file (file prev))))
       (let [this (loop [this this
                         [tmpf & tmpfs]
                         (->> (set/union (ls added) (ls changed))
