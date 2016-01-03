@@ -24,7 +24,8 @@
     [java.lang.management ManagementFactory]
     [java.util.concurrent LinkedBlockingQueue TimeUnit Semaphore]))
 
-(declare watch-dirs sync! post-env! get-env set-env! tmp-file tmp-dir ls empty-dir!)
+(declare watch-dirs sync! post-env! get-env set-env!
+         tmp-file tmp-dir ls checkout-dirs empty-dir!)
 
 (declare ^{:dynamic true :doc "The running version of boot app."}         *app-version*)
 (declare ^{:dynamic true :doc "The script's name (when run as script)."}  *boot-script*)
@@ -54,7 +55,7 @@
 (def ^:private src-watcher       (atom (constantly nil)))
 (def ^:private repo-config-fn    (atom identity))
 (def ^:private loaded-checkouts  (atom #{}))
-(def ^:private checkout-dirs     (atom #{}))
+(def ^:private checkout-dirs*    (atom #{}))
 (def ^:private default-repos     [["clojars"       {:url "https://clojars.org/repo/"}]
                                   ["maven-central" {:url "https://repo1.maven.org/maven2"}]])
 (def ^:private default-mirrors   (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
@@ -106,7 +107,7 @@
         m (->> masks+ (map masks) (apply merge))
         in-fileset? (or (:input m) (:output m))]
     (util/with-let [d (tmp-dir* k)]
-      (cond (:checkout m) (swap! checkout-dirs conj d)
+      (cond (:checkout m) (swap! checkout-dirs* conj d)
             in-fileset?   (swap! tempdirs conj (tmpd/map->TmpDir (assoc m :dir d))))
       (when (or (:checkout m) (:input m))
         (set-env! :directories #(conj % (.getPath d)))))))
@@ -119,7 +120,6 @@
 (defn- user-asset-dirs    [] (get-dirs {:dirs @tempdirs} #{:user :asset}))
 (defn- user-source-dirs   [] (get-dirs {:dirs @tempdirs} #{:user :source}))
 (defn- user-resource-dirs [] (get-dirs {:dirs @tempdirs} #{:user :resource}))
-(defn- user-checkout-dirs [] @checkout-dirs)
 (defn- non-user-temp-dirs [] (->> [:asset :source :resource]
                                   (map #(get-dirs {:dirs @tempdirs} #{%}))
                                   (apply set/union)
@@ -138,7 +138,7 @@
         (doseq [[k d] {:asset-paths    (user-asset-dirs)
                        :source-paths   (user-source-dirs)
                        :resource-paths (user-resource-dirs)
-                       :checkout-paths (user-checkout-dirs)}]
+                       :checkout-paths (checkout-dirs)}]
           (let [d (first d)]
             @debug-mesg
             (let [tree1 (@sync-state k)
@@ -383,6 +383,12 @@
   [fileset path & [not-found]]
   (get-in fileset [:tree path] not-found))
 (deprecate! "2.0.0" tmpget tmp-get)
+
+(defn checkout-dirs
+  "Get a list of directories containing files that have been extracted from
+  checkout dependency jars."
+  []
+  @checkout-dirs*)
 
 (defn user-dirs
   "Get a list of directories containing files that originated in the project's

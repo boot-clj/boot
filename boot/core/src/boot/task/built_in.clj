@@ -244,7 +244,9 @@
       (let [q            (LinkedBlockingQueue.)
             k            (gensym)
             return       (atom fileset)
-            srcdirs      (map (memfn getPath) (core/user-dirs fileset))
+            srcdirs      (->> (core/checkout-dirs)
+                              (into (core/user-dirs fileset))
+                              (map (memfn getPath)))
             watcher      (apply file/watcher! :time srcdirs)
             debounce     (core/get-env :watcher-debounce)
             watch-target (if manual core/new-build-at core/last-file-change)]

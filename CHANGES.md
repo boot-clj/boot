@@ -25,6 +25,7 @@
 - `boot.pod/pod-name` &mdash; get/set the name of a pod
 - `boot.pod/coord->map` &mdash; dependency vector to map helper function
 - `boot.pod/map->coord` &mdash; map to dependency vector helper function
+- `boot.core/checkout-dirs` &mdash; the set of directories containing checkout dependency files
 
 ##### Boot Options
 
