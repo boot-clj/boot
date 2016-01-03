@@ -3,7 +3,8 @@
    [clojure.java.io  :as io]
    [clojure.set      :as set]
    [clojure.data     :as data]
-   [boot.from.digest :as digest])
+   [boot.from.digest :as digest]
+   [clojure.string   :as str])
   (:import
    [java.net URI]
    [java.io File]
@@ -232,7 +233,8 @@
 
 (defn match-filter?
   [filters f]
-  ((apply some-fn (map (partial partial re-find) filters)) (.getPath ^File f)))
+  (letfn [(normalize [path] (str/replace path #"\\" "/"))]
+    ((apply some-fn (map (partial partial re-find) filters)) (normalize (.getPath ^File f)))))
 
 (defn keep-filters?
   [include exclude f]
