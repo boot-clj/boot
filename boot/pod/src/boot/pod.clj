@@ -205,13 +205,27 @@
          (with-open [in (.getInputStream jarfile entry)]
            (slurp in)))))))
 
+(defn resource-last-modified
+  "Returns the last modified time (long, milliseconds since epoch) of the
+  classpath resource at resource-path. A result of 0 usually indicates that
+  the modification time was not available for this resource."
+  [resource-path]
+  (let [c (.openConnection (io/resource resource-path))]
+      (try (.getLastModified c)
+           (finally (.. c getInputStream close)))))
+
 (defn copy-resource
-  "Copies the contents of the jar resource at resource-path to the path or File
-  out-path on the filesystem. The copy operation is not atomic."
+  "Copies the contents of the classpath resource at resource-path to the path or
+  File out-path on the filesystem, preserving last modified times when possible.
+  The copy operation is not atomic."
   [resource-path out-path]
-  (with-open [in  (io/input-stream (io/resource resource-path))
-              out (io/output-stream (doto (io/file out-path) io/make-parents))]
-    (io/copy in out)))
+  (let [url  (io/resource resource-path)
+        outf (doto (io/file out-path) io/make-parents)]
+    (with-open [in  (io/input-stream url)
+                out (io/output-stream outf)]
+      (io/copy in out)
+      (let [mtime (resource-last-modified resource-path)]
+        (when (< 0 mtime) (.setLastModified outf mtime))))))
 
 (defn non-caching-url-input-stream
   "Returns an InputStream from the URL constructed from url-str, with caching
