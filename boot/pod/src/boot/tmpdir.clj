@@ -194,14 +194,12 @@
     (reduce-kv #(assoc %1 %2 (->map %3)) {} tree)))
 
 (defn- diff*
-  [before after props]
+  [{t1 :tree :as before} {t2 :tree :as after} props]
   (if-not before
     {:added   after
      :removed (assoc after :tree {})
      :changed (assoc after :tree {})}
     (let [props   (or (seq props) [:id])
-          t1      (:tree before)
-          t2      (:tree after)
           d1      (diff-tree t1 props)
           d2      (diff-tree t2 props)
           [x y _] (map (comp set keys) (data/diff d1 d2))]
@@ -329,15 +327,16 @@
         (diff* before after [:hash :time])
         link    (#{:tmp :all} link) ; only nil, :tmp, or :all are valid
         link?   #(and link (or (= :all link) (= (:blob after) (:bdir %))))]
-    (-> (->> removed :tree vals (map #(vector :delete (path %))))
+    (-> (for [x (->> removed :tree vals)] [:delete (path x)])
         (into (for [x (->> added :tree vals)]
-                [(if (link? x) :link :write) (path x) (file x) (time x)]))
-        (into (->> changed :tree vals
-                   (map (fn [{:keys [hash path file time] :as f}]
-                          (let [hash' (get-in before [:tree path :hash])]
-                            (cond (= hash hash') [:touch path time]
-                                  (link? f)      [:link  path file time]
-                                  :else          [:write path file time])))))))))
+                (let [p (.toPath ^File (file x))]
+                  [(if (link? x) :link :write) (path x) p (time x)])))
+        (into (for [x (->> changed :tree vals)]
+                (let [p  (.toPath ^File (file x))
+                      x' (get-in before [:tree (path x)])]
+                  (cond (= (hash x) (hash x')) [:touch (path x) (time x)]
+                        (link? x)              [:link  (path x) p (time x)]
+                        :else                  [:write (path x) p (time x)])))))))
 
 (defmethod fsp/patch TmpFileSet
   [before after link]

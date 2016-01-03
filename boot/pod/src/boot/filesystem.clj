@@ -87,15 +87,8 @@
   (let [writeop (if (= :all link) :link :write)
         {:keys [adds rems chgs]} (tree-diff before after)]
     (-> (->> rems :tree vals (map #(vector :delete (.toString (:path %)))))
-        (into (->> (for [x (->> adds :tree vals)]
-                     [writeop (.toString (:path x)) (.toFile (:file x)) (:time x)])))
-        (into (->> chgs :tree vals
-                   (map (fn [{:keys [path file time]}]
-                          (let [h1 (md5 (.toString file))
-                                h2 (md5 (.toString (get-in before [:tree path :file])))]
-                            (if (= h1 h2)
-                              [:touch (.toString path) time]
-                              [writeop (.toString path) (.toFile file) time])))))))))
+        (into (for [x (->> adds :tree (merge (:tree chgs)) vals)]
+                [writeop (.toString (:path x)) (:file x) (:time x)])))))
 
 (defmethod fsp/patch FileSystemTree
   [before after link]
@@ -113,17 +106,15 @@
     (Files/setLastModifiedTime dst (FileTime/fromMillis time))))
 
 (defn copy!
-  [fs path file time]
-  (let [src (.toPath file)
-        dst (mkpath fs (io/file path))]
+  [fs path src time]
+  (let [dst (mkpath fs (io/file path))]
     (util/dbug "Filesystem: copying %s...\n" path)
     (Files/copy src (doto dst mkparents!) copy-opts)
     (Files/setLastModifiedTime dst (FileTime/fromMillis time))))
 
 (defn link!
-  [fs path file]
-  (let [src (.toPath file)
-        dst (mkpath fs (io/file path))]
+  [fs path src]
+  (let [dst (mkpath fs (io/file path))]
     (util/dbug "Filesystem: linking %s...\n" path)
     (Files/deleteIfExists dst)
     (Files/createLink (doto dst mkparents!) src)))
