@@ -3,7 +3,7 @@
 ;; vim: set ft=clojure:
 
 (set-env!
-  :dependencies '[[adzerk/clj-github-docs "0.1.0"]])
+  :dependencies '[[adzerk/clj-github-docs "0.1.1"]])
 
 (require
   '[adzerk.clj-github-docs :refer :all])
@@ -14,7 +14,35 @@
     :ns boot.task.built-in
     :tag *boot-version*
     :src "boot/core/src"
-    :doc "Boot built-in tasks.")
+    :doc "Boot built-in tasks."
+
+    (section
+      "Info"
+      help show)
+
+    (section
+      "Develop"
+      repl speak wait watch)
+
+    (section
+      "Fileset"
+      add-repo sift uber)
+
+    (section
+      "Build"
+      aot javac)
+
+    (section
+      "Package"
+      pom jar web war zip)
+
+    (section
+      "Deploy"
+      install push target)
+
+    (section
+      "Deprecated"
+      checkout))
 
   (write-docs
     :ns boot.util
@@ -68,13 +96,14 @@
       "Pods"
       get-pods call-in* with-call-in with-call-worker eval-in* with-eval-in
       with-eval-worker eval-fn-call get-pods make-pod require-in send!
-      destroy-pod pod-pool)
+      destroy-pod pod-pool pod-name this-pod with-invoke-in with-invoke-worker)
 
     (section
       "Classpath"
       add-classpath add-dependencies add-dependencies-in add-dependencies-worker
       dependency-loaded? get-classpath modifiable-classloader? resources
-      seal-app-classloader classloader-hierarchy classloader-resources copy-resource)
+      seal-app-classloader classloader-hierarchy classloader-resources
+      copy-resource resource-last-modified)
 
     (section
       "Dependencies"
@@ -100,7 +129,7 @@
 
     (section
       "Deprecated / Internal"
-      set-pods! set-data! set-pod-id! set-worker-pod!))
+      set-pods! set-data! set-pod-id! set-worker-pod! set-this-pod!))
 
   (write-docs
     :ns boot.core
@@ -154,7 +183,7 @@
     (section
       "Other Fileset Queries"
       ls fileset-namespaces input-fileset output-fileset user-dirs input-dirs
-      output-dirs)
+      output-dirs checkout-dirs)
 
     (section
       "Manipulate Fileset"
