@@ -8,8 +8,10 @@
 
 #### Fixed
 
-- Don't set :update :always in aether when resolving Boot's own dependencies
+- Don't set `:update :always` in aether when resolving Boot's own dependencies
   unless Boot is being updated.
+- Correctly handle case when `:source-paths` or `:resource-paths` are set to
+  the empty set (`#{}`).
 
 #### Added
 
