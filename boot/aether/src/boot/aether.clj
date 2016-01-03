@@ -34,8 +34,8 @@
 (defn transfer-listener
   [{type :type meth :method {name :name repo :repository} :resource err :error :as info}]
   (util/dbug "Aether: %s\n" (with-out-str (pprint/pprint info)))
-  (when (and (.endsWith name ".jar") (= type :started))
-    (util/info "Retrieving %s from %s\n" (.getName (io/file name)) repo)))
+  (when (= type :started)
+    (util/info "Retrieving %s\n" (str (.replaceAll repo "/+$" "") "/" name))))
 
 (defn ^{:boot/from :technomancy/leiningen} build-url
   "Creates java.net.URL from string"

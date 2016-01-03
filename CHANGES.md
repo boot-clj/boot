@@ -5,6 +5,7 @@
 #### Improved
 
 - More efficient syncing of project directories with Boot's internal ones.
+- Simpler and clearer info messages when fetching artifacts from Maven.
 
 #### Fixed
 
