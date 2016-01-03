@@ -54,6 +54,7 @@
 (def ^:private src-watcher       (atom (constantly nil)))
 (def ^:private repo-config-fn    (atom identity))
 (def ^:private loaded-checkouts  (atom #{}))
+(def ^:private checkout-dirs     (atom #{}))
 (def ^:private default-repos     [["clojars"       {:url "https://clojars.org/repo/"}]
                                   ["maven-central" {:url "https://repo1.maven.org/maven2"}]])
 (def ^:private default-mirrors   (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
@@ -69,7 +70,7 @@
    :asset    {:input nil :output true}
    :source   {:input true :output nil}
    :resource {:input true :output true}
-   :checkout {:input true :user true}})
+   :checkout {:input nil :output nil :user nil :checkout true}})
 
 (defn- genkw [& [prefix-string :as args]]
   (->> [(ns-name *ns*) (apply gensym args)] (map str) (apply keyword)))
@@ -105,22 +106,20 @@
         m (->> masks+ (map masks) (apply merge))
         in-fileset? (or (:input m) (:output m))]
     (util/with-let [d (tmp-dir* k)]
-      (when in-fileset?
-        (let [t (tmpd/map->TmpDir (assoc m :dir d))]
-          (swap! tempdirs conj t)
-          (when (:input t)
-            (set-env! :directories #(conj % (.getPath (:dir t))))))))))
+      (cond (:checkout m) (swap! checkout-dirs conj d)
+            in-fileset?   (swap! tempdirs conj (tmpd/map->TmpDir (assoc m :dir d))))
+      (when (or (:checkout m) (:input m))
+        (set-env! :directories #(conj % (.getPath d)))))))
 
 (defn- add-user-asset    [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :asset}) dir {}))
 (defn- add-user-source   [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :source}) dir {}))
 (defn- add-user-resource [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :resource}) dir {}))
-(defn- add-user-checkout [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :checkout}) dir {}))
 
 (defn- user-temp-dirs     [] (get-dirs {:dirs @tempdirs} #{:user}))
 (defn- user-asset-dirs    [] (get-dirs {:dirs @tempdirs} #{:user :asset}))
 (defn- user-source-dirs   [] (get-dirs {:dirs @tempdirs} #{:user :source}))
 (defn- user-resource-dirs [] (get-dirs {:dirs @tempdirs} #{:user :resource}))
-(defn- user-checkout-dirs [] (get-dirs {:dirs @tempdirs} #{:user :checkout}))
+(defn- user-checkout-dirs [] @checkout-dirs)
 (defn- non-user-temp-dirs [] (->> [:asset :source :resource]
                                   (map #(get-dirs {:dirs @tempdirs} #{%}))
                                   (apply set/union)
@@ -787,7 +786,6 @@
         (add-user-asset    (first (user-asset-dirs)))
         (add-user-source   (first (user-source-dirs)))
         (add-user-resource (first (user-resource-dirs)))
-        (add-user-checkout (first (user-checkout-dirs)))
         (update-in [:tree] merge (:tree fileset)))))
 
 (defn reset-build!
