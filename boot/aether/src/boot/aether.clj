@@ -19,8 +19,10 @@
 (def offline?             (atom false))
 (def update?              (atom :daily))
 (def local-repo           (atom nil))
-(def default-repositories (atom [["clojars"       {:url "https://clojars.org/repo/"}]
-                                 ["maven-central" {:url "https://repo1.maven.org/maven2/"}]]))
+(def default-repositories (delay (let [c (boot.App/config "BOOT_CLOJARS_REPO")
+                                       m (boot.App/config "BOOT_MAVEN_CENTRAL_REPO")]
+                                   [["clojars"       {:url (or c "https://clojars.org/repo/")}]
+                                    ["maven-central" {:url (or m "https://repo1.maven.org/maven2/")}]])))
 (def default-mirrors      (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
                                        m (boot.App/config "BOOT_MAVEN_CENTRAL_MIRROR")
                                        f #(when %1 {%2 {:name (str %2 " mirror") :url %1}})]

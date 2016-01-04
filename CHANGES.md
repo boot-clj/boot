@@ -48,8 +48,10 @@
 
 - wagon dependencies now accept a `:schemes` key &mdash; specify the handler
   classes for the wagon when the wagon jar has no `leiningen/wagons.clj` entry.
-- `BOOT_CLOJARS_MIRROR` &mdash; specify Maven mirror for Boot's own dependencies.
-- `BOOT_MAVEN_CENTRAL_MIRROR` &mdash; specify Maven mirror for Boot's own dependencies.
+- `BOOT_CLOJARS_REPO` &mdash; specify Maven repo url for `clojars`.
+- `BOOT_CLOJARS_MIRROR` &mdash; specify Maven mirror url for `clojars`.
+- `BOOT_MAVEN_CENTRAL_REPO` &mdash; specify Maven repo url for `maven-central`.
+- `BOOT_MAVEN_CENTRAL_MIRROR` &mdash; specify Maven mirror url for `maven-central`.
 
 #### Deprecated
 
