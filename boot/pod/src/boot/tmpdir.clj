@@ -251,7 +251,9 @@
                            (do (util/dbug "Commit: adding   %s %s...\n" (id tmpf) p)
                                (file/hard-link src dst)))
                          (recur this tmpfs))))]
-        (util/with-let [_ this] (swap! state assoc-in [:prev dirs] this)))))
+        (util/with-let [_ this]
+          (swap! state assoc-in [:prev dirs] this)
+          (util/dbug "Commit complete.\n")))))
 
   (rm [this tmpfiles]
     (let [{:keys [dirs tree blob]} this

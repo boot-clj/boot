@@ -24,8 +24,8 @@
     [java.lang.management ManagementFactory]
     [java.util.concurrent LinkedBlockingQueue TimeUnit Semaphore]))
 
-(declare watch-dirs sync! post-env! get-env set-env!
-         tmp-file tmp-dir ls checkout-dirs empty-dir!)
+(declare watch-dirs post-env! get-env set-env!
+         tmp-file tmp-dir ls checkout-dirs empty-dir! patch!)
 
 (declare ^{:dynamic true :doc "The running version of boot app."}         *app-version*)
 (declare ^{:dynamic true :doc "The script's name (when run as script)."}  *boot-script*)
@@ -52,6 +52,7 @@
 (def ^:private boot-env          (atom nil))
 (def ^:private tempdirs          (atom #{}))
 (def ^:private tempdirs-lock     (Semaphore. 1 true))
+(def ^:private sync-dirs-lock    (Semaphore. 1 true))
 (def ^:private src-watcher       (atom (constantly nil)))
 (def ^:private repo-config-fn    (atom identity))
 (def ^:private loaded-checkouts  (atom #{}))
@@ -125,26 +126,17 @@
                                   (apply set/union)
                                   (#(set/difference % (user-temp-dirs)))))
 
-(let [sync-state (atom {})]
-  (defn- sync-user-dirs!
-    []
-    (locking sync-state
-      (let [debug-mesg (delay (util/dbug "Syncing project dirs to temp dirs...\n"))
-            make-tree  #(fs/mktree (.toPath %) :ignore @bootignore)
-            merge-tree #(let [f (io/file %2)]
-                          (if (not (.isDirectory f))
-                            %1
-                            (fs/merge-trees %1 (make-tree f))))]
-        (doseq [[k d] {:asset-paths    (user-asset-dirs)
-                       :source-paths   (user-source-dirs)
-                       :resource-paths (user-resource-dirs)
-                       :checkout-paths (checkout-dirs)}]
-          (let [d (first d)]
-            @debug-mesg
-            (let [tree1 (@sync-state k)
-                  tree2 (->> k get-env (reduce merge-tree (fs/mktree)))]
-              (fs/patch! (fs/mkfs d) tree1 tree2)
-              (swap! sync-state assoc k tree2))))))))
+(defn- sync-user-dirs!
+  []
+  (util/with-semaphore-noblock sync-dirs-lock
+    (let [debug-mesg (delay (util/dbug "Syncing project dirs to temp dirs...\n"))]
+      (doseq [[k d] {:asset-paths    (user-asset-dirs)
+                     :source-paths   (user-source-dirs)
+                     :resource-paths (user-resource-dirs)
+                     :checkout-paths (checkout-dirs)}]
+        @debug-mesg
+        (patch! (first d) (get-env k) :ignore @bootignore))
+      (util/dbug "Sync complete.\n"))))
 
 (defn- set-fake-class-path!
   "Sets the fake.class.path system property to reflect all JAR files on the
@@ -243,14 +235,16 @@
       (when (seq dirs) (add-directories! dirs))
       (let [env       (dissoc env :checkouts)
             tmp       (tmp-dir* (genkw "checkout-tmp"))
+            tmp-state (atom nil)
             jar-path  (pod/resolve-dependency-jar env dep)
             jar-dir   (.getParent (io/file jar-path))
             debounce  (or (:watcher-debounce env) 10)
             on-change (fn [_]
                         (util/dbug "Refreshing checkout dependency %s...\n" (str p))
                         (util/with-semaphore tempdirs-lock
-                          (empty-dir! tmp)
-                          (pod/unpack-jar jar-path tmp)))]
+                          (with-open [jarfs (fs/mkjarfs (io/file jar-path))]
+                            (let [jar-root (-> jarfs .getRootDirectories first)]
+                              (reset! tmp-state (patch! tmp [jar-root] :state @tmp-state))))))]
         (util/info "Adding checkout dependency %s...\n" (str p))
         (set-env! :checkout-paths #(conj % (.getPath tmp)))
         (watch-dirs on-change [jar-dir] :debounce debounce)
@@ -579,6 +573,16 @@
   instead of copying file contents. File modification times are preserved."
   [dest & srcs]
   (apply file/sync! :time dest srcs))
+
+(defn patch!
+  "Given prev-state "
+  [dest srcs & {:keys [ignore state link]}]
+  (let [merge-tree #(let [p (or (and (instance? java.nio.file.Path %2) %2)
+                                (.toPath (io/file %2)))]
+                      (fs/merge-trees %1 (fs/mktree p :ignore ignore)))
+        prev-state (or state (fs/mktree (.toPath (io/file dest))))]
+    (let [next-state (reduce merge-tree (fs/mktree) srcs)]
+      (fs/patch! (fs/mkfs dest) prev-state next-state :link link))))
 
 ;; Boot Environment ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
