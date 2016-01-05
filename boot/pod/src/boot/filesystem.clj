@@ -3,9 +3,9 @@
     [clojure.java.io        :as io]
     [clojure.set            :as set]
     [clojure.data           :as data]
+    [clojure.string         :as string]
     [boot.filesystem.patch  :as fsp]
     [boot.file              :as file]
-    [boot.tmpdir            :as tmpd]
     [boot.from.digest       :as digest :refer [md5]]
     [boot.util              :as util   :refer [with-let]])
   (:import
@@ -23,31 +23,41 @@
 (def copy-opts    (into-array StandardCopyOption [StandardCopyOption/REPLACE_EXISTING]))
 (def open-opts    (into-array StandardOpenOption [StandardOpenOption/CREATE]))
 
-(defn- path->segs
+(defprotocol IToPath
+  (->path [x] "Returns a java.nio.file.Path for x."))
+
+(extend-protocol IToPath
+  java.nio.file.Path
+  (->path [x] x)
+
+  java.io.File
+  (->path [x] (.toPath x))
+
+  java.lang.String
+  (->path [x] (.toPath (io/file x)))
+
+  java.nio.file.FileSystem
+  (->path [x] (first (.getRootDirectories x))))
+
+(defn path->segs
   [^Path path]
   (->> path .iterator iterator-seq (map str)))
 
 (defn- segs->path
   [^Path any-path-same-filesystem segs]
   (let [segs-ary (into-array String (rest segs))]
-    (-> any-path-same-filesystem .getFileSystem (.getPath (first segs) segs-ary))))
+    (-> (.getFileSystem any-path-same-filesystem)
+        (.getPath (first segs) segs-ary))))
 
-(defn mkfs
-  [^File rootdir]
-  (.toPath rootdir))
+(defn- rel
+  [root segs]
+  (.resolve root (segs->path root segs)))
 
 (defn mkjarfs
   [^File jarfile & {:keys [create]}]
   (when create (io/make-parents jarfile))
   (let [jaruri (->> jarfile .getCanonicalFile .toURI (str "jar:") URI/create)]
     (FileSystems/newFileSystem jaruri {"create" (str (boolean create))})))
-
-(defn mkpath
-  [fs file]
-  (if (instance? java.nio.file.Path fs)
-    (.resolve fs (.toPath file))
-    (let [[seg & segs] (file/split-path file)]
-      (.getPath fs seg (into-array String segs)))))
 
 (defn mkignores
   [ignores]
@@ -67,7 +77,7 @@
             (when-not (and ign? (ign? (.toString p)))
               (->> (.toMillis (Files/getLastModifiedTime path link-opts))
                    (hash-map :path s :file path :time)
-                   (assoc! tree s)))))))))
+                   (swap! tree assoc s)))))))))
 
 (defrecord FileSystemTree [root tree])
 
@@ -76,9 +86,8 @@
   ([root & {:keys [ignore]}]
    (FileSystemTree.
      root
-     (persistent!
-       (with-let [tree (transient {})]
-         (Files/walkFileTree root (mkvisitor root tree :ignore ignore)))))))
+     @(with-let [tree (atom {})]
+        (Files/walkFileTree root (mkvisitor root tree :ignore ignore))))))
 
 (defn merge-trees
   [{tree1 :tree} {tree2 :tree}]
@@ -95,24 +104,20 @@
 
 (defn tree-patch
   [before after link]
-  (let [->p #(.toString (segs->path (:root before) %))
+  (let [->p     (partial segs->path (:root before))
         writeop (if (= :all link) :link :write)
         {:keys [adds rems chgs]} (tree-diff before after)]
-    (-> (->> rems :tree vals (map #(vector :delete (->p (:path %)))))
+    (-> (->> rems :tree vals (map #(vector :delete (:path %))))
         (into (for [x (->> adds :tree (merge (:tree chgs)) vals)]
-                [writeop (->p (:path x)) (:file x) (:time x)])))))
+                [writeop (:path x) (:file x) (:time x)])))))
 
 (defmethod fsp/patch FileSystemTree
   [before after link]
   (tree-patch before after link))
 
-(defn- reroot
-  [new-root segs]
-  (.resolve new-root (segs->path new-root segs)))
-
 (defmethod fsp/patch-result FileSystemTree
   [before after]
-  (let [update-file #(assoc %1 :file (reroot (:root before) %2))
+  (let [update-file #(assoc %1 :file (rel (:root before) %2))
         update-path #(-> after (get-in [:tree %]) (update-file %))
         update-tree (fn [xs k _] (assoc xs k (update-path k)))]
     (assoc before :tree (reduce-kv update-tree {} (:tree after)))))
@@ -123,44 +128,44 @@
     (Files/createDirectories p (into-array FileAttribute []))))
 
 (defn touch!
-  [fs path time]
-  (let [dst (mkpath fs (io/file path))]
-    (util/dbug "Filesystem: touching %s...\n" path)
+  [dest path time]
+  (let [dst (rel dest path)]
+    (util/dbug "Filesystem: touching %s...\n" (string/join "/" path))
     (Files/setLastModifiedTime dst (FileTime/fromMillis time))))
 
 (defn copy!
-  [fs path src time]
-  (let [dst (mkpath fs (io/file path))]
-    (util/dbug "Filesystem: copying %s...\n" path)
+  [dest path src time]
+  (let [dst (rel dest path)]
+    (util/dbug "Filesystem: copying %s...\n" (string/join "/" path))
     (Files/copy src (doto dst mkparents!) copy-opts)
     (Files/setLastModifiedTime dst (FileTime/fromMillis time))))
 
 (defn link!
-  [fs path src]
-  (let [dst (mkpath fs (io/file path))]
-    (util/dbug "Filesystem: linking %s...\n" path)
+  [dest path src]
+  (let [dst (rel dest path)]
+    (util/dbug "Filesystem: linking %s...\n" (string/join "/" path))
     (Files/deleteIfExists dst)
     (Files/createLink (doto dst mkparents!) src)))
 
 (defn delete!
-  [fs path]
-  (util/dbug "Filesystem: deleting %s...\n" path)
-  (Files/delete (mkpath fs (io/file path))))
+  [dest path]
+  (util/dbug "Filesystem: deleting %s...\n" (string/join "/" path))
+  (Files/delete (rel dest path)))
 
 (defn write!
-  [fs writer path]
-  (let [dst (mkpath fs (io/file path))]
+  [dest writer path]
+  (let [dst (rel dest path)]
     (mkparents! dst)
     (with-open [os (Files/newOutputStream dst open-opts)]
-      (util/dbug "Filesystem: writing %s...\n" path)
+      (util/dbug "Filesystem: writing %s...\n" (string/join "/" path))
       (.write writer os))))
 
 (defn patch!
-  [fs before after & {:keys [link]}]
+  [dest before after & {:keys [link]}]
   (with-let [_ (fsp/patch-result before after)]
     (doseq [[op path & [arg1 arg2]] (fsp/patch before after link)]
       (case op
-        :delete (delete! fs path)
-        :write  (copy!   fs path arg1 arg2)
-        :link   (link!   fs path arg1)
-        :touch  (touch!  fs path arg1)))))
+        :delete (delete! dest path)
+        :write  (copy!   dest path arg1 arg2)
+        :link   (link!   dest path arg1)
+        :touch  (touch!  dest path arg1)))))

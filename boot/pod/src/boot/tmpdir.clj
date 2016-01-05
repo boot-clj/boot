@@ -4,6 +4,7 @@
     [clojure.java.io        :as io]
     [clojure.set            :as set]
     [clojure.data           :as data]
+    [boot.filesystem        :as fs]
     [boot.filesystem.patch  :as fsp]
     [boot.pod               :as pod]
     [boot.util              :as util]
@@ -327,18 +328,19 @@
   [before after link]
   (let [{:keys [added removed changed]}
         (diff* before after [:hash :time])
+        ->p     #(fs/path->segs (fs/->path %))
         link    (#{:tmp :all} link) ; only nil, :tmp, or :all are valid
         link?   #(and link (or (= :all link) (= (:blob after) (:bdir %))))]
-    (-> (for [x (->> removed :tree vals)] [:delete (path x)])
+    (-> (for [x (->> removed :tree vals)] [:delete (->p (path x))])
         (into (for [x (->> added :tree vals)]
                 (let [p (.toPath ^File (file x))]
-                  [(if (link? x) :link :write) (path x) p (time x)])))
+                  [(if (link? x) :link :write) (->p (path x)) p (time x)])))
         (into (for [x (->> changed :tree vals)]
                 (let [p  (.toPath ^File (file x))
                       x' (get-in before [:tree (path x)])]
-                  (cond (= (hash x) (hash x')) [:touch (path x) (time x)]
-                        (link? x)              [:link  (path x) p (time x)]
-                        :else                  [:write (path x) p (time x)])))))))
+                  (cond (= (hash x) (hash x')) [:touch (->p (path x)) (time x)]
+                        (link? x)              [:link  (->p (path x)) p (time x)]
+                        :else                  [:write (->p (path x)) p (time x)])))))))
 
 (defmethod fsp/patch TmpFileSet
   [before after link]

@@ -20,12 +20,13 @@
   (:import
     [boot App]
     [java.io File]
+    [java.nio.file Path]
     [java.net URLClassLoader URL]
     [java.lang.management ManagementFactory]
     [java.util.concurrent LinkedBlockingQueue TimeUnit Semaphore]))
 
 (declare watch-dirs post-env! get-env set-env!
-         tmp-file tmp-dir ls checkout-dirs empty-dir! patch!)
+         tmp-file tmp-dir ls empty-dir! patch!)
 
 (declare ^{:dynamic true :doc "The running version of boot app."}         *app-version*)
 (declare ^{:dynamic true :doc "The script's name (when run as script)."}  *boot-script*)
@@ -55,8 +56,8 @@
 (def ^:private sync-dirs-lock    (Semaphore. 1 true))
 (def ^:private src-watcher       (atom (constantly nil)))
 (def ^:private repo-config-fn    (atom identity))
-(def ^:private loaded-checkouts  (atom #{}))
-(def ^:private checkout-dirs*    (atom #{}))
+(def ^:private loaded-checkouts  (atom {}))
+(def ^:private checkout-dirs     (atom #{}))
 (def ^:private default-repos     [["clojars"       {:url "https://clojars.org/repo/"}]
                                   ["maven-central" {:url "https://repo1.maven.org/maven2"}]])
 (def ^:private default-mirrors   (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
@@ -108,7 +109,7 @@
         m (->> masks+ (map masks) (apply merge))
         in-fileset? (or (:input m) (:output m))]
     (util/with-let [d (tmp-dir* k)]
-      (cond (:checkout m) (swap! checkout-dirs* conj d)
+      (cond (:checkout m) (swap! checkout-dirs conj d)
             in-fileset?   (swap! tempdirs conj (tmpd/map->TmpDir (assoc m :dir d))))
       (when (or (:checkout m) (:input m))
         (set-env! :directories #(conj % (.getPath d)))))))
@@ -133,7 +134,7 @@
       (doseq [[k d] {:asset-paths    (user-asset-dirs)
                      :source-paths   (user-source-dirs)
                      :resource-paths (user-resource-dirs)
-                     :checkout-paths (checkout-dirs)}]
+                     :checkout-paths @checkout-dirs}]
         @debug-mesg
         (patch! (first d) (get-env k) :ignore @bootignore))
       (util/dbug "Sync complete.\n"))))
@@ -229,27 +230,29 @@
 
 (defn- add-checkout-dependencies!
   "Add checkout dependencies that have not already been added."
-  [{:keys [checkouts] :as env}]
-  (loop [dirs [] [[p :as dep] & deps] (remove (comp @loaded-checkouts first) checkouts)]
-    (if-not p
-      (when (seq dirs) (add-directories! dirs))
-      (let [env       (dissoc env :checkouts)
-            tmp       (tmp-dir* (genkw "checkout-tmp"))
-            tmp-state (atom nil)
-            jar-path  (pod/resolve-dependency-jar env dep)
-            jar-dir   (.getParent (io/file jar-path))
-            debounce  (or (:watcher-debounce env) 10)
-            on-change (fn [_]
-                        (util/dbug "Refreshing checkout dependency %s...\n" (str p))
-                        (util/with-semaphore tempdirs-lock
-                          (with-open [jarfs (fs/mkjarfs (io/file jar-path))]
-                            (let [jar-root (-> jarfs .getRootDirectories first)]
-                              (reset! tmp-state (patch! tmp [jar-root] :state @tmp-state))))))]
-        (util/info "Adding checkout dependency %s...\n" (str p))
-        (set-env! :checkout-paths #(conj % (.getPath tmp)))
-        (watch-dirs on-change [jar-dir] :debounce debounce)
-        (swap! loaded-checkouts conj p)
-        (recur (conj dirs (.getPath tmp)) deps)))))
+  [{:keys [checkouts dependencies] :as env}]
+  (let [loaded-syms   (->> @loaded-checkouts keys set)
+        new-checkouts (->> checkouts (remove (comp loaded-syms first)))]
+    (loop [dirs [] [[p :as dep] & deps] new-checkouts]
+      (if-not p
+        (when (seq dirs) (add-directories! dirs))
+        (let [env       (dissoc env :checkouts)
+              tmp       (tmp-dir* (genkw "checkout-tmp"))
+              tmp-state (atom nil)
+              jar-path  (pod/resolve-dependency-jar env dep)
+              jar-dir   (.getParent (io/file jar-path))
+              debounce  (or (:watcher-debounce env) 10)
+              on-change (fn [_]
+                          (util/dbug "Refreshing checkout dependency %s...\n" (str p))
+                          (util/with-semaphore tempdirs-lock
+                            (with-open [jarfs (fs/mkjarfs (io/file jar-path))]
+                              (->> (patch! tmp [(fs/->path jarfs)] :state @tmp-state)
+                                   (reset! tmp-state)))))]
+          (util/info "Adding checkout dependency %s...\n" (str p))
+          (set-env! :checkout-paths #(conj % (.getPath tmp)))
+          (watch-dirs on-change [jar-dir] :debounce debounce)
+          (swap! loaded-checkouts assoc p {:dir tmp :jar (io/file jar-path)})
+          (recur (conj dirs (.getPath tmp)) deps))))))
 
 (defn- add-dependencies!
   "Add Maven dependencies to the classpath, fetching them if necessary."
@@ -377,12 +380,6 @@
   [fileset path & [not-found]]
   (get-in fileset [:tree path] not-found))
 (deprecate! "2.0.0" tmpget tmp-get)
-
-(defn checkout-dirs
-  "Get a list of directories containing files that have been extracted from
-  checkout dependency jars."
-  []
-  @checkout-dirs*)
 
 (defn user-dirs
   "Get a list of directories containing files that originated in the project's
@@ -577,12 +574,12 @@
 (defn patch!
   "Given prev-state "
   [dest srcs & {:keys [ignore state link]}]
-  (let [merge-tree #(let [p (or (and (instance? java.nio.file.Path %2) %2)
-                                (.toPath (io/file %2)))]
-                      (fs/merge-trees %1 (fs/mktree p :ignore ignore)))
-        prev-state (or state (fs/mktree (.toPath (io/file dest))))]
-    (let [next-state (reduce merge-tree (fs/mktree) srcs)]
-      (fs/patch! (fs/mkfs dest) prev-state next-state :link link))))
+  (let [dest    (fs/->path dest)
+        before  (or state (fs/mktree dest))
+        merge'  #(->> (fs/mktree (fs/->path %2) :ignore ignore)
+                      (fs/merge-trees %1))]
+    (let [after (reduce merge' (fs/mktree) srcs)]
+      (fs/patch! dest before after :link link))))
 
 ;; Boot Environment ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -702,6 +699,13 @@
   example)."
   ([ ] @repo-config-fn)
   ([f] (reset! repo-config-fn f)))
+
+(defn get-checkouts
+  "FIXME"
+  []
+  (let [deps (->> :dependencies (get-env) (group-by first))]
+    (->> @loaded-checkouts
+         (reduce-kv #(assoc %1 %2 (assoc %3 :dep (first (deps %2)))) {}))))
 
 (defn get-env
   "Returns the value associated with the key `k` in the boot environment, or
@@ -837,7 +841,7 @@
     (fn [fs & {:keys [link]}]
       (let [link  (when link :tmp)
             [a b] [@prev (reset! prev (output-fileset fs))]]
-        (mapv deref (for [d @dirs :let [p! (partial fs/patch! (fs/mkfs d) a b :link)]]
+        (mapv deref (for [d @dirs :let [p! (partial fs/patch! (fs/->path d) a b :link)]]
                       (future (try (p! link)
                                    (catch Throwable t
                                      (if-not link (throw t) (p! nil)))))))))))

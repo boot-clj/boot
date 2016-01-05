@@ -247,7 +247,7 @@
       (let [q            (LinkedBlockingQueue.)
             k            (gensym)
             return       (atom fileset)
-            srcdirs      (->> (core/checkout-dirs)
+            srcdirs      (->> (map (comp :dir val) (core/get-checkouts))
                               (into (core/user-dirs fileset))
                               (map (memfn getPath)))
             watcher      (apply file/watcher! :time srcdirs)
@@ -498,17 +498,24 @@
         jars       (-> (core/get-env)
                        (update-in [:dependencies] (partial filter scope?))
                        pod/resolve-dependency-jars)
+        checkouts  (->> (core/get-checkouts)
+                        (filter (comp scope? :dep val))
+                        (into {}))
+        co-jars    (->> checkouts (map (comp :jar val)))
+        co-dirs    (->> checkouts (map (comp :dir val)))
         exclude    (or exclude pod/standard-jar-exclusions)
         merge      (or merge pod/standard-jar-mergers)
         reducer    (fn [xs jar]
                      (core/add-cached-resource
                        xs (digest/md5 jar) (partial pod/unpack-jar jar)
-                       :include include :exclude exclude :mergers merge))]
+                       :include include :exclude exclude :mergers merge))
+        co-reducer #(core/add-resource
+                      %1 %2 :include include :exclude exclude :mergers merge)]
     (core/with-pre-wrap [fs]
       (when (seq jars)
         (util/info "Adding uberjar entries...\n"))
       (when as-jars
-        (doseq [jar jars]
+        (doseq [jar (reduce into [] [jars co-jars])]
           (let [hash (digest/md5 jar)
                 name (str hash "-" (.getName jar))
                 src  (io/file cache hash)]
@@ -519,7 +526,7 @@
             (file/hard-link src (io/file tgt name)))))
       (core/commit! (if as-jars
                       (core/add-resource fs tgt)
-                      (reduce reducer fs jars))))))
+                      (reduce co-reducer (reduce reducer fs jars) co-dirs))))))
 
 (core/deftask web
   "Create project web.xml file.

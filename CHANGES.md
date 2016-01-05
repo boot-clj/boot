@@ -26,7 +26,7 @@
 - `boot.pod/coord->map` &mdash; dependency vector to map helper function
 - `boot.pod/map->coord` &mdash; map to dependency vector helper function
 - `boot.pod/resource-last-modified` &mdash; returns last modified time of a classpath resource
-- `boot.core/checkout-dirs` &mdash; the set of directories containing checkout dependency files
+- `boot.core/get-checkouts` &mdash; returns a map of info about loaded checkout dependencies
 
 ##### Boot Options
 
