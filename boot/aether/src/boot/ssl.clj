@@ -23,7 +23,7 @@
   (doto (TrustManagerFactory/getInstance "PKIX")
     (.init keystore)))
 
-(defn default-trust-managers []
+(defn ^{:boot/from :technomancy/leiningen} default-trust-managers []
   (let [tmf (trust-manager-factory nil)
         tms (.getTrustManagers tmf)]
     (filter #(instance? X509TrustManager %) tms)))
@@ -37,7 +37,7 @@
            ;; TODO: support custom key-manager-properties
            {})))
 
-(defn key-manager-factory [{:keys [file type provider password]}]
+(defn ^{:boot/from :technomancy/leiningen} key-manager-factory [{:keys [file type provider password]}]
   (let [type (or type (KeyStore/getDefaultType))
         fis (if-not (empty? file) (FileInputStream. file))
         pwd (and password (.toCharArray password))
@@ -50,12 +50,12 @@
             (KeyManagerFactory/getDefaultAlgorithm))
       (.init store pwd))))
 
-(defn default-trusted-certs
+(defn ^{:boot/from :technomancy/leiningen} default-trusted-certs
   "Lists the CA certificates trusted by the JVM."
   []
   (mapcat #(.getAcceptedIssuers %) (default-trust-managers)))
 
-(defn read-certs
+(defn ^{:boot/from :technomancy/leiningen} read-certs
   "Read one or more X.509 certificates in DER or PEM format."
   [f]
   (let [cf (CertificateFactory/getInstance "X.509")
@@ -63,7 +63,7 @@
     (prn in)
     (.generateCertificates cf in)))
 
-(defn make-keystore
+(defn ^{:boot/from :technomancy/leiningen} make-keystore
   "Construct a KeyStore that trusts a collection of certificates."
   [certs]
   (let [ks (KeyStore/getInstance "jks")]
@@ -72,7 +72,7 @@
       (.setEntry ks (str i) (KeyStore$TrustedCertificateEntry. cert) nil))
     ks))
 
-(defn make-sslcontext
+(defn ^{:boot/from :technomancy/leiningen} make-sslcontext
   "Construct an SSLContext that trusts a collection of certificates."
   [trusted-certs]
   (let [ks (make-keystore trusted-certs)
@@ -83,14 +83,14 @@
 
 (alter-var-root #'make-sslcontext memoize)
 
-(defn https-registry
+(defn ^{:boot/from :technomancy/leiningen} https-registry
   "Constructs a registry map that uses a given SSLContext for https."
   [context]
   (let [factory (SSLConnectionSocketFactory. context (BrowserCompatHostnameVerifier.))]
     {"https" factory
      "http" PlainConnectionSocketFactory/INSTANCE}))
 
-(defn- map->registry
+(defn- ^{:boot/from :technomancy/leiningen} map->registry
   "Creates a Registry based of the given map."
   [m]
   (let [rb (RegistryBuilder/create)]

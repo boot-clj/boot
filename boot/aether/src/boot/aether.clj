@@ -306,7 +306,7 @@
   (pod/add-dependencies (assoc env :dependencies [coord]))
   (load-wagon-mappings mapping))
 
-(defn load-certificates!
+(defn ^{:boot/from :technomancy/leiningen} load-certificates!
   "Load the SSL certificates specified by the project and register them for use by Aether."
   [certificates]
   (when (seq certificates)
@@ -320,3 +320,8 @@
           certs (mapcat read-certs certificates)
           context (make-context (into (default-certs) certs))]
       (override-wagon-registry! (https-registry context)))))
+
+(when-let [certs (boot.App/config "BOOT_CERTIFICATES")]
+  (let [certs (string/split certs #":")]
+    (util/dbug "Using SSL certificates: %s\n" certs)
+    (load-certificates! certs)))

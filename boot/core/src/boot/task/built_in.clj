@@ -34,6 +34,7 @@
     (let [tasks (#'helpers/available-tasks 'boot.user)
           opts  (->> main/cli-opts (mapv (fn [[x y z]] ["" (str x " " y) z])))
           envs  [["" "BOOT_AS_ROOT"              "Set to 'yes' to allow boot to run as root."]
+                 ["" "BOOT_CERTIFICATES"         "Specify certificate file paths."]
                  ["" "BOOT_CLOJARS_REPO"         "Specify the url for the 'clojars' Maven repo."]
                  ["" "BOOT_CLOJARS_MIRROR"       "Specify the mirror url for the 'clojars' Maven repo."]
                  ["" "BOOT_CLOJURE_VERSION"      "The version of Clojure boot will provide (1.7.0)."]

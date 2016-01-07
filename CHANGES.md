@@ -1,5 +1,6 @@
 # Changes
 
+
 ## 2.6.0
 
 #### Improved
@@ -49,6 +50,7 @@
 
 - wagon dependencies now accept a `:schemes` key &mdash; specify the handler
   classes for the wagon when the wagon jar has no `leiningen/wagons.clj` entry.
+- `BOOT_CERTIFICATES` &mdash; specify file paths for SSL certificates.
 - `BOOT_CLOJARS_REPO` &mdash; specify Maven repo url for `clojars`.
 - `BOOT_CLOJARS_MIRROR` &mdash; specify Maven mirror url for `clojars`.
 - `BOOT_MAVEN_CENTRAL_REPO` &mdash; specify Maven repo url for `maven-central`.
