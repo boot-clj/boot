@@ -16,4 +16,6 @@
   :dependencies [[org.clojure/clojure      "1.6.0"  :scope "compile"]
                  [boot/base                ~version :scope "provided"]
                  [boot/pod                 ~version :scope "compile"]
-                 [com.cemerick/pomegranate "0.3.0"  :scope "compile"]])
+                 [com.cemerick/pomegranate "0.3.0"  :scope "compile"]
+                 ;; updated wagon-http to lein's version, so the code could port
+                 [org.apache.maven.wagon/wagon-http "2.9"]])
