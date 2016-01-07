@@ -299,7 +299,7 @@
   (pod/add-dependencies (assoc env :dependencies [coord]))
   (load-wagon-mappings mapping))
 
-(defn load-certificates!
+(defn ^{:boot/from :technomancy/leiningen} load-certificates!
   "Load the SSL certificates specified by the project and register them for use by Aether."
   [certificates]
   (when (seq certificates)
