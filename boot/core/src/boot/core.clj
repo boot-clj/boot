@@ -25,8 +25,7 @@
     [java.lang.management ManagementFactory]
     [java.util.concurrent LinkedBlockingQueue TimeUnit Semaphore]))
 
-(declare watch-dirs post-env! get-env set-env!
-         tmp-file tmp-dir ls empty-dir! patch!)
+(declare watch-dirs post-env! get-env set-env! tmp-file tmp-dir ls empty-dir! patch!)
 
 (declare ^{:dynamic true :doc "The running version of boot app."}         *app-version*)
 (declare ^{:dynamic true :doc "The script's name (when run as script)."}  *boot-script*)

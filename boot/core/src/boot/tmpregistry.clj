@@ -50,8 +50,6 @@
   (-get         [this k]              "Retrieve a temp file or directory.")
   (-unmk!       [this k]              "Remove a temp file or directory.")
   (-mk!         [this type key name]  "Create a temp file or directory.")
-  (-add-sync!   [this dest srcs]      "Add a directory which is to be synced.")
-  (-sync!       [this]                "Sync directories added with -add-sync!.")
   (-tmpfile?    [this f]              "Is f a file in the tmpregistry?"))
 
 (defn init!     [this]              (doto this -init!))
@@ -59,8 +57,6 @@
 (defn unmk!     [this key]          (doto this (-unmk! key)))
 (defn mk!       [this key & [name]] (-mk! this ::file key (or name "file.tmp")))
 (defn mkdir!    [this key & [name]] (-mk! this ::dir key name))
-(defn add-sync! [this dst & [srcs]] (doto this (-add-sync! dst srcs)))
-(defn sync!     [this]              (doto this -sync!))
 (defn tmp-file? [this f]            (-tmpfile? this f))
 
 ;;; tmpregistry implementation
@@ -90,19 +86,6 @@
   (-mk! [this t k n]
     (swap! reg assoc k [t (gensym) n])
     (-get this k))
-  (-add-sync! [this dest srcs]
-    (let [srcs (set (map io/file srcs))]
-      (swap! syncs update-in [(io/file dest)] #(if % (into % srcs) srcs))))
-  (-sync! [this]
-    (let [path  #(.getPath %)
-          syncs (->> @syncs
-                  (reduce-kv #(assoc %1 (path %2) (into #{} (map path %3))) {}))
-          dests (set (keys syncs))
-          sortd (->> syncs ksort/topo-sort reverse (filter #(contains? dests %)))]
-      (assert (or (not (nil? sortd)) (empty? dests))
-        "syncs appear to have a cyclic dependency")
-      (doseq [dest sortd]
-        (apply file/sync! :hash (io/file dest) (map io/file (core/get syncs dest))))))
   (-tmpfile? [this f]
     (when (file/parent? dir f) f)))
 
