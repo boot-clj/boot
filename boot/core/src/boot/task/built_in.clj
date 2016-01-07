@@ -118,6 +118,11 @@
             (pod/unpack-jar (.getPath file) tmp)))
         (->> tmps vals (reduce adder fs) core/commit!)))))
 
+;; Would prefer (set-env! :certificates), but haven't figured that out yet.
+(core/deftask cert
+  [f files VARS [str] "Certificate file paths"]
+  (pod/with-call-worker (boot.aether/load-certificates! ~files)))
+
 (core/deftask speak
   "Audible notifications during build.
 

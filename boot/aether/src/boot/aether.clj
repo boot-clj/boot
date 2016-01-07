@@ -298,3 +298,18 @@
   [env coord & [mapping]]
   (pod/add-dependencies (assoc env :dependencies [coord]))
   (load-wagon-mappings mapping))
+
+(defn load-certificates!
+  "Load the SSL certificates specified by the project and register them for use by Aether."
+  [certificates]
+  (when (seq certificates)
+    ;; lazy-loading might give a launch speed boost here
+    (require 'boot.ssl)
+    (let [make-context (resolve 'boot.ssl/make-sslcontext)
+          read-certs (resolve 'boot.ssl/read-certs)
+          default-certs (resolve 'boot.ssl/default-trusted-certs)
+          override-wagon-registry! (resolve 'boot.ssl/override-wagon-registry!)
+          https-registry (resolve 'boot.ssl/https-registry)
+          certs (mapcat read-certs certificates)
+          context (make-context (into (default-certs) certs))]
+      (override-wagon-registry! (https-registry context)))))
