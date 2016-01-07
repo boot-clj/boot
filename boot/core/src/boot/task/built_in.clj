@@ -520,9 +520,9 @@
                 name (str hash "-" (.getName jar))
                 src  (io/file cache hash)]
             (when-not (.exists src)
-              (util/dbug "Caching jar %s...\n" name)
+              (util/dbug* "Caching jar %s...\n" name)
               (file/copy-atomically jar src))
-            (util/dbug "Adding cached jar %s...\n" name)
+            (util/dbug* "Adding cached jar %s...\n" name)
             (file/hard-link src (io/file tgt name)))))
       (core/commit! (if as-jars
                       (core/add-resource fs tgt)

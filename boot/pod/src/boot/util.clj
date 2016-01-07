@@ -54,17 +54,25 @@
       (print ((or color identity) (apply format args)))
       (flush))))
 
+(defmacro dbug*
+  "Macro version of boot.util/dbug, arguments are only evaluated when the
+  message will be printed (i.e., verbosity level >= 2)."
+  [fmt & args]
+  `(when (>= @*verbosity* 2)
+     (binding [*out* *err*]
+       (print (ansi/bold-cyan (format ~fmt ~@args))))))
+
 (defn dbug
   "Print DEBUG level message. Arguments of the form fmt & args suitable for
   passing to clojure.core/format."
   [& more]
-  (print* 2 ansi/bold-cyan   more))
+  (print* 2 ansi/bold-cyan more))
 
 (defn info
   "Print INFO level message. Arguments of the form fmt & args suitable for
   passing to clojure.core/format."
   [& more]
-  (print* 1 ansi/bold        more))
+  (print* 1 ansi/bold more))
 
 (defn warn
   "Print WARNING level message. Arguments of the form fmt & args suitable for
@@ -76,7 +84,7 @@
   "Print ERROR level message. Arguments of the form fmt & args suitable for
   passing to clojure.core/format."
   [& more]
-  (print* 1 ansi/bold-red    more))
+  (print* 1 ansi/bold-red more))
 
 (defn warn-deprecated
   "Print WARNING level message. Arguments of the form fmt & args suitable for
@@ -93,10 +101,10 @@
   [sem & body]
   `(let [sem# ~sem]
      (.acquire sem#)
-     (dbug "Acquired %s...\n" sem#)
+     (dbug* "Acquired %s...\n" sem#)
      (try ~@body
           (finally (.release sem#)
-                   (dbug "Released %s...\n" sem#)))))
+                   (dbug* "Released %s...\n" sem#)))))
 
 (defmacro with-semaphore-noblock
   "Attempts to acquire a permit from the Semaphore sem. If successful the body
@@ -105,10 +113,10 @@
   [sem & body]
   `(let [sem# ~sem]
      (when (.tryAcquire sem#)
-       (dbug "Acquired %s...\n" sem#)
+       (dbug* "Acquired %s...\n" sem#)
        (try ~@body
             (finally (.release sem#)
-                     (dbug "Released %s...\n" sem#))))))
+                     (dbug* "Released %s...\n" sem#))))))
 
 (defmacro with-let
   "Binds resource to binding and evaluates body. Then, returns resource. It's

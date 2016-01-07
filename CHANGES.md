@@ -27,6 +27,8 @@
 - `boot.pod/map->coord` &mdash; map to dependency vector helper function
 - `boot.pod/resource-last-modified` &mdash; returns last modified time of a classpath resource
 - `boot.core/get-checkouts` &mdash; returns a map of info about loaded checkout dependencies
+- `boot.util/dbug*` &mdash; like `boot.util/dbug` but a macro (doesn't eval its
+  arguments unless the verbosity level is DEBUG or above)
 
 ##### Boot Options
 

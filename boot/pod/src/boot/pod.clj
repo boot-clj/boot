@@ -1,15 +1,14 @@
 (ns boot.pod
   (:require
-    [clojure.set                :as set]
-    [clojure.string             :as string]
-    [boot.util                  :as util]
-    [boot.file                  :as file]
-    [boot.from.backtick         :as bt]
-    [boot.from.digest           :as digest]
+    [clojure.set                  :as set]
+    [clojure.string               :as string]
+    [boot.util                    :as util]
+    [boot.file                    :as file]
+    [boot.from.backtick           :as bt]
     [boot.from.io.aviso.exception :as ex]
-    [clojure.java.io            :as io]
-    [dynapath.util              :as dp]
-    [dynapath.dynamic-classpath :as cp])
+    [clojure.java.io              :as io]
+    [dynapath.util                :as dp]
+    [dynapath.dynamic-classpath   :as cp])
   (:import
     [java.util.jar        JarFile]
     [java.util            Properties UUID]
@@ -637,7 +636,7 @@
             :when (not (.isDirectory entry))]
       (let [ent-name (.getName entry)
             out-file (doto (io/file dest-dir ent-name) io/make-parents)]
-        (try (util/dbug "Unpacking %s from %s...\n" ent-name (.getName jf))
+        (try (util/dbug* "Unpacking %s from %s...\n" ent-name (.getName jf))
              (with-open [in-stream  (.getInputStream jf entry)
                          out-stream (io/output-stream out-file)]
                (io/copy in-stream out-stream))

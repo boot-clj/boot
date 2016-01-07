@@ -130,7 +130,7 @@
 (defn- apply-mergers!
   [mergers ^File old-file path ^File new-file ^File merged-file]
   (when-let [merger (some (fn [[re v]] (when (re-find re path) v)) mergers)]
-    (util/dbug "Merging duplicate entry (%s)\n" path)
+    (util/dbug* "Merging duplicate entry (%s)\n" path)
     (let [out-file (File/createTempFile (.getName merged-file) nil
                                         (.getParentFile merged-file))]
       (with-open [curr-stream (io/input-stream old-file)
@@ -145,7 +145,7 @@
 
 (defn- get-cached!
   [cache-key seedfn scratch]
-  (util/dbug "Adding cached fileset %s...\n" cache-key)
+  (util/dbug* "Adding cached fileset %s...\n" cache-key)
   (or (get-in @state [:cache cache-key])
       (let [cache-dir (cache-dir cache-key)
             manifile  (manifest-file cache-key)
@@ -154,7 +154,7 @@
         (or (and (.exists manifile)
                  (store! (read-manifest manifile cache-dir)))
             (let [tmp-dir (scratch-dir! scratch)]
-              (util/dbug "Not found in cache: %s...\n" cache-key)
+              (util/dbug* "Not found in cache: %s...\n" cache-key)
               (.mkdirs cache-dir)
               (seedfn tmp-dir)
               (binding [*hard-link* true]
@@ -167,7 +167,7 @@
   (util/with-let [tmp (scratch-dir! scratch)]
     (doseq [[path newtmp] new]
       (when-let [oldtmp (get old path)]
-        (util/dbug "Merging %s...\n" path)
+        (util/dbug* "Merging %s...\n" path)
         (let [newf   (io/file (bdir newtmp) (id newtmp))
               oldf   (io/file (bdir oldtmp) (id oldtmp))
               mergef (doto (io/file tmp path) io/make-parents)]
@@ -229,12 +229,12 @@
     (let [{:keys [dirs tree blob]} this
           prev (get-in @state [:prev dirs])
           {:keys [added removed changed]} (diff* prev this [:id :dir])]
-      (util/dbug "Committing fileset...\n")
+      (util/dbug* "Committing fileset...\n")
       (doseq [tmpf (set/union (ls removed) (ls changed))
               :let [prev (get-in prev [:tree (path tmpf)])
                     exists? (.exists ^File (file prev))
                     op (if exists? "removing" "no-op")]]
-        (util/dbug "Commit: %-8s %s %s...\n" op (id prev) (path prev))
+        (util/dbug* "Commit: %-8s %s %s...\n" op (id prev) (path prev))
         (when exists? (file/delete-file (file prev))))
       (let [this (loop [this this
                         [tmpf & tmpfs]
@@ -249,12 +249,12 @@
                                       (update-in this [:tree] dissoc p))]
                          (if err? 
                            (util/warn "Merge conflict: not adding %s\n" p)
-                           (do (util/dbug "Commit: adding   %s %s...\n" (id tmpf) p)
+                           (do (util/dbug* "Commit: adding   %s %s...\n" (id tmpf) p)
                                (file/hard-link src dst)))
                          (recur this tmpfs))))]
         (util/with-let [_ this]
           (swap! state assoc-in [:prev dirs] this)
-          (util/dbug "Commit complete.\n")))))
+          (util/dbug* "Commit complete.\n")))))
 
   (rm [this tmpfiles]
     (let [{:keys [dirs tree blob]} this

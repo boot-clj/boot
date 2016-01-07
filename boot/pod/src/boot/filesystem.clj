@@ -130,26 +130,26 @@
 (defn touch!
   [dest path time]
   (let [dst (rel dest path)]
-    (util/dbug "Filesystem: touching %s...\n" (string/join "/" path))
+    (util/dbug* "Filesystem: touching %s...\n" (string/join "/" path))
     (Files/setLastModifiedTime dst (FileTime/fromMillis time))))
 
 (defn copy!
   [dest path src time]
   (let [dst (rel dest path)]
-    (util/dbug "Filesystem: copying %s...\n" (string/join "/" path))
+    (util/dbug* "Filesystem: copying %s...\n" (string/join "/" path))
     (Files/copy src (doto dst mkparents!) copy-opts)
     (Files/setLastModifiedTime dst (FileTime/fromMillis time))))
 
 (defn link!
   [dest path src]
   (let [dst (rel dest path)]
-    (util/dbug "Filesystem: linking %s...\n" (string/join "/" path))
+    (util/dbug* "Filesystem: linking %s...\n" (string/join "/" path))
     (Files/deleteIfExists dst)
     (Files/createLink (doto dst mkparents!) src)))
 
 (defn delete!
   [dest path]
-  (util/dbug "Filesystem: deleting %s...\n" (string/join "/" path))
+  (util/dbug* "Filesystem: deleting %s...\n" (string/join "/" path))
   (Files/delete (rel dest path)))
 
 (defn write!
@@ -157,7 +157,7 @@
   (let [dst (rel dest path)]
     (mkparents! dst)
     (with-open [os (Files/newOutputStream dst open-opts)]
-      (util/dbug "Filesystem: writing %s...\n" (string/join "/" path))
+      (util/dbug* "Filesystem: writing %s...\n" (string/join "/" path))
       (.write writer os))))
 
 (defn patch!
