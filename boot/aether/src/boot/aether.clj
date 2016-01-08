@@ -313,3 +313,7 @@
           certs (mapcat read-certs certificates)
           context (make-context (into (default-certs) certs))]
       (override-wagon-registry! (https-registry context)))))
+
+(when-let [certs (seq (string/split ":" (boot.App/config "BOOT_CERTIFICATES")))]
+  (util/dbug "Using SSL certificates: %s\n" certs)
+  (load-certificates! certs))
