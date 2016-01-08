@@ -1,5 +1,13 @@
 # Changes
 
+## 2.5.6
+
+- Support SSL certificates for repositories [#380][380].
+
+## 2.5.5
+
+???
+
 ## 2.5.4
 
 #### Fixed
