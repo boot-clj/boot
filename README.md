@@ -60,11 +60,11 @@ operating system (note: boot requires the Java Development Kit (JDK) version
 
 #### Unix, Linux, OSX
 
-Download [boot.sh][boot-sh], then:
+Download [boot.sh][boot-sh], make it executable, and move it to somewhere in
+your `$PATH`. Here is a one-liner that will do that for you:
 
 ```sh
-# Using /usr/local/bin here, but can be any directory on user's $PATH.
-$ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
+$ sudo bash -c "cd /usr/local/bin && curl -fsSLo boot https://github.com/boot-clj/boot-bin/releases/download/latest/boot.sh && chmod 755 boot"
 ```
 
 #### Windows
