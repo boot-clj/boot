@@ -4,6 +4,7 @@
     [clojure.string               :as string]
     [boot.util                    :as util]
     [boot.file                    :as file]
+    [boot.xform                   :as xf]
     [boot.from.backtick           :as bt]
     [boot.from.io.aviso.exception :as ex]
     [clojure.java.io              :as io]
@@ -11,6 +12,7 @@
     [dynapath.dynamic-classpath   :as cp])
   (:import
     [java.util.jar        JarFile]
+    [java.lang.ref        WeakReference]
     [java.util            Properties UUID]
     [java.net             URL URLClassLoader URLConnection]
     [java.util.concurrent ConcurrentLinkedQueue LinkedBlockingQueue TimeUnit]
@@ -457,6 +459,26 @@
   (doto pod
     (with-eval-in
       (require '~(symbol (str ns))))))
+
+(defn eval-in-callee
+  [caller-pod callee-pod expr]
+  (eval (xf/->clj caller-pod callee-pod expr :for-eval true)))
+
+(defn eval-in-caller
+  [caller-pod callee-pod expr]
+  (xf/->clj callee-pod caller-pod
+            (with-invoke-in (.get callee-pod)
+              (boot.pod/eval-in-callee caller-pod callee-pod expr))))
+
+(defmacro with-pod
+  [pod & body]
+  `(if-not ~pod
+     (eval (bt/template (do ~@body)))
+     (eval-in-caller this-pod (WeakReference. ~pod) (bt/template (do ~@body)))))
+
+(defmacro with-worker
+  [& body]
+  `(with-pod worker-pod ~@body))
 
 (defn canonical-coord
   "Given a dependency coordinate of the form [id version ...], returns the

@@ -94,6 +94,22 @@
   (when-not (= "no" (boot.App/config "BOOT_WARN_DEPRECATED"))
     (apply warn args)))
 
+(defmacro extends-protocol
+  "Like extend-protocol but allows specifying multiple classes for each of the
+  implementations:
+  
+      (extends-protocol IFoo
+        clojure.lang.MapEntry         ; <-- this is the difference, multiple
+        clojure.lang.PersistentVector ; <-- classes per implementation
+        (-foo [x] (into [] (map bar x))))"
+  [protocol & specs]
+  (let [class? #(or (symbol? %) (nil? %))]
+    `(extend-protocol ~protocol
+       ~@(mapcat identity
+           (for [[classes impls] (partition 2 (partition-by class? specs))
+                 class classes]
+             `(~class ~@impls))))))
+
 (defmacro with-semaphore
   "Acquires a permit from the Semaphore sem, blocking if necessary, and then
   evaluates the body expressions, returning the result. In all cases the permit

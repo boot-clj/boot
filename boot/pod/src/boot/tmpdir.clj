@@ -7,12 +7,13 @@
     [boot.filesystem        :as fs]
     [boot.filesystem.patch  :as fsp]
     [boot.pod               :as pod]
-    [boot.util              :as util]
     [boot.file              :as file]
-    [boot.from.digest       :as digest])
+    [boot.from.digest       :as digest]
+    [boot.util              :as util :refer [with-let]])
   (:import
     [java.io File]
-    [java.util Properties]))
+    [java.util Properties]
+    [java.nio.file Path Files SimpleFileVisitor]))
 
 (set! *warn-on-reflection* true)
 
@@ -75,28 +76,35 @@
 (def ^:dynamic *hard-link* nil)
 
 (defn- add-blob!
-  [^File blob ^File src id]
-  (let [out (io/file blob id)]
-    (when-not (.exists out)
-      (if *hard-link*
-        (do (.setReadOnly src)
-            (file/hard-link src out))
-        (let [tmp (File/createTempFile (.getName out) nil blob)]
-          (io/copy src tmp)
-          (.setReadOnly tmp)
-          (file/move tmp out))))))
+  [^File blob ^Path src ^String id link]
+  (let [blob (.toPath blob)
+        out  (.resolve blob id)]
+    (when-not (Files/exists out fs/link-opts)
+      (if link
+        (Files/createLink out src)
+        (let [name (str (.getName out (dec (.getNameCount out))))
+              tmp  (Files/createTempFile blob name nil fs/tmp-attrs)]
+          (Files/copy src tmp fs/copy-opts)
+          (Files/move tmp out fs/copy-opts))))))
+
+(defn- mkvisitor
+  [^Path root ^File blob tree link]
+  (let [m {:dir (.toFile root) :bdir blob}]
+    (proxy [SimpleFileVisitor] []
+      (visitFile [path attr]
+        (with-let [_ fs/continue]
+          (let [p (str (.relativize root path))
+                h (digest/md5 (.toFile path))
+                t (.toMillis (Files/getLastModifiedTime path fs/link-opts))
+                i (str h "." t)]
+            (add-blob! blob path i link)
+            (swap! tree assoc p (map->TmpFile (assoc m :path p :id i :hash h :time t)))))))))
 
 (defn- dir->tree!
   [^File dir ^File blob]
-  (let [->path #(str (file/relative-to dir %))
-        ->tmpf (fn [^String p ^File f]
-                 (let [{:keys [id] :as stat} (file-stat f)]
-                   (add-blob! blob f id)
-                   (map->TmpFile (assoc (file-stat f) :dir dir :bdir blob :path p))))]
-    (->> dir file-seq (reduce (fn [xs ^File f]
-                                (or (and (not (.isFile f)) xs)
-                                    (let [p (->path f)]
-                                      (assoc xs p (->tmpf p f))))) {}))))
+  (let [root (.toPath dir)]
+    @(with-let [tree (atom {})]
+       (Files/walkFileTree root (mkvisitor root blob tree *hard-link*)))))
 
 (defn- ^File cache-dir
   [cache-key]
@@ -149,7 +157,7 @@
   (or (get-in @state [:cache cache-key])
       (let [cache-dir (cache-dir cache-key)
             manifile  (manifest-file cache-key)
-            store!    #(util/with-let [m %]
+            store!    #(with-let [m %]
                          (swap! state assoc-in [:cache cache-key] m))]
         (or (and (.exists manifile)
                  (store! (read-manifest manifile cache-dir)))
@@ -164,7 +172,7 @@
 
 (defn- merge-trees!
   [old new mergers scratch]
-  (util/with-let [tmp (scratch-dir! scratch)]
+  (with-let [tmp (scratch-dir! scratch)]
     (doseq [[path newtmp] new]
       (when-let [oldtmp (get old path)]
         (util/dbug* "Merging %s...\n" path)
@@ -252,7 +260,7 @@
                            (do (util/dbug* "Commit: adding   %s %s...\n" (id tmpf) p)
                                (file/hard-link src dst)))
                          (recur this tmpfs))))]
-        (util/with-let [_ this]
+        (with-let [_ this]
           (swap! state assoc-in [:prev dirs] this)
           (util/dbug* "Commit complete.\n")))))
 
@@ -305,7 +313,7 @@
           d'   (dir dest-tmpfile)]
       (assert ((set (map file dirs)) d')
               (format "dest-dir not in dir set (%s)" d'))
-      (add-blob! blob src-file hash)
+      (add-blob! blob src-file hash *hard-link*)
       (assoc this :tree (merge tree {p' (assoc dest-tmpfile :id hash)})))))
 
 ;; additional api functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

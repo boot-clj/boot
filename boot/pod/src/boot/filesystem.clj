@@ -11,17 +11,22 @@
   (:import
     [java.net URI]
     [java.io File]
-    [java.nio.file.attribute FileAttribute FileTime]
     [java.util.zip ZipEntry ZipOutputStream ZipException]
     [java.util.jar JarEntry JarOutputStream Manifest Attributes$Name]
+    [java.nio.file.attribute FileAttribute FileTime PosixFilePermission
+     PosixFilePermissions]
     [java.nio.file Path Files FileSystems StandardCopyOption StandardOpenOption
      LinkOption SimpleFileVisitor FileVisitResult]))
+
+(set! *warn-on-reflection* true)
 
 (def continue     FileVisitResult/CONTINUE)
 (def skip-subtree FileVisitResult/SKIP_SUBTREE)
 (def link-opts    (into-array LinkOption []))
+(def tmp-attrs    (into-array FileAttribute []))
 (def copy-opts    (into-array StandardCopyOption [StandardCopyOption/REPLACE_EXISTING]))
 (def open-opts    (into-array StandardOpenOption [StandardOpenOption/CREATE]))
+(def read-only    (PosixFilePermissions/fromString "r--r--r--"))
 
 (defprotocol IToPath
   (->path [x] "Returns a java.nio.file.Path for x."))
@@ -43,14 +48,14 @@
   [^Path path]
   (->> path .iterator iterator-seq (map str)))
 
-(defn- segs->path
+(defn- ^Path segs->path
   [^Path any-path-same-filesystem segs]
   (let [segs-ary (into-array String (rest segs))]
     (-> (.getFileSystem any-path-same-filesystem)
         (.getPath (first segs) segs-ary))))
 
 (defn- rel
-  [root segs]
+  [^Path root segs]
   (.resolve root (segs->path root segs)))
 
 (defn mkjarfs
@@ -64,7 +69,7 @@
   (some->> (seq ignores) (map #(partial re-find %)) (apply some-fn)))
 
 (defn mkvisitor
-  [root tree & {:keys [ignore]}]
+  [^Path root tree & {:keys [ignore]}]
   (let [ign? (mkignores ignore)]
     (proxy [SimpleFileVisitor] []
       (preVisitDirectory [path attr]
@@ -123,7 +128,7 @@
     (assoc before :tree (reduce-kv update-tree {} (:tree after)))))
 
 (defn mkparents!
-  [path]
+  [^Path path]
   (when-let [p (.getParent path)]
     (Files/createDirectories p (into-array FileAttribute []))))
 
@@ -134,10 +139,10 @@
     (Files/setLastModifiedTime dst (FileTime/fromMillis time))))
 
 (defn copy!
-  [dest path src time]
-  (let [dst (rel dest path)]
+  [^Path dest path ^Path src time]
+  (let [dst (doto (rel dest path) mkparents!)]
     (util/dbug* "Filesystem: copying %s...\n" (string/join "/" path))
-    (Files/copy src (doto dst mkparents!) copy-opts)
+    (Files/copy ^Path src ^Path dst copy-opts)
     (Files/setLastModifiedTime dst (FileTime/fromMillis time))))
 
 (defn link!
