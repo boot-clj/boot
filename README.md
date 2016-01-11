@@ -67,6 +67,16 @@ your `$PATH`. Here is a one-liner that will do that for you:
 $ sudo bash -c "cd /usr/local/bin && curl -fsSLo boot https://github.com/boot-clj/boot-bin/releases/download/latest/boot.sh && chmod 755 boot"
 ```
 
+#### Unix, Linux, OSX with [nix](http://nixos.org/nix)
+
+boot is part of the [nixpkgs collection](https://github.com/nixos/nixpkgs).
+
+To install it in your current environment:
+
+```sh
+$ nix-env -i boot
+```
+
 #### Windows
 
 Download [boot.exe][boot-exe], then:
