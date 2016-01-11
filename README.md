@@ -67,6 +67,16 @@ Download [boot.sh][boot-sh], then:
 $ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
 ```
 
+#### Unix, Linux, OSX with [nix](http://nixos.org/nix)
+
+boot is part of the [nixpkgs collection](https://github.com/nixos/nixpkgs).
+
+To install it in your current environment:
+
+```sh
+$ nix-env -i boot
+```
+
 #### Windows
 
 Download [boot.exe][boot-exe], then:
