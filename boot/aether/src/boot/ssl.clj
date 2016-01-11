@@ -1,5 +1,6 @@
 (ns boot.ssl
   (:require
+    [boot.util :as util]
     [cemerick.pomegranate.aether :as aether]
     [clojure.java.io :as io])
   (:import
@@ -58,10 +59,12 @@
 (defn ^{:boot/from :technomancy/leiningen} read-certs
   "Read one or more X.509 certificates in DER or PEM format."
   [f]
-  (let [cf (CertificateFactory/getInstance "X.509")
-        in (io/input-stream (or (io/resource f) (io/file f)))]
-    (prn in)
-    (.generateCertificates cf in)))
+  (try
+    (let [cf (CertificateFactory/getInstance "X.509")
+          in (io/input-stream (or (io/resource f) (io/file f)))]
+      (.generateCertificates cf in))
+    (catch Exception _
+      (util/warn "Unable to read certificate: %s\n" f))))
 
 (defn ^{:boot/from :technomancy/leiningen} make-keystore
   "Construct a KeyStore that trusts a collection of certificates."
