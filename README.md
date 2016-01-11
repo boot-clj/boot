@@ -54,27 +54,23 @@ Binaries in executable format are available. Follow the instructions for your
 operating system (note: boot requires the Java Development Kit (JDK) version
 1.7 or greater).
 
-#### OSX with [Homebrew][brew]
-
-    brew install boot-clj
-
 #### Unix, Linux, OSX
 
-Download [boot.sh][boot-sh], make it executable, and move it to somewhere in
-your `$PATH`. Here is a one-liner that will do that for you:
+Package managers:
+
+* [Homebrew][brew] &mdash; `brew install boot-clj`
+* [nix](http://nixos.org/nix) &mdash; `nix-env -i boot`
+
+Otherwise:
+
+* Download [boot.sh][boot-sh].
+* Make it executable.
+* Move it to somewhere in your `$PATH`.
+
+Here is a one-liner to do the above:
 
 ```sh
 $ sudo bash -c "cd /usr/local/bin && curl -fsSLo boot https://github.com/boot-clj/boot-bin/releases/download/latest/boot.sh && chmod 755 boot"
-```
-
-#### Unix, Linux, OSX with [nix](http://nixos.org/nix)
-
-boot is part of the [nixpkgs collection](https://github.com/nixos/nixpkgs).
-
-To install it in your current environment:
-
-```sh
-$ nix-env -i boot
 ```
 
 #### Windows
