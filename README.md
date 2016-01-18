@@ -99,6 +99,11 @@ files.
 
 ## Getting Started
 
+> The [Modern CLJS](https://github.com/magomimmo/modern-cljs) tutorials are an
+> excellent introduction to Boot and ClojureScript. Pretty much everything you
+> need to know about Boot to get a project off the ground is covered there.
+> Check it out!
+
 Once boot is installed (see [Install][4] above) do this in a terminal:
 
     boot -h
