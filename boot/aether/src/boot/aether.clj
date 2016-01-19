@@ -276,6 +276,7 @@
        :coordinates  [project version]
        :jar-file     (io/file jarpath)
        :pom-file     (io/file pomfile)
+       :transfer-listener :stdout
        :artifact-map artifact-map
        :repository   {repo-id repo-settings}
        :local-repo   (or (:local-repo env) @local-repo nil)))))
