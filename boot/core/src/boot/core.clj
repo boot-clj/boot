@@ -472,7 +472,28 @@
        (tmpd/cp fileset src-file)))
 
 (defn add-asset
-  "Add the contents of the java.io.File dir to the fileset's assets."
+  "Add the contents of the java.io.File dir to the fileset's assets.
+
+  Option :include and :exclude, a #{} of regex expressions, control
+  which paths are added; a path is only added if it matches an :include
+  regex and does not match any :exclude regexes.
+
+  If the operation produces duplicate entries, they will be merged using
+  the rules specified by the :mergers option. A merge rule is a
+  [regex fn] pair, where fn takes three parameters:
+
+  - an InputStream for the previous entry,
+  - an InputStream of the new entry,
+  - and an OutputStream that will replace the entry.
+
+  You will typically use default mergers as in:
+
+    [[ #\"data_readers.clj$\"    into-merger       ]
+     [ #\"META-INF/services/.*\" concat-merger     ]
+     [ #\".*\"                   first-wins-merger ]]
+
+  The merge rule regular expressions are tested in order, and the fn
+  from the first match is applied."
   [fileset ^File dir & {:keys [mergers include exclude] :as opts}]
   (tmpd/add fileset (get-add-dir fileset #{:asset}) dir opts))
 
@@ -487,7 +508,28 @@
   (tmpd/add-tmp fileset (get-add-dir fileset #{:asset}) tmpfiles))
 
 (defn add-source
-  "Add the contents of the java.io.File dir to the fileset's sources."
+  "Add the contents of the java.io.File dir to the fileset's sources.
+
+  Option :include and :exclude, a #{} of regex expressions, control
+  which paths are added; a path is only added if it matches an :include
+  regex and does not match any :exclude regexes.
+
+  If the operation produces duplicate entries, they will be merged using
+  the rules specified by the :mergers option. A merge rule is a
+  [regex fn] pair, where fn takes three parameters:
+
+  - an InputStream for the previous entry,
+  - an InputStream of the new entry,
+  - and an OutputStream that will replace the entry.
+
+  You will typically use default mergers as in:
+
+    [[ #\"data_readers.clj$\"    into-merger       ]
+     [ #\"META-INF/services/.*\" concat-merger     ]
+     [ #\".*\"                   first-wins-merger ]]
+
+  The merge rule regular expressions are tested in order, and the fn
+  from the first match is applied."
   [fileset ^File dir & {:keys [mergers include exclude] :as opts}]
   (tmpd/add fileset (get-add-dir fileset #{:source}) dir opts))
 
@@ -502,7 +544,28 @@
   (tmpd/add-tmp fileset (get-add-dir fileset #{:source}) tmpfiles))
 
 (defn add-resource
-  "Add the contents of the java.io.File dir to the fileset's resources."
+  "Add the contents of the java.io.File dir to the fileset's resources.
+
+  Option :include and :exclude, a #{} of regex expressions, control
+  which paths are added; a path is only added if it matches an :include
+  regex and does not match any :exclude regexes.
+
+  If the operation produces duplicate entries, they will be merged using
+  the rules specified by the :mergers option. A merge rule is a
+  [regex fn] pair, where fn takes three parameters:
+
+  - an InputStream for the previous entry,
+  - an InputStream of the new entry,
+  - and an OutputStream that will replace the entry.
+
+  You will typically use default mergers as in:
+
+    [[ #\"data_readers.clj$\"    into-merger       ]
+     [ #\"META-INF/services/.*\" concat-merger     ]
+     [ #\".*\"                   first-wins-merger ]]
+
+  The merge rule regular expressions are tested in order, and the fn
+  from the first match is applied."
   [fileset ^File dir & {:keys [mergers include exclude] :as opts}]
   (tmpd/add fileset (get-add-dir fileset #{:resource}) dir opts))
 

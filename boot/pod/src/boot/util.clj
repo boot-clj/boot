@@ -56,32 +56,47 @@
 
 (defn dbug
   "Print DEBUG level message. Arguments of the form fmt & args suitable for
-  passing to clojure.core/format."
+  passing to clojure.core/format.
+
+  Note that boot.util/*verbosity* in a pod needs to be altered AFTER pod
+  creation or log level won't be affected."
   [& more]
   (print* 2 ansi/bold-cyan   more))
 
 (defn info
   "Print INFO level message. Arguments of the form fmt & args suitable for
-  passing to clojure.core/format."
+  passing to clojure.core/format.
+
+  Note that boot.util/*verbosity* in a pod needs to be altered AFTER pod
+  creation or log level won't be affected."
   [& more]
   (print* 1 ansi/bold        more))
 
 (defn warn
   "Print WARNING level message. Arguments of the form fmt & args suitable for
-  passing to clojure.core/format."
+  passing to clojure.core/format.
+
+  Note that boot.util/*verbosity* in a pod needs to be altered AFTER pod
+  creation or log level won't be affected."
   [& more]
   (print* 1 ansi/bold-yellow more))
 
 (defn fail
   "Print ERROR level message. Arguments of the form fmt & args suitable for
-  passing to clojure.core/format."
+  passing to clojure.core/format.
+
+  Note that boot.util/*verbosity* in a pod needs to be altered AFTER pod
+  creation or log level won't be affected."
   [& more]
   (print* 1 ansi/bold-red    more))
 
 (defn warn-deprecated
   "Print WARNING level message. Arguments of the form fmt & args suitable for
   passing to clojure.core/format. Respects the BOOT_WARN_DEPRECATED environment
-  variable, which if set to no suppresses these messages."
+  variable, which if set to no suppresses these messages.
+
+  Note that boot.util/*verbosity* in a pod needs to be altered AFTER pod
+  creation or log level won't be affected."
   [& args]
   (when-not (= "no" (boot.App/config "BOOT_WARN_DEPRECATED"))
     (apply warn args)))
@@ -172,8 +187,11 @@
 
 (defmacro exit-error
   "Binds *out* to *err*, evaluates the body, and exits with non-zero status.
-  
-  Note: This macro does not call System.exit(), because this instance of boot
+
+  Notes:
+  * This is the preferred method for returning an exit code != 0, this
+  method returns 1.
+  * This macro does not call System.exit(), because this instance of boot
   may be nested in another boot instance. Instead a special method on boot.App
   is called which handles the exit behavior (calling shutdown hooks etc.)."
   [& body]
@@ -183,8 +201,11 @@
 
 (defmacro exit-ok
   "Evaluates the body, and exits with non-zero status.
-  
-  Note: This macro does not call System.exit(), because this instance of boot
+
+  Notes:
+  * Boot's main explicitly wraps user tasks in exit-ok so that in general
+  it is not necessary to call it for exiting with 0.
+  * This macro does not call System.exit(), because this instance of boot
   may be nested in another boot instance. Instead a special method on boot.App
   is called which handles the exit behavior (calling shutdown hooks etc.)."
   [& body]
