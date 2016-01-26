@@ -974,14 +974,36 @@
   [& {:keys [untracked]}]
   (git/ls-files :untracked untracked))
 
+(defn- filter-files [seq-pred files negate?]
+  ((if negate? remove filter)
+   #(some identity (seq-pred %)) files))
+
 (defn file-filter
   "A file filtering function factory. FIXME: more documenting here."
   [mkpred]
   (fn [criteria files & [negate?]]
     (let [tmp?   (partial satisfies? tmpd/ITmpFile)
-          ->file #(if (tmp? %) (io/file (tmp-path %)) (io/file %))]
-      ((if negate? remove filter)
-       #(some identity ((apply juxt (map mkpred criteria)) (->file %))) files))))
+          ->file #(if (tmp? %) (io/file (tmp-path %)) (io/file %))
+          pred (apply juxt (mapv mkpred criteria))]
+      (filter-files #(pred (->file %)) files negate?))))
+
+(defn by-meta
+  "This function takes two arguments: `preds` and `files`, where `preds` is a
+  seq of predicates to be applied to the file metadata and `files` is a seq of
+  file objects obtained from the fileset with the help of `boot.core/ls` or any
+  other way. Returns a seq of files in `files` which match all of the
+  predicates in `preds`. `negate?` inverts the result.
+
+  This function will not unwrap the `File` objects from `TmpFiles`."
+  [preds files & [negate?]]
+  (filter-files (apply juxt preds) files negate?))
+
+(defn not-by-meta
+  "Negated version of `by-meta`.
+
+  This function will not unwrap the `File` objects from `TmpFiles`."
+  [preds files]
+  (by-meta preds files true))
 
 (defn by-name
   "This function takes two arguments: `names` and `files`, where `names` is
