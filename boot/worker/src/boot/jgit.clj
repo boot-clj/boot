@@ -7,7 +7,7 @@
   (:import
    [org.eclipse.jgit.api          Git]
    [org.eclipse.jgit.treewalk     TreeWalk]
-   [org.eclipse.jgit.lib          Ref Repository ObjectIdRef$PeeledNonTag]
+   [org.eclipse.jgit.lib          Ref Repository ObjectIdRef$PeeledNonTag ObjectIdRef$PeeledTag ObjectIdRef$Unpeeled]
    [org.eclipse.jgit.revwalk      RevCommit RevTree RevWalk]
    [org.eclipse.jgit.storage.file FileRepositoryBuilder]))
 
@@ -66,13 +66,13 @@
 (defn ls-tags
   []
   (with-repo
-    (let [r        (.getRepository repo)
-          ;; PeeledNonTags are returned if working dir isn't clean
-          non-tag? #(instance? ObjectIdRef$PeeledNonTag %)
-          tags     (remove non-tag? (.call (.tagList repo)))]
-      (->> (for [t tags]
-             [(subs (.getName t) 10) (.getName (.getPeeledObjectId (.peel r t)))])
-           (into {})))))
+    (let [r (.getRepository repo)]
+      (reduce (fn [m t]
+                ;; PeeledNonTags are returned if working dir isn't clean
+                (condp instance? t
+                  ObjectIdRef$PeeledTag (assoc m (subs (.getName t) 10) (.getName (.getPeeledObjectId (.peel r t))))
+                  ObjectIdRef$Unpeeled (assoc m (subs (.getName t) 10) (.getName (.getObjectId (.peel r t))))
+                  ObjectIdRef$PeeledNonTag m)) {} (.call (.tagList repo))))))
 
 (defn tag
   [name message]
