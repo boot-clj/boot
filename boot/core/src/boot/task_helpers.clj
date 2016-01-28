@@ -133,3 +133,12 @@
               fs (digest/md5 jar) (partial pod/unpack-jar jar)
               :include incl :exclude excl :mergers pod/standard-jar-mergers)))
         (reduce fileset args))))
+
+(defmethod sift-action :add-meta
+  [v? _ args]
+  (fn [fileset]
+    (let [[regex kw] (first args)
+          file-paths (filter (comp (if v? not identity)
+                                   (partial re-find regex)) (keys (:tree fileset)))]
+      (core/add-meta fileset (zipmap file-paths
+                                     (repeat {kw true}))))))
