@@ -4,13 +4,20 @@
     [clojure.set             :as set]
     [clojure.string          :as string]
     [clojure.stacktrace      :as trace]
+    [clojure.test            :as test]
+    [clojure.walk            :as walk]
     [boot.from.io.aviso.ansi :as ansi]
     [boot.from.digest        :as digest]
     [boot.pod                :as pod]
     [boot.core               :as core]
     [boot.file               :as file]
     [boot.util               :as util]
-    [boot.tmpdir             :as tmpd]))
+    [boot.tmpdir             :as tmpd])
+  (:import java.lang.InterruptedException
+           [java.util HashMap
+                      Collections
+                      concurrent.ConcurrentHashMap
+                      concurrent.CountDownLatch]))
 
 (defn- first-line [s] (when s (first (string/split s #"\n"))))
 
@@ -142,3 +149,127 @@
                                    (partial re-find regex)) (keys (:tree fileset)))]
       (core/add-meta fileset (zipmap file-paths
                                      (repeat {kw true}))))))
+
+;; test helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn initial-sync-map
+  "Generates the (mutable) sync map necessary for the test task.
+  This map will be modified during parallel testing so make sure the
+  content is either immutable or thread safe.
+  The parameter test-commands is a set of sequences of "
+  [test-commands]
+  (let [start-latch (CountDownLatch. 1)
+        done-latch (CountDownLatch. (count test-commands))]
+    (doto (HashMap.)
+      (.put "start-latch" start-latch)
+      (.put "done-latch" done-latch)
+      (.put "test-number" (count test-commands))
+      ;; (.put "test-command") ;; set in runboot-comp as it is on a per-test basis
+      (.put "test-summaries" (ConcurrentHashMap.)))))
+
+(defn per-task-sync-map
+  "Generates the (immutable) per test sync map. The map content will be
+  modified during parallel testing so make sure that the mutable parts
+  are thread safe."
+  [sync-map command-seq]
+  (Collections/unmodifiableMap
+   (let [command-str (string/join " " command-seq)]
+     (doto (.clone sync-map)
+       (.put "test-command-str" command-str)
+       #(-> (get % "test-summaries")
+            (.put command-str (Collections/emptyMap)))))))
+
+(core/deftask await-done
+  [d data OBJECT ^:! code "The data for this task"]
+  (core/with-pass-thru [fs]
+    (util/dbug "Main thread is going to wait for test to complete...\n")
+    (.await (get data "done-latch"))))
+
+(core/deftask parallel-start
+  [d data OBJECT ^:! code "The data for this task"]
+  (core/with-pass-thru [fs]
+    (util/info "Launching %s parallel tests...\n" (get data "test-number"))
+    (.countDown (get data "start-latch"))))
+
+(defn- print-summary!
+  [summary]
+  ;; (util/dbug "%s" (into {} summary))
+  (util/info "Ran %s tests containing %s assertions.\n"
+             (get summary "test" 0)
+             (+ (get summary "pass" 0) (get summary "fail" 0) (get summary "error" 0)))
+  (util/info "%s failures, %s errors.\n"
+             (get summary "fail" 0)
+             (get summary "error" 0)))
+
+(core/deftask test-report
+  [d data OBJECT ^:! code "The data for this task"]
+  (fn [next-handler]
+    (fn [fileset]
+      (let [summaries (get data "test-summaries")]
+        ;; Individual report
+        (doseq [[command-str summary] summaries]
+          (util/info "\nReporting \"boot %s\"\n" command-str)
+          (print-summary! summary))
+        ;; Summary
+        (util/info "\nSummary\n")
+        (print-summary! (apply merge-with + (map (partial into {}) (vals summaries))))))))
+
+(defn done!
+  "Signal that this pod is shutting down"
+  [data]
+  (let [done-latch (get data "done-latch")]
+    (.countDown done-latch)
+    (util/dbug "Remaining running tests %s\n" (.getCount done-latch))))
+
+(defn set-summary!
+  "Set the summary in the (share) data for this pod"
+  [data]
+  (let [summaries (get data "test-summaries")
+        command (get data "test-command-str")]
+    (.put summaries command (Collections/unmodifiableMap
+                             (walk/stringify-keys @test/*report-counters*)))))
+
+(core/deftask inc-test-counter
+  []
+  (fn [next-handler]
+    (fn [fileset]
+      (test/inc-report-counter :test)
+      (next-handler fileset))))
+
+(core/deftask with-report-counters
+  []
+  (fn [next-handler]
+    (fn [fileset]
+      (binding [test/*report-counters* (ref test/*initial-report-counters*)]
+        (next-handler fileset)))))
+
+(core/deftask set-summary
+  []
+  (fn [next-handler]
+    (fn [fileset]
+      (set-summary! pod/data)
+      (next-handler fileset))))
+
+(defn test-task
+  "Create a boot test task by wrapping other tasks, either the result of
+  deftask or comp. Another way to say it is that a boot middleware
+  should be passed here."
+  [task]
+  ;; TODO - deftesttask
+  (pod/add-shutdown-hook! #(done! pod/data))
+  (.await (get pod/data "start-latch"))
+  (try
+    (util/dbug "In task %s\n" (get pod/data "test-command-str"))
+    (comp (with-report-counters)
+          (inc-test-counter)
+          task
+          (set-summary))
+    (catch InterruptedException e
+      (util/warn "Thread interrupted: %s\n" (.getMessage e))
+      (test/inc-report-counter :error))
+    (catch Throwable e
+      (test/inc-report-counter :error)
+      ;; TODO, do I need to pass :actual in the return?
+      ;; (do-report {:type :error, :message "Uncaught exception, not in assertion."
+      ;; :expected nil, :actual e})
+      )))
