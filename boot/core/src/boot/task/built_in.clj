@@ -823,3 +823,24 @@
                 (util/info "Tag %s already created for %s\n" tag commit)
                 (do (util/info "Creating tag %s...\n" v)
                     (git/tag v "release"))))))))))
+
+(core/deftask runboot
+  "Run boot in boot.
+
+  The args parameter is exactly the same kind of string you would write on the
+  command line (split in a vector). Runboot will execute the tasks in a brand
+  new pod every time it is invoked, isolating from the boot instance it is
+  launched from.
+
+  Data will be passed to the new pod (found in boot.pod/data). It has to be a
+  Java object (pods might not share the same Clojure version and therefore
+  Clojure objects won't work)."
+  [a args ARG        [str] "The boot cli arguments."
+   d data OBJECT ^:! code  "The data to pass the (new) boot environment"]
+  (let [core   (boot.App/newCore data)
+        worker (future pod/worker-pod)
+        args   (-> (vec (remove empty? args))
+                   (->> (into-array String)))]
+    (util/dbug "Runboot will run %s \n" (str "\"boot " (string/join " " args) "\""))
+    (core/with-pass-thru [fs]
+      (future (boot.App/runBoot core worker args)))))
