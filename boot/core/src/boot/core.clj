@@ -688,6 +688,7 @@
 (defmethod pre-env! :checkouts      [key old new env] (canonical-deps new))
 (defmethod pre-env! :dependencies   [key old new env] (add-dependencies! old (canonical-deps new) env))
 (defmethod pre-env! :repositories   [key old new env] (->> new (mapv (fn [[k v]] [k (@repo-config-fn (canonical-repo v))]))))
+(defmethod pre-env! :certificates   [key old new env] (pod/with-call-worker (boot.aether/load-certificates! ~new)))
 
 (add-watch repo-config-fn (gensym) (fn [& _] (set-env! :repositories identity)))
 
