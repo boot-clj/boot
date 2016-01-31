@@ -844,3 +844,35 @@
     (util/dbug "Runboot will run %s \n" (str "\"boot " (string/join " " args) "\""))
     (core/with-pass-thru [fs]
       (future (boot.App/runBoot core worker args)))))
+
+(defn- test-tasks
+  "Helper that returns the comp of the boot middlewares that will perform the
+  tests."
+  [sync-map commands middlewares]
+  (if (seq commands)
+    (let [command (mapv str (first commands))]
+      (recur sync-map
+             (rest commands)
+             (comp (runboot :args command
+                            :data (helpers/per-task-sync-map sync-map command))
+                   middlewares)))
+    middlewares))
+
+(core/deftask runtests
+  "For each command sequence in the cmds, run boot-in-boot
+  test in parallel and collect the results.
+
+  For example:
+      $ boot run-tests --cmds #{[sift-with-meta-tests]
+                                [sift-with-meta-invert-tests]}
+
+  Or in build.boot:
+      (run-tests :cmds '#{[sift-with-meta-tests]
+                          [sift-with-meta-invert-tests]})"
+  [c cmds CMDS #{[edn]} "The boot cli arguments (a set of seq of edn forms)."]
+  (pod/set-data! (helpers/initial-sync-map cmds))
+  ;; Note: don't wrap identity in a deftask or it will blow
+  (comp (test-tasks pod/data cmds identity)
+        (helpers/parallel-start :data pod/data)
+        (helpers/await-done :data pod/data)
+        (helpers/test-report :data pod/data)))
