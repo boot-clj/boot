@@ -8,7 +8,7 @@ Clojure projects from scripts written in Clojure that run in the context of
 the project.
 
 > If you have questions or need help, please [visit our Discourse site][discourse].
-> You can find other developers and users in [the `#hoplon` channel on freenode IRC][irc]
+> You can find other developers and users in [the `#bootclj` channel on freenode IRC][irc]
 > and [the `#boot` channel on Clojurians Slack][slack].
 
 ### Another Build Tool?
@@ -466,7 +466,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [waffle-badge]: https://badge.waffle.io/boot-clj/boot.svg?label=ready&title=Ready
 [waffle-board]: http://waffle.io/boot-clj/boot
 [discourse]: http://hoplon.discoursehosting.net/
-[irc]: http://webchat.freenode.net/?channels=hoplon
+[irc]: http://webchat.freenode.net/?channels=bootclj
 [slack]: http://clojurians.net/
 [changes]: https://github.com/boot-clj/boot/blob/master/CHANGES.md
 [brew]: https://github.com/homebrew/homebrew
