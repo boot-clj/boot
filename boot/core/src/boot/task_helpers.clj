@@ -14,8 +14,7 @@
     [boot.util               :as util]
     [boot.tmpdir             :as tmpd])
   (:import java.lang.InterruptedException
-           [java.util HashMap
-                      Collections
+           [java.util Map HashMap Collections
                       concurrent.ConcurrentHashMap
                       concurrent.CountDownLatch]))
 
@@ -152,6 +151,13 @@
 
 ;; test helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn command-str
+  "Given a seq of command segments, the input to the runboot task,
+  return its string representation. Useful for Java interop, for example
+  it can be key in a HashMap."
+  [command-seq]
+  (string/join " " command-seq))
+
 (defn initial-sync-map
   "Generates the (mutable) sync map necessary for the test task.
   This map will be modified during parallel testing so make sure the
@@ -164,7 +170,7 @@
       (.put "start-latch" start-latch)
       (.put "done-latch" done-latch)
       (.put "test-number" (count test-commands))
-      ;; (.put "test-command") ;; set in runboot-comp as it is on a per-test basis
+      ;; (.put "test-command") ;; AR - set in per-task-sync-map cause on a per-test basis
       (.put "test-summaries" (ConcurrentHashMap.)))))
 
 (defn per-task-sync-map
@@ -173,7 +179,7 @@
   are thread safe."
   [sync-map command-seq]
   (Collections/unmodifiableMap
-   (let [command-str (string/join " " command-seq)]
+   (let [command-str (command-str command-seq)]
      (doto (.clone sync-map)
        (.put "test-command-str" command-str)
        #(-> (get % "test-summaries")
@@ -192,27 +198,52 @@
     (.countDown (get data "start-latch"))))
 
 (defn- print-summary!
+  "Print out (info) the summary. Note that it has to be in Clojure form
+  already, see clojurize-summary."
   [summary]
   ;; (util/dbug "%s" (into {} summary))
-  (util/info "Ran %s tests containing %s assertions.\n"
-             (get summary "test" 0)
-             (+ (get summary "pass" 0) (get summary "fail" 0) (get summary "error" 0)))
-  (util/info "%s failures, %s errors.\n"
-             (get summary "fail" 0)
-             (get summary "error" 0)))
+  (util/info "Ran %s tests, %s assertions, %s failures, %s errors.\n"
+             (get summary :test 0)
+             (+ (get summary :pass 0) (get summary :fail 0) (get summary :error 0))
+             (get summary :fail 0)
+             (get summary :error 0)))
+
+(defn- clojurize-summaries
+  "Transform Java to Clojure summaries, for instance converting keys to
+  keywords. Returns a map of summaries indexed by command string (the
+  boot in boot command executed, see command-str)."
+  [^Map java-summaries]
+  (assert (every? (partial instance? Map) (vals java-summaries)))
+  (zipmap (keys java-summaries)
+          (map (comp walk/keywordize-keys (partial into {})) (vals java-summaries))))
+
+(comment
+  (def m (doto (HashMap.)
+      (.put "a" {"test" 2 "pass" 1 "error" 1})
+      (.put "b" {})
+      (.put "c" {"test" 1 "fail" 1})))
+  (print-summary! (second (vals (clojurize-summaries m))))
+  (print-summary! (merge-summaries (vals (clojurize-summaries m)))))
+
+(defn- merge-summaries
+  "Merge summaries. Note that it has to be in Clojure form
+  already, see clojurize-summary."
+  [summaries]
+  (assert (every? map? summaries))
+  (apply merge-with + summaries))
 
 (core/deftask test-report
   [d data OBJECT ^:! code "The data for this task"]
   (fn [next-handler]
     (fn [fileset]
-      (let [summaries (get data "test-summaries")]
+      (let [summaries (clojurize-summaries (get data "test-summaries"))]
         ;; Individual report
         (doseq [[command-str summary] summaries]
-          (util/info "\nReporting \"boot %s\"\n" command-str)
+          (util/info "\n* boot %s\n" command-str)
           (print-summary! summary))
         ;; Summary
         (util/info "\nSummary\n")
-        (print-summary! (apply merge-with + (map (partial into {}) (vals summaries))))))))
+        (print-summary! (merge-summaries (vals summaries)))))))
 
 (defn done!
   "Signal that this pod is shutting down"
@@ -221,7 +252,7 @@
     (.countDown done-latch)
     (util/dbug "Remaining running tests %s\n" (.getCount done-latch))))
 
-(defn set-summary!
+(defn set-summary-data!
   "Set the summary in the (share) data for this pod"
   [data]
   (let [summaries (get data "test-summaries")
@@ -231,10 +262,8 @@
 
 (core/deftask inc-test-counter
   []
-  (fn [next-handler]
-    (fn [fileset]
-      (test/inc-report-counter :test)
-      (next-handler fileset))))
+  (core/with-pass-thru [_]
+    (test/inc-report-counter :test)))
 
 (core/deftask with-report-counters
   []
@@ -245,10 +274,8 @@
 
 (core/deftask set-summary
   []
-  (fn [next-handler]
-    (fn [fileset]
-      (set-summary! pod/data)
-      (next-handler fileset))))
+  (core/with-pass-thru [_]
+    (set-summary-data! pod/data)))
 
 (defn test-task
   "Create a boot test task by wrapping other tasks, either the result of
