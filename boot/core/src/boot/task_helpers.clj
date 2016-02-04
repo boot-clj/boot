@@ -232,18 +232,35 @@
   (assert (every? map? summaries))
   (apply merge-with + summaries))
 
+(defn- summary-errors
+  "Retrieve the number or errors in a summary. Note that it has to be in
+  Clojure form already, see clojurize-summary."
+  [summary]
+  (reduce (fnil + 0 0) ((juxt :fail :error) summary)))
+
 (core/deftask test-report
   [d data OBJECT ^:! code "The data for this task"]
-  (fn [next-handler]
-    (fn [fileset]
-      (let [summaries (clojurize-summaries (get data "test-summaries"))]
-        ;; Individual report
-        (doseq [[command-str summary] summaries]
-          (util/info "\n* boot %s\n" command-str)
-          (print-summary! summary))
-        ;; Summary
-        (util/info "\nSummary\n")
-        (print-summary! (merge-summaries (vals summaries)))))))
+  (core/with-pass-thru [_]
+    (let [summaries (clojurize-summaries (get data "test-summaries"))]
+      ;; Individual report
+      (doseq [[command-str summary] summaries]
+        (util/info "\n* boot %s\n" command-str)
+        (print-summary! summary))
+      ;; Summary
+      (util/info "\nSummary\n")
+      (print-summary! (merge-summaries (vals summaries))))))
+
+(core/deftask test-exit
+  [d data OBJECT ^:! code "The data for this task"]
+  (core/with-pass-thru [_]
+    (let [errors (-> (get data "test-summaries")
+                     clojurize-summaries
+                     vals
+                     merge-summaries
+                     summary-errors)]
+      (if (> errors 0)
+        (util/exit-error (util/dbug "Tests have %s failures/errors, error exiting...\n" errors))
+        (util/dbug "Tests are passing, exiting normally...\n")))))
 
 (defn done!
   "Signal that this pod is shutting down"
