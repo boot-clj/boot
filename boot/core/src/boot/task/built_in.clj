@@ -487,6 +487,7 @@
         jars       (-> (core/get-env)
                        (update-in [:dependencies] (partial filter scope?))
                        pod/resolve-dependency-jars)
+        jars       (remove #(.endsWith (.getName %) ".pom") jars)
         exclude    (or exclude pod/standard-jar-exclusions)
         merge      (or merge pod/standard-jar-mergers)
         reducer    (fn [xs jar]
