@@ -26,5 +26,5 @@
   (printf "%s: %s" title message))
 
 (defn ^{:boot/from :jeluard/boot-notify} notify!
-  [s m]
-  (notify-method (System/getProperty "os.name") (assoc m :message s)))
+  [data]
+  (notify-method (System/getProperty "os.name") data))

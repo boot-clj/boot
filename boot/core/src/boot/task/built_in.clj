@@ -218,17 +218,17 @@
                 (when aural
                   (pod/with-call-worker (boot.notify/success! ~theme ~(:success sounds))))
                 (when visual
-                  (notify/notify! (:success messages) base-message)))
+                  (notify/notify! (assoc base-message :message (:success messages)))))
               (do
                 (when aural
                   (pod/with-call-worker (boot.notify/warning! ~theme ~(deref core/*warnings*) ~(:warning sounds))))
                 (when visual
-                  (notify/notify! (format (:warning messages) (deref core/*warnings*)) base-message)))))
+                  (notify/notify! (assoc base-message :message (format (:warning messages) (deref core/*warnings*))))))))
           (catch Throwable t
             (when aural
               (pod/with-call-worker (boot.notify/failure! ~theme ~(:failure sounds))))
             (when visual
-              (notify/notify! (format (:failure messages) (.getMessage t)) base-message))
+              (notify/notify! (assoc base-message :message (format (:failure messages) (.getMessage t)))))
             (throw t)))))))
 
 (core/deftask show
