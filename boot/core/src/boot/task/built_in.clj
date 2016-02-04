@@ -18,6 +18,7 @@
    [boot.from.table.core :as table]
    [boot.from.digest     :as digest]
    [boot.task-helpers    :as helpers]
+   [boot.task-helpers.notify :as notify]
    [boot.pedantic        :as pedantic])
   (:import
    [java.io File]
@@ -217,17 +218,17 @@
                 (when aural
                   (pod/with-call-worker (boot.notify/success! ~theme ~(:success sounds))))
                 (when visual
-                  (pod/with-call-worker (boot.notify/notify! ~(:success messages) ~base-message))))
+                  (notify/notify! (:success messages) base-message)))
               (do
                 (when aural
                   (pod/with-call-worker (boot.notify/warning! ~theme ~(deref core/*warnings*) ~(:warning sounds))))
                 (when visual
-                  (pod/with-call-worker (boot.notify/notify! ~(format (:warning messages) (deref core/*warnings*)) ~base-message))))))
+                  (notify/notify! (format (:warning messages) (deref core/*warnings*)) base-message)))))
           (catch Throwable t
             (when aural
               (pod/with-call-worker (boot.notify/failure! ~theme ~(:failure sounds))))
             (when visual
-              (pod/with-call-worker (boot.notify/notify! ~(format (:failure messages) (.getMessage t)) ~base-message)))
+              (notify/notify! (format (:failure messages) (.getMessage t)) base-message))
             (throw t)))))))
 
 (core/deftask show
