@@ -875,4 +875,5 @@
   (comp (test-tasks pod/data cmds identity)
         (helpers/parallel-start :data pod/data)
         (helpers/await-done :data pod/data)
-        (helpers/test-report :data pod/data)))
+        (helpers/test-report :data pod/data)
+        (helpers/test-exit :data pod/data)))
