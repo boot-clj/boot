@@ -850,7 +850,7 @@
   tests."
   [sync-map commands middlewares]
   (if (seq commands)
-    (let [command (mapv str (first commands))]
+    (let [command (string/split (first commands) #"\s")]
       (recur sync-map
              (rest commands)
              (comp (runboot :args command
@@ -859,20 +859,22 @@
     middlewares))
 
 (core/deftask runtests
-  "For each command sequence in the cmds, run boot-in-boot
-  test in parallel and collect the results.
+  "For each command sequence in the commands set, run boot-in-boot test in
+  parallel and collect the results.
 
-  For example:
-      $ boot run-tests --cmds #{[sift-with-meta-tests]
-                                [sift-with-meta-invert-tests]}
+  A command sequence is a vector of edn symbols, for example:
+      $ boot run-tests -c \"foo-tests --param --int 5\" -c \"bar-tests\"
 
   Or in build.boot:
-      (run-tests :cmds '#{[sift-with-meta-tests]
-                          [sift-with-meta-invert-tests]})"
-  [c cmds CMDS #{[edn]} "The boot cli arguments (a set of seq of edn forms)."]
-  (pod/set-data! (helpers/initial-sync-map cmds))
+      (run-tests :commands #{\"foo-tests :param true :int 5\"
+                             \"bar-test\"})"
+  [c commands CMDS ^:! #{str} "The boot cli arguments (a set of seq of edn forms)."]
+  (assert (and (set? commands) (every? string? commands))
+          "commands must be a set of strings")
+
+  (pod/set-data! (helpers/initial-sync-map commands))
   ;; Note: don't wrap identity in a deftask or it will blow
-  (comp (test-tasks pod/data cmds identity)
+  (comp (test-tasks pod/data commands identity)
         (helpers/parallel-start :data pod/data)
         (helpers/await-done :data pod/data)
         (helpers/test-report :data pod/data)

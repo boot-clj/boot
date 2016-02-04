@@ -178,6 +178,8 @@
   modified during parallel testing so make sure that the mutable parts
   are thread safe."
   [sync-map command-seq]
+  (assert (sequential? command-seq)
+          "The command needs to be in the form [\"task\" \"param1\" \"param2\"]. This is a bug.")
   (Collections/unmodifiableMap
    (let [command-str (command-str command-seq)]
      (doto (.clone sync-map)
