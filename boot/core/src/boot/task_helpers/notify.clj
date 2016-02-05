@@ -1,6 +1,7 @@
 (ns boot.task-helpers.notify
   (:require [clojure.java.io    :as io]
             [clojure.java.shell :as shell]
+            [boot.core          :as core]
             [boot.pod           :as pod]))
 
 (defn get-themefiles [theme tmp-dir]
@@ -13,6 +14,13 @@
                 (let [f (io/file tmp-dir (.getName (io/file r)))]
                   (pod/copy-resource r f)
                   [(keyword x) (.getPath f)])))))))
+
+(defn ^{:boot/from :jeluard/boot-notify} boot-logo
+  []
+  (let [d (core/tmp-dir!)
+        f (io/file d "logo.png")]
+    (io/copy (io/input-stream (io/resource "boot-logo-3.png")) f)
+    (.getAbsolutePath f)))
 
 (defn- ^{:boot/from :jeluard/boot-notify} program-exists?
   [s]

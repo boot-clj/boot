@@ -163,18 +163,11 @@
             (pod/with-call-worker (boot.notify/failure! ~theme ~failure))
             (throw t)))))))
 
-(defn ^{:boot/from :jeluard/boot-notify} boot-logo
-  []
-  (let [d (core/tmp-dir!)
-        f (io/file d "logo.png")]
-    (io/copy (io/input-stream (io/resource "boot-logo-3.png")) f)
-    (.getAbsolutePath f)))
-
 (core/deftask ^{:boot/from :jeluard/boot-notify} notify
   "Aural and visual notifications during build.
 
   Default audio themes: system (the default), ordinance, pillsbury,
-  and woodblock.  New themes can be included via jar dependency with
+  and woodblock. New themes can be included via jar dependency with
   the sound files as resources:
 
       boot
@@ -189,15 +182,15 @@
   tries to use the `terminal-notifier' program on OS X systems, and
   the `notify-send' program on Linux systems.
 
-  You can also supply custom notification functions via the
-  *-notify-fn options. Both are functions that take one argument which
-  is a map of options.
+  You can also supply custom notification functions via the *-notify-fn
+  options. Both are functions that take one argument which is a map of
+  options.
 
   The audible notification function will receive a map with three keys
   - :type, :file, and :theme.
 
-  The visual notification function will receive a
-  map with four keys - :title, :uid, :icon, and :message."
+  The visual notification function will receive a map with four keys
+  - :title, :uid, :icon, and :message."
 
   [a audible                    bool      "Play an audible notification"
    v visual                     bool      "Display a visual notification"
@@ -212,10 +205,9 @@
 
   (let [themefiles (notify/get-themefiles theme (core/tmp-dir!))
         sounds (merge themefiles soundfiles)
-        title (or title "Boot notify")
-        base-visual-opts {:title title
-                          :uid (or uid title)
-                          :icon (or icon (boot-logo))}
+        base-visual-opts {:title (or title "Boot")
+                          :uid   (or uid title)
+                          :icon  (or icon (notify/boot-logo))}
         messages (merge {:success "Success!" :warning "%s warning/s" :failure "%s"}
                         messages)
         audible-notify! (or audible-notify-fn notify/audible-notify!)
