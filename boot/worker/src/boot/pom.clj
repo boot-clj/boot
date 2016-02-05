@@ -1,6 +1,6 @@
 (ns boot.pom
   (:refer-clojure :exclude [name])
-  (:require 
+  (:require
    [clojure.java.io      :as io]
    [boot.pod             :as pod]
    [boot.file            :as file]
@@ -20,7 +20,7 @@
   artifactId connection description dependencies dependency exclusion
   exclusions developerConnection enabled groupId id license licenses
   modelVersion name email project scope tag url scm version comments
-  developer developers)
+  developer developers packaging)
 
 ;;; private ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -44,6 +44,7 @@
 (defn pom-xml [{p :project
                 v :version
                 d :description
+                pkg :packaging
                 l :license
                 {su :url
                  st :tag
@@ -72,6 +73,8 @@
             (url      lu)
             (name     ln)
             (comments lc))))
+      (when pkg
+        (packaging pkg))
       (when (or su st sc sd)
         (scm
           (when sc (connection sc))
