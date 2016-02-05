@@ -219,7 +219,7 @@
                       :uid (or uid title)
                       :icon (or icon (boot-logo))}
         messages (merge {:success "Success!" :warning "%s warning/s" :failure "%s"} template)
-        notify-fn (or notify-fn notify/notify!)]
+        notify-fn (or notify-fn notify/visual-notify!)]
     (fn [next-task]
       (fn [fileset]
         (try
@@ -227,26 +227,23 @@
             (if (zero? @core/*warnings*)
               (do
                 (when aural
-                  (pod/with-call-worker
-                    (boot.notify/notify! {:type :success
-                                          :file ~(:success sounds)
-                                          :theme ~theme})))
+                  (notify/aural-notify! {:type :success
+                                         :file (:success sounds)
+                                         :theme theme}))
                 (when visual
                   (notify-fn (assoc base-message :message (:success messages)))))
               (do
                 (when aural
-                  (pod/with-call-worker
-                    (boot.notify/notify! {:type :warning
-                                          :file ~(:warning sounds)
-                                          :theme ~theme})))
+                  (notify/aural-notify! {:type :warning
+                                         :file (:warning sounds)
+                                         :theme theme}))
                 (when visual
                   (notify-fn (assoc base-message :message (format (:warning messages) (deref core/*warnings*))))))))
           (catch Throwable t
             (when aural
-              (pod/with-call-worker
-                (boot.notify/notify! {:type :failure
-                                      :file ~(:failure sounds)
-                                      :theme ~theme})))
+              (notify/aural-notify! {:type :failure
+                                     :file (:failure sounds)
+                                     :theme theme}))
             (when visual
               (notify-fn (assoc base-message :message (format (:failure messages) (.getMessage t)))))
             (throw t)))))))

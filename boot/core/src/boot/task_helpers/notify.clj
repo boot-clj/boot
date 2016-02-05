@@ -1,5 +1,6 @@
 (ns boot.task-helpers.notify
-  (:require [clojure.java.shell :as shell]))
+  (:require [clojure.java.shell :as shell]
+            [boot.pod           :as pod]))
 
 (defn- ^{:boot/from :jeluard/boot-notify} program-exists?
   [s]
@@ -25,6 +26,11 @@
   [_ {:keys [message title]}]
   (printf "%s: %s" title message))
 
-(defn ^{:boot/from :jeluard/boot-notify} notify!
+(defn ^{:boot/from :jeluard/boot-notify} visual-notify!
   [data]
   (notify-method (System/getProperty "os.name") data))
+
+(defn aural-notify!
+  [options]
+  (pod/with-call-worker
+    (boot.notify/notify! ~options)))
