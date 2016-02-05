@@ -38,3 +38,5 @@
           (.exists (File. "/usr/bin/say"))
           (sh "say" "-v" "Vicki" msg)
           :else (play! (or file (path-for theme "warning"))))))))
+(defn notify! [{:keys [file theme type]}]
+  (play! (or file (path-for theme (name type)))))

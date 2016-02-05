@@ -227,17 +227,26 @@
             (if (zero? @core/*warnings*)
               (do
                 (when aural
-                  (pod/with-call-worker (boot.notify/success! ~theme ~(:success sounds))))
+                  (pod/with-call-worker
+                    (boot.notify/notify! {:type :success
+                                          :file ~(:success sounds)
+                                          :theme ~theme})))
                 (when visual
                   (notify-fn (assoc base-message :message (:success messages)))))
               (do
                 (when aural
-                  (pod/with-call-worker (boot.notify/warning! ~theme ~(deref core/*warnings*) ~(:warning sounds))))
+                  (pod/with-call-worker
+                    (boot.notify/notify! {:type :warning
+                                          :file ~(:warning sounds)
+                                          :theme ~theme})))
                 (when visual
                   (notify-fn (assoc base-message :message (format (:warning messages) (deref core/*warnings*))))))))
           (catch Throwable t
             (when aural
-              (pod/with-call-worker (boot.notify/failure! ~theme ~(:failure sounds))))
+              (pod/with-call-worker
+                (boot.notify/notify! {:type :failure
+                                      :file ~(:failure sounds)
+                                      :theme ~theme})))
             (when visual
               (notify-fn (assoc base-message :message (format (:failure messages) (.getMessage t)))))
             (throw t)))))))
