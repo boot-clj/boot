@@ -1,6 +1,18 @@
 (ns boot.task-helpers.notify
-  (:require [clojure.java.shell :as shell]
+  (:require [clojure.java.io    :as io]
+            [clojure.java.shell :as shell]
             [boot.pod           :as pod]))
+
+(defn get-themefiles [theme tmp-dir]
+  (let [resource   #(vector %2 (format "boot/notify/%s_%s.mp3" %1 %2))
+        resources  #(map resource (repeat %) ["success" "warning" "failure"])]
+    (into {}
+          (let [rs (when theme (resources theme))]
+            (when (and (seq rs) (every? (comp io/resource second) rs))
+              (for [[x r] rs]
+                (let [f (io/file tmp-dir (.getName (io/file r)))]
+                  (pod/copy-resource r f)
+                  [(keyword x) (.getPath f)])))))))
 
 (defn- ^{:boot/from :jeluard/boot-notify} program-exists?
   [s]

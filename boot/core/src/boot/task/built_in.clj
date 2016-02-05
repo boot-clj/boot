@@ -210,16 +210,7 @@
    i icon                       str       "Full path of the file used as notification icon"
    u uid                        str       "Unique ID identifying this boot process"]
 
-  (let [tmp        (core/tmp-dir!)
-        resource   #(vector %2 (format "boot/notify/%s_%s.mp3" %1 %2))
-        resources  #(map resource (repeat %) ["success" "warning" "failure"])
-        themefiles (into {}
-                         (let [rs (when theme (resources theme))]
-                           (when (and (seq rs) (every? (comp io/resource second) rs))
-                             (for [[x r] rs]
-                               (let [f (io/file tmp (.getName (io/file r)))]
-                                 (pod/copy-resource r f)
-                                 [(keyword x) (.getPath f)])))))
+  (let [themefiles (notify/get-themefiles theme (core/tmp-dir!))
         sounds (merge themefiles soundfiles)
         title (or title "Boot notify")
         base-visual-opts {:title title
