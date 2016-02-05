@@ -206,9 +206,9 @@
    T theme             NAME     str       "The name of the audible notification sound theme"
    s soundfiles        KEY=VAL  {kw str}  "Sound files overriding theme sounds. Keys can be :success, :warning or :failure"
    m messages          KEY=VAL  {kw str}  "Templates overriding default messages. Keys can be :success, :warning or :failure"
-   t title                      str       "Title of the notification"
-   i icon                       str       "Full path of the file used as notification icon"
-   u uid                        str       "Unique ID identifying this boot process"]
+   t title             TITLE    str       "Title of the notification"
+   i icon              ICON     str       "Full path of the file used as notification icon"
+   u uid               UID      str       "Unique ID identifying this boot process"]
 
   (let [themefiles (notify/get-themefiles theme (core/tmp-dir!))
         sounds (merge themefiles soundfiles)
