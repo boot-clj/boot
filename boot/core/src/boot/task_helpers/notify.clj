@@ -30,7 +30,7 @@
   [data]
   (notify-method (System/getProperty "os.name") data))
 
-(defn aural-notify!
+(defn audible-notify!
   [options]
   (pod/with-call-worker
     (boot.notify/notify! ~options)))
