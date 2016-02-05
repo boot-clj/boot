@@ -222,39 +222,32 @@
                                  [(keyword x) (.getPath f)])))))
         sounds (merge themefiles soundfiles)
         title (or title "Boot notify")
-        base-message {:title title
-                      :uid (or uid title)
-                      :icon (or icon (boot-logo))}
+        base-visual-opts {:title title
+                          :uid (or uid title)
+                          :icon (or icon (boot-logo))}
         messages (merge {:success "Success!" :warning "%s warning/s" :failure "%s"}
                         messages)
         audible-notify! (or audible-notify-fn notify/audible-notify!)
-        visual-notify!  (or visual-notify-fn  notify/visual-notify!)]
+        visual-notify!  (or visual-notify-fn  notify/visual-notify!)
+        notify! (fn [type message]
+                  (when audible
+                    (audible-notify! {:type type
+                                      :file (get sounds type)
+                                      :theme theme}))
+                  (when visual
+                    (visual-notify! (assoc base-visual-opts
+                                           :message message))))]
     (fn [next-task]
       (fn [fileset]
         (try
           (util/with-let [_ (next-task fileset)]
             (if (zero? @core/*warnings*)
-              (do
-                (when audible
-                  (audible-notify! {:type :success
-                                    :file (:success sounds)
-                                    :theme theme}))
-                (when visual
-                  (visual-notify! (assoc base-message :message (:success messages)))))
-              (do
-                (when audible
-                  (audible-notify! {:type :warning
-                                    :file (:warning sounds)
-                                    :theme theme}))
-                (when visual
-                  (visual-notify! (assoc base-message :message (format (:warning messages) (deref core/*warnings*))))))))
+              (notify! :success (:success messages))
+              (notify! :warning (format (:warning messages)
+                                        (deref core/*warnings*)))))
           (catch Throwable t
-            (when audible
-              (audible-notify! {:type :failure
-                                :file (:failure sounds)
-                                :theme theme}))
-            (when visual
-              (visual-notify! (assoc base-message :message (format (:failure messages) (.getMessage t)))))
+            (notify! :failure (format (:failure messages)
+                                      (.getMessage t)))
             (throw t)))))))
 
 (core/deftask show
