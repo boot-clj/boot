@@ -251,7 +251,7 @@
 (defn- jarpath-on-artifact-map
   "Infer packaging type from `jarpath` or `packaging` in pom and add it
    to `artefact-map` if a mapping for `jarpath` not already exists."
-  [artifact-map {:keys [project version packaging] :as pom} jarpath]
+  [artifact-map {:keys [project version packaging classifier] :as pom} jarpath]
   (if (some #{jarpath} (vals artifact-map))
     artifact-map
     (assoc
@@ -266,7 +266,9 @@
                      "war"
 
                      :else
-                     "jar"))
+                     "jar")
+
+        :classifier classifier)
       jarpath)))
 
 (defn install
