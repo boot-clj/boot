@@ -91,7 +91,7 @@
         docstring (cond
                     incr? (format "Increase %s" (decap doc))
                     flag? doc
-                    atom? (format "Set %s to %s." (depunc (decap doc)) optarg)
+                    atom? (format "%s sets %s." optarg (depunc (decap doc)))
                     :else (let [f "Conj %s onto %s"
                                 v ((parse-fn optarg) (str optarg))]
                             (format f (if (string? v) v (pr-str (mapv symbol v))) (decap doc))))]
