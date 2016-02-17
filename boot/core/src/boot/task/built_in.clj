@@ -549,13 +549,9 @@
   "Perform AOT compilation of Clojure namespaces."
 
   [a all          bool   "Compile all namespaces."
-   n namespace NS #{sym} "The set of namespaces to compile."
-   d compile-path-sfx PATH str "*compile-path* suffix"]
+   n namespace NS #{sym} "The set of namespaces to compile."]
 
   (let [tgt         (core/tmp-dir!)
-        sfx (if compile-path-sfx (clojure.string/replace compile-path-sfx #"^/" "") nil)
-        sfx (if (empty? sfx) nil sfx) ;; handle pathological case -d "/"
-        compile-path (if sfx (str (.getPath tgt) "/" sfx) (.getPath tgt))
         pod-env     (update-in (core/get-env) [:directories] conj (.getPath tgt))
         compile-pod (future (pod/make-pod pod-env))]
     (core/with-pre-wrap [fs]
@@ -563,9 +559,7 @@
       (let [all-nses (->> fs core/fileset-namespaces)
             nses     (->> all-nses (set/intersection (if all all-nses namespace)) sort)]
         (pod/with-eval-in @compile-pod
-          ~(io/make-parents (io/file tgt (if sfx (str sfx "/dummy") "")))
-          (boot.pod/add-classpath ~compile-path)
-          (binding [*compile-path* ~compile-path] ;; ~(.getPath tgt)]
+          (binding [*compile-path* ~(.getPath tgt)]
             (doseq [[idx ns] (map-indexed vector '~nses)]
               (boot.util/info "Compiling %s/%s %s...\n" (inc idx) (count '~nses) ns)
               (compile ns)))))
