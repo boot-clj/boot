@@ -643,7 +643,7 @@
   `not-found` if the environment doesn't contain key `k` and `not-found` was
   given. Calling this function with no arguments returns the environment map."
   [& [k not-found]]
-  (if k (get @boot-env k not-found) @boot-env))
+  (if k (get pod/env k not-found) pod/env))
 
 (defn set-env!
   "Update the boot environment atom `this` with the given key-value pairs given
