@@ -18,7 +18,8 @@
    [boot.from.table.core :as table]
    [boot.from.digest     :as digest]
    [boot.task-helpers    :as helpers]
-   [boot.pedantic        :as pedantic])
+   [boot.pedantic        :as pedantic]
+   [boot.test            :as test])
   (:import
    [java.io File]
    [java.util Arrays]
@@ -845,18 +846,56 @@
     (core/with-pass-thru [fs]
       (future (boot.App/runBoot core worker args)))))
 
-(defn- test-tasks
-  "Helper that returns the comp of the boot middlewares that will perform the
-  tests."
-  [sync-map commands middlewares]
-  (if (seq commands)
-    (let [command (string/split (first commands) #"\s")]
-      (recur sync-map
-             (rest commands)
-             (comp (runboot :args command
-                            :data (helpers/per-task-sync-map sync-map command))
-                   middlewares)))
-    middlewares))
+(core/deftask test-exit
+  "Adds the ability to exit from the test with the right code, it simply parses
+  the input summaries and call boot.util/exit-errors in case of failures or
+  errors.
+
+  You can omit this task if you don't care about having the return code not
+  equal to zero (for instance during continuous testing in development)."
+  []
+  (core/with-pass-thru [_]
+    (let [errors (-> pod/data
+                     (get "test-summaries")
+                     test/clojurize-summaries
+                     vals
+                     test/merge-summaries
+                     test/summary-errors)]
+      (if (> errors 0)
+        (util/exit-error (util/dbug "Tests have %s failures/errors, error exiting...\n" errors))
+        (util/dbug "Tests are passing, exiting normally...\n")))))
+
+(core/deftask test-report
+  "Boot's default test report task, it prints out the final summary.
+
+  The usual -v/-vv controls the verbosity of the report."
+  []
+  (core/with-pass-thru [_]
+    (let [summaries (-> pod/data
+                        (get "test-summaries")
+                        (test/clojurize-summaries))]
+      ;; Individual report
+      (doseq [[command-str summary] summaries]
+        (when (or (>= @util/*verbosity* 2)
+                  (> (test/summary-errors summary) 0))
+          (util/info "\n* boot %s\n" command-str)
+          (test/print-summary! summary)))
+      ;; Summary
+      (util/info "\nSummary\n")
+      (test/print-summary! (test/merge-summaries (vals summaries))))))
+
+(defn- test-task-reducer
+  "Helper that given a sync-map returns a function that composes boot
+  middlewares that will perform parallel tests.
+
+  This can be made more generic and recursively compose any task, not
+  just runboot, in the future."
+  [sync-map]
+  (fn [middlewares command]
+    (let [cmd-words (string/split command #"\s")]
+      (comp (runboot :args cmd-words
+                     :data (test/per-task-sync-map sync-map cmd-words))
+            middlewares))))
 
 (core/deftask runtests
   "For each command sequence in the commands set, run boot-in-boot test in
@@ -872,10 +911,8 @@
   (assert (and (set? commands) (every? string? commands))
           "commands must be a set of strings")
 
-  (pod/set-data! (helpers/initial-sync-map commands))
-  ;; Note: don't wrap identity in a deftask or it will blow
-  (comp (test-tasks pod/data commands identity)
-        (helpers/parallel-start :data pod/data)
-        (helpers/await-done :data pod/data)
-        (helpers/test-report :data pod/data)
-        (helpers/test-exit :data pod/data)))
+  (pod/set-data! (test/initial-sync-map commands))
+  ;; Note for self: don't wrap identity in a deftask or it will blow
+  (comp (reduce (test-task-reducer pod/data) identity commands)
+        (test/parallel-start :data pod/data)
+        (test/await-done :data pod/data)))

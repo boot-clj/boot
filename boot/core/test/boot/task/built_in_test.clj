@@ -2,8 +2,7 @@
   (:require [clojure.test :refer :all]
             [boot.core :refer :all]
             [boot.task.built-in :refer :all]
-            [boot.task-helpers :refer :all]
-            [boot.util :as util]
+            [boot.test :as boot-test]
             [boot.pod :as pod]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -19,7 +18,7 @@
     fileset))
 
 (deftask sift-with-meta-tests []
-  (test-task
+  (boot-test/test-task
    (comp (sift :add-jar {'org.clojure/tools.reader #".*"}) ;; populate
          (sift :add-meta {#".clj$" :boot-test-tag})
          (sift :with-meta #{:boot-test-tag})
@@ -34,7 +33,7 @@
     fileset))
 
 (deftask sift-with-meta-invert-tests []
-  (test-task
+  (boot-test/test-task
    (comp (sift :add-jar {'org.clojure/tools.reader #".*"}) ;; populate
          (sift :add-meta {#".clj$" :boot-test-tag})
          (sift :with-meta #{:boot-test-tag} :invert true)
@@ -54,7 +53,7 @@
     fileset))
 
 (deftask sift-include-tests []
-  (test-task
+  (boot-test/test-task
    (comp (sift :add-jar {'org.clojure/tools.reader #".*"}) ;; populate
          (sift :include #{#".clj$" #".MD$"})
          (include-tests))))
@@ -69,7 +68,7 @@
     fileset))
 
 (deftask sift-include-invert-tests []
-  (test-task
+  (boot-test/test-task
    (comp (sift :add-jar {'org.clojure/tools.reader #".*"}) ;; populate
          (sift :include #{#"\.clj$" #"\.MF$"} :invert true)
          (include-invert-tests))))
@@ -89,7 +88,7 @@
     fileset))
 
 (deftask sift-to-asset-tests []
-  (test-task
+  (boot-test/test-task
    (comp (sift :add-jar {'org.clojure/tools.reader #".*"} ;; populate
                :to-asset #{#".*\.MF$"})
          (to-asset-tests))))
@@ -103,7 +102,7 @@
     fileset))
 
 (deftask sift-to-asset-invert-tests []
-  (test-task
+  (boot-test/test-task
    (comp (sift :add-jar {'org.clojure/tools.reader #".*"} ;; populate
                :to-asset #{#".*\.MF$"}
                :invert true)
@@ -122,7 +121,7 @@
     fileset))
 
 (deftask sift-add-meta-tests []
-  (test-task
+  (boot-test/test-task
    (comp (sift :add-jar {'org.clojure/tools.reader #".*"}) ;; populate
          (sift :add-meta {#".clj$" :boot-test-tag})
          (add-meta-tests))))
@@ -136,7 +135,7 @@
     fileset))
 
 (deftask sift-add-meta-invert-tests []
-  (test-task
+  (boot-test/test-task
    (comp (sift :add-jar {'org.clojure/tools.reader #".*"}) ;; populate
          (sift :add-meta {#".clj$" :boot-test-tag} :invert true)
          (add-meta-invert-tests))))
