@@ -897,21 +897,44 @@
             middlewares))))
 
 (core/deftask runtests
-  "For each command sequence in the commands set, run boot-in-boot test in
-  parallel and collect the results.
+  "Run boot-in-boot parallel tests and collect the results.
 
-  A command sequence is a vector of edn symbols, for example:
-      $ boot run-tests -c \"foo-tests --param --int 5\" -c \"bar-tests\"
+  The default, no argument variant runs all the test tasks found in all the
+  namespaces on the classpath, see boot.test/deftesttask on how to create test
+  tasks.
+
+  If you want more control, there is a command mode and a namespace mode. To
+  avoid clashing they are mutually exclusive, command mode takes precedence.
+
+  A command is the string you would use on the command line for running the
+  task (after having it required in build.boot).
+
+  The namespaces option, instead, is self-explanatory and does not allow to
+  specify additionally arguments to tasks.
+
+  Usage example at the command line:
+
+      $ boot runtests -c \"foo-tests --param --int 5\" -c \"bar-tests\"
 
   Or in build.boot:
-      (run-tests :commands #{\"foo-tests :param true :int 5\"
+      (runtests :commands #{\"foo-tests :param true :int 5\"
                              \"bar-test\"})"
-  [c commands CMDS ^:! #{str} "The boot cli arguments (a set of seq of edn forms)."]
-  (assert (and (set? commands) (every? string? commands))
-          "commands must be a set of strings")
 
-  (pod/set-data! (test/initial-sync-map commands))
-  ;; Note for self: don't wrap identity in a deftask or it will blow
-  (comp (reduce (test-task-reducer pod/data) identity commands)
-        (test/parallel-start :data pod/data)
-        (test/await-done :data pod/data)))
+  [c commands   CMDS      ^:! #{str} "The boot task cli calls + arguments (a set of strings)."
+   n namespaces NAMESPACE     #{sym} "The set of namespace symbols to run tests in."
+   e exclusions NAMESPACE     #{sym} "The set of namespace symbols to be excluded from test."]
+  (let [commands (cond
+                   commands commands
+                   :default (->> (or (seq namespaces) (all-ns))
+                                 (remove (or exclusions #{}) )
+                                 (test/namespaces->vars test/test-me-pred)
+                                 (map test/var->command)))]
+    (if (seq commands)
+      (do (assert (every? string? commands) "commands must be strings")
+          (pod/set-data! (test/initial-sync-map commands))
+          ;; Note for self: don't wrap identity in a deftask or it will blow
+          (comp (reduce (test-task-reducer pod/data) identity commands)
+                (test/parallel-start :data pod/data)
+                (test/await-done :data pod/data)))
+      (do (util/warn "No namespace was tested.")
+          identity))))

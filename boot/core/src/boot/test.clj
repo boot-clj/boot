@@ -118,6 +118,14 @@
     (.put summaries command (Collections/unmodifiableMap
                              (walk/stringify-keys @test/*report-counters*)))))
 
+(core/deftask testing-context
+  []
+  (fn [next-handler]
+    (fn [fileset]
+      (let [test-command-str (get pod/data "test-command-str")]
+        (binding [test/*testing-contexts* (conj test/*testing-contexts* test-command-str)]
+          (next-handler fileset))))))
+
 (core/deftask inc-test-counter
   []
   (core/with-pass-thru [_]
@@ -146,6 +154,7 @@
   (try
     (util/dbug "In task %s\n" (get pod/data "test-command-str"))
     (comp (with-report-counters)
+          (testing-context)
           (inc-test-counter)
           task
           (set-summary))
@@ -158,3 +167,67 @@
       ;; (do-report {:type :error, :message "Uncaught exception, not in assertion."
       ;; :expected nil, :actual e})
       )))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   deftesttask macro   ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn update-body
+  "Given the split vector returned by split-deftask-forms, rebuild the
+  correct forms for the deftask macro, replacing body with the one
+  returned by (f old-body)."
+  [forms f]
+  (concat (butlast forms) (list (f (last forms)))))
+
+(defmacro deftesttask
+  "Define a test task. It enhances deftask so that tests can be run in
+  parallel through boot.built-in/runtests.
+
+  Inside a task you can combine the clojure.test facilities testing, is,
+  are, ... the only requirement is that your deftesttask follows boot's
+  middleware pattern and return either the result of comp-ositing tasks
+  or identity.
+
+  Example of declaration:
+
+  (deftesttask my-test
+   \"Testing.\"
+    (with-pass-thru fs
+      (testing \"whatever\"
+        (is true \"Whatever must be true\"))))
+
+  When *load-tests* is false, deftesttask is ignored."
+  [& forms]
+  (when test/*load-tests*
+    (let [new-forms (-> forms
+                        (boot.test/update-body #(cons 'boot.test/test-task (list %))))]
+      `(alter-meta! (core/deftask ~@new-forms) assoc ::test-task ::test-me))))
+
+;;;;;;;;;;;;;;;;;;
+;;  Test Vars   ;;
+;;;;;;;;;;;;;;;;;;
+
+(def test-me-pred
+  "Return true when boot.test/test-task meta on the var is
+  boot.test/test-me."
+  (fn [var] (= ::test-me (::test-task (meta var)))))
+
+(defn var->command
+  "Return a string representing the task command to trigger (needed in
+  runboot)."
+  [var]
+  (let [[ns name] (-> var meta ((juxt :ns :name)))]
+    (str ns "/" name)))
+
+(defn namespaces->vars
+  "Filter the input namespaces in order to get the test task vars
+  according to pred, a 1-arity function that accepts a var in input and
+  returns true it is to be considered a test var.
+
+  TODO: use transduce when switching Clojure 1.7.0"
+  [pred namespaces]
+  (->> namespaces
+       (map ns-interns) ;; seq of maps
+       (map vals)
+       (reduce concat)
+       (filter pred)))
