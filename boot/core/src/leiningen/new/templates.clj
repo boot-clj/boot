@@ -103,9 +103,10 @@
 ;; string. We can just provide this function instead. In doing so, it is much
 ;; less likely that template authors will have to pull in any external
 ;; libraries. Though they are welcome to if they need.
-(def render-text (do
-                   (require '[stencil.core :as stencil])
-                   (resolve 'stencil/render-string)))
+(defn render-text
+  [& args]
+  (require '[stencil.core :as stencil])
+  (apply (resolve 'stencil/render-string) args))
 
 (defn renderer
   "Create a renderer function that looks for mustache templates in the
