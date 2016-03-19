@@ -28,10 +28,21 @@
 (defn set-local-repo! [x] (reset! local-repo x))
 
 (defn transfer-listener
-  [{type :type meth :method {name :name repo :repository} :resource err :error :as info}]
+  [{type :type meth :method {name :name repo :repository size :size} :resource err :error :as info}]
   (util/dbug "Aether: %s\n" (with-out-str (pprint/pprint info)))
-  (when (and (.endsWith name ".jar") (= type :started))
-    (util/info "Retrieving %s from %s\n" (.getName (io/file name)) repo)))
+  (letfn [(->k [size] (if (neg? size) "" (str (Math/round (double (max 1 (/ size 1024)))))))]
+    (case type
+      :started
+      (util/info "%s %s from %s (%sk)\n"
+        (case meth :get "Retrieving" :put "Sending")
+        (.getName (io/file name))
+        repo
+        (->k size))
+
+      (:corrupted :failed)
+      (when err (util/fail (.getMessage err)))
+
+      nil)))
 
 (defn ^{:boot/from :technomancy/leiningen} build-url
   "Creates java.net.URL from string"
@@ -276,7 +287,7 @@
        :coordinates  [project version]
        :jar-file     (io/file jarpath)
        :pom-file     (io/file pomfile)
-       :transfer-listener :stdout
+       :transfer-listener transfer-listener
        :artifact-map artifact-map
        :repository   {repo-id repo-settings}
        :local-repo   (or (:local-repo env) @local-repo nil)))))
