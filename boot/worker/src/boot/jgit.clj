@@ -72,7 +72,9 @@
                 (condp instance? t
                   ObjectIdRef$PeeledTag (assoc m (subs (.getName t) 10) (.getName (.getPeeledObjectId (.peel r t))))
                   ObjectIdRef$Unpeeled (assoc m (subs (.getName t) 10) (.getName (.getObjectId (.peel r t))))
-                  ObjectIdRef$PeeledNonTag m)) {} (.call (.tagList repo))))))
+                  ObjectIdRef$PeeledNonTag m))
+              {}
+              (.call (.tagList repo))))))
 
 (defn tag
   [name message]
