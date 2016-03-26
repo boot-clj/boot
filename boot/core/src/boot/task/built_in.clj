@@ -34,6 +34,9 @@
     (let [tasks (#'helpers/available-tasks 'boot.user)
           opts  (->> main/cli-opts (mapv (fn [[x y z]] ["" (str x " " y) z])))
           envs  [["" "BOOT_AS_ROOT"              "Set to 'yes' to allow boot to run as root."]
+                 ["" "BOOT_CERTIFICATES"         "Specify certificate file paths."]
+                 ["" "BOOT_CLOJARS_REPO"         "Specify the url for the 'clojars' Maven repo."]
+                 ["" "BOOT_CLOJARS_MIRROR"       "Specify the mirror url for the 'clojars' Maven repo."]
                  ["" "BOOT_CLOJURE_VERSION"      "The version of Clojure boot will provide (1.7.0)."]
                  ["" "BOOT_CLOJURE_NAME"         "The artifact name of Clojure boot will provide (org.clojure/clojure)."]
                  ["" "BOOT_COLOR"                "Set to 'no' to turn colorized output off."]
@@ -44,9 +47,12 @@
                  ["" "BOOT_JAVA_COMMAND"         "Specify the Java executable (java)."]
                  ["" "BOOT_JVM_OPTIONS"          "Specify JVM options (Unix/Linux/OSX only)."]
                  ["" "BOOT_LOCAL_REPO"           "The local Maven repo path (~/.m2/repository)."]
+                 ["" "BOOT_MAVEN_CENTRAL_REPO"   "Specify the url for the 'maven-central' Maven repo."]
+                 ["" "BOOT_MAVEN_CENTRAL_MIRROR" "Specify the mirror url for the 'maven-central' Maven repo."]
                  ["" "BOOT_VERSION"              "Specify the version of boot core to use."]
                  ["" "BOOT_WARN_DEPRECATED"      "Set to 'no' to suppress deprecation warnings."]]
           files [["" "./boot.properties"         "Specify boot options for this project."]
+                 ["" "./profile.boot"            "A script to run after the global profile.boot but before the build script."]
                  ["" "BOOT_HOME/boot.properties" "Specify global boot options."]
                  ["" "BOOT_HOME/profile.boot"    "A script to run before running the build script."]]
           br    #(conj % ["" "" ""])]
@@ -66,8 +72,8 @@
                    (map string/trimr)
                    (string/join "\n"))))))
 
-(core/deftask checkout
-  "Checkout dependencies task.
+(core/deftask ^{:deprecated "2.6.0"} checkout
+  "Checkout dependencies task. DEPRECATED.
 
   This task facilitates working on a project and its dependencies at the same
   time, by extracting the dependency jar contents into the fileset. Transitive
@@ -97,8 +103,12 @@
         names (map (memfn getName) jars)
         dirs  (map (memfn getParent) jars)
         tmps  (reduce #(assoc %1 %2 (core/tmp-dir!)) {} names)
+        warn  (delay
+                (util/warn-deprecated
+                  "The checkout task is deprecated. Please use the --checkouts boot option instead.\n"))
         adder #(core/add-source %1 %2 :exclude pod/standard-jar-exclusions)]
     (when (seq deps)
+      @warn
       (util/info "Adding checkout dependencies:\n")
       (doseq [dep deps]
         (util/info "\u2022 %s\n" (pr-str dep))))
@@ -238,7 +248,9 @@
       (let [q            (LinkedBlockingQueue.)
             k            (gensym)
             return       (atom fileset)
-            srcdirs      (map (memfn getPath) (core/user-dirs fileset))
+            srcdirs      (->> (map (comp :dir val) (core/get-checkouts))
+                              (into (core/user-dirs fileset))
+                              (map (memfn getPath)))
             watcher      (apply file/watcher! :time srcdirs)
             debounce     (core/get-env :watcher-debounce)
             watch-target (if manual core/new-build-at core/last-file-change)]
@@ -488,28 +500,35 @@
                        (update-in [:dependencies] (partial filter scope?))
                        pod/resolve-dependency-jars)
         jars       (remove #(.endsWith (.getName %) ".pom") jars)
+        checkouts  (->> (core/get-checkouts)
+                        (filter (comp scope? :dep val))
+                        (into {}))
+        co-jars    (->> checkouts (map (comp :jar val)))
+        co-dirs    (->> checkouts (map (comp :dir val)))
         exclude    (or exclude pod/standard-jar-exclusions)
         merge      (or merge pod/standard-jar-mergers)
         reducer    (fn [xs jar]
                      (core/add-cached-resource
                        xs (digest/md5 jar) (partial pod/unpack-jar jar)
-                       :include include :exclude exclude :mergers merge))]
+                       :include include :exclude exclude :mergers merge))
+        co-reducer #(core/add-resource
+                      %1 %2 :include include :exclude exclude :mergers merge)]
     (core/with-pre-wrap [fs]
       (when (seq jars)
         (util/info "Adding uberjar entries...\n"))
       (when as-jars
-        (doseq [jar jars]
+        (doseq [jar (reduce into [] [jars co-jars])]
           (let [hash (digest/md5 jar)
                 name (str hash "-" (.getName jar))
                 src  (io/file cache hash)]
             (when-not (.exists src)
-              (util/dbug "Caching jar %s...\n" name)
+              (util/dbug* "Caching jar %s...\n" name)
               (file/copy-atomically jar src))
-            (util/dbug "Adding cached jar %s...\n" name)
+            (util/dbug* "Adding cached jar %s...\n" name)
             (file/hard-link src (io/file tgt name)))))
       (core/commit! (if as-jars
                       (core/add-resource fs tgt)
-                      (reduce reducer fs jars))))))
+                      (reduce co-reducer (reduce reducer fs jars) co-dirs))))))
 
 (core/deftask web
   "Create project web.xml file.
@@ -648,19 +667,19 @@
       (core/empty-dir! tgt)
       (let [warname (or file "project.war")
             warfile (io/file tgt warname)
-            inf?    #(contains? #{"META-INF" "WEB-INF"} %)]
-        (let [->war   #(let [r    (core/tmp-path %)
-                             r'   (file/split-path r)
-                             path (->> (if (.endsWith r ".jar")
-                                         ["lib" (last r')]
-                                         (into ["classes"] r'))
-                                       (into ["WEB-INF"]))]
-                         (if (inf? (first r')) r (.getPath (apply io/file path))))
-              entries (core/output-files fs)
-              index   (->> entries (mapv (juxt ->war #(.getPath (core/tmp-file %)))))]
-          (util/info "Writing %s...\n" (.getName warfile))
-          (jar/spit-jar! (.getPath warfile) index {} nil)
-          (-> fs (core/add-resource tgt) core/commit!))))))
+            inf?    #(contains? #{"META-INF" "WEB-INF"} %)
+            ->war   #(let [r    (core/tmp-path %)
+                           r'   (file/split-path r)
+                           path (->> (if (.endsWith r ".jar")
+                                       ["lib" (last r')]
+                                       (into ["classes"] r'))
+                                     (into ["WEB-INF"]))]
+                       (if (inf? (first r')) r (.getPath (apply io/file path))))
+            entries (core/output-files fs)
+            index   (->> entries (mapv (juxt ->war #(.getPath (core/tmp-file %)))))]
+        (util/info "Writing %s...\n" (.getName warfile))
+        (jar/spit-jar! (.getPath warfile) index {} nil)
+        (-> fs (core/add-resource tgt) core/commit!)))))
 
 (core/deftask zip
   "Build a zip file for the project."

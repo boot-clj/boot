@@ -1,17 +1,18 @@
 (ns boot.pod
   (:require
-    [clojure.set                :as set]
-    [clojure.string             :as string]
-    [boot.util                  :as util]
-    [boot.file                  :as file]
-    [boot.from.backtick         :as bt]
-    [boot.from.digest           :as digest]
+    [clojure.set                  :as set]
+    [clojure.string               :as string]
+    [boot.util                    :as util]
+    [boot.file                    :as file]
+    [boot.xform                   :as xf]
+    [boot.from.backtick           :as bt]
     [boot.from.io.aviso.exception :as ex]
-    [clojure.java.io            :as io]
-    [dynapath.util              :as dp]
-    [dynapath.dynamic-classpath :as cp])
+    [clojure.java.io              :as io]
+    [dynapath.util                :as dp]
+    [dynapath.dynamic-classpath   :as cp])
   (:import
     [java.util.jar        JarFile]
+    [java.lang.ref        WeakReference]
     [java.util            Properties UUID]
     [java.net             URL URLClassLoader URLConnection]
     [java.util.concurrent ConcurrentLinkedQueue LinkedBlockingQueue TimeUnit]
@@ -149,6 +150,20 @@
   (let [[aid gid] (util/extract-ids project)]
     (io/resource (format "META-INF/maven/%s/%s/pom.properties" aid gid))))
 
+(defn coord->map
+  "Returns the map representation for the given dependency vector. The map
+  will include :project and :version keys in addition to any other keys in
+  the dependency vector (eg., :scope, :exclusions, etc)."
+  [[p v & more]]
+  (merge {:project p :version v} (apply hash-map more)))
+
+(defn map->coord
+  "Returns the dependency vector for the given map representation. The project
+  and version will be taken from the values of the :project and :version keys
+  and all other keys will be appended pairwise."
+  [{:keys [project version] :as more}]
+  (into [project version] (mapcat identity (dissoc more :project :version))))
+
 (defn dependency-pom-properties
   "Given a dependency coordinate of the form [id version ...], returns a
   Properties object corresponding to the dependency jar's pom.properties file."
@@ -191,13 +206,27 @@
          (with-open [in (.getInputStream jarfile entry)]
            (slurp in)))))))
 
+(defn resource-last-modified
+  "Returns the last modified time (long, milliseconds since epoch) of the
+  classpath resource at resource-path. A result of 0 usually indicates that
+  the modification time was not available for this resource."
+  [resource-path]
+  (let [c (.openConnection (io/resource resource-path))]
+      (try (.getLastModified c)
+           (finally (.. c getInputStream close)))))
+
 (defn copy-resource
-  "Copies the contents of the jar resource at resource-path to the path or File
-  out-path on the filesystem. The copy operation is not atomic."
+  "Copies the contents of the classpath resource at resource-path to the path or
+  File out-path on the filesystem, preserving last modified times when possible.
+  The copy operation is not atomic."
   [resource-path out-path]
-  (with-open [in  (io/input-stream (io/resource resource-path))
-              out (io/output-stream (doto (io/file out-path) io/make-parents))]
-    (io/copy in out)))
+  (let [url  (io/resource resource-path)
+        outf (doto (io/file out-path) io/make-parents)]
+    (with-open [in  (io/input-stream url)
+                out (io/output-stream outf)]
+      (io/copy in out)
+      (let [mtime (resource-last-modified resource-path)]
+        (when (< 0 mtime) (.setLastModified outf mtime))))))
 
 (defn non-caching-url-input-stream
   "Returns an InputStream from the URL constructed from url-str, with caching
@@ -231,6 +260,10 @@
   "Each pod is numbered in the order in which it was created."
   nil)
 
+(def this-pod
+  "A WeakReference to this pod's shim instance."
+  nil)
+
 (def worker-pod
   "A reference to the boot worker pod. All pods share access to the worker
   pod singleton instance."
@@ -246,6 +279,7 @@
 (defn set-pods!         [x] (alter-var-root #'pods        (constantly x)))
 (defn set-data!         [x] (alter-var-root #'data        (constantly x)))
 (defn set-pod-id!       [x] (alter-var-root #'pod-id      (constantly x)))
+(defn set-this-pod!     [x] (alter-var-root #'this-pod    (constantly x)))
 (defn set-worker-pod!   [x] (alter-var-root #'worker-pod  (constantly x)))
 
 (defn get-pods
@@ -294,6 +328,36 @@
     (apply f args)
     (throw (Exception. (format "can't resolve symbol (%s)" f)))))
 
+(defmacro with-invoke-in
+  "Given a pod, a fully-qualified symbol sym, and args which are Java objects,
+  invokes the function denoted by sym with the given args. This is a low-level
+  interface--args are not serialized before being passed to the pod and the
+  result is not deserialized before being returned. Passing Clojure objects as
+  arguments or returning Clojure objects from the pod will result in undefined
+  behavior.
+
+  This macro correctly handles the case where pod is the current pod without
+  thread binding issues: in this case the invocation will be done in another
+  thread."
+  [pod [sym & args]]
+  `(let [pod# ~pod]
+     (if (not= pod# (.get this-pod))
+       (.invoke pod# ~(str sym) ~@args)
+       (deref (future (.invoke pod# ~(str sym) ~@args))))))
+
+(defmacro with-invoke-worker
+  "Like with-invoke-in, invoking the function in the worker pod."
+  [[sym & args]]
+  `(with-invoke-in worker-pod (~sym ~@args)))
+
+(defn pod-name
+  "Returns pod's name if called with one argument, sets pod's name to new-name
+  and returns new-name if called with two arguments."
+  ([pod]
+   (.getName pod))
+  ([pod new-name]
+   (.setName pod new-name) new-name))
+
 (defn call-in*
   "Low-level interface by which expressions are evaluated in other pods. The
   two-arity version is invoked in the caller with a pod instance and an expr
@@ -314,8 +378,8 @@
        (binding [*print-meta* meta?]
          (pr-str (eval-fn-call expr)))))
   ([pod expr]
-     (let [ret (.invoke pod "boot.pod/call-in*"
-                 (pr-str {:meta? *print-meta* :expr expr}))]
+     (let [arg (pr-str {:meta? *print-meta* :expr expr})
+           ret (with-invoke-in pod (boot.pod/call-in* arg))]
        (util/guard (read-string ret)))))
 
 (defmacro with-call-in
@@ -368,8 +432,8 @@
        (binding [*print-meta* meta?]
          (pr-str (eval expr)))))
   ([pod expr]
-     (let [ret (.invoke pod "boot.pod/eval-in*"
-                 (pr-str {:meta? *print-meta* :expr expr}))]
+     (let [arg (pr-str {:meta? *print-meta* :expr expr})
+           ret (with-invoke-in pod (boot.pod/eval-in* arg))]
        (util/guard (read-string ret)))))
 
 (defmacro with-eval-in
@@ -395,6 +459,26 @@
   (doto pod
     (with-eval-in
       (require '~(symbol (str ns))))))
+
+(defn eval-in-callee
+  [caller-pod callee-pod expr]
+  (eval (xf/->clj caller-pod callee-pod expr :for-eval true)))
+
+(defn eval-in-caller
+  [caller-pod callee-pod expr]
+  (xf/->clj callee-pod caller-pod
+            (with-invoke-in (.get callee-pod)
+              (boot.pod/eval-in-callee caller-pod callee-pod expr))))
+
+(defmacro with-pod
+  [pod & body]
+  `(if-not ~pod
+     (eval (bt/template (do ~@body)))
+     (eval-in-caller this-pod (WeakReference. ~pod) (bt/template (do ~@body)))))
+
+(defmacro with-worker
+  [& body]
+  `(with-pod worker-pod ~@body))
 
 (defn canonical-coord
   "Given a dependency coordinate of the form [id version ...], returns the
@@ -574,7 +658,7 @@
             :when (not (.isDirectory entry))]
       (let [ent-name (.getName entry)
             out-file (doto (io/file dest-dir ent-name) io/make-parents)]
-        (try (util/dbug "Unpacking %s from %s...\n" ent-name (.getName jf))
+        (try (util/dbug* "Unpacking %s from %s...\n" ent-name (.getName jf))
              (with-open [in-stream  (.getInputStream jf entry)
                          out-stream (io/output-stream out-file)]
                (io/copy in-stream out-stream))
@@ -672,7 +756,7 @@
   [env pod]
   (doto pod
     (require-in "boot.pod")
-    (.invoke "boot.pod/set-worker-pod!" worker-pod)
+    (with-invoke-in (boot.pod/set-worker-pod! worker-pod))
     (with-eval-in
       (require 'boot.util 'boot.pod)
       (reset! boot.util/*verbosity* ~(deref util/*verbosity*))
@@ -717,7 +801,7 @@
        (doto (->> (into-array java.io.File urls)
                   (boot.App/newShim nil data)
                   (init-pod! env))
-         (.setName (caller-namespace))))))
+         (pod-name (caller-namespace))))))
 
 (defn destroy-pod
   "Closes open resources held by the pod, making the pod eligible for GC."

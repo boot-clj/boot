@@ -1,16 +1,19 @@
 (ns boot.tmpdir
   (:refer-clojure :exclude [time hash])
   (:require
-    [clojure.java.io  :as io]
-    [clojure.set      :as set]
-    [clojure.data     :as data]
-    [boot.pod         :as pod]
-    [boot.util        :as util]
-    [boot.file        :as file]
-    [boot.from.digest :as digest])
+    [clojure.java.io        :as io]
+    [clojure.set            :as set]
+    [clojure.data           :as data]
+    [boot.filesystem        :as fs]
+    [boot.filesystem.patch  :as fsp]
+    [boot.pod               :as pod]
+    [boot.file              :as file]
+    [boot.from.digest       :as digest]
+    [boot.util              :as util :refer [with-let]])
   (:import
     [java.io File]
-    [java.util Properties]))
+    [java.util Properties]
+    [java.nio.file Path Files SimpleFileVisitor]))
 
 (set! *warn-on-reflection* true)
 
@@ -73,28 +76,35 @@
 (def ^:dynamic *hard-link* nil)
 
 (defn- add-blob!
-  [^File blob ^File src id]
-  (let [out (io/file blob id)]
-    (when-not (.exists out)
-      (if *hard-link*
-        (do (.setReadOnly src)
-            (file/hard-link src out))
-        (let [tmp (File/createTempFile (.getName out) nil blob)]
-          (io/copy src tmp)
-          (.setReadOnly tmp)
-          (file/move tmp out))))))
+  [^File blob ^Path src ^String id link]
+  (let [blob (.toPath blob)
+        out  (.resolve blob id)]
+    (when-not (Files/exists out fs/link-opts)
+      (if link
+        (Files/createLink out src)
+        (let [name (str (.getName out (dec (.getNameCount out))))
+              tmp  (Files/createTempFile blob name nil fs/tmp-attrs)]
+          (Files/copy src tmp fs/copy-opts)
+          (Files/move tmp out fs/copy-opts))))))
+
+(defn- mkvisitor
+  [^Path root ^File blob tree link]
+  (let [m {:dir (.toFile root) :bdir blob}]
+    (proxy [SimpleFileVisitor] []
+      (visitFile [path attr]
+        (with-let [_ fs/continue]
+          (let [p (str (.relativize root path))
+                h (digest/md5 (.toFile path))
+                t (.toMillis (Files/getLastModifiedTime path fs/link-opts))
+                i (str h "." t)]
+            (add-blob! blob path i link)
+            (swap! tree assoc p (map->TmpFile (assoc m :path p :id i :hash h :time t)))))))))
 
 (defn- dir->tree!
   [^File dir ^File blob]
-  (let [->path #(str (file/relative-to dir %))
-        ->tmpf (fn [^String p ^File f]
-                 (let [{:keys [id] :as stat} (file-stat f)]
-                   (add-blob! blob f id)
-                   (map->TmpFile (assoc (file-stat f) :dir dir :bdir blob :path p))))]
-    (->> dir file-seq (reduce (fn [xs ^File f]
-                                (or (and (not (.isFile f)) xs)
-                                    (let [p (->path f)]
-                                      (assoc xs p (->tmpf p f))))) {}))))
+  (let [root (.toPath dir)]
+    @(with-let [tree (atom {})]
+       (Files/walkFileTree root (mkvisitor root blob tree *hard-link*)))))
 
 (defn- ^File cache-dir
   [cache-key]
@@ -128,7 +138,7 @@
 (defn- apply-mergers!
   [mergers ^File old-file path ^File new-file ^File merged-file]
   (when-let [merger (some (fn [[re v]] (when (re-find re path) v)) mergers)]
-    (util/dbug "Merging duplicate entry (%s)\n" path)
+    (util/dbug* "Merging duplicate entry (%s)\n" path)
     (let [out-file (File/createTempFile (.getName merged-file) nil
                                         (.getParentFile merged-file))]
       (with-open [curr-stream (io/input-stream old-file)
@@ -143,16 +153,16 @@
 
 (defn- get-cached!
   [cache-key seedfn scratch]
-  (util/dbug "Adding cached fileset %s...\n" cache-key)
+  (util/dbug* "Adding cached fileset %s...\n" cache-key)
   (or (get-in @state [:cache cache-key])
       (let [cache-dir (cache-dir cache-key)
             manifile  (manifest-file cache-key)
-            store!    #(util/with-let [m %]
+            store!    #(with-let [m %]
                          (swap! state assoc-in [:cache cache-key] m))]
         (or (and (.exists manifile)
                  (store! (read-manifest manifile cache-dir)))
             (let [tmp-dir (scratch-dir! scratch)]
-              (util/dbug "Not found in cache: %s...\n" cache-key)
+              (util/dbug* "Not found in cache: %s...\n" cache-key)
               (.mkdirs cache-dir)
               (seedfn tmp-dir)
               (binding [*hard-link* true]
@@ -162,10 +172,10 @@
 
 (defn- merge-trees!
   [old new mergers scratch]
-  (util/with-let [tmp (scratch-dir! scratch)]
+  (with-let [tmp (scratch-dir! scratch)]
     (doseq [[path newtmp] new]
       (when-let [oldtmp (get old path)]
-        (util/dbug "Merging %s...\n" path)
+        (util/dbug* "Merging %s...\n" path)
         (let [newf   (io/file (bdir newtmp) (id newtmp))
               oldf   (io/file (bdir oldtmp) (id oldtmp))
               mergef (doto (io/file tmp path) io/make-parents)]
@@ -193,14 +203,12 @@
     (reduce-kv #(assoc %1 %2 (->map %3)) {} tree)))
 
 (defn- diff*
-  [before after props]
+  [{t1 :tree :as before} {t2 :tree :as after} props]
   (if-not before
     {:added   after
      :removed (assoc after :tree {})
      :changed (assoc after :tree {})}
     (let [props   (or (seq props) [:id])
-          t1      (:tree before)
-          t2      (:tree after)
           d1      (diff-tree t1 props)
           d2      (diff-tree t2 props)
           [x y _] (map (comp set keys) (data/diff d1 d2))]
@@ -229,11 +237,13 @@
     (let [{:keys [dirs tree blob]} this
           prev (get-in @state [:prev dirs])
           {:keys [added removed changed]} (diff* prev this [:id :dir])]
+      (util/dbug* "Committing fileset...\n")
       (doseq [tmpf (set/union (ls removed) (ls changed))
-              :let [prev (get-in prev [:tree (path tmpf)])]]
-        (when (.exists ^File (file prev))
-          (util/dbug "Removing %s...\n" (path prev))
-          (file/delete-file (file prev))))
+              :let [prev (get-in prev [:tree (path tmpf)])
+                    exists? (.exists ^File (file prev))
+                    op (if exists? "removing" "no-op")]]
+        (util/dbug* "Commit: %-8s %s %s...\n" op (id prev) (path prev))
+        (when exists? (file/delete-file (file prev))))
       (let [this (loop [this this
                         [tmpf & tmpfs]
                         (->> (set/union (ls added) (ls changed))
@@ -247,10 +257,12 @@
                                       (update-in this [:tree] dissoc p))]
                          (if err? 
                            (util/warn "Merge conflict: not adding %s\n" p)
-                           (do (util/dbug "Adding %s...\n" p)
+                           (do (util/dbug* "Commit: adding   %s %s...\n" (id tmpf) p)
                                (file/hard-link src dst)))
                          (recur this tmpfs))))]
-        (util/with-let [_ this] (swap! state assoc-in [:prev dirs] this)))))
+        (with-let [_ this]
+          (swap! state assoc-in [:prev dirs] this)
+          (util/dbug* "Commit complete.\n")))))
 
   (rm [this tmpfiles]
     (let [{:keys [dirs tree blob]} this
@@ -301,7 +313,7 @@
           d'   (dir dest-tmpfile)]
       (assert ((set (map file dirs)) d')
               (format "dest-dir not in dir set (%s)" d'))
-      (add-blob! blob src-file hash)
+      (add-blob! blob src-file hash *hard-link*)
       (assoc this :tree (merge tree {p' (assoc dest-tmpfile :id hash)})))))
 
 ;; additional api functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -320,23 +332,27 @@
         (diff* before after props)]
     (update-in added [:tree] merge (:tree changed))))
 
-(defn patch
-  [before after & {:keys [link]}]
+(defn fileset-patch
+  [before after link]
   (let [{:keys [added removed changed]}
         (diff* before after [:hash :time])
+        ->p     #(fs/path->segs (fs/->path %))
         link    (#{:tmp :all} link) ; only nil, :tmp, or :all are valid
-        link?   #(and link (or (= :all link) (= (:blob after) (:bdir %))))
-        add-ops (->> added   :tree vals (map (partial vector :write)))
-        add-ops (for [x (->> added :tree vals)]
-                  [(if (link? x) :link :write) x])
-        rem-ops (->> removed :tree vals (map (partial vector :delete)))
-        chg-ops (->> changed :tree vals
-                     (map (fn [{:keys [hash path] :as f}]
-                            (let [hash' (get-in before [:tree path :hash])]
-                              (cond (= hash hash') [:touch f]
-                                    (link? f)      [:link  f]
-                                    :else          [:write f])))))]
-    (reduce into [] [add-ops rem-ops chg-ops])))
+        link?   #(and link (or (= :all link) (= (:blob after) (:bdir %))))]
+    (-> (for [x (->> removed :tree vals)] [:delete (->p (path x))])
+        (into (for [x (->> added :tree vals)]
+                (let [p (.toPath ^File (file x))]
+                  [(if (link? x) :link :write) (->p (path x)) p (time x)])))
+        (into (for [x (->> changed :tree vals)]
+                (let [p  (.toPath ^File (file x))
+                      x' (get-in before [:tree (path x)])]
+                  (cond (= (hash x) (hash x')) [:touch (->p (path x)) (time x)]
+                        (link? x)              [:link  (->p (path x)) p (time x)]
+                        :else                  [:write (->p (path x)) p (time x)])))))))
+
+(defmethod fsp/patch TmpFileSet
+  [before after link]
+  (fileset-patch before after link))
 
 (defn removed
   [before after & props]

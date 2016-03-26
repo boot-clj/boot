@@ -1,5 +1,74 @@
 # Changes
 
+
+## 2.6.0
+
+#### Improved
+
+- More efficient syncing of project directories with Boot's internal ones.
+- Easier to read tree representation for the `show --fileset` output.
+
+#### Fixed
+
+- Don't set `:update :always` in aether when resolving Boot's own dependencies
+  unless Boot is being updated.
+- Correctly handle case when `:source-paths` or `:resource-paths` are set to
+  the empty set (`#{}`).
+- Correctly set last modified time when copying classpath resource.
+
+#### Added
+
+##### API Functions
+
+- `boot.pod/this-pod` &mdash; a `WeakReference` to the current pod
+- `boot.pod/with-invoke-in` &mdash; low-level invocation, no serialization
+- `boot.pod/with-invoke-worker` &mdash; as above but invokes in the worker pod
+- `boot.pod/pod-name` &mdash; get/set the name of a pod
+- `boot.pod/coord->map` &mdash; dependency vector to map helper function
+- `boot.pod/map->coord` &mdash; map to dependency vector helper function
+- `boot.pod/resource-last-modified` &mdash; returns last modified time of a classpath resource
+- `boot.core/get-checkouts` &mdash; returns a map of info about loaded checkout dependencies
+- `boot.util/dbug*` &mdash; like `boot.util/dbug` but a macro (doesn't eval its
+  arguments unless the verbosity level is DEBUG or above)
+
+##### Boot Options
+
+- `-c`, `--checkouts` boot option / `:checkouts` env key &mdash; deeper
+  integration for checkout dependencies
+- `-o`, `--offline` boot option &mdash; disable downloading Maven dependencies
+  from remote repositories (doesn't apply to Boot's own dependencies)
+- `-U`, `--update-snapshot` boot option &mdash; updates boot to latest snapshot
+  version
+- optional argument to `-u`, `--update` &mdash; sets global default boot version
+
+##### Task Options
+
+- `-v`, `--verify-deps` option to `show` task &mdash; verify jar signatures and
+  show deps tree [#375][375]
+
+##### Boot Environment
+
+- wagon dependencies now accept a `:schemes` key &mdash; specify the handler
+  classes for the wagon when the wagon jar has no `leiningen/wagons.clj` entry.
+- `BOOT_CERTIFICATES` &mdash; specify file paths for SSL certificates.
+- `BOOT_CLOJARS_REPO` &mdash; specify Maven repo url for `clojars`.
+- `BOOT_CLOJARS_MIRROR` &mdash; specify Maven mirror url for `clojars`.
+- `BOOT_MAVEN_CENTRAL_REPO` &mdash; specify Maven repo url for `maven-central`.
+- `BOOT_MAVEN_CENTRAL_MIRROR` &mdash; specify Maven mirror url for `maven-central`.
+
+#### Deprecated
+
+- The `checkout` task, replaced by the `--checkouts` boot option
+
+[345]: https://github.com/boot-clj/boot/issues/345
+
+## 2.5.5
+
+#### Fixed
+
+- Issue with 2.5.4 where it was possible for boot to exit before all files
+  were written to target dir.
+
 ## 2.5.4
 
 #### Fixed

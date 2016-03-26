@@ -50,7 +50,9 @@
                    (reduce-kv #(let [t (->> %3 (map (comp seq rest)) tree)]
                                  (assoc %1 (if (map? t) (ansi/bold-blue %2) %2) t))
                               (sorted-map-by #(->> %& (map ansi/strip-ansi) (apply compare)))))))]
-    (->> fileset core/ls (map (comp file/split-path core/tmp-path)) tree util/print-tree)))
+    (let [tmpfiles    (core/ls fileset)
+          split-paths (map (comp file/split-path core/tmp-path) tmpfiles)]
+      (util/print-tree [["" (into #{} (tree split-paths))]]))))
 
 ;; sift helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

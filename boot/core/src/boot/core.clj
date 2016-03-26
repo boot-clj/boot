@@ -20,11 +20,12 @@
   (:import
     [boot App]
     [java.io File]
+    [java.nio.file Path]
     [java.net URLClassLoader URL]
     [java.lang.management ManagementFactory]
     [java.util.concurrent LinkedBlockingQueue TimeUnit Semaphore]))
 
-(declare watch-dirs sync! post-env! get-env set-env! tmp-file tmp-dir ls)
+(declare watch-dirs post-env! get-env set-env! tmp-file tmp-dir ls empty-dir! patch!)
 
 (declare ^{:dynamic true :doc "The running version of boot app."}         *app-version*)
 (declare ^{:dynamic true :doc "The script's name (when run as script)."}  *boot-script*)
@@ -39,15 +40,29 @@
 ;; Internal helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^:private cli-base          (atom {}))
-(def ^:private tmpregistry       (atom nil))
+(def ^:private tmpregistry       (->> (io/file ".")
+                                      .getCanonicalFile
+                                      file/split-path
+                                      rest
+                                      (apply io/file (App/getBootDir) "cache" "tmp")
+                                      tmp/registry
+                                      tmp/init!
+                                      delay))
 (def ^:private cleanup-fns       (atom []))
 (def ^:private boot-env          (atom nil))
 (def ^:private tempdirs          (atom #{}))
 (def ^:private tempdirs-lock     (Semaphore. 1 true))
+(def ^:private sync-dirs-lock    (Semaphore. 1 true))
 (def ^:private src-watcher       (atom (constantly nil)))
 (def ^:private repo-config-fn    (atom identity))
+(def ^:private loaded-checkouts  (atom {}))
+(def ^:private checkout-dirs     (atom #{}))
 (def ^:private default-repos     [["clojars"       {:url "https://clojars.org/repo/"}]
                                   ["maven-central" {:url "https://repo1.maven.org/maven2"}]])
+(def ^:private default-mirrors   (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
+                                              m (boot.App/config "BOOT_MAVEN_CENTRAL_MIRROR")
+                                              f #(when %1 {%2 {:name (str %2 " mirror") :url %1}})]
+                                          (merge {} (f c "clojars") (f m "maven-central")))))
 
 (def ^:private masks
   {:user     {:user true}
@@ -56,7 +71,11 @@
    :cache    {:input nil :output nil}
    :asset    {:input nil :output true}
    :source   {:input true :output nil}
-   :resource {:input true :output true}})
+   :resource {:input true :output true}
+   :checkout {:input nil :output nil :user nil :checkout true}})
+
+(defn- genkw [& [prefix-string :as args]]
+  (->> [(ns-name *ns*) (apply gensym args)] (map str) (apply keyword)))
 
 (defn- get-dirs [this masks+]
   (let [dirs        (:dirs this)
@@ -89,11 +108,10 @@
         m (->> masks+ (map masks) (apply merge))
         in-fileset? (or (:input m) (:output m))]
     (util/with-let [d (tmp-dir* k)]
-      (when in-fileset?
-        (let [t (tmpd/map->TmpDir (assoc m :dir d))]
-          (swap! tempdirs conj t)
-          (when (:input t)
-            (set-env! :directories #(conj % (.getPath (:dir t))))))))))
+      (cond (:checkout m) (swap! checkout-dirs conj d)
+            in-fileset?   (swap! tempdirs conj (tmpd/map->TmpDir (assoc m :dir d))))
+      (when (or (:checkout m) (:input m))
+        (set-env! :directories #(conj % (.getPath d)))))))
 
 (defn- add-user-asset    [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :asset}) dir {}))
 (defn- add-user-source   [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :source}) dir {}))
@@ -110,17 +128,15 @@
 
 (defn- sync-user-dirs!
   []
-  (doseq [[k d] {:source-paths   (user-source-dirs)
-                 :resource-paths (user-resource-dirs)
-                 :asset-paths    (user-asset-dirs)}]
-    (when-let [s (->> (get-env k)
-                      (filter #(.isDirectory (io/file %)))
-                      seq)]
-      (util/dbug "Syncing project dirs to temp dirs...\n")
-      (binding [file/*hard-link* false
-                file/*ignore*    @bootignore]
-        (util/with-semaphore tempdirs-lock
-          (apply file/sync! :time (first d) s))))))
+  (util/with-semaphore-noblock sync-dirs-lock
+    (let [debug-mesg (delay (util/dbug* "Syncing project dirs to temp dirs...\n"))]
+      (doseq [[k d] {:asset-paths    (user-asset-dirs)
+                     :source-paths   (user-source-dirs)
+                     :resource-paths (user-resource-dirs)
+                     :checkout-paths @checkout-dirs}]
+        @debug-mesg
+        (patch! (first d) (get-env k) :ignore @bootignore))
+      (util/dbug* "Sync complete.\n"))))
 
 (defn- set-fake-class-path!
   "Sets the fake.class.path system property to reflect all JAR files on the
@@ -153,7 +169,7 @@
   []
   (@src-watcher)
   (let [debounce  (or (get-env :watcher-debounce) 10)
-        env-keys  [:source-paths :resource-paths :asset-paths]
+        env-keys  [:source-paths :resource-paths :asset-paths :checkout-paths]
         dir-paths (set (->> (mapcat get-env env-keys)
                             (filter #(.isDirectory (io/file %)))))
         on-change (fn [_]
@@ -186,13 +202,12 @@
 
 (defn- find-version-conflicts
   "compute a seq of [name new-coord old-coord] elements describing version conflicts
-   when resolving the 'old' dependency vector and the 'new' dependency vector"
+  when resolving the 'old' dependency vector and the 'new' dependency vector"
   [old new env]
-  (let [resolve-deps (fn [deps] (->> deps
-                                     (assoc env :dependencies)
-                                     pod/resolve-dependencies
-                                     (map (juxt (comp first :dep) (comp second :dep)))
-                                     (into {})))
+  (let [resolve-deps #(->> (assoc env :dependencies %)
+                           pod/resolve-dependencies
+                           (map (juxt (comp first :dep) (comp second :dep)))
+                           (into {}))
         old-deps (resolve-deps old)
         new-deps (resolve-deps new)]
     (->> new-deps
@@ -206,21 +221,55 @@
   (doseq [[name new-coord old-coord] coll]
     (util/warn "Warning: version conflict detected: %s version changes from %s to %s\n" name old-coord new-coord)))
 
-(defn- add-dependencies!
-  "Add Maven dependencies to the classpath, fetching them if necessary."
-  [old new env]
-  (assert (vector? new) "env :dependencies must be a vector")
-  (let [new (pod/apply-global-exclusions (:exclusions env) new)]
-    (report-version-conflicts (find-version-conflicts old new env))
-    (->> new (assoc env :dependencies) pod/add-dependencies)
-    (set-fake-class-path!)
-    new))
-
 (defn- add-directories!
   "Add URLs (directories or jar files) to the classpath."
   [dirs]
   (set-fake-class-path!)
   (doseq [dir dirs] (pod/add-classpath dir)))
+
+(defn- add-checkout-dependencies!
+  "Add checkout dependencies that have not already been added."
+  [{:keys [checkouts dependencies] :as env}]
+  (let [loaded-syms   (->> @loaded-checkouts keys set)
+        new-checkouts (->> checkouts (remove (comp loaded-syms first)))]
+    (loop [dirs [] [[p :as dep] & deps] new-checkouts]
+      (if-not p
+        (when (seq dirs) (add-directories! dirs))
+        (let [env       (dissoc env :checkouts)
+              tmp       (tmp-dir* (genkw "checkout-tmp"))
+              tmp-state (atom nil)
+              jar-path  (pod/resolve-dependency-jar env dep)
+              jar-dir   (.getParent (io/file jar-path))
+              debounce  (or (:watcher-debounce env) 10)
+              on-change (fn [_]
+                          (util/dbug* "Refreshing checkout dependency %s...\n" (str p))
+                          (util/with-semaphore tempdirs-lock
+                            (with-open [jarfs (fs/mkjarfs (io/file jar-path))]
+                              (->> (patch! tmp [(fs/->path jarfs)] :state @tmp-state)
+                                   (reset! tmp-state)))))]
+          (util/info "Adding checkout dependency %s...\n" (str p))
+          (set-env! :checkout-paths #(conj % (.getPath tmp)))
+          (watch-dirs on-change [jar-dir] :debounce debounce)
+          (swap! loaded-checkouts assoc p {:dir tmp :jar (io/file jar-path)})
+          (recur (conj dirs (.getPath tmp)) deps))))))
+
+(defn- add-dependencies!
+  "Add Maven dependencies to the classpath, fetching them if necessary."
+  [old new {:keys [exclusions checkouts] :as env}]
+  (assert (vector? new) "env :dependencies must be a vector")
+  (let [versions (reduce #(apply assoc %1 (take 2 %2)) {} checkouts)
+        dep-syms (set (map first new))
+        chk-syms (set (map first checkouts))
+        missing  (set/difference chk-syms dep-syms)
+        new      (->> (pod/apply-global-exclusions exclusions new)
+                      (mapv (fn [[p v :as d]] (assoc d 1 (versions p v)))))]
+    (when (seq missing)
+      (util/warn "Checkout deps missing from :dependencies in env: %s\n" (string/join ", " missing)))
+    (report-version-conflicts (find-version-conflicts old new env))
+    (->> new (assoc env :dependencies) pod/add-dependencies)
+    (add-checkout-dependencies! env)
+    (set-fake-class-path!)
+    new))
 
 (defn- configure!*
   "Performs side-effects associated with changes to the env atom. Boot adds this
@@ -242,8 +291,10 @@
    (add-wagon! old new env nil))
   ([old new env scheme-map]
    (doseq [maven-coord new]
-     (pod/with-call-worker
-       (boot.aether/add-wagon ~env ~maven-coord ~scheme-map)))
+     (let [{:keys [schemes] :as coord-map} (pod/coord->map maven-coord)
+           maven-coord (pod/map->coord (dissoc coord-map :schemes))]
+       (pod/with-call-worker
+         (boot.aether/add-wagon ~env ~maven-coord ~(or scheme-map schemes)))))
    new))
 
 (defn- order-set-env-keys
@@ -266,7 +317,7 @@
            warn# (delay (util/warn-deprecated @msg#))]
        (do (defn ~(with-meta was {:deprecated version}) [& args#]
              @warn#
-             (util/dbug (ex/format-exception (Exception. @msg#)))
+             (util/dbug* (ex/format-exception (Exception. @msg#)))
              (apply ~is args#))
            (alter-meta! #'~was assoc :doc @msg#)))))
 
@@ -519,6 +570,16 @@
   [dest & srcs]
   (apply file/sync! :time dest srcs))
 
+(defn patch!
+  "Given prev-state "
+  [dest srcs & {:keys [ignore state link]}]
+  (let [dest    (fs/->path dest)
+        before  (or state (fs/mktree dest))
+        merge'  #(->> (fs/mktree (fs/->path %2) :ignore ignore)
+                      (fs/merge-trees %1))]
+    (let [after (reduce merge' (fs/mktree) srcs)]
+      (fs/patch! dest before after :link link))))
+
 ;; Boot Environment ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn watch-dirs
@@ -536,7 +597,7 @@
         (let [q       (LinkedBlockingQueue.)
               watcher (apply file/watcher! :time dirs)
               paths   (into-array String dirs)
-              k       (.invoke pod/worker-pod "boot.watcher/make-watcher" q paths)]
+              k       (pod/with-invoke-worker (boot.watcher/make-watcher q paths))]
           (daemon
             (loop [ret (util/guard [(.take q)])]
               (when ret
@@ -545,7 +606,7 @@
                   (let [changed (watcher)]
                     (when-not (empty? changed) (callback changed))
                     (recur (util/guard [(.take q)])))))))
-          #(.invoke pod/worker-pod "boot.watcher/stop-watcher" k)))))
+          #(pod/with-invoke-worker (boot.watcher/stop-watcher k))))))
 
 (defn rebuild!
   "Manually trigger build watch."
@@ -556,23 +617,19 @@
   "Initialize the boot environment. This is normally run once by boot at
   startup. There should be no need to call this function directly."
   []
-  (->> (io/file ".")
-       .getCanonicalFile
-       file/split-path
-       rest
-       (apply io/file (App/getBootDir) "cache" "tmp")
-       tmp/registry
-       tmp/init!
-       (reset! tmpregistry))
   (doto boot-env
     (reset! {:watcher-debounce 10
+             :checkouts        []
              :dependencies     []
              :directories      #{}
              :source-paths     #{}
              :resource-paths   #{}
+             :checkout-paths   #{}
              :asset-paths      #{}
              :target-path      "target"
-             :repositories     default-repos})
+             :exclusions       #{}
+             :repositories     default-repos
+             :mirrors          @default-mirrors})
     (add-watch ::boot #(configure!* %3 %4)))
   (set-fake-class-path!)
   (tmp-dir** nil :asset)
@@ -581,6 +638,7 @@
   (tmp-dir** nil :user :asset)
   (tmp-dir** nil :user :source)
   (tmp-dir** nil :user :resource)
+  (tmp-dir** nil :user :checkout)
   (pod/add-shutdown-hook! do-cleanup!))
 
 (defmulti post-env!
@@ -594,6 +652,7 @@
 (defmethod post-env! :directories      [key old new env] (add-directories! new))
 (defmethod post-env! :source-paths     [key old new env] (set-user-dirs!))
 (defmethod post-env! :resource-paths   [key old new env] (set-user-dirs!))
+(defmethod post-env! :checkout-paths   [key old new env] (set-user-dirs!))
 (defmethod post-env! :asset-paths      [key old new env] (set-user-dirs!))
 (defmethod post-env! :watcher-debounce [key old new env] (set-user-dirs!))
 
@@ -605,8 +664,9 @@
 
 (defn- merge-or-replace [x y]   (if-not (coll? x) y (into x y)))
 (defn- merge-if-coll    [x y]   (if-not (coll? x) x (into x y)))
-(defn- assert-set       [k new] (assert (set? new) (format "env %s must be a set" k)))
+(defn- assert-set       [k new] (assert (set? new) (format "env %s must be a set" k)) new)
 (defn- canonical-repo   [repo]  (if (map? repo) repo {:url repo}))
+(defn- canonical-deps   [deps]  (mapv pod/canonical-coord deps))
 
 (defn- assert-disjoint
   [env key new]
@@ -620,13 +680,15 @@
               "The :source-paths, :resource-paths, and :asset-paths must not overlap."))))
 
 (defmethod pre-env! ::default       [key old new env] new)
-(defmethod pre-env! :directories    [key old new env] (set/union old new))
-(defmethod pre-env! :source-paths   [key old new env] (assert-set key new) (assert-disjoint env key new))
-(defmethod pre-env! :resource-paths [key old new env] (assert-set key new) (assert-disjoint env key new))
-(defmethod pre-env! :asset-paths    [key old new env] (assert-set key new) (assert-disjoint env key new))
-(defmethod pre-env! :wagons         [key old new env] (add-wagon! old new env))
-(defmethod pre-env! :dependencies   [key old new env] (add-dependencies! old new env))
+(defmethod pre-env! :directories    [key old new env] (set/union old (assert-set key new)))
+(defmethod pre-env! :source-paths   [key old new env] (assert-disjoint env key (assert-set key new)))
+(defmethod pre-env! :resource-paths [key old new env] (assert-disjoint env key (assert-set key new)))
+(defmethod pre-env! :asset-paths    [key old new env] (assert-disjoint env key (assert-set key new)))
+(defmethod pre-env! :wagons         [key old new env] (add-wagon! old (canonical-deps new) env))
+(defmethod pre-env! :checkouts      [key old new env] (canonical-deps new))
+(defmethod pre-env! :dependencies   [key old new env] (add-dependencies! old (canonical-deps new) env))
 (defmethod pre-env! :repositories   [key old new env] (->> new (mapv (fn [[k v]] [k (@repo-config-fn (canonical-repo v))]))))
+(defmethod pre-env! :certificates   [key old new env] (pod/with-call-worker (boot.aether/load-certificates! ~new)))
 
 (add-watch repo-config-fn (gensym) (fn [& _] (set-env! :repositories identity)))
 
@@ -637,6 +699,13 @@
   example)."
   ([ ] @repo-config-fn)
   ([f] (reset! repo-config-fn f)))
+
+(defn get-checkouts
+  "FIXME"
+  []
+  (let [deps (->> :dependencies (get-env) (group-by first))]
+    (->> @loaded-checkouts
+         (reduce-kv #(assoc %1 %2 (assoc %3 :dep (first (deps %2)))) {}))))
 
 (defn get-env
   "Returns the value associated with the key `k` in the boot environment, or
@@ -654,11 +723,11 @@
   clojure.core/update-in works."
   [& kvs]
   (doseq [[k v] (order-set-env-keys (partition 2 kvs))]
-      (let [v'  (if-not (fn? v) v (v (get-env k)))
-            v'' (if-let [b (get @cli-base k)] (merge-if-coll b v') v')]
-        (assert (printable-readable? v'')
-                (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v'')))
-        (swap! boot-env update-in [k] (partial pre-env! k) v'' @boot-env))))
+    (let [v'  (if-not (fn? v) v (v (get-env k)))
+          v'' (if-let [b (get @cli-base k)] (merge-if-coll b v') v')]
+      (assert (printable-readable? v'')
+              (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v'')))
+      (swap! boot-env update-in [k] (partial pre-env! k) v'' @boot-env))))
 
 (defn merge-env!
   "Merges the new values into the current values for the given keys in the env
@@ -727,10 +796,9 @@
   fileset containing only the latest project files."
   [& [fileset]]
   (let [fileset (when fileset (rm fileset (user-files fileset)))]
-    (sync-user-dirs!)
     (-> (new-fileset)
-        (add-user-asset (first (user-asset-dirs)))
-        (add-user-source (first (user-source-dirs)))
+        (add-user-asset    (first (user-asset-dirs)))
+        (add-user-source   (first (user-source-dirs)))
         (add-user-resource (first (user-resource-dirs)))
         (update-in [:tree] merge (:tree fileset)))))
 
@@ -773,7 +841,7 @@
     (fn [fs & {:keys [link]}]
       (let [link  (when link :tmp)
             [a b] [@prev (reset! prev (output-fileset fs))]]
-        (mapv deref (for [d @dirs :let [p! (partial fs/patch! (fs/mkfs d) a b :link)]]
+        (mapv deref (for [d @dirs :let [p! (partial fs/patch! (fs/->path d) a b :link)]]
                       (future (try (p! link)
                                    (catch Throwable t
                                      (if-not link (throw t) (p! nil)))))))))))

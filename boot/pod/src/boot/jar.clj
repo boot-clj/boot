@@ -68,11 +68,11 @@
 
 (defn update-zip!
   [zipfile old-fs new-fs]
-  (with-open [fs (fs/mkjarfs zipfile)]
-    (fs/patch! fs old-fs new-fs)))
+  (with-open [fs (fs/mkjarfs zipfile :create true)]
+    (fs/patch! (fs/->path fs) old-fs new-fs)))
 
 (defn update-jar!
   [jarfile old-fs new-fs attr main]
-  (with-open [fs (fs/mkjarfs jarfile)]
-    (fs/patch! fs old-fs new-fs)
-    (fs/write! fs (create-manifest main attr) (io/file "META-INF" "MANIFEST.MF"))))
+  (with-open [fs (fs/mkjarfs jarfile :create true)]
+    (fs/patch! (fs/->path fs) old-fs new-fs)
+    (fs/write! (fs/->path fs) (create-manifest main attr) ["META-INF" "MANIFEST.MF"])))

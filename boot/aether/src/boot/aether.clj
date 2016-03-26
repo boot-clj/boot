@@ -19,8 +19,14 @@
 (def offline?             (atom false))
 (def update?              (atom :daily))
 (def local-repo           (atom nil))
-(def default-repositories (atom [["clojars"       {:url "https://clojars.org/repo/"}]
-                                 ["maven-central" {:url "https://repo1.maven.org/maven2/"}]]))
+(def default-repositories (delay (let [c (boot.App/config "BOOT_CLOJARS_REPO")
+                                       m (boot.App/config "BOOT_MAVEN_CENTRAL_REPO")]
+                                   [["clojars"       {:url (or c "https://clojars.org/repo/")}]
+                                    ["maven-central" {:url (or m "https://repo1.maven.org/maven2/")}]])))
+(def default-mirrors      (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
+                                       m (boot.App/config "BOOT_MAVEN_CENTRAL_MIRROR")
+                                       f #(when %1 {%2 {:name (str %2 " mirror") :url %1}})]
+                                   (merge {} (f c "clojars") (f m "maven-central")))))
 
 (defn set-offline!    [x] (reset! offline? x))
 (defn set-update!     [x] (reset! update? x))
@@ -29,7 +35,7 @@
 
 (defn transfer-listener
   [{type :type meth :method {name :name repo :repository} :resource err :error :as info}]
-  (util/dbug "Aether: %s\n" (with-out-str (pprint/pprint info)))
+  (util/dbug* "Aether: %s\n" (with-out-str (pprint/pprint info)))
   (when (and (.endsWith name ".jar") (= type :started))
     (util/info "Retrieving %s from %s\n" (.getName (io/file name)) repo)))
 
@@ -72,7 +78,7 @@
                            (map (juxt first (fn [[x y]] (update-in y [:update] #(or % @update?))))))
       :local-repo        (or (:local-repo env) @local-repo nil)
       :offline?          (or @offline? (:offline? env))
-      :mirrors           (:mirrors env)
+      :mirrors           (merge @default-mirrors (:mirrors env))
       :proxy             (or (:proxy env) (get-proxy-settings))
       :transfer-listener transfer-listener
       :repository-session-fn (if (= @update? :always)
@@ -94,12 +100,13 @@
   "Given an env map, returns a list of maps of the form
      {:dep [foo/bar \"1.2.3\"], :jar \"file:...\"}
    corresponding to the resolved dependencies (including transitive deps)."
-  [env]
-  (->> [:dependencies :repositories :local-repo :offline? :mirrors :proxy]
-    (select-keys env)
-    resolve-dependencies-memoized*
-    ksort/topo-sort
-    (map (fn [x] {:dep x :jar (dep->path x)}))))
+  [{:keys [checkouts] :as env}]
+  (let [checkouts (set (map first checkouts))]
+    (->> [:dependencies :repositories :local-repo :offline? :mirrors :proxy]
+         (select-keys env)
+         resolve-dependencies-memoized*
+         ksort/topo-sort
+         (keep (fn [[p :as x]] (when-not (checkouts p) {:dep x :jar (dep->path x)}))))))
 
 (defn resolve-dependency-jars
   "Given an env map, resolves dependencies and returns a list of dependency jar 
@@ -111,9 +118,9 @@
   ([env] (->> env resolve-dependencies (map :jar)))
   ([sym-str version cljversion] (resolve-dependency-jars sym-str version nil cljversion))
   ([sym-str version cljname cljversion]
-     (let [cljname (or cljname "org.clojure/clojure")]
-       (->> {:dependencies [[(symbol cljname) cljversion] [(symbol sym-str) version]]}
-            resolve-dependencies (map (comp io/file :jar)) (into-array java.io.File)))))
+   (let [cljname (or cljname "org.clojure/clojure")]
+     (->> {:dependencies [[(symbol cljname) cljversion] [(symbol sym-str) version]]}
+          resolve-dependencies (map (comp io/file :jar)) (into-array java.io.File)))))
 
 (defn resolve-nontransitive-dependencies
   "Given an env map and a single dependency coordinates vector, resolves the
@@ -298,3 +305,23 @@
   [env coord & [mapping]]
   (pod/add-dependencies (assoc env :dependencies [coord]))
   (load-wagon-mappings mapping))
+
+(defn ^{:boot/from :technomancy/leiningen} load-certificates!
+  "Load the SSL certificates specified by the project and register them for use by Aether."
+  [certificates]
+  (when (seq certificates)
+    ;; lazy-loading might give a launch speed boost here
+    (require 'boot.ssl)
+    (let [make-context (resolve 'boot.ssl/make-sslcontext)
+          read-certs (resolve 'boot.ssl/read-certs)
+          default-certs (resolve 'boot.ssl/default-trusted-certs)
+          override-wagon-registry! (resolve 'boot.ssl/override-wagon-registry!)
+          https-registry (resolve 'boot.ssl/https-registry)
+          certs (mapcat read-certs certificates)
+          context (make-context (into (default-certs) certs))]
+      (override-wagon-registry! (https-registry context)))))
+
+(when-let [certs (boot.App/config "BOOT_CERTIFICATES")]
+  (let [certs (string/split certs #":")]
+    (util/dbug "Using SSL certificates: %s\n" certs)
+    (load-certificates! certs)))
