@@ -23,7 +23,7 @@
     [java.nio.file Path]
     [java.net URLClassLoader URL]
     [java.lang.management ManagementFactory]
-    [java.util.concurrent LinkedBlockingQueue TimeUnit Semaphore]))
+    [java.util.concurrent LinkedBlockingQueue TimeUnit Semaphore ExecutionException]))
 
 (declare watch-dirs post-env! get-env set-env! tmp-file tmp-dir ls empty-dir! patch!)
 
@@ -932,10 +932,12 @@
   (try @(future ;; see issue #6
           (util/with-let [_ nil]
             (run-tasks
-              (cond (every? fn? argv)     (apply comp argv)
-                    (every? string? argv) (apply construct-tasks argv)
-                    :else (throw (IllegalArgumentException.
-                                   "Arguments must be either all strings or all fns"))))))
+             (cond (every? fn? argv)     (apply comp argv)
+                   (every? string? argv) (apply construct-tasks argv)
+                   :else (throw (IllegalArgumentException.
+                                 "Arguments must be either all strings or all fns"))))))
+       (catch ExecutionException e
+         (throw (.getCause e)))
        (finally (do-cleanup!))))
 
 ;; Low-Level Tasks, Helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
