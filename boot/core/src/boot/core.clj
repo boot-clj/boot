@@ -831,8 +831,10 @@
     `(do
        (when-let [existing-deftask# (resolve '~sym)]
          (when (= *ns* (-> existing-deftask# meta :ns))
-           (boot.util/warn
-             "Warning: deftask %s/%s was overridden\n" *ns* '~sym)))
+           (let [msg# (delay (format "deftask %s/%s was overridden\n" *ns* '~sym))]
+             (boot.util/warn (if (<= @util/*verbosity* 2)
+                               @msg#
+                               (ex/format-exception (Exception. @msg#)))))))
        (cli2/defclifn ~(vary-meta sym assoc ::task true)
          ~@heads
          ~bindings
