@@ -163,12 +163,11 @@
     (:summary (cli/parse-opts [] cli-args))))
 
 (defn- split-args [args]
-  (loop [kw {} cli [] [arg & more] args]
-    (if-not arg
-      {:kw kw :cli cli}
-      (if-not (keyword? arg)
-        (recur kw (conj cli arg) more)
-        (recur (assoc kw arg (first more)) cli (rest more))))))
+  (loop [split {} [arg & more] args]
+    (cond
+      (nil? arg) split
+      (not (keyword? arg)) (recur (update-in split [:cli] (fnil conj []) arg) more)
+      :else (recur (update-in split [:kw] assoc arg (first more)) (rest more)))))
 
 (defmacro ^:private assert
   [test fmt & args]
