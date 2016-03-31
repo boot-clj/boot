@@ -167,6 +167,8 @@
     (cond
       (nil? arg) split
       (not (keyword? arg)) (recur (update-in split [:cli] (fnil conj []) arg) more)
+      (empty? more) (update-in split [:errors] (fnil conj [])
+                               (str "no value supplied for option " arg))
       :else (recur (update-in split [:kw] assoc arg (first more)) (rest more)))))
 
 (defmacro ^:private assert
@@ -227,13 +229,13 @@
           clj-doc  (format "%s\n\nKeyword Args:\n%s\n" doc (clj-summary argspecs))
           varmeta  {:doc clj-doc :arglists arglists :argspec cli-args}]
       `(-> (fn [& args#]
-             (let [{kws# :kw clis# :cli} (#'split-args args#)
-                   [opts# args#] (#'separate-cli-opts clis# ~cli-args)
+             (let [split# (#'split-args args#)
+                   [opts# args#] (#'separate-cli-opts (:cli split#) ~cli-args)
                    parsed#   (cli/parse-opts opts# ~cli-args)
-                   ~bindings (merge kws# (:options parsed#))
+                   ~bindings (merge (:kw split#) (:options parsed#))
                    ~'*args*  args#
                    ~'*usage* #(print ~cli-doc)]
-               (when-let [e# (seq (:errors parsed#))]
+               (when-let [e# (seq (mapcat :errors [split# parsed#]))]
                  (throw (IllegalArgumentException. (string/join "\n" e#))))
                ~@(mapv (partial apply argspec->assert) argspecs)
                ~@(mapv (partial apply argspec->deprecation-warning) argspecs)
