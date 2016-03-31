@@ -1,72 +1,40 @@
 (ns boot.test
-  (:require [clojure.string :as string]
-            [clojure.walk   :as walk]
-            [clojure.test   :as test]
-            [boot.core      :as core]
-            [boot.pod       :as pod]
-            [boot.util      :as util])
-  (:import java.lang.InterruptedException
-           java.util.Map
-           java.util.HashMap
-           java.util.Collections
-           java.util.concurrent.ConcurrentHashMap
-           java.util.concurrent.CountDownLatch))
+  (:require
+   [clojure.string :as string]
+   [clojure.walk   :as walk]
+   [clojure.test   :as test]
+   [boot.core      :as core]
+   [boot.pod       :as pod]
+   [boot.util      :as util]
+   [boot.parallel  :as parallel])
+  (:import
+   [java.lang InterruptedException]
+   [java.util Map Collections]
+   [java.util.concurrent ConcurrentHashMap]))
 
-;; test helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn- init-sync-map
+  "The (String) keys added here:
+  - test-summaries - ConcurrentHashMap - for starting the computation"
+  [sync-map]
+  (doto sync-map
+    (.put "test-summaries" (ConcurrentHashMap.))))
 
-(defn command-str
-  "Given a seq of command segments, the input to the runboot task,
-  return its string representation. Useful for Java interop, for example
-  it can be key in a HashMap."
-  [command-seq]
-  (string/join " " command-seq))
-
-(defn initial-sync-map
-  "Generates the (mutable) sync map necessary for the test task.
-  This map will be modified during parallel testing so make sure the
-  content is either immutable or thread safe.
-  The parameter test-commands is a set of sequences of "
-  [test-commands]
-  (let [start-latch (CountDownLatch. 1)
-        done-latch (CountDownLatch. (count test-commands))]
-    (doto (HashMap.)
-      (.put "start-latch" start-latch)
-      (.put "done-latch" done-latch)
-      (.put "test-number" (count test-commands))
-      (.put "test-command-str" nil) ;; AR - set in per-task-sync-map cause on a per-test basis
-      (.put "test-summaries" (ConcurrentHashMap.)))))
-
-(defn per-task-sync-map
-  "Generates the (immutable) per test sync map. The map content will be
-  modified during parallel testing so make sure that the mutable parts
-  are thread safe."
-  [sync-map command-seq]
-  (assert (sequential? command-seq)
-          "The command needs to be in the form [\"task\" \"param1\" \"param2\"]. This is a bug.")
+(defn- task-sync-map
+  "Generates the (immutable) per test sync map."
+  [sync-map]
+  (assert (get sync-map "command-str")
+          "The command-str key needs to be present. This is a bug.")
   (Collections/unmodifiableMap
-   (let [command-str (command-str command-seq)]
+   (let [command-str (get sync-map "command-str")
+         summaries (doto (get sync-map "test-summaries")
+                     (.put command-str (Collections/emptyMap)))]
      (doto (.clone sync-map)
-       (.put "test-command-str" command-str)
-       #(-> (get % "test-summaries")
-            (.put command-str (Collections/emptyMap)))))))
-
-(core/deftask await-done
-  [d data OBJECT ^:! code "The data for this task"]
-  (core/with-pass-thru [fs]
-    (util/dbug "Main thread is going to wait for test to complete...\n")
-    (.await (get data "done-latch"))))
-
-(core/deftask parallel-start
-  [d data OBJECT ^:! code "The data for this task"]
-  (core/with-pass-thru [fs]
-    (util/info "Launching %s parallel tests...\n" (get data "test-number"))
-    (.countDown (get data "start-latch"))))
+       (.put "test-summaries" summaries)))))
 
 (defn print-summary!
   "Print out (info) the summary. Note that it has to be in Clojure form
   already, see clojurize-summary."
   [summary]
-  ;; (util/dbug "%s" (into {} summary))
   (util/info "Ran %s tests, %s assertions, %s failures, %s errors.\n"
              (get summary :test 0)
              (+ (get summary :pass 0) (get summary :fail 0) (get summary :error 0))
@@ -81,14 +49,6 @@
   (assert (every? (partial instance? Map) (vals java-summaries)))
   (zipmap (keys java-summaries)
           (map (comp walk/keywordize-keys (partial into {})) (vals java-summaries))))
-
-(comment
-  (def m (doto (HashMap.)
-           (.put "a" {"test" 2 "pass" 1 "error" 1})
-           (.put "b" {})
-           (.put "c" {"test" 1 "fail" 1})))
-  (print-summary! (second (vals (clojurize-summaries m))))
-  (print-summary! (merge-summaries (vals (clojurize-summaries m)))))
 
 (defn merge-summaries
   "Merge summaries. Note that it has to be in Clojure form
@@ -111,10 +71,10 @@
     (util/dbug "Remaining running tests %s\n" (.getCount done-latch))))
 
 (defn set-summary-data!
-  "Set the summary in the (share) data for this pod"
+  "Set the test summary in the (shared) sync map for this pod"
   [data]
   (let [summaries (get data "test-summaries")
-        command (get data "test-command-str")]
+        command (get data "command-str")]
     (.put summaries command (Collections/unmodifiableMap
                              (walk/stringify-keys @test/*report-counters*)))))
 
@@ -122,8 +82,8 @@
   []
   (fn [next-handler]
     (fn [fileset]
-      (let [test-command-str (get pod/data "test-command-str")]
-        (binding [test/*testing-contexts* (conj test/*testing-contexts* test-command-str)]
+      (let [command-str (get pod/data "command-str")]
+        (binding [test/*testing-contexts* (conj test/*testing-contexts* command-str)]
           (next-handler fileset))))))
 
 (core/deftask inc-test-counter
@@ -152,7 +112,7 @@
   (pod/add-shutdown-hook! #(done! pod/data))
   (.await (get pod/data "start-latch"))
   (try
-    (util/dbug "In task %s\n" (get pod/data "test-command-str"))
+    (util/dbug "In task %s\n" (get pod/data "command-str"))
     (comp (with-report-counters)
           (testing-context)
           (inc-test-counter)
@@ -162,11 +122,9 @@
       (util/warn "Thread interrupted: %s\n" (.getMessage e))
       (test/inc-report-counter :error))
     (catch Throwable e
-      (test/inc-report-counter :error)
-      ;; TODO, do I need to pass :actual in the return?
-      ;; (do-report {:type :error, :message "Uncaught exception, not in assertion."
-      ;; :expected nil, :actual e})
-      )))
+      ;; TODO, do I need to pass :actual in the return? Like in clojure.test:
+      ;; https://github.com/clojure/clojure/tree/clojure-1.7.0/src/clj/clojure/test.clj#L532
+      (test/inc-report-counter :error))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   deftesttask macro   ;;;
@@ -231,3 +189,107 @@
        (map vals)
        (reduce concat)
        (filter pred)))
+
+;;;;;;;;;;;;;;;;;;
+;;  Public API  ;;
+;;;;;;;;;;;;;;;;;;
+
+(core/deftask test-exit
+  "Adds the ability to exit from the test with the right code, it simply parses
+  the input summaries and call boot.util/exit-errors in case of failures or
+  errors.
+
+  You can omit this task if you don't care about having the return code not
+  equal to zero (for instance during continuous testing in development)."
+  []
+  (core/with-pass-thru [_]
+    (let [errors (-> pod/data
+                     (get "test-summaries")
+                     clojurize-summaries
+                     vals
+                     merge-summaries
+                     summary-errors)]
+      (if (> errors 0)
+        (util/exit-error (util/dbug "Tests have %s failures/errors, error exiting...\n" errors))
+        (util/dbug "Tests are passing, exiting normally...\n")))))
+
+(core/deftask test-report
+  "Boot's default test report task, it prints out the final summary.
+
+  The usual -v/-vv control the verbosity of the report."
+  []
+  (core/with-pass-thru [_]
+    (let [summaries (-> pod/data
+                        (get "test-summaries")
+                        (clojurize-summaries))]
+      ;; Individual report
+      (doseq [[command-str summary] summaries]
+        (when (or (>= @util/*verbosity* 2)
+                  (> (summary-errors summary) 0))
+          (util/info "\n* boot %s\n" command-str)
+          (print-summary! summary)))
+      ;; Summary
+      (util/info "\nSummary\n")
+      (print-summary! (merge-summaries (vals summaries))))))
+
+(core/deftask runtests
+  "Run boot-in-boot parallel tests and collect the results.
+
+  The default, no argument variant runs all the test tasks found in all the
+  namespaces on the classpath, see boot.test/deftesttask on how to create test
+  tasks.
+
+  If you want more control, there actually is a command mode and a namespace
+  mode. To avoid clashing they are mutually exclusive, command mode takes
+  precedence.
+
+  A command is the string you would use on the command line for running the
+  task (after having it required in build.boot).
+
+  The namespaces option, instead, is self-explanatory and does not allow to
+  specify additionally arguments to tasks.
+
+  Usage example at the command line:
+
+      $ boot runtests -c \"foo-tests --param --int 5\" -c \"bar-tests\"
+
+  Or in build.boot:
+      (runtests :commands #{\"foo-tests :param true :int 5\"
+                            \"bar-test\"})
+
+  Last but not least, :threads is an integer that limits the number of spawned
+  threads, defaulting to the canonical (-> (number of processors) inc inc)."
+  [c commands   CMDS      ^:! #{str} "The boot task cli calls + arguments (a set of strings)."
+   t threads    NUMBER        int    "The maximum number of threads to spawn during the tests."
+   n namespaces NAMESPACE     #{sym} "The set of namespace symbols to run tests in."
+   e exclusions NAMESPACE     #{sym} "The set of namespace symbols to be excluded from test."]
+  (let [commands (cond
+                   commands commands
+                   :default (->> (or (seq namespaces) (all-ns))
+                                 (remove (or exclusions #{}) )
+                                 (namespaces->vars test-me-pred)
+                                 (map var->command)))]
+    (if (seq commands)
+      (do (assert (every? string? commands)
+                  (format "commands must be strings, got %s" commands))
+          (binding [parallel/*parallel-hooks* {:init init-sync-map
+                                               :task-init task-sync-map}]
+            (parallel/runcommands :commands commands
+                                  :batches threads)))
+      (do (util/warn "No namespace was tested.")
+          identity))))
+
+(comment
+  (reset! util/*verbosity* 2)
+  (boot.core/boot (comp (runparallel :commands #{"boot.task.built-in-test/sift-add-meta-tests"
+                                                 "boot.task.built-in-test/sift-to-asset-invert-tests"})
+                        (test-report)
+                        (test-exit)))
+
+  (boot.core/boot (comp (runtests :threads 2
+                                  :commands #{"boot.task.built-in-test/sift-add-meta-tests"
+                                              "boot.task.built-in-test/sift-to-asset-invert-tests"
+                                              "boot.task.built-in-test/sift-include-tests"})
+                        (test-report)
+                        (test-exit)))
+  )
