@@ -169,7 +169,7 @@
       (not (keyword? arg)) (recur (update-in split [:cli] (fnil conj []) arg) more)
       (empty? more) (update-in split [:errors] (fnil conj [])
                                (str "no value supplied for option " arg))
-      :else (recur (update-in split [:kw] assoc arg (first more)) (rest more)))))
+      :else (recur (assoc-in split [:kw arg] (first more)) (rest more)))))
 
 (defmacro ^:private assert
   [test fmt & args]
