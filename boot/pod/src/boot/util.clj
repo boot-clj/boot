@@ -333,6 +333,15 @@
     (merge {:scope "compile"}
       (if-not (seq kvs) d (apply assoc d kvs)))))
 
+(defn map-as-dep
+  "Returns the given dependency vector with :project and :version put at
+  index 0 and 1 respectively and modifiers (eg. :scope, :exclusions,
+  etc) next."
+  [{:keys [project version] :as dep-map}]
+  (let [kvs (remove #(or (some #{:project :version} %)
+                         (= [:scope "compile"] %)) dep-map)]
+    (vec (remove nil? (into [project version] (flatten kvs))))))
+
 (defn jarname
   "Generates a friendly name for the jar file associated with the given project
   symbol and version."
