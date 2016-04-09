@@ -18,6 +18,7 @@
    [boot.from.table.core :as table]
    [boot.from.digest     :as digest]
    [boot.task-helpers    :as helpers]
+   [boot.task-helpers.notify :as notify]
    [boot.pedantic        :as pedantic]
    [boot.test            :as test])
   (:import
@@ -132,8 +133,9 @@
 (core/deftask speak
   "Audible notifications during build.
 
-  Default themes: system (the default), ordinance, and woodblock. New themes
-  can be included via jar dependency with the sound files as resources:
+  Default themes: system (the default), ordinance, pillsbury, and
+  woodblock. New themes can be included via jar dependency with the
+  sound files as resources:
 
       boot
       └── notify
@@ -170,6 +172,76 @@
               (pod/with-call-worker (boot.notify/warning! ~theme ~(deref core/*warnings*) ~warning))))
           (catch Throwable t
             (pod/with-call-worker (boot.notify/failure! ~theme ~failure))
+            (throw t)))))))
+
+(core/deftask ^{:boot/from :jeluard/boot-notify} notify
+  "Aural and visual notifications during build.
+
+  Default audio themes: system (the default), ordinance, pillsbury,
+  and woodblock. New themes can be included via jar dependency with
+  the sound files as resources:
+
+      boot
+      └── notify
+          ├── <theme-name>_failure.mp3
+          ├── <theme-name>_success.mp3
+          └── <theme-name>_warning.mp3
+
+  Sound files specified individually take precedence over theme sounds.
+
+  For visual notifications, there is a default implementation that
+  tries to use the `terminal-notifier' program on OS X systems, and
+  the `notify-send' program on Linux systems.
+
+  You can also supply custom notification functions via the *-notify-fn
+  options. Both are functions that take one argument which is a map of
+  options.
+
+  The audible notification function will receive a map with three keys
+  - :type, :file, and :theme.
+
+  The visual notification function will receive a map with four keys
+  - :title, :uid, :icon, and :message."
+
+  [a audible                    bool      "Play an audible notification"
+   v visual                     bool      "Display a visual notification"
+   A audible-notify-fn FN       sym       "A function to be used for audible notifications in place of the default method."
+   V visual-notify-fn  FN       sym       "A function to be used for visual notifications in place of the default method"
+   T theme             NAME     str       "The name of the audible notification sound theme"
+   s soundfiles        KEY=VAL  {kw str}  "Sound files overriding theme sounds. Keys can be :success, :warning or :failure"
+   m messages          KEY=VAL  {kw str}  "Templates overriding default messages. Keys can be :success, :warning or :failure"
+   t title             TITLE    str       "Title of the notification"
+   i icon              ICON     str       "Full path of the file used as notification icon"
+   u uid               UID      str       "Unique ID identifying this boot process"]
+
+  (let [themefiles (notify/get-themefiles theme (core/tmp-dir!))
+        sounds (merge themefiles soundfiles)
+        base-visual-opts {:title (or title "Boot")
+                          :uid   (or uid title)
+                          :icon  (or icon (notify/boot-logo))}
+        messages (merge {:success "Success!" :warning "%s warning/s" :failure "%s"}
+                        messages)
+        audible-notify! (or audible-notify-fn notify/audible-notify!)
+        visual-notify!  (or visual-notify-fn  notify/visual-notify!)
+        notify! (fn [type message]
+                  (when audible
+                    (audible-notify! {:type type
+                                      :file (get sounds type)
+                                      :theme theme}))
+                  (when visual
+                    (visual-notify! (assoc base-visual-opts
+                                           :message message))))]
+    (fn [next-task]
+      (fn [fileset]
+        (try
+          (util/with-let [_ (next-task fileset)]
+            (if (zero? @core/*warnings*)
+              (notify! :success (:success messages))
+              (notify! :warning (format (:warning messages)
+                                        (deref core/*warnings*)))))
+          (catch Throwable t
+            (notify! :failure (format (:failure messages)
+                                      (.getMessage t)))
             (throw t)))))))
 
 (core/deftask show
