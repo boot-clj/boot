@@ -36,3 +36,12 @@
   (testing "Two absolute paths"
     (is (= "js/test.js"                (str (relative-to abs-dir  (io/file "/foo/bar/js/test.js"))))))
   )
+
+(deftest match-filter?-test
+  (let [filters #{#"^META-INF/MANIFEST.MF$"}]
+    (testing "Unix-style paths"
+      (is (match-filter? filters (io/file "META-INF/MANIFEST.MF"))))
+    (testing "Windows-style paths"
+      (is (match-filter? filters (io/file "META-INF\\MANIFEST.MF"))))
+    (testing "Sanity check for failure"
+      (is (not (match-filter? filters (io/file "META-INF/MANIFEST.NO")))))))
