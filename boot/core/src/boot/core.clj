@@ -275,7 +275,10 @@
         chk-syms (set (map first checkouts))
         missing  (set/difference chk-syms dep-syms)
         new      (->> (pod/apply-global-exclusions exclusions new)
-                      (mapv (fn [[p v :as d]] (assoc d 1 (versions p v)))))]
+                      (mapv (fn [[p v :as d]] (assoc d 1 (versions p v))))
+                      (assoc env :dependencies)
+                      (pod/resolve-release-versions)
+                      :dependencies)]
     (when (seq missing)
       (util/warn "Checkout deps missing from :dependencies in env: %s\n" (string/join ", " missing)))
     (report-version-conflicts (find-version-conflicts old new env))

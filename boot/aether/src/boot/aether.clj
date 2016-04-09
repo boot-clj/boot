@@ -46,7 +46,7 @@
         (->k size))
 
       (:corrupted :failed)
-      (when err (util/fail (.getMessage err)))
+      (when err (util/fail "%s\n" (.getMessage err)))
 
       nil)))
 
@@ -242,15 +242,23 @@
     ((verify-colors verification) (pr-str dep))
     (pr-str dep)))
 
+(defn resolve-release-versions
+  [env]
+  (let [versions (->> (resolve-dependencies-memoized* env) keys
+                      (reduce #(assoc %1 (first %2) (second %2)) {}))]
+    (update-in env [:dependencies]
+               (partial mapv (fn [[sym _ & more]]
+                               (into [sym (versions sym)] more))))))
+
 (defn dep-tree
   "Returns the printed dependency graph as a string."
   [env & [verify?]]
   (-> env
-    resolve-dependencies-memoized*
-    (->> (aether/dependency-hierarchy (:dependencies env)))
-    (cond-> verify? (verify-deps env))
-    (util/print-tree (when verify? sig-status-prefix) colorize-dep)
-    with-out-str))
+      resolve-dependencies-memoized*
+      (->> (aether/dependency-hierarchy (:dependencies env)))
+      (cond-> verify? (verify-deps env))
+      (util/print-tree (when verify? sig-status-prefix) colorize-dep)
+      with-out-str))
 
 (defn- pom-xml-parse-string
   [pom-str]
