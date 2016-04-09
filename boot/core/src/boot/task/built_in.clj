@@ -192,8 +192,8 @@
         sort-pods  #(sort-by (memfn getName) %)]
     (core/with-pass-thru [fs]
       (cond fileset        (helpers/print-fileset fs)
-            classpath      (println (or (System/getProperty "boot.class.path") ""))
-            fake-classpath (println (or (System/getProperty "fake.class.path") ""))
+            classpath      (println (or (core/get-env :boot-class-path) ""))
+            fake-classpath (println (or (core/get-env :fake-class-path) ""))
             list-pods      (doseq [p (->> pod/pods (map key) sort-pods)]
                              (println (.getName p)))
             :else
@@ -595,7 +595,7 @@
                           (throw (Exception. "The java compiler is not working. Please make sure you use a JDK!")))
             file-mgr  (.getStandardFileManager compiler diag-coll nil nil)
             opts      (->> ["-d"  (.getPath tgt)
-                            "-cp" (System/getProperty "boot.class.path")]
+                            "-cp" (core/get-env :boot-class-path)]
                            (concat options)
                            (into-array String) Arrays/asList)
             handler   {Diagnostic$Kind/ERROR util/fail

@@ -139,29 +139,42 @@
       (util/dbug* "Sync complete.\n"))))
 
 (defn- set-fake-class-path!
-  "Sets the fake.class.path system property to reflect all JAR files on the
-  pod class path plus the :source-paths and :resource-paths. Note that these
-  directories are not actually on the class path (this is why it's the fake
-  class path). This property is a workaround for IDEs and tools that expect
-  the full class path to be determined by the java.class.path property.
+  "Sets the :fake-class-path environment property to reflect all JAR files on
+  the pod class path plus the :source-paths and :resource-paths. Note that
+  these directories are not actually on the class path (this is why it's the
+  fake class path). This property is a workaround for IDEs and tools that
+  expect the full class path to be determined by the java.class.path property.
 
-  Also sets the boot.class.path system property which is the same as above
+  Also sets the :boot-class-path environment property which is the same as above
   except that the actual class path directories are used instead of the user's
   project directories. This property can be used to configure Java tools that
   would otherwise be looking at java.class.path expecting it to have the full
   class path (the javac task uses it, for example, to configure the Java com-
-  piler class)."
+  piler class).
+
+  Also sets system properties fake.class.path and boot.class.path which mirror
+  their environment counterparts, but are updated jvm-wide when changed. They
+  are not reliable within a pod environment for this reason."
+
   []
-  (let [user-dirs  (->> (get-env)
-                        ((juxt :source-paths :resource-paths))
-                        (apply concat)
-                        (map #(.getAbsolutePath (io/file %))))
-        paths      (->> (pod/get-classpath) (map #(.getPath (URL. %))))
-        dir?       (comp (memfn isDirectory) io/file)
-        fake-paths (->> paths (remove dir?) (concat user-dirs))
-        separated  (partial string/join (System/getProperty "path.separator"))]
-    (System/setProperty "boot.class.path" (separated paths))
-    (System/setProperty "fake.class.path" (separated fake-paths))))
+  (let [user-dirs       (->> (get-env)
+                             ((juxt :source-paths :resource-paths))
+                             (apply concat)
+                             (map #(.getAbsolutePath (io/file %))))
+        paths           (->> (pod/get-classpath) (map #(.getPath (URL. %))))
+        dir?            (comp (memfn isDirectory) io/file)
+        fake-paths      (->> paths (remove dir?) (concat user-dirs))
+        separated       (partial string/join (System/getProperty "path.separator"))
+        boot-class-path (separated paths)
+        fake-class-path (separated fake-paths)]
+
+    (when (or (not= boot-class-path (get-env :boot-class-path))
+              (not= fake-class-path (get-env :fake-class-path)))
+      (set-env! :fake-class-path fake-class-path
+                :boot-class-path boot-class-path))
+    ;; Kept for backwards compatibility
+    (System/setProperty "boot.class.path" boot-class-path)
+    (System/setProperty "fake.class.path" fake-class-path)))
 
 (defn- set-user-dirs!
   "Resets the file watchers that sync the project directories to their
