@@ -333,6 +333,8 @@
   [p project SYM           sym         "The project id (eg. foo/bar)."
    v version VER           str         "The project version."
    d description DESC      str         "The project description."
+   c classifier STR        str         "The project classifier."
+   P packaging STR         str         "The project packaging type, i.e. war, pom"
    u url URL               str         "The project homepage url."
    s scm KEY=VAL           {kw str}    "The project scm map (KEY is one of url, tag, connection, developerConnection)."
    l license NAME:URL      {str str}   "The map {name url} of project licenses."
@@ -343,7 +345,12 @@
         tag  (or (:tag scm) (util/guard (git/last-commit)))
         scm  (when scm (assoc scm :tag tag))
         deps (or dependencies (:dependencies (core/get-env)))
-        opts (assoc *opts* :scm scm :dependencies deps :developers developers)]
+        opts (assoc *opts*
+               :scm scm
+               :dependencies deps
+               :developers developers
+               :classifies classifier
+               :packaging (or packaging "jar"))]
     (when-not (and project version)
       (throw (Exception. "need project and version to create pom.xml")))
     (let [[gid aid] (util/extract-ids project)

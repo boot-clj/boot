@@ -109,7 +109,7 @@
          (keep (fn [[p :as x]] (when-not (checkouts p) {:dep x :jar (dep->path x)}))))))
 
 (defn resolve-dependency-jars
-  "Given an env map, resolves dependencies and returns a list of dependency jar 
+  "Given an env map, resolves dependencies and returns a list of dependency jar
   file paths.
 
   The 3-arity is used by boot.App to resolve dependencies for the core pods.
@@ -255,18 +255,43 @@
   [pom-str]
   (doto (File/createTempFile "pom" ".xml") (.deleteOnExit) (spit pom-str)))
 
+(defn- jarpath-on-artifact-map
+  "Infer packaging type from `jarpath` or `packaging` in pom and add it
+   to `artefact-map` if a mapping for `jarpath` not already exists."
+  [artifact-map {:keys [project version packaging classifier] :as pom} jarpath]
+  (if (some #{jarpath} (vals artifact-map))
+    artifact-map
+    (assoc
+      artifact-map
+      (conj
+        [project version]
+        :extension (cond
+                     packaging
+                     packaging
+
+                     (.endsWith (str jarpath) "war")
+                     "war"
+
+                     :else
+                     "jar")
+
+        :classifier classifier)
+      jarpath)))
+
 (defn install
   ([env jarpath]
    (install env jarpath nil))
   ([env jarpath pompath]
-   (let [pom-str                   (pod/pom-xml jarpath pompath)
-         {:keys [project version]} (pom-xml-parse-string pom-str)
-         pomfile                   (pom-xml-tmp pom-str)]
+   (install env jarpath pompath nil))
+  ([env jarpath pompath artifact-map]
+   (let [pom-str                           (pod/pom-xml jarpath pompath)
+         {:keys [project version] :as pom} (pom-xml-parse-string pom-str)
+         pomfile                           (pom-xml-tmp pom-str)]
      (aether/install
-       :coordinates [project version]
-       :jar-file    (io/file jarpath)
-       :pom-file    (io/file pomfile)
-       :local-repo  (or (:local-repo env) @local-repo nil)))))
+       :coordinates  [project version]
+       :pom-file     (io/file pomfile)
+       :artifact-map (jarpath-on-artifact-map artifact-map pom jarpath)
+       :local-repo   (or (:local-repo env) @local-repo nil)))))
 
 (defn deploy
   ([env repo jarpath]
@@ -276,14 +301,13 @@
      (deploy env repo jarpath nil pom-or-artifacts)
      (deploy env repo jarpath pom-or-artifacts nil)))
   ([env [repo-id repo-settings] jarpath pompath artifact-map]
-   (let [pom-str                   (pod/pom-xml jarpath pompath)
-         {:keys [project version]} (pom-xml-parse-string pom-str)
-         pomfile                   (pom-xml-tmp pom-str)]
+   (let [pom-str                           (pod/pom-xml jarpath pompath)
+         {:keys [project version] :as pom} (pom-xml-parse-string pom-str)
+         pomfile                           (pom-xml-tmp pom-str)]
      (aether/deploy
        :coordinates  [project version]
-       :jar-file     (io/file jarpath)
        :pom-file     (io/file pomfile)
-       :artifact-map artifact-map
+       :artifact-map (jarpath-on-artifact-map artifact-map pom jarpath)
        :repository   {repo-id repo-settings}
        :local-repo   (or (:local-repo env) @local-repo nil)))))
 
