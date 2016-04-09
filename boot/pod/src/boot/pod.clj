@@ -506,6 +506,13 @@
   [env]
   (with-call-worker (boot.aether/resolve-dependencies ~env)))
 
+(defn resolve-release-versions
+  "Given environment map env, replaces the versions of dependencies that are
+  specified with the special Maven RELEASE version with the concrete versions
+  of the resolved dependencies."
+  [env]
+  (with-call-worker (boot.aether/resolve-release-versions ~env)))
+
 (defn resolve-dependency-jars
   "Returns a seq of File objects corresponding to the jar files associated with
   the fully resolved dependency graph as specified in the env, where env is the
