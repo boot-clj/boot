@@ -46,7 +46,7 @@
         (->k size))
 
       (:corrupted :failed)
-      (when err (util/fail (.getMessage err)))
+      (when err (util/fail "%s\n" (.getMessage err)))
 
       nil)))
 
