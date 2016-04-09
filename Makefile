@@ -28,6 +28,7 @@ clean:
 	(cd boot/aether && lein clean)
 	(cd boot/pod && lein clean)
 	(cd boot/worker && lein clean)
+	(rm -fv .installed .deployed .tested)
 
 bin/lein:
 	mkdir -p bin
@@ -86,5 +87,8 @@ install: .installed
 
 deploy: .deployed
 
-test:
-	echo "<< no tests yet >>"
+.tested:
+	(export BOOT_VERSION=$(version) && export BOOT_EMIT_TARGET=no && cd boot/core && boot test)
+	date > .tested
+
+test: .installed .tested

@@ -18,7 +18,8 @@
    [boot.from.table.core :as table]
    [boot.from.digest     :as digest]
    [boot.task-helpers    :as helpers]
-   [boot.pedantic        :as pedantic])
+   [boot.pedantic        :as pedantic]
+   [boot.test            :as test])
   (:import
    [java.io File]
    [java.util Arrays]
