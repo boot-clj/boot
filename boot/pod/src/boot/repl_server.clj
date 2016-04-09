@@ -23,8 +23,10 @@
        (with-local-vars [init-ns-sentinel nil]
          (fn [{:keys [session] :as msg}]
            (when-not (@session init-ns-sentinel)
+             (#'clojure.core/load-data-readers)
              (swap! session assoc
                     init-ns-sentinel      true
+                    (var *data-readers*)  (.getRawRoot #'*data-readers*)
                     (var *compile-path*)  compile-path
                     (var *ns*)            (try (require init-ns)
                                                (create-ns init-ns)
