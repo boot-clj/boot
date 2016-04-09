@@ -349,7 +349,7 @@
                :scm scm
                :dependencies deps
                :developers developers
-               :classifies classifier
+               :classifier classifier
                :packaging (or packaging "jar"))]
     (when-not (and project version)
       (throw (Exception. "need project and version to create pom.xml")))
