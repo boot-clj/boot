@@ -74,15 +74,20 @@
     (proxy [SimpleFileVisitor] []
       (preVisitDirectory [path attr]
         (let [p (.relativize root path)]
-          (if (and ign? (ign? (.toString p))) skip-subtree continue)))
+          (try (if (and ign? (ign? (.toString p))) skip-subtree continue)
+               (catch java.nio.file.NoSuchFileException _
+                 (util/dbug* "Filesystem: file not found: %s\n" (.toString p))
+                 skip-subtree))))
       (visitFile [path attr]
         (with-let [_ continue]
           (let [p (.relativize root path)
                 s (path->segs p)]
-            (when-not (and ign? (ign? (.toString p)))
-              (->> (.toMillis (Files/getLastModifiedTime path link-opts))
-                   (hash-map :path s :file path :time)
-                   (swap! tree assoc s)))))))))
+            (try (when-not (and ign? (ign? (.toString p)))
+                   (->> (.toMillis (Files/getLastModifiedTime path link-opts))
+                        (hash-map :path s :file path :time)
+                        (swap! tree assoc s)))
+                 (catch java.nio.file.NoSuchFileException _
+                   (util/dbug* "Filesystem: file not found: %s\n" (.toString p))))))))))
 
 (defrecord FileSystemTree [root tree])
 
