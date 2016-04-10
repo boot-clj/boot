@@ -92,7 +92,7 @@ install: .installed
 deploy: .deployed
 
 .tested:
-	(export BOOT_VERSION=$(version) && export BOOT_EMIT_TARGET=no && cd boot/core && boot test)
+	(export BOOT_VERSION=$(version) && export BOOT_EMIT_TARGET=no && cd boot/core && bin/boot test)
 	date > .tested
 
 test: .installed .tested
