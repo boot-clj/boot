@@ -98,7 +98,8 @@
   [sym]
   (let [env (core/get-env)]
     (->> env
-         :dependencies
+         pod/resolve-dependencies
+         (map :dep)
          (filter #(= sym (first %)))
          first
          (pod/resolve-dependency-jar env))))
