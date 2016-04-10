@@ -448,7 +448,7 @@ public class App {
         File bootcache   = mkFile(cachehome, "cache", "boot");
 
         localrepo        = config("BOOT_LOCAL_REPO");
-        cljversion       = config("BOOT_CLOJURE_VERSION", "1.7.0");
+        cljversion       = config("BOOT_CLOJURE_VERSION", "1.8.0");
         cljname          = config("BOOT_CLOJURE_NAME", "org.clojure/clojure");
         aetherfile       = mkFile(cachehome, "lib", appversion, aetherjar);
 
