@@ -93,12 +93,14 @@
     (proxy [SimpleFileVisitor] []
       (visitFile [path attr]
         (with-let [_ fs/continue]
-          (let [p (str (.relativize root path))
-                h (digest/md5 (.toFile path))
-                t (.toMillis (Files/getLastModifiedTime path fs/link-opts))
-                i (str h "." t)]
-            (add-blob! blob path i link)
-            (swap! tree assoc p (map->TmpFile (assoc m :path p :id i :hash h :time t)))))))))
+          (let [p (str (.relativize root path))]
+            (try (let [h (digest/md5 (.toFile path))
+                       t (.toMillis (Files/getLastModifiedTime path fs/link-opts))
+                       i (str h "." t)]
+                   (add-blob! blob path i link)
+                   (swap! tree assoc p (map->TmpFile (assoc m :path p :id i :hash h :time t))))
+                 (catch java.nio.file.NoSuchFileException _
+                   (util/dbug* "Tmpdir: file not found: %s\n" (.toString p))))) )))))
 
 (defn- dir->tree!
   [^File dir ^File blob]
