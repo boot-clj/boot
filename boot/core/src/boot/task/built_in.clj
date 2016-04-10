@@ -39,7 +39,7 @@
                  ["" "BOOT_CERTIFICATES"         "Specify certificate file paths."]
                  ["" "BOOT_CLOJARS_REPO"         "Specify the url for the 'clojars' Maven repo."]
                  ["" "BOOT_CLOJARS_MIRROR"       "Specify the mirror url for the 'clojars' Maven repo."]
-                 ["" "BOOT_CLOJURE_VERSION"      "The version of Clojure boot will provide (1.7.0)."]
+                 ["" "BOOT_CLOJURE_VERSION"      "The version of Clojure boot will provide (1.8.0)."]
                  ["" "BOOT_CLOJURE_NAME"         "The artifact name of Clojure boot will provide (org.clojure/clojure)."]
                  ["" "BOOT_COLOR"                "Set to 'no' to turn colorized output off."]
                  ["" "BOOT_EMIT_TARGET"          "Set to 'no' to disable automatic writing to target directory."]
