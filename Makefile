@@ -91,7 +91,7 @@ install: .installed
 
 deploy: .deployed
 
-.tested:
+.tested: bin/boot
 	(export BOOT_VERSION=$(version) && export BOOT_EMIT_TARGET=no && cd boot/core && bin/boot test)
 	date > .tested
 
