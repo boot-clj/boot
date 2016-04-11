@@ -108,7 +108,6 @@
   deftask or comp. Another way to say it is that a boot middleware
   should be passed here."
   [task]
-  ;; TODO - deftesttask
   (pod/add-shutdown-hook! #(done! pod/data))
   (.await (get pod/data "start-latch"))
   (try
@@ -154,12 +153,12 @@
       (testing \"whatever\"
         (is true \"Whatever must be true\"))))
 
-  When *load-tests* is false, deftesttask is ignored."
+  When clojure.test/*load-tests* is false, deftesttask is ignored."
   [& forms]
   (when test/*load-tests*
     (let [new-forms (-> forms
                         (boot.test/update-body #(cons 'boot.test/test-task (list %))))]
-      `(alter-meta! (core/deftask ~@new-forms) assoc ::test-task ::test-me))))
+      `(do (core/deftask ~@new-forms) (alter-meta! (var ~(first new-forms)) assoc ::test-task ::test-me)))))
 
 ;;;;;;;;;;;;;;;;;;
 ;;  Test Vars   ;;
