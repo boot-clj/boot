@@ -1,12 +1,13 @@
 (ns boot.parallel
   (:require
-   [clojure.string       :as string]
-   [boot.core            :as core]
-   [boot.pod             :as pod]
-   [boot.util            :as util])
+   [clojure.string :as string]
+   [boot.core      :as core]
+   [boot.pod       :as pod]
+   [boot.util      :as util]
+   [boot.from.io.aviso.exception :as ex])
   (:import
    [java.util HashMap Collections]
-   [java.util.concurrent CountDownLatch]))
+   [java.util.concurrent CountDownLatch TimeUnit]))
 
 ;; AR we might need also to modify the map when a task/batch/computation
 ;; finishes. However, I might overengineer a bit and therefore I am leaving
@@ -38,6 +39,15 @@ There are six hooks, below are the keys, the default is identity:
                     :batch-init identity
                     :task-init identity})
 
+(def ^{:dynamic true
+       :doc "Parallel task execution timeout.
+
+It follows CountDownLatch.await(long timeout, TimeUnit unit):
+https://docs.oracle.com/javase/7/docs/api/java/util/concurrent/CountDownLatch.html#await%28long,%20java.util.concurrent.TimeUnit%29
+
+The first item of the vector is timeout, the second unit"}
+  *parallel-timeout* [30 TimeUnit/MINUTES])
+
 (core/deftask runboot
   "Run boot in boot.
 
@@ -57,7 +67,18 @@ There are six hooks, below are the keys, the default is identity:
                    (->> (into-array String)))]
     (util/dbug "Runboot will run %s \n" (str "\"boot " (string/join " " args) "\""))
     (core/with-pass-thru [fs]
-      (future (boot.App/runBoot core worker args)))))
+      (future (try (.await (get pod/data "start-latch"))
+                   (boot.App/runBoot core worker args)
+                   (catch InterruptedException e
+                     (util/print-ex e))
+                   (catch Throwable e
+                     (util/print-ex e))
+                   (finally
+                     (let [done-latch (get data "done-latch")]
+                       (if (.countDown done-latch)
+                         (util/dbug "All tasks completed\n")
+                         (util/warn "Some parallel task timed out (execution time > %s seconds)\n"
+                                    (.toSeconds (first *parallel-timeout*)))))))))))
 
 (defn empty-sync-map
   "Create an empty sync-map (a HashMap).
@@ -123,7 +144,7 @@ There are six hooks, below are the keys, the default is identity:
   (core/with-pass-thru [fs]
     (let [latch (get data "done-latch")]
       (util/dbug "The main thread is going to wait for %s task(s) to complete...\n" (.getCount latch))
-      (.await latch))))
+      (.await latch (first *parallel-timeout*) (second *parallel-timeout*)))))
 
 (core/deftask parallel-start
   [d data OBJECT ^:! code "The data for this task"]

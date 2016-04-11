@@ -6,7 +6,8 @@
    [boot.core      :as core]
    [boot.pod       :as pod]
    [boot.util      :as util]
-   [boot.parallel  :as parallel])
+   [boot.parallel  :as parallel]
+   [boot.from.io.aviso.exception :as ex])
   (:import
    [java.lang InterruptedException]
    [java.util Map Collections]
@@ -63,13 +64,6 @@
   [summary]
   (reduce (fnil + 0 0) ((juxt :fail :error) summary)))
 
-(defn done!
-  "Signal that this pod is shutting down"
-  [data]
-  (let [done-latch (get data "done-latch")]
-    (.countDown done-latch)
-    (util/dbug "Remaining running tests %s\n" (.getCount done-latch))))
-
 (defn set-summary-data!
   "Set the test summary in the (shared) sync map for this pod"
   [data]
@@ -108,22 +102,19 @@
   deftask or comp. Another way to say it is that a boot middleware
   should be passed here."
   [task]
-  (pod/add-shutdown-hook! #(done! pod/data))
-  (.await (get pod/data "start-latch"))
-  (try
-    (util/dbug "In task %s\n" (get pod/data "command-str"))
-    (comp (with-report-counters)
-          (testing-context)
-          (inc-test-counter)
-          task
-          (set-summary))
-    (catch InterruptedException e
-      (util/warn "Thread interrupted: %s\n" (.getMessage e))
-      (test/inc-report-counter :error))
-    (catch Throwable e
-      ;; TODO, do I need to pass :actual in the return? Like in clojure.test:
-      ;; https://github.com/clojure/clojure/tree/clojure-1.7.0/src/clj/clojure/test.clj#L532
-      (test/inc-report-counter :error))))
+  (let [command-str (get pod/data "command-str")]
+    (try
+      (util/dbug "In task %s\n" command-str)
+      (comp (with-report-counters)
+            (testing-context)
+            (inc-test-counter)
+            task
+            (set-summary))
+      (catch Throwable e
+        ;; TODO, do I need to pass :actual in the return? Like in clojure.test:
+        ;; https://github.com/clojure/clojure/tree/clojure-1.7.0/src/clj/clojure/test.clj#L532
+        (test/inc-report-counter :error)
+        (throw (ex-info "Exception while testing task" {:command-str command-str} e))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   deftesttask macro   ;;;
