@@ -19,8 +19,7 @@
    [boot.from.digest     :as digest]
    [boot.task-helpers    :as helpers]
    [boot.task-helpers.notify :as notify]
-   [boot.pedantic        :as pedantic]
-   [boot.test            :as test])
+   [boot.pedantic        :as pedantic])
   (:import
    [java.io File]
    [java.util Arrays]
