@@ -226,8 +226,8 @@
   "Run boot-in-boot parallel tests and collect the results.
 
   The default, no argument variant runs all the test tasks found in all the
-  namespaces on the classpath, see boot.test/deftesttask on how to create test
-  tasks.
+  required namespaces, requiring is important and needs to be done in your
+  build.boot. See boot.test/deftesttask on how to create test tasks.
 
   If you want more control, there actually is a command mode and a namespace
   mode. To avoid clashing they are mutually exclusive, command mode takes
@@ -266,7 +266,7 @@
                                                :task-init task-sync-map}]
             (parallel/runcommands :commands commands
                                   :batches threads)))
-      (do (util/warn "No namespace was tested.")
+      (do (util/warn "No namespace was tested.\n")
           identity))))
 
 (comment
