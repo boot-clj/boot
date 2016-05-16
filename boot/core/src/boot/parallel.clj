@@ -122,7 +122,7 @@ The first item of the vector is timeout, the second unit"}
   (string/split command-str #"\s"))
 
 (defn task-sync-map
-  "Add batch-specific keys to the input sync map.
+  "Add task-specific keys to the input sync map.
 
   This function currently clones, adds keys and returns a HashMap whose
   values will be modified during the parallel computation. Make sure
@@ -206,7 +206,7 @@ The first item of the vector is timeout, the second unit"}
         sync-map (parallel-init-fn (empty-sync-map))
         seqs-of-cmds (partition-all n commands)
         seqs-of-midwares (map #(commands->parallel-task sync-map %) seqs-of-cmds)]
-    (util/dbug "Middleware command partitions: %s.\n" (vec seqs-of-cmds))
+    (util/dbug "Partitions: %s.\n" (vec seqs-of-cmds))
     (core/with-pre-wrap [fileset]
       (reduce (fn [prev-fs mw]
                 (let [handler (mw identity)] ;; this triggers the parallel computation
