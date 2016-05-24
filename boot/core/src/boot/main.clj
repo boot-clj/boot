@@ -118,7 +118,6 @@
   (pod/set-pod-id! pod-id)
   (pod/set-worker-pod! worker-pod)
   (reset! pod/shutdown-hooks shutdown-hooks)
-  (reset! util/*colorize?* (util/colorize?-system-default))
 
   (let [[arg0 args args*] (if (seq args*)
                             [arg0 args args*]

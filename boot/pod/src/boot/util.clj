@@ -45,7 +45,7 @@
 (def ^:dynamic *colorize?*
   "Atom containing the value that determines whether ANSI colors escape codes
   will be printed with boot output."
-  (atom false))
+  (atom (colorize?-system-default)))
 
 (defn- print*
   [verbosity color args]
