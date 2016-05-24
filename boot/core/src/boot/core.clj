@@ -881,7 +881,8 @@
         (add-user-asset    (first (user-asset-dirs)))
         (add-user-source   (first (user-source-dirs)))
         (add-user-resource (first (user-resource-dirs)))
-        (update-in [:tree] merge (:tree fileset)))))
+        (update-in [:tree] merge (:tree fileset))
+        (vary-meta merge (meta fileset)))))
 
 (defn reset-build!
   "Resets mutable build state to default values. This includes such things as
