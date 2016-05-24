@@ -1,20 +1,21 @@
 (ns boot.aether
   (:require
-   [clojure.java.io             :as io]
-   [clojure.string              :as string]
-   [clojure.pprint              :as pprint]
-   [cemerick.pomegranate.aether :as aether]
-   [boot.util                   :as util]
-   [boot.pod                    :as pod]
-   [boot.gpg                    :as gpg]
-   [boot.from.io.aviso.ansi     :as ansi]
-   [boot.kahnsort               :as ksort])
+    [clojure.java.io             :as io]
+    [clojure.string              :as string]
+    [clojure.pprint              :as pprint]
+    [cemerick.pomegranate.aether :as aether]
+    [boot.util                   :as util]
+    [boot.pod                    :as pod]
+    [boot.gpg                    :as gpg]
+    [boot.from.io.aviso.ansi     :as ansi]
+    [boot.kahnsort               :as ksort])
   (:import
-   [boot App]
-   [java.io File]
-   [java.util.jar JarFile]
-   [java.util.regex Pattern]
-   [org.sonatype.aether.resolution DependencyResolutionException]))
+    [boot App]
+    [java.io File]
+    [java.util.jar JarFile]
+    [java.util.regex Pattern]
+    [org.sonatype.aether.resolution DependencyResolutionException]
+    [org.sonatype.aether.transfer MetadataNotFoundException ArtifactNotFoundException]))
 
 (def offline?             (atom false))
 (def update?              (atom :daily))
@@ -33,22 +34,42 @@
 (defn update-always!  []  (set-update! :always))
 (defn set-local-repo! [x] (reset! local-repo x))
 
+(defmulti on-transfer (fn [info] (:type info)))
+
+(defmethod on-transfer :started
+  [{:keys [method] {:keys [name repository size]} :resource}]
+  (letfn [(->k [size]
+            (when-not (neg? size)
+              (format " (%sk)" (Math/round (double (max 1 (/ size 1024)))))))]
+    (util/info "%s %s %s %s%s\n"
+      (case method :get "Retrieving" :put "Sending")
+      (.getName (io/file name))
+      (case method :get "from" :put "to")
+      repository
+      (str (->k size)))))
+
+(defmethod on-transfer :succeeded
+  [_])
+
+(defmethod on-transfer :corrupted
+  [{:keys [error]}]
+  (when error
+    (util/fail "%s\n" (.getMessage error))))
+
+(defmethod on-transfer :failed
+  [{:keys [error]}]
+  (when (and error
+             (not (instance? MetadataNotFoundException error))
+             (not (instance? ArtifactNotFoundException error)))
+    (util/fail "%s\n" (.getMessage error))))
+
+(defmethod on-transfer :default
+  [_])
+
 (defn transfer-listener
-  [{type :type meth :method {name :name repo :repository size :size} :resource err :error :as info}]
+  [info]
   (util/dbug "Aether: %s\n" (with-out-str (pprint/pprint info)))
-  (letfn [(->k [size] (if (neg? size) "" (str (Math/round (double (max 1 (/ size 1024)))))))]
-    (case type
-      :started
-      (util/info "%s %s from %s (%sk)\n"
-        (case meth :get "Retrieving" :put "Sending")
-        (.getName (io/file name))
-        repo
-        (->k size))
-
-      (:corrupted :failed)
-      (when err (util/fail "%s\n" (.getMessage err)))
-
-      nil)))
+  (on-transfer info))
 
 (defn ^{:boot/from :technomancy/leiningen} build-url
   "Creates java.net.URL from string"
