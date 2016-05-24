@@ -2,11 +2,37 @@
 
 Boot built-in tasks.
 
-[`add-repo`](#add-repo) [`aot`](#aot) [`checkout`](#checkout) [`help`](#help) [`install`](#install) [`jar`](#jar) [`javac`](#javac) [`pom`](#pom) [`push`](#push) [`repl`](#repl) [`show`](#show) [`sift`](#sift) [`speak`](#speak) [`target`](#target) [`uber`](#uber) [`wait`](#wait) [`war`](#war) [`watch`](#watch) [`web`](#web) [`zip`](#zip)
+##### Info
+
+ [`help`](#help) [`show`](#show)
+
+##### Develop
+
+ [`notify`](#notify) [`repl`](#repl) [`speak`](#speak) [`wait`](#wait) [`watch`](#watch)
+
+##### Fileset
+
+ [`add-repo`](#add-repo) [`sift`](#sift) [`uber`](#uber)
+
+##### Build
+
+ [`aot`](#aot) [`javac`](#javac)
+
+##### Package
+
+ [`jar`](#jar) [`pom`](#pom) [`war`](#war) [`web`](#web) [`zip`](#zip)
+
+##### Deploy
+
+ [`install`](#install) [`push`](#push) [`target`](#target)
+
+##### Deprecated
+
+ [`checkout`](#checkout)
 
 <hr>
 
-### [`add-repo`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L406)
+### [`add-repo`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L497)
 
 ```clojure
 (add-repo & {:keys [help untracked ref], :as *opts*})
@@ -26,7 +52,7 @@ Keyword Args:
 
 <hr>
 
-### [`aot`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L546)
+### [`aot`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L645)
 
 ```clojure
 (aot & {:keys [help all namespace], :as *opts*})
@@ -43,14 +69,14 @@ Keyword Args:
 
 <hr>
 
-### [`checkout`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L69)
+### [`checkout`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L75)
 
 ```clojure
 (checkout & {:keys [help dependencies], :as *opts*})
 ```
 
 ```
-Checkout dependencies task.
+Checkout dependencies task. DEPRECATED.
 
 This task facilitates working on a project and its dependencies at the same
 time, by extracting the dependency jar contents into the fileset. Transitive
@@ -74,7 +100,7 @@ Keyword Args:
 
 <hr>
 
-### [`help`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L30)
+### [`help`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L31)
 
 ```clojure
 (help & {:keys [help], :as *opts*})
@@ -89,7 +115,7 @@ Keyword Args:
 
 <hr>
 
-### [`install`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L678)
+### [`install`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L777)
 
 ```clojure
 (install & {:keys [help file pom], :as *opts*})
@@ -138,7 +164,7 @@ Keyword Args:
 
 <hr>
 
-### [`jar`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L608)
+### [`jar`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L707)
 
 ```clojure
 (jar & {:keys [help file manifest main], :as *opts*})
@@ -156,7 +182,7 @@ Keyword Args:
 
 <hr>
 
-### [`javac`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L566)
+### [`javac`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L665)
 
 ```clojure
 (javac & {:keys [help options], :as *opts*})
@@ -172,10 +198,61 @@ Keyword Args:
 
 <hr>
 
-### [`pom`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L315)
+### [`notify`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L175)
 
 ```clojure
-(pom & {:keys [help project version description url scm license developers dependencies], :as *opts*})
+(notify & {:keys [help audible visual audible-notify-fn visual-notify-fn theme soundfiles messages title icon uid], :as *opts*})
+```
+
+```
+Aural and visual notifications during build.
+
+Default audio themes: system (the default), ordinance, pillsbury,
+and woodblock. New themes can be included via jar dependency with
+the sound files as resources:
+
+    boot
+    └── notify
+        ├── <theme-name>_failure.mp3
+        ├── <theme-name>_success.mp3
+        └── <theme-name>_warning.mp3
+
+Sound files specified individually take precedence over theme sounds.
+
+For visual notifications, there is a default implementation that
+tries to use the `terminal-notifier' program on OS X systems, and
+the `notify-send' program on Linux systems.
+
+You can also supply custom notification functions via the *-notify-fn
+options. Both are functions that take one argument which is a map of
+options.
+
+The audible notification function will receive a map with three keys
+- :type, :file, and :theme.
+
+The visual notification function will receive a map with four keys
+- :title, :uid, :icon, and :message.
+
+Keyword Args:
+  :help               bool      Print this help info.
+  :audible            bool      Play an audible notification
+  :visual             bool      Display a visual notification
+  :audible-notify-fn  sym       A function to be used for audible notifications in place of the default method.
+  :visual-notify-fn   sym       A function to be used for visual notifications in place of the default method
+  :theme              str       The name of the audible notification sound theme
+  :soundfiles         {kw str}  Sound files overriding theme sounds. Keys can be :success, :warning or :failure
+  :messages           {kw str}  Templates overriding default messages. Keys can be :success, :warning or :failure
+  :title              str       Title of the notification
+  :icon               str       Full path of the file used as notification icon
+  :uid                str       Unique ID identifying this boot process
+```
+
+<hr>
+
+### [`pom`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L399)
+
+```clojure
+(pom & {:keys [help project version description classifier packaging url scm license developers dependencies], :as *opts*})
 ```
 
 ```
@@ -188,6 +265,8 @@ Keyword Args:
   :project       sym          The project id (eg. foo/bar).
   :version       str          The project version.
   :description   str          The project description.
+  :classifier    str          The project classifier.
+  :packaging     str          The project packaging type, i.e. war, pom
   :url           str          The project homepage url.
   :scm           {kw str}     The project scm map (KEY is one of url, tag, connection, developerConnection).
   :license       {str str}    The map {name url} of project licenses.
@@ -197,7 +276,7 @@ Keyword Args:
 
 <hr>
 
-### [`push`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L727)
+### [`push`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L826)
 
 ```clojure
 (push & {:keys [help file pom file-regex gpg-sign gpg-user-id gpg-keyring gpg-passphrase repo repo-map tag ensure-branch ensure-clean ensure-release ensure-snapshot ensure-tag ensure-version], :as *opts*})
@@ -237,7 +316,7 @@ Keyword Args:
 
 <hr>
 
-### [`repl`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L270)
+### [`repl`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L354)
 
 ```clojure
 (repl & {:keys [help server client eval bind host init skip-init port pod init-ns middleware handler], :as *opts*})
@@ -275,10 +354,10 @@ Keyword Args:
 
 <hr>
 
-### [`show`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L164)
+### [`show`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L245)
 
 ```clojure
-(show & {:keys [help fake-classpath classpath deps env fileset list-pods pedantic pods update-snapshots updates], :as *opts*})
+(show & {:keys [help fake-classpath classpath deps env fileset list-pods pedantic pods update-snapshots updates verify-deps], :as *opts*})
 ```
 
 ```
@@ -296,11 +375,12 @@ Keyword Args:
   :pods              regex  The name filter used to select which pods to inspect.
   :update-snapshots  bool   Include snapshot versions in updates searches.
   :updates           bool   Print newer releases of outdated dependencies.
+  :verify-deps       bool   Include signature status of each dependency in graph.
 ```
 
 <hr>
 
-### [`sift`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L346)
+### [`sift`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L437)
 
 ```clojure
 (sift & {:keys [help to-asset to-resource to-source add-asset add-resource add-source add-jar with-meta add-meta move include invert], :as *opts*})
@@ -363,7 +443,7 @@ Keyword Args:
 
 <hr>
 
-### [`speak`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L121)
+### [`speak`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L131)
 
 ```clojure
 (speak & {:keys [help theme success warning failure], :as *opts*})
@@ -372,8 +452,9 @@ Keyword Args:
 ```
 Audible notifications during build.
 
-Default themes: system (the default), ordinance, and woodblock. New themes
-can be included via jar dependency with the sound files as resources:
+Default themes: system (the default), ordinance, pillsbury, and
+woodblock. New themes can be included via jar dependency with the
+sound files as resources:
 
     boot
     └── notify
@@ -393,7 +474,7 @@ Keyword Args:
 
 <hr>
 
-### [`target`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L214)
+### [`target`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L296)
 
 ```clojure
 (target & {:keys [help dir no-link no-clean], :as *opts*})
@@ -411,7 +492,7 @@ Keyword Args:
 
 <hr>
 
-### [`uber`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L423)
+### [`uber`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L514)
 
 ```clojure
 (uber & {:keys [help as-jars include-scope exclude-scope include exclude merge], :as *opts*})
@@ -478,7 +559,7 @@ Keyword Args:
 
 <hr>
 
-### [`wait`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L203)
+### [`wait`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L285)
 
 ```clojure
 (wait & {:keys [help time], :as *opts*})
@@ -496,7 +577,7 @@ Keyword Args:
 
 <hr>
 
-### [`war`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L639)
+### [`war`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L738)
 
 ```clojure
 (war & {:keys [help file], :as *opts*})
@@ -512,7 +593,7 @@ Keyword Args:
 
 <hr>
 
-### [`watch`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L225)
+### [`watch`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L307)
 
 ```clojure
 (watch & {:keys [help quiet verbose manual], :as *opts*})
@@ -532,7 +613,7 @@ Keyword Args:
 
 <hr>
 
-### [`web`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L512)
+### [`web`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L611)
 
 ```clojure
 (web & {:keys [help serve create destroy context-create context-destroy], :as *opts*})
@@ -554,7 +635,7 @@ Keyword Args:
 
 <hr>
 
-### [`zip`](../../2.5.5/boot/core/src/boot/task/built_in.clj#L663)
+### [`zip`](../../2.6.0/boot/core/src/boot/task/built_in.clj#L762)
 
 ```clojure
 (zip & {:keys [help file], :as *opts*})

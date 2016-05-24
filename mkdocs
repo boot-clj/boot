@@ -22,7 +22,7 @@
 
     (section
       "Develop"
-      repl speak wait watch)
+      notify repl speak wait watch)
 
     (section
       "Fileset"
@@ -65,12 +65,12 @@
 
     (section
       "Logging"
-      dbug info warn fail warn-deprecated)
+      dbug dbug* info warn fail warn-deprecated)
 
     (section
       "Useful Macros"
       guard while-let with-err-str with-let with-resolve with-rethrow
-      without-exiting dotoseq do-while-let)
+      without-exiting dotoseq do-while-let extends-protocol)
 
     (section
       "Printing"
@@ -78,8 +78,8 @@
 
     (section
       "Miscellaneous"
-      extract-ids auto-flush bind-syms dep-as-map let-assert-keys index-of
-      jarname path->ns read-string-all with-semaphore with-semaphore-noblock))
+      extract-ids auto-flush bind-syms dep-as-map map-as-dep let-assert-keys
+      index-of jarname path->ns read-string-all with-semaphore with-semaphore-noblock))
 
   (write-docs
     :ns boot.pod
@@ -107,6 +107,7 @@
 
     (section
       "Dependencies"
+      resolve-release-versions
       resolve-dependencies resolve-dependency-jar resolve-dependency-jars
       resolve-nontransitive-dependencies apply-exclusions apply-global-exclusions
       canonical-coord copy-dependency-jar-entries default-dependencies
@@ -129,6 +130,7 @@
 
     (section
       "Deprecated / Internal"
+      eval-in-caller eval-in-callee with-pod with-worker
       set-pods! set-data! set-pod-id! set-worker-pod! set-this-pod!))
 
   (write-docs
@@ -148,6 +150,7 @@
 
     (section
       "Boot Environment"
+      get-checkouts
       get-env set-env! merge-env! get-sys-env set-sys-env! pre-env! post-env!)
 
     (section
@@ -178,7 +181,7 @@
     (section
       "Filter Sequences Of TmpFiles"
       file-filter by-ext by-name by-path by-re not-by-ext not-by-name
-      not-by-path not-by-re)
+      not-by-path not-by-re by-meta not-by-meta)
 
     (section
       "Other Fileset Queries"
@@ -197,7 +200,7 @@
     (section
       "Misc. Helpers"
       gpg-decrypt json-generate json-parse yaml-generate yaml-parse touch
-      git-files empty-dir! sync! watch-dirs)
+      git-files empty-dir! sync! patch! watch-dirs template)
 
     (section
       "Deprecated / Internal"
