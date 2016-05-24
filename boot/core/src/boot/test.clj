@@ -253,21 +253,25 @@
    t threads    NUMBER        int    "The maximum number of threads to spawn during the tests."
    n namespaces NAMESPACE     #{sym} "The set of namespace symbols to run tests in."
    e exclusions NAMESPACE     #{sym} "The set of namespace symbols to be excluded from test."]
-  (let [commands (cond
-                   commands commands
-                   :default (->> (or (seq namespaces) (all-ns))
-                                 (remove (or exclusions #{}) )
-                                 (namespaces->vars test-me-pred)
-                                 (map var->command)))]
-    (if (seq commands)
-      (do (assert (every? string? commands)
-                  (format "commands must be strings, got %s" commands))
-          (binding [parallel/*parallel-hooks* {:init init-sync-map
-                                               :task-init task-sync-map}]
-            (parallel/runcommands :commands commands
-                                  :batches threads)))
-      (do (util/warn "No namespace was tested.")
-          identity))))
+  (assert (every? string? commands) (format "commands must be strings, got %s" commands))
+  (let [cmd-atom (atom commands)]
+    (comp (core/with-pass-thru _
+            (reset! cmd-atom (->> (or (seq namespaces) (all-ns))
+                                  (remove (or exclusions #{}))
+                                  (namespaces->vars test-me-pred)
+                                  (map var->command)
+                                  (into #{}))))
+          (core/with-pre-wrap fileset
+            (binding [parallel/*parallel-hooks* {:init init-sync-map
+                                                 :batch-init identity
+                                                 :task-init task-sync-map}]
+              (if-let [commands (seq @cmd-atom)]
+                (let [middleware (parallel/runcommands :commands commands
+                                                       :batches threads)]
+                  ;; Forcing execution of runcommands inside this task
+                  ((middleware identity) fileset))
+                (do (util/warn "No namespace was tested. Try to require your test namespaces before calling boot.test/runtests.\n")
+                    fileset)))))))
 
 (comment
   (reset! util/*verbosity* 2)
@@ -281,5 +285,4 @@
                                               "boot.task.built-in-test/sift-to-asset-invert-tests"
                                               "boot.task.built-in-test/sift-include-tests"})
                         (test-report)
-                        (test-exit)))
-  )
+                        (test-exit))))
