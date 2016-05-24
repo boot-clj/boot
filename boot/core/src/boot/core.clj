@@ -932,15 +932,8 @@
   state, and runs the pipeline."
   [task-stack]
   (binding [*warnings* (atom 0)]
-    (let [fs      (commit! (reset-fileset))
-          target? (not= "no" (boot.App/config "BOOT_EMIT_TARGET"))
-          depr    (delay (util/warn-deprecated "Implicit target dir is deprecated, please use the target task instead.\n")
-                         (util/warn-deprecated "Set BOOT_EMIT_TARGET=no to disable implicit target dir.\n"))
-          sync!   (if-not target?
-                    identity
-                    (comp (fn [_] @depr)
-                          (fileset-syncer [(get-env :target-path)] :clean true)))]
-      ((task-stack #(do (sync! %) (sync-user-dirs!) %)) fs))))
+    (let [fs (commit! (reset-fileset))]
+      ((task-stack #(do (sync-user-dirs!) %)) fs))))
 
 (defn boot
   "The REPL equivalent to the command line 'boot'. If all arguments are

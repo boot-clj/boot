@@ -37,7 +37,7 @@
    ["-s" "--source-paths PATH"   "Add PATH to set of source directories."
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) %3)]
    ["-t" "--target-path PATH"    "Set the target directory to PATH."]
-   ["-T" "--no-target"           "Don't automatically write files to the target directory."]
+   ["-T" "--no-target"           "This option is ignored."]
    ["-u" "--update"              "Update boot to latest release version."]
    ["-U" "--update-snapshot"     "Update boot to latest snapshot version."]
    ["-v" "--verbose"             "More error info (-vv more verbose, etc.)"
@@ -139,9 +139,6 @@
     (when (seq errs)
       (util/exit-error
         (println (apply str (interpose "\n" errs)))))
-
-    (when (or (:no-target opts) (boot.App/isWindows))
-      (System/setProperty "BOOT_EMIT_TARGET" "no"))
 
     (when (:no-colors opts)
       (reset! util/*colorize?* false))

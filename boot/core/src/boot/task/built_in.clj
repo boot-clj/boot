@@ -41,7 +41,6 @@
                  ["" "BOOT_CLOJURE_VERSION"      "The version of Clojure boot will provide (1.8.0)."]
                  ["" "BOOT_CLOJURE_NAME"         "The artifact name of Clojure boot will provide (org.clojure/clojure)."]
                  ["" "BOOT_COLOR"                "Set to 'no' to turn colorized output off."]
-                 ["" "BOOT_EMIT_TARGET"          "Set to 'no' to disable automatic writing to target directory."]
                  ["" "BOOT_FILE"                 "Build script name (build.boot)."]
                  ["" "BOOT_GPG_COMMAND"          "System gpg command (gpg)."]
                  ["" "BOOT_HOME"                 "Directory where boot stores global state (~/.boot)."]
