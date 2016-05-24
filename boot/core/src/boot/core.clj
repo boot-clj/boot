@@ -16,7 +16,8 @@
     [boot.tmpdir                  :as tmpd]
     [boot.util                    :as util]
     [boot.from.io.aviso.exception :as ex]
-    [boot.from.clojure.tools.cli  :as cli])
+    [boot.from.clojure.tools.cli  :as cli]
+    [boot.from.backtick           :as bt])
   (:import
     [boot App]
     [java.io File]
@@ -1077,6 +1078,13 @@
        nil))
 
 ;; Task Utility Functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro template
+  "The syntax-quote (aka quasiquote) reader macro as a normal macro. Provides
+  the unquote ~ and unquote-splicing ~@ metacharacters for templating forms
+  without performing symbol resolution."
+  [form]
+  `(bt/template ~form))
 
 (defn gpg-decrypt
   "Uses gpg(1) to decrypt a file and returns its contents as a string. The
