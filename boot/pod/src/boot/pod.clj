@@ -276,6 +276,11 @@
   boot. See #'boot.pod/add-shutdown-hook! for more info."
   (atom nil))
 
+(def ^:dynamic *destroy-pod-hook*
+  "Bind this to a 0-arity function in order to perform additional
+  cleanup."
+  identity)
+
 (defn set-pods!         [x] (alter-var-root #'pods        (constantly x)))
 (defn set-data!         [x] (alter-var-root #'data        (constantly x)))
 (defn set-pod-id!       [x] (alter-var-root #'pod-id      (constantly x)))
@@ -823,6 +828,7 @@
   "Closes open resources held by the pod, making the pod eligible for GC."
   [pod]
   (when pod
+    (*destroy-pod-hook*)
     (.close pod)
     (.. pod getClassLoader close)))
 
