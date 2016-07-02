@@ -36,7 +36,7 @@
           (.exists (File. "/usr/bin/espeak"))
           (sh "espeak" "-v+f2" msg)
           (.exists (File. "/usr/bin/say"))
-          (sh "say" "-v" "Vicki" msg)
+          (sh "say" msg)
           :else (play! (or file (path-for theme "warning"))))))))
 
 (defn notify! [{:keys [file theme type]}]
