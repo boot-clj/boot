@@ -340,7 +340,7 @@
   [{:keys [project version] :as dep-map}]
   (let [kvs (remove #(or (some #{:project :version} %)
                          (= [:scope "compile"] %)) dep-map)]
-    (vec (remove nil? (into [project version] (flatten kvs))))))
+    (vec (remove nil? (into [project version] (mapcat identity kvs))))))
 
 (defn jarname
   "Generates a friendly name for the jar file associated with the given project
