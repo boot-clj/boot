@@ -399,7 +399,10 @@ public class App {
             core.get().invoke("boot.main/-main", nextId(), worker.get(), hooks, args);
             return -1; }
         catch (Throwable t) {
-            return (t instanceof Exit) ? Integer.parseInt(t.getMessage()) : -2; }
+            if (t instanceof Exit) return Integer.parseInt(t.getMessage());
+            System.out.println("Boot failed to start:");
+            t.printStackTrace();
+            return -2; }
         finally {
             for (Runnable h : hooks) h.run();
             try { core.get().close(); }
