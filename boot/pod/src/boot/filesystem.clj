@@ -97,7 +97,7 @@
    (FileSystemTree.
      root
      @(with-let [tree (atom {})]
-        (Files/walkFileTree root (mkvisitor root tree :ignore ignore))))))
+        (file/walk-file-tree root (mkvisitor root tree :ignore ignore))))))
 
 (defn merge-trees
   [{tree1 :tree} {tree2 :tree}]

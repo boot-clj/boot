@@ -9,7 +9,7 @@
    [java.net URI]
    [java.io File]
    [java.nio.file.attribute FileAttribute]
-   [java.nio.file Files StandardCopyOption]
+   [java.nio.file Files StandardCopyOption FileVisitOption]
    [java.lang.management ManagementFactory])
   (:refer-clojure :exclude [sync name file-seq]))
 
@@ -41,6 +41,13 @@
       dir)))
 
 (def file-seq-nofollow #(file-seq % :follow-symlinks false))
+
+(defn walk-file-tree
+  "Wrap java.nio.Files/walkFileTree to easily toggle symlink-following behavior."
+  [root visitor & {:keys [follow-symlinks]
+                   :or   {follow-symlinks true}}]
+  (let [walk-opts (if follow-symlinks #{FileVisitOption/FOLLOW_LINKS} #{})]
+    (Files/walkFileTree root walk-opts Integer/MAX_VALUE visitor)))
 
 (defmacro guard [& exprs]
   `(try (do ~@exprs) (catch Throwable _#)))
