@@ -106,7 +106,7 @@
   [^File dir ^File blob]
   (let [root (.toPath dir)]
     @(with-let [tree (atom {})]
-       (Files/walkFileTree root (mkvisitor root blob tree *hard-link*)))))
+       (file/walk-file-tree root (mkvisitor root blob tree *hard-link*)))))
 
 (defn- ^File cache-dir
   [cache-key]
