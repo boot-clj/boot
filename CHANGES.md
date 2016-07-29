@@ -16,7 +16,10 @@
   the empty set (`#{}`).
 - Correctly set last modified time when copying classpath resource.
 
-#### Added
+#### Development
+
+- Boot test suite (!!!) to test Boot itself, with parallel test runner capability
+  and continuous integration.
 
 ##### API Functions
 
