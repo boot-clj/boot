@@ -441,24 +441,25 @@
        (util/guard (read-string ret)))))
 
 (defmacro with-eval-in
-  "Given a pod and an expr, evaluates expr in the pod and returns the result
-  to the caller. The expr may be a template containing the ~ (unqupte) and
-  ~@ (unquote-splicing) reader macros. These will be evaluated in the calling
-  scope and substituted in the template like the ` (syntax-quote) reader macro.
+  "Given a pod and an expr, evaluates the body in the pod and returns the
+  result to the caller. The body may be a template containing the ~ (unqupte)
+  and ~@ (unquote-splicing) reader macros. These will be evaluated in the
+  calling scope and substituted in the template like the ` (syntax-quote)
+  reader macro.
 
   Note: Unlike syntax-quote, no name resolution is done on the template
   forms.
 
-  Note2: The macro returned value will be nil unless it is
-  printable/readable. For instance, returning File objects will not work
-  as they are not printable/readable by Clojure."
+  Note2: The macro returned value will be nil unless it is printable/readable.
+  For instance, returning File objects will not work as they are not printable
+  and readable by Clojure."
   [pod & body]
   `(if-not ~pod
      (eval (bt/template (do ~@body)))
      (eval-in* ~pod (bt/template (do ~@body)))))
 
 (defmacro with-eval-worker
-  "Like with-eval-in, evaluating expr in the worker pod."
+  "Like with-eval-in, evaluates the body in the worker pod."
   [& body]
   `(with-eval-in worker-pod ~@body))
 
@@ -470,29 +471,42 @@
       (require '~(symbol (str ns))))))
 
 (defn eval-in-callee
+  "Implementation detail. This is the callee side of the boot.pod/with-pod
+  mechanism (i.e. this is the function that's called in the pod to perform
+  the work)."
   [caller-pod callee-pod expr]
   (eval (xf/->clj caller-pod callee-pod expr :for-eval true)))
 
 (defn eval-in-caller
+  "Implementation detail. This is the caller side of the boot.pod/with-pod
+  mechanism (i.e. this is the function that's called in the caller pod to
+  send work to the callee pod so the callee pod can perform the work)."
   [caller-pod callee-pod expr]
   (xf/->clj callee-pod caller-pod
             (with-invoke-in (.get callee-pod)
               (boot.pod/eval-in-callee caller-pod callee-pod expr))))
 
 (defmacro with-pod
+  "Like boot.pod/with-eval-in but with the ability to pass most types between
+  the caller and the pod.
+
+  Supports the normal types that are recognized by the Clojure reader, plus
+  functions and records. (The namespace in which the record type is defined
+  must be on the classpath in the pod.)"
   [pod & body]
   `(if-not ~pod
      (eval (bt/template (do ~@body)))
      (eval-in-caller this-pod (WeakReference. ~pod) (bt/template (do ~@body)))))
 
 (defmacro with-worker
+  "Like with-pod, evaluates the body in the worker pod."
   [& body]
   `(with-pod worker-pod ~@body))
 
 (defn canonical-coord
   "Given a dependency coordinate of the form [id version ...], returns the
   canonical form, i.e. the id symbol is always fully qualified.
-  
+
   For example: (canonical-coord '[foo \"1.2.3\"]) ;=> [foo/foo \"1.2.3\"]"
   [[id & more :as coord]]
   (let [[ns nm] ((juxt namespace name) id)]

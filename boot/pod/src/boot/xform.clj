@@ -1,4 +1,6 @@
 (ns boot.xform
+  (:require
+    [boot.util :as util])
   (:import
     [java.lang.reflect Modifier]))
 
@@ -7,6 +9,11 @@
 (def ^:dynamic *to-pod*   nil)
 
 (declare ->clj*)
+
+(defn- log-unhandled-type
+  "Use to debug strange new types that aren't transformed correctly."
+  [x]
+  (util/dbug* "Xform: unhandled type: %s\n" (.. x getClass getName)))
 
 (defn- static-field?
   "Is this Field static?"
@@ -121,7 +128,7 @@
       ;; Non-EDN types (cannot be passed to eval without stashing)
       (let [x (cond (reflect-fn? x)     (with-meta (fn->clj x) (meta->clj x))
                     (reflect-record? x) (record->clj x)
-                    :else               (do (prn :unknown (.. x getClass getName)) x))]
+                    :else               (doto x (log-unhandled-type)))]
         ;; Stash if result will be sent to eval
         (if-not *for-eval* x `(boot.App/getStash ~(boot.App/setStash x)))))))
 
