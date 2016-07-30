@@ -4,7 +4,7 @@
 
 #### Improved
 
-- Include follow symlinks when building fileset from project dirs [#483][483].
+- Follow symlinks when building fileset from project dirs [#483][483].
 
 #### Fixed
 
