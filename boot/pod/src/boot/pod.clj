@@ -491,8 +491,8 @@
   the caller and the pod.
 
   Supports the normal types that are recognized by the Clojure reader, plus
-  functions and records. (The namespace in which the record type is defined
-  must be on the classpath in the pod.)"
+  functions, records, and all Java types. (The namespace in which the record
+  type is defined must be on the classpath in the pod.)"
   [pod & body]
   `(if-not ~pod
      (eval (bt/template (do ~@body)))
