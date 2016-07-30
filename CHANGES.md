@@ -15,7 +15,7 @@
 - Fix typo in the `notify` task that prevented OSX from finding the
   `terminal-notifier` program [#478][478].
 - Don't throw exceptions when source files are missing during filesystem patch
-  operations [#477][477].
+  operations [#471][471], [#477][477].
 
 #### Development
 
@@ -46,6 +46,7 @@ N/A
 - The `:target-path` Boot env key.
 - The `-t, --target-path` and `-T, --no-target` Boot options.
 
+[471]: https://github.com/boot-clj/boot/issues/471
 [476]: https://github.com/boot-clj/boot/issues/476
 [477]: https://github.com/boot-clj/boot/issues/477
 [478]: https://github.com/boot-clj/boot/issues/478

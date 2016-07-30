@@ -150,19 +150,23 @@
     (try (Files/copy ^Path src ^Path dst copy-opts)
          (Files/setLastModifiedTime dst (FileTime/fromMillis time))
          (catch java.nio.file.NoSuchFileException ex
-           (util/dbug* "Filesystem: no such file: %s\n", (str src))))))
+           (util/dbug* "Filesystem: %s\n", (str ex))))))
 
 (defn link!
   [dest path src]
   (let [dst (rel dest path)]
     (util/dbug* "Filesystem: linking %s...\n" (string/join "/" path))
-    (Files/deleteIfExists dst)
-    (Files/createLink (doto dst mkparents!) src)))
+    (try (Files/deleteIfExists dst)
+         (Files/createLink (doto dst mkparents!) src)
+         (catch java.nio.file.NoSuchFileException ex
+           (util/dbug* "Filesystem: %s\n" (str ex))))))
 
 (defn delete!
   [dest path]
   (util/dbug* "Filesystem: deleting %s...\n" (string/join "/" path))
-  (Files/delete (rel dest path)))
+  (try (Files/delete (rel dest path))
+       (catch java.nio.file.NoSuchFileException ex
+         (util/dbug* "Filesystem: %s\n" (str ex)))))
 
 (defn write!
   [dest writer path]
