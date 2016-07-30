@@ -23,11 +23,11 @@ N/A
 
 ##### API Functions
 
-N/A
+- `boot.pod/make-pod-cp` &mdash; creates a new pod from a given classpath.
 
 ##### Boot Options
 
-N/A
+- Removed the `-t, --target-path` and `-T, --no-target` Boot options.
 
 ##### Task Options
 
@@ -35,16 +35,11 @@ N/A
 
 ##### Boot Environment
 
-N/A
+- Removed the `:target-path` env key.
 
 #### Deprecated
 
 N/A
-
-#### Removed
-
-- The `:target-path` Boot env key.
-- The `-t, --target-path` and `-T, --no-target` Boot options.
 
 [471]: https://github.com/boot-clj/boot/issues/471
 [476]: https://github.com/boot-clj/boot/issues/476

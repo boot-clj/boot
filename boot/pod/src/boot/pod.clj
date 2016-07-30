@@ -427,7 +427,7 @@
 
   Unlike call-in*, expr can be any expression, without the restriction that it
   be of the form (f & args).
-  
+
   Note: Since forms must be serialized to pass from one pod to another it is
   not always appropriate to include metadata, as metadata may contain eg. File
   objects which are not printable/readable by Clojure."
@@ -804,9 +804,17 @@
 
 (defn make-pod
   "Returns a newly constructed pod. A boot environment configuration map, env,
-  may be given to initialize the pod with dependencies, directories, etc."
+  may be given to initialize the pod with dependencies, directories, etc.
+
+  The :name option sets the name of the pod. Default uses the namespace of
+  the caller as the pod's name.
+
+  The :data option sets the boot.pod/data object in the pod. The data object
+  is used to coordinate different pods, for example the data object could be
+  a BlockingQueue or ConcurrentHashMap shared with other pods. Default uses
+  boot.pod/data from the current pod."
   ([] (init-pod! env (boot.App/newPod nil data)))
-  ([{:keys [directories dependencies] :as env}]
+  ([{:keys [directories dependencies] :as env} & {:keys [name data]}]
      (let [dirs (map io/file directories)
            cljname (or (boot.App/getClojureName) "org.clojure/clojure")
            dfl  [['boot/pod (boot.App/getBootVersion)]
@@ -815,9 +823,28 @@
            jars (resolve-dependency-jars env)
            urls (concat dirs jars)]
        (doto (->> (into-array java.io.File urls)
-                  (boot.App/newShim nil data)
+                  (boot.App/newShim nil (or data boot.pod/data))
                   (init-pod! env))
-         (pod-name (caller-namespace))))))
+         (pod-name (or name (caller-namespace)))))))
+
+(defn make-pod-cp
+  "Returns a new pod with the given classpath. Classpath may be a collection
+  of java.lang.String or java.io.File objects.
+
+  The :name and :data options are the same as for boot.pod/make-pod.
+
+  NB: The classpath must include Clojure (either clojure.jar or directories),
+  but must not include Boot's pod.jar, Shimdandy's impl, or Dynapath. These
+  are needed to bootstrap the pod, have no transitive dependencies, and are
+  added automatically."
+  [classpath & {:keys [name data]}]
+  (doto (->> (assoc env :dependencies [['boot/pod (boot.App/getBootVersion)]])
+             (resolve-dependency-jars)
+             (into (map io/file classpath))
+             (into-array java.io.File)
+             (boot.App/newShim nil (or data boot.pod/data))
+             (init-pod! nil))
+    (pod-name (or name (caller-namespace)))))
 
 (defn destroy-pod
   "Closes open resources held by the pod, making the pod eligible for GC."
@@ -830,7 +857,7 @@
   "Creates a pod pool service. The service maintains a pool of prebuilt pods
   with a current active pod and a number of pods in reserve, warmed and ready
   to go (it takes ~2s to load clojure.core into a pod).
-  
+
   Pool Service API:
   -----------------
 
