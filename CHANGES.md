@@ -1,5 +1,34 @@
 # Changes
 
+## Master
+
+#### Improved
+
+- Include follow symlinks when building fileset from project dirs [#483][483].
+
+#### Fixed
+
+- Print stack trace when core pod fails to load [#480][480].
+- Fix issue where `boot.util/map-as-dep` would flatten collections like
+  `:exclusions` in the dependency vector [#479][479].
+- Use default voice when calling `say` on OSX [#476][476].
+
+#### Development
+
+##### API Functions
+
+##### Boot Options
+
+##### Task Options
+
+##### Boot Environment
+
+#### Deprecated
+
+[483]: https://github.com/boot-clj/boot/issues/483
+[480]: https://github.com/boot-clj/boot/issues/480
+[479]: https://github.com/boot-clj/boot/issues/479
+[476]: https://github.com/boot-clj/boot/issues/476
 
 ## 2.6.0
 
