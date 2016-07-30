@@ -706,7 +706,6 @@
              :resource-paths   #{}
              :checkout-paths   #{}
              :asset-paths      #{}
-             :target-path      "target"
              :exclusions       #{}
              :repositories     default-repos
              :mirrors          @default-mirrors})

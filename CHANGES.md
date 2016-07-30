@@ -17,15 +17,32 @@
 
 #### Development
 
+N/A
+
 ##### API Functions
+
+N/A
 
 ##### Boot Options
 
+N/A
+
 ##### Task Options
+
+N/A
 
 ##### Boot Environment
 
+N/A
+
 #### Deprecated
+
+N/A
+
+#### Removed
+
+- The `:target-path` Boot env key.
+- The `-t, --target-path` and `-T, --no-target` Boot options.
 
 [476]: https://github.com/boot-clj/boot/issues/476
 [478]: https://github.com/boot-clj/boot/issues/478
