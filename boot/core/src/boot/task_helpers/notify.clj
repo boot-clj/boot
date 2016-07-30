@@ -32,7 +32,7 @@
 
 (defmethod notify-method "Mac OS X"
   [_ {:keys [message title icon pid] :as notification}]
-  (if (program-exists? "terminal_notifier")
+  (if (program-exists? "terminal-notifier")
     (shell/sh "terminal-notifier" "-message" message "-title" title "-contentImage" icon "-group" pid)
     ((get-method notify-method :default) :default notification)))
 
