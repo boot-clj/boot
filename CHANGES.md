@@ -12,6 +12,8 @@
 - Fix issue where `boot.util/map-as-dep` would flatten collections like
   `:exclusions` in the dependency vector [#479][479].
 - Use default voice when calling `say` on OSX [#476][476].
+- Fix typo in the `notify` task that prevented OSX from finding the
+  `terminal-notifier` program [#478][478].
 
 #### Development
 
@@ -25,10 +27,11 @@
 
 #### Deprecated
 
-[483]: https://github.com/boot-clj/boot/issues/483
-[480]: https://github.com/boot-clj/boot/issues/480
-[479]: https://github.com/boot-clj/boot/issues/479
 [476]: https://github.com/boot-clj/boot/issues/476
+[478]: https://github.com/boot-clj/boot/issues/478
+[479]: https://github.com/boot-clj/boot/issues/479
+[480]: https://github.com/boot-clj/boot/issues/480
+[483]: https://github.com/boot-clj/boot/issues/483
 
 ## 2.6.0
 
