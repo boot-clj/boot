@@ -14,6 +14,8 @@
 - Use default voice when calling `say` on OSX [#476][476].
 - Fix typo in the `notify` task that prevented OSX from finding the
   `terminal-notifier` program [#478][478].
+- Don't throw exceptions when source files are missing during filesystem patch
+  operations [#477][477].
 
 #### Development
 
@@ -45,6 +47,7 @@ N/A
 - The `-t, --target-path` and `-T, --no-target` Boot options.
 
 [476]: https://github.com/boot-clj/boot/issues/476
+[477]: https://github.com/boot-clj/boot/issues/477
 [478]: https://github.com/boot-clj/boot/issues/478
 [479]: https://github.com/boot-clj/boot/issues/479
 [480]: https://github.com/boot-clj/boot/issues/480

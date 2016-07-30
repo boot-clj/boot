@@ -147,8 +147,10 @@
   [^Path dest path ^Path src time]
   (let [dst (doto (rel dest path) mkparents!)]
     (util/dbug* "Filesystem: copying %s...\n" (string/join "/" path))
-    (Files/copy ^Path src ^Path dst copy-opts)
-    (Files/setLastModifiedTime dst (FileTime/fromMillis time))))
+    (try (Files/copy ^Path src ^Path dst copy-opts)
+         (Files/setLastModifiedTime dst (FileTime/fromMillis time))
+         (catch java.nio.file.NoSuchFileException ex
+           (util/dbug* "Filesystem: no such file: %s\n", (str src))))))
 
 (defn link!
   [dest path src]
