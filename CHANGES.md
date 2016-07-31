@@ -28,8 +28,9 @@
 ##### API Functions
 
 - Added `boot.pod/make-pod-cp` &mdash; creates a new pod from a given classpath.
-- Added `:meta` option to `boot.core/add-{asset,source,resource}` fns &mdash;
-  merges a map of metadata into all TmpFiles added to the fileset.
+- Added `:meta` option to `boot.core/add-{asset,source,resource}` fns (and their
+  `add-cached-{asset,source,resource}` variants &mdash; merges a map of metadata
+  into all TmpFiles added to the fileset.
 
 ##### Boot Options
 
