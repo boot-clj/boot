@@ -517,17 +517,28 @@
      [ #\".*\"                   first-wins-merger ]]
 
   The merge rule regular expressions are tested in order, and the fn
-  from the first match is applied."
-  [fileset ^File dir & {:keys [mergers include exclude] :as opts}]
+  from the first match is applied.
+
+  The :meta option can be used to provide a map of metadata which will be
+  merged into each TmpFile added to the fileset."
+  [fileset ^File dir & {:keys [mergers include exclude meta] :as opts}]
   (tmpd/add fileset (get-add-dir fileset #{:asset}) dir opts))
 
 (defn add-cached-asset
-  "FIXME: document"
-  [fileset cache-key cache-fn & {:keys [mergers include exclude] :as opts}]
+  "Like add-asset, but takes a cache-key (string) and cache-fn instead of
+  a directory. If the cache-key is not found in Boot's fileset cache then the
+  cache-fn is invoked with a single argument -- a directory in which to write
+  the files that Boot should add to the cache -- and the contents of this
+  directory are then added to the cache. In either case the cached files are
+  then added to the fileset.
+
+  The opts options are the same as those documented for boot.core/add-asset."
+  [fileset cache-key cache-fn & {:keys [mergers include exclude meta] :as opts}]
   (tmpd/add-cached fileset (get-add-dir fileset #{:asset}) cache-key cache-fn opts))
 
 (defn mv-asset
-  "FIXME: document"
+  "Given a collection of tmpfiles, moves them in the fileset such that they
+  become asset files."
   [fileset tmpfiles]
   (tmpd/add-tmp fileset (get-add-dir fileset #{:asset}) tmpfiles))
 
@@ -553,17 +564,28 @@
      [ #\".*\"                   first-wins-merger ]]
 
   The merge rule regular expressions are tested in order, and the fn
-  from the first match is applied."
-  [fileset ^File dir & {:keys [mergers include exclude] :as opts}]
+  from the first match is applied.
+
+  The :meta option can be used to provide a map of metadata which will be
+  merged into each TmpFile added to the fileset."
+  [fileset ^File dir & {:keys [mergers include exclude meta] :as opts}]
   (tmpd/add fileset (get-add-dir fileset #{:source}) dir opts))
 
 (defn add-cached-source
-  "FIXME: document"
-  [fileset cache-key cache-fn & {:keys [mergers include exclude] :as opts}]
+  "Like add-source, but takes a cache-key (string) and cache-fn instead of
+  a directory. If the cache-key is not found in Boot's fileset cache then the
+  cache-fn is invoked with a single argument -- a directory in which to write
+  the files that Boot should add to the cache -- and the contents of this
+  directory are then added to the cache. In either case the cached files are
+  then added to the fileset.
+
+  The opts options are the same as those documented for boot.core/add-source."
+  [fileset cache-key cache-fn & {:keys [mergers include exclude meta] :as opts}]
   (tmpd/add-cached fileset (get-add-dir fileset #{:source}) cache-key cache-fn opts))
 
 (defn mv-source
-  "FIXME: document"
+  "Given a collection of tmpfiles, moves them in the fileset such that they
+  become source files."
   [fileset tmpfiles]
   (tmpd/add-tmp fileset (get-add-dir fileset #{:source}) tmpfiles))
 
@@ -589,17 +611,28 @@
      [ #\".*\"                   first-wins-merger ]]
 
   The merge rule regular expressions are tested in order, and the fn
-  from the first match is applied."
-  [fileset ^File dir & {:keys [mergers include exclude] :as opts}]
+  from the first match is applied.
+
+  The :meta option can be used to provide a map of metadata which will be
+  merged into each TmpFile added to the fileset."
+  [fileset ^File dir & {:keys [mergers include exclude meta] :as opts}]
   (tmpd/add fileset (get-add-dir fileset #{:resource}) dir opts))
 
 (defn add-cached-resource
-  "FIXME: document"
-  [fileset cache-key cache-fn & {:keys [mergers include exclude] :as opts}]
+  "Like add-resource, but takes a cache-key (string) and cache-fn instead of
+  a directory. If the cache-key is not found in Boot's fileset cache then the
+  cache-fn is invoked with a single argument -- a directory in which to write
+  the files that Boot should add to the cache -- and the contents of this
+  directory are then added to the cache. In either case the cached files are
+  then added to the fileset.
+
+  The opts options are the same as those documented for boot.core/add-resource."
+  [fileset cache-key cache-fn & {:keys [mergers include exclude meta] :as opts}]
   (tmpd/add-cached fileset (get-add-dir fileset #{:resource}) cache-key cache-fn opts))
 
 (defn mv-resource
-  "FIXME: document"
+  "Given a collection of tmpfiles, moves them in the fileset such that they
+  become resource files."
   [fileset tmpfiles]
   (tmpd/add-tmp fileset (get-add-dir fileset #{:resource}) tmpfiles))
 

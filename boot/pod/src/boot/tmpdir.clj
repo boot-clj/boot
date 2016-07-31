@@ -227,6 +227,12 @@
     (not (let [d (.getParentFile dest)]
            (or (.isDirectory d) (.mkdirs d))))))
 
+(defn- add-tree-meta
+  [tree meta]
+  (if (empty? meta)
+    tree
+    (reduce-kv #(assoc %1 %2 (merge %3 meta)) {} tree)))
+
 ;; fileset implementation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defrecord TmpFileSet [dirs tree blob scratch]
@@ -276,9 +282,11 @@
     (assert ((set (map file dirs)) dest-dir)
             (format "dest-dir not in dir set (%s)" dest-dir))
     (let [{:keys [dirs tree blob scratch]} this
-          {:keys [mergers include exclude]} opts
+          {:keys [mergers include exclude meta]} opts
           ->tree   #(set-dir (dir->tree! % blob) dest-dir)
-          new-tree (-> (->tree src-dir) (filter-tree include exclude))
+          new-tree (-> (->tree src-dir)
+                       (filter-tree include exclude)
+                       (add-tree-meta meta))
           mrg-tree (when mergers
                      (->tree (merge-trees! tree new-tree mergers scratch)))]
       (assoc this :tree (merge-with merge tree new-tree mrg-tree))))
@@ -287,10 +295,11 @@
     (assert ((set (map file dirs)) dest-dir)
             (format "dest-dir not in dir set (%s)" dest-dir))
     (let [{:keys [dirs tree blob scratch]} this
-          {:keys [mergers include exclude]} opts
+          {:keys [mergers include exclude meta]} opts
           new-tree (let [cached (get-cached! cache-key cache-fn scratch)]
                      (-> (set-dir cached dest-dir)
-                         (filter-tree include exclude)))
+                         (filter-tree include exclude)
+                         (add-tree-meta meta)))
           mrg-tree (when mergers
                      (let [merged (merge-trees! tree new-tree mergers scratch)]
                        (set-dir (dir->tree! merged blob) dest-dir)))]

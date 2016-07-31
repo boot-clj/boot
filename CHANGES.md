@@ -5,6 +5,7 @@
 #### Improved
 
 - Follow symlinks when building fileset from project dirs [#483][483].
+- Documented `boot.core/add-cached-{asset,source,resource}` fns.
 
 #### Fixed
 
@@ -27,6 +28,8 @@
 ##### API Functions
 
 - Added `boot.pod/make-pod-cp` &mdash; creates a new pod from a given classpath.
+- Added `:meta` option to `boot.core/add-{asset,source,resource}` fns &mdash;
+  merges a map of metadata into all TmpFiles added to the fileset.
 
 ##### Boot Options
 
