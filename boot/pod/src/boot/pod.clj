@@ -509,11 +509,22 @@
   artifact id.
 
   For example: (canonical-id 'foo/foo) ;=> foo
-  (canonical-id 'foo/bar) ;=> foo/bar"
+               (canonical-id 'foo/bar) ;=> foo/bar"
   [id]
   (when id
     (let [[ns nm] ((juxt namespace name) id)]
       (if (not= ns nm) id))))
+
+(defn full-id
+  "Given a project id symbol, returns the fully qualified form, with the group
+  id as the namespace of the resulting symbol and the artifact id as the name.
+
+  For example: (full-id 'foo)     ;=> foo/foo
+               (full-id 'foo/bar) ;=> foo/bar"
+  [id]
+  (when id
+    (let [[ns nm] ((juxt namespace name) id)]
+      (symbol (or ns nm) nm))))
 
 (defn canonical-coord
   "Given a dependency coordinate of the form [id version ...], returns the

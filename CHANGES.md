@@ -9,6 +9,7 @@
 - Warn when asked to load a version of Clojure into the core pod (via
   `:dependencies`) that is different from the implicitly loaded version
   specified by `BOOT_CLOJURE_VERSION` [#230][230], [#469][469].
+- Corrected docstring for `boot.pod/canonical-coord`.
 
 #### Fixed
 
@@ -35,6 +36,10 @@
 ##### API Functions
 
 - Added `boot.pod/make-pod-cp` &mdash; creates a new pod from a given classpath.
+- Added `boot.pod/canonical-id` &mdash; returns the canonical form of a maven
+  dependency id symbol.
+- Added `boot.pod/full-id` &mdash; returns the fully-qualified form of a maven
+  dependency id symbol.
 - Added `:meta` option to `boot.core/add-{asset,source,resource}` fns (and their
   `add-cached-{asset,source,resource}` variants &mdash; merges a map of metadata
   into all TmpFiles added to the fileset.
