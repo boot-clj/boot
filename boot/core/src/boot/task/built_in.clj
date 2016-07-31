@@ -435,6 +435,7 @@
 
   [s server         bool  "Start REPL server only."
    c client         bool  "Start REPL client only."
+   C no-color       bool  "Disable colored REPL client output."
    e eval EXPR      edn   "The form the client will evaluate in the boot.user ns."
    b bind ADDR      str   "The address server listens on."
    H host HOST      str   "The host client connects to."
@@ -454,7 +455,7 @@
                      (assoc :standalone true
                             :custom-eval eval
                             :custom-init init
-                            :color @util/*colorize?*
+                            :color (and @util/*colorize?* (not no-color))
                             :skip-default-init skip-init))
         deps     (remove pod/dependency-loaded? @repl/*default-dependencies*)
         repl-svr (delay (apply core/launch-nrepl (mapcat identity srv-opts)))

@@ -217,6 +217,9 @@
         (if (string? (first forms))
           forms
           (list* "No description provided." forms))
+        _ (when-not (vector? argspecs)
+            (throw (IllegalArgumentException.
+                     (format "Parameter declaration should be a vector: %s" argspecs))))
         argspecs (argspec-seq argspecs)]
     (assert-argspecs (mapcat identity argspecs))
     (let [doc      (string/replace doc #"\n  " "\n")

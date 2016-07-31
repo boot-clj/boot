@@ -10,6 +10,7 @@
   `:dependencies`) that is different from the implicitly loaded version
   specified by `BOOT_CLOJURE_VERSION` [#230][230], [#469][469].
 - Corrected docstring for `boot.pod/canonical-coord`.
+- Throw helpful exception when `deftask` argument vector isn't a vector [#487][487].
 
 #### Fixed
 
@@ -60,11 +61,13 @@
 
 ##### Task Options
 
-- Added `--project` option to the `jar` task &mdash; specifies the project id
-  when there are multiple pom.xml files &mdash; should only be needed in the
+- Added `-p, --project` option to the `jar` task &mdash; specifies the project
+  id when there are multiple pom.xml files &mdash; should only be needed in the
   case where the jar will contain multiple poms and either the desired pom was
   not created via the `pom` task or there are multiple poms created by the `pom`
   task in the fileset [#451][451].
+- Added `-C, --no-color` option to the `repl` task &mdash; disables ANSI color
+  codes in REPL client output.
 
 ##### Boot Environment
 
@@ -87,6 +90,7 @@
 [479]: https://github.com/boot-clj/boot/issues/479
 [480]: https://github.com/boot-clj/boot/issues/480
 [483]: https://github.com/boot-clj/boot/issues/483
+[487]: https://github.com/boot-clj/boot/issues/487
 
 ## 2.6.0
 
