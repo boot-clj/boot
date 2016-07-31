@@ -27,7 +27,7 @@ N/A
 
 ##### Boot Options
 
-- Removed the `-t, --target-path` and `-T, --no-target` Boot options.
+- Removed `-t, --target-path` and `-T, --no-target` [#475][475].
 
 ##### Task Options
 
@@ -35,13 +35,19 @@ N/A
 
 ##### Boot Environment
 
-- Removed the `:target-path` env key.
+- Removed `:target-path` [#475][475].
+- Warn when asked to load a version of Clojure into the core pod (via
+  `:dependencies`) that is different from the implicitly loaded version
+  specified by `BOOT_CLOJURE_VERSION` [#230][230], [#469][469].
 
 #### Deprecated
 
 N/A
 
+[230]: https://github.com/boot-clj/boot/issues/230
+[469]: https://github.com/boot-clj/boot/issues/469
 [471]: https://github.com/boot-clj/boot/issues/471
+[475]: https://github.com/boot-clj/boot/issues/475
 [476]: https://github.com/boot-clj/boot/issues/476
 [477]: https://github.com/boot-clj/boot/issues/477
 [478]: https://github.com/boot-clj/boot/issues/478

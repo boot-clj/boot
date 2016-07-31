@@ -158,24 +158,27 @@
   are not reliable within a pod environment for this reason."
 
   []
-  (let [user-dirs       (->> (get-env)
-                             ((juxt :source-paths :resource-paths))
-                             (apply concat)
-                             (map #(.getAbsolutePath (io/file %))))
-        paths           (->> (pod/get-classpath) (map #(.getPath (URL. %))))
-        dir?            (comp (memfn isDirectory) io/file)
-        fake-paths      (->> paths (remove dir?) (concat user-dirs))
-        separated       (partial string/join (System/getProperty "path.separator"))
-        boot-class-path (separated paths)
-        fake-class-path (separated fake-paths)]
+  (.start
+    (Thread.
+      (bound-fn []
+        (let [user-dirs       (->> (get-env)
+                                   ((juxt :source-paths :resource-paths))
+                                   (apply concat)
+                                   (map #(.getAbsolutePath (io/file %))))
+              paths           (->> (pod/get-classpath) (map #(.getPath (URL. %))))
+              dir?            (comp (memfn isDirectory) io/file)
+              fake-paths      (->> paths (remove dir?) (concat user-dirs))
+              separated       (partial string/join (System/getProperty "path.separator"))
+              boot-class-path (separated paths)
+              fake-class-path (separated fake-paths)]
 
-    (when (or (not= boot-class-path (get-env :boot-class-path))
-              (not= fake-class-path (get-env :fake-class-path)))
-      (set-env! :fake-class-path fake-class-path
-                :boot-class-path boot-class-path))
-    ;; Kept for backwards compatibility
-    (System/setProperty "boot.class.path" boot-class-path)
-    (System/setProperty "fake.class.path" fake-class-path)))
+          (when (or (not= boot-class-path (get-env :boot-class-path))
+                    (not= fake-class-path (get-env :fake-class-path)))
+            (set-env! :fake-class-path fake-class-path
+                      :boot-class-path boot-class-path))
+          ;; Kept for backwards compatibility
+          (System/setProperty "boot.class.path" boot-class-path)
+          (System/setProperty "fake.class.path" fake-class-path))))))
 
 (defn- set-user-dirs!
   "Resets the file watchers that sync the project directories to their
@@ -214,26 +217,34 @@
   (#'clojure.core/load-data-readers)
   (set! *data-readers* (.getRawRoot #'*data-readers*)))
 
+(defn- map-of-deps
+  "build a map of dependency sym to version, including transitive deps."
+  [env deps]
+  (->> (assoc env :dependencies deps)
+       pod/resolve-dependencies
+       (map (juxt (comp first :dep) (comp second :dep)))
+       (into {})))
+
 (defn- find-version-conflicts
   "compute a seq of [name new-coord old-coord] elements describing version conflicts
   when resolving the 'old' dependency vector and the 'new' dependency vector"
   [old new env]
-  (let [resolve-deps #(->> (assoc env :dependencies %)
-                           pod/resolve-dependencies
-                           (map (juxt (comp first :dep) (comp second :dep)))
-                           (into {}))
-        old-deps (resolve-deps old)
-        new-deps (resolve-deps new)]
-    (->> new-deps
-         (map (fn [[name coord]] [name coord (get old-deps name coord)]))
-         (remove (fn [[name new-coord old-coord]] (= new-coord old-coord))))))
+  (let [clj-name (symbol (boot.App/getClojureName))
+        old-deps (-> (map-of-deps env old)
+                     (assoc clj-name (clojure-version)))]
+    (->> (map-of-deps env new) (keep (fn [[name coord]]
+                                       (let [c (old-deps name coord)]
+                                         (when (not= coord c) [name coord c])))))))
 
 (defn- report-version-conflicts
   "Warn, when the version of a dependency changes. Call this with the
   result of find-version-conflicts as arguments"
   [coll]
-  (doseq [[name new-coord old-coord] coll]
-    (util/warn "Warning: version conflict detected: %s version changes from %s to %s\n" name old-coord new-coord)))
+  (let [clj-name (symbol (boot.App/getClojureName))]
+    (doseq [[name new-coord old-coord] coll]
+      (let [op (if (= name clj-name) "NOT" "ALSO")]
+        (-> "Classpath conflict: %s version %s already loaded, %s loading version %s\n"
+            (util/warn name old-coord op new-coord))))))
 
 (defn- add-directories!
   "Add URLs (directories or jar files) to the classpath."
