@@ -68,7 +68,7 @@ The first item of the vector is timeout, the second unit"}
     (util/dbug "Runboot will run %s \n" (str "\"boot " (string/join " " args) "\""))
     (core/with-pass-thru [fs]
       (future (try (.await (get pod/data "start-latch"))
-                   (boot.App/runBoot core worker args)
+                   (boot.App/runBoot core worker (into-array String (into ["-x"] args)))
                    (catch InterruptedException e
                      (util/print-ex e))
                    (catch Throwable e

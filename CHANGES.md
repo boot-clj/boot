@@ -6,6 +6,9 @@
 
 - Follow symlinks when building fileset from project dirs [#483][483].
 - Documented `boot.core/add-cached-{asset,source,resource}` fns.
+- Warn when asked to load a version of Clojure into the core pod (via
+  `:dependencies`) that is different from the implicitly loaded version
+  specified by `BOOT_CLOJURE_VERSION` [#230][230], [#469][469].
 
 #### Fixed
 
@@ -17,8 +20,8 @@
   `terminal-notifier` program [#478][478].
 - Don't throw exceptions when source files are missing during filesystem patch
   operations [#471][471], [#477][477].
-- Preserve fileset metadata when TmpFiles are overwritten with add-resource,
-  add-source, etc.
+- Preserve fileset metadata when TmpFiles are overwritten with `add-resource`,
+  `add-source`, etc.
 
 #### Tasks
 
@@ -34,12 +37,16 @@
 
 ##### Boot Options
 
-- Added `-i, --init` &mdash; evaluates a form after evaluating the profile.boot
-  forms but before the main script or build.boot forms [#465][465].
+- Added `-E, --exclusions` &mdash; adds symbol to env `:exclusions` [#472][472].
 - Added `-f, --file` &mdash; evaluates the contents of a file just like with
   the shebang script, but easier to use on platforms like Windows that don't
   have great shebang support [#465][465].
-- Added `-E, --exclusions` &mdash; adds symbol to env `:exclusions` [#472][472].
+- Added `-i, --init` &mdash; evaluates a form after evaluating the profile.boot
+  forms but before the main script or build.boot forms [#465][465].
+- Added `-x, --exclude-clojure` &mdash; adds `org.clojure/clojure` as a global
+  exclusion (useful in combination with `--dependencies` when you don't have a
+  build.boot file, as most dependencies will depend on some random version of
+  clojure and you'll get a warning about it) [#230][230], [#469][469].
 - Removed `-t, --target-path` and `-T, --no-target` [#475][475].
 
 ##### Task Options
@@ -49,9 +56,6 @@ N/A
 ##### Boot Environment
 
 - Removed `:target-path` [#475][475].
-- Warn when asked to load a version of Clojure into the core pod (via
-  `:dependencies`) that is different from the implicitly loaded version
-  specified by `BOOT_CLOJURE_VERSION` [#230][230], [#469][469].
 
 #### Deprecated
 

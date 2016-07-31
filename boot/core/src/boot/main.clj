@@ -45,7 +45,8 @@
    ["-U" "--update-snapshot"     "Update boot to latest snapshot version."]
    ["-v" "--verbose"             "More error info (-vv more verbose, etc.)"
     :assoc-fn (fn [x y _] (update-in x [y] (fnil inc 0)))]
-   ["-V" "--version"             "Print boot version info."]])
+   ["-V" "--version"             "Print boot version info."]
+   ["-x" "--exclude-clojure"     "Add org.clojure/clojure to the set of global exclusions."]])
 
 (defn- dep-ns-decls
   [jar]
@@ -135,6 +136,10 @@
                             :else            [nil args*])
         boot?             (contains? #{nil bootscript} arg0)
         [errs opts args]  (if-not boot? [nil {} args] (parse-cli-opts args))
+        opts              (if-let [x (:exclude-clojure opts)]
+                            (-> (dissoc opts :exclude-clojure)
+                                (update-in [:exclusions] (fnil conj #{}) 'org.clojure/clojure))
+                            opts)
         arg0              (or (:file opts) (if (:no-boot-script opts) nil arg0))
         boot?             (and boot? (not (:file opts)))
         verbosity         (if (:quiet opts)
