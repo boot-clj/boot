@@ -19,8 +19,8 @@
 
 #### Tasks
 
-- Added the `cp` task &mdash; use `java -cp` style classpath strings instead
-  of Maven dependencies.
+- Added the `with-cp` task &mdash; use `java -cp` style classpath strings
+  instead of Maven dependencies.
 
 ##### API Functions
 

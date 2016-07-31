@@ -296,7 +296,7 @@
     (into {} (->> (pedantic/dep-conflicts env)
                   (remove (comp non-transitive? first))))))
 
-(core/deftask cp
+(core/deftask with-cp
   "Specify Boot's classpath in a file instead of as Maven coordinates.
 
   The --file option is required -- this specifies the PATH of the file that
