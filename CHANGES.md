@@ -28,6 +28,11 @@
 
 ##### Boot Options
 
+- Added `-i, --init` &mdash; evaluates a form after evaluating the profile.boot
+  forms but before the main script or build.boot forms [#465][465].
+- Added `-f, --file` &mdash; evaluates the contents of a file just like with
+  the shebang script, but easier to use on platforms like Windows that don't
+  have great shebang support [#465][465].
 - Removed `-t, --target-path` and `-T, --no-target` [#475][475].
 
 ##### Task Options
@@ -43,9 +48,10 @@ N/A
 
 #### Deprecated
 
-N/A
+- The `speak` task, replaced by `notify`.
 
 [230]: https://github.com/boot-clj/boot/issues/230
+[465]: https://github.com/boot-clj/boot/issues/465
 [469]: https://github.com/boot-clj/boot/issues/469
 [471]: https://github.com/boot-clj/boot/issues/471
 [475]: https://github.com/boot-clj/boot/issues/475

@@ -73,7 +73,7 @@
                    (string/join "\n"))))))
 
 (core/deftask ^{:deprecated "2.6.0"} checkout
-  "Checkout dependencies task. DEPRECATED.
+  "Checkout dependencies task. DEPRECATED. (Use -c, --checkouts Boot option.)
 
   This task facilitates working on a project and its dependencies at the same
   time, by extracting the dependency jar contents into the fileset. Transitive
@@ -128,8 +128,8 @@
             (pod/unpack-jar (.getPath file) tmp)))
         (->> tmps vals (reduce adder fs) core/commit!)))))
 
-(core/deftask speak
-  "Audible notifications during build.
+(core/deftask ^{:deprecated "2.7.0"} speak
+  "Audible notifications during build. DEPRECATED. Use the notify task.
 
   Default themes: system (the default), ordinance, pillsbury, and
   woodblock. New themes can be included via jar dependency with the
