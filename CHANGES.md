@@ -27,6 +27,10 @@
 
 - Added the `with-cp` task &mdash; use `java -cp` style classpath strings
   instead of Maven dependencies.
+- The `pom` task now adds `:project` metadata to the created pom.xml and
+  pom.properties TmpFiles in the fileset. This metadata is used by eg. the
+  `jar` task to select the "real" pom from multiple poms that might be in the
+  fileset from the `uber` task, etc. [#451][451]
 
 ##### API Functions
 
@@ -51,7 +55,11 @@
 
 ##### Task Options
 
-N/A
+- Added `--project` option to the `jar` task &mdash; specifies the project id
+  when there are multiple pom.xml files &mdash; should only be needed in the
+  case where the jar will contain multiple poms and either the desired pom was
+  not created via the `pom` task or there are multiple poms created by the `pom`
+  task in the fileset [#451][451].
 
 ##### Boot Environment
 
@@ -62,6 +70,7 @@ N/A
 - The `speak` task, replaced by `notify`.
 
 [230]: https://github.com/boot-clj/boot/issues/230
+[451]: https://github.com/boot-clj/boot/issues/451
 [465]: https://github.com/boot-clj/boot/issues/465
 [469]: https://github.com/boot-clj/boot/issues/469
 [471]: https://github.com/boot-clj/boot/issues/471
