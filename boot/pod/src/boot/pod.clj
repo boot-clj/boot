@@ -503,14 +503,27 @@
   [& body]
   `(with-pod worker-pod ~@body))
 
+(defn canonical-id
+  "Given a project id symbol, returns the canonical form, with the group id
+  as the namespace of the resulting symbol only if it's not the same as the
+  artifact id.
+
+  For example: (canonical-id 'foo/foo) ;=> foo
+  (canonical-id 'foo/bar) ;=> foo/bar"
+  [id]
+  (when id
+    (let [[ns nm] ((juxt namespace name) id)]
+      (if (not= ns nm) id))))
+
 (defn canonical-coord
   "Given a dependency coordinate of the form [id version ...], returns the
-  canonical form, i.e. the id symbol is always fully qualified.
+  canonical form, i.e. the id symbol is not fully qualified when the artifact
+  and group ids are the same.
 
-  For example: (canonical-coord '[foo \"1.2.3\"]) ;=> [foo/foo \"1.2.3\"]"
+  For example: (canonical-coord '[foo/foo \"1.2.3\"]) ;=> [foo \"1.2.3\"]
+               (canonical-coord '[foo/bar \"1.2.3\"]) ;=> [foo/bar \"1.2.3\"]"
   [[id & more :as coord]]
-  (let [[ns nm] ((juxt namespace name) id)]
-    (assoc-in (vec coord) [0] (if (not= ns nm) id (symbol nm)))))
+  (assoc-in (vec coord) [0] (canonical-id id)))
 
 (defn resolve-dependencies
   "Returns a seq of maps of the form {:jar <path> :dep <dependency vector>}

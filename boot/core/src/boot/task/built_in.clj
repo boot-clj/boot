@@ -492,7 +492,8 @@
                :packaging (or packaging "jar"))]
     (when-not (and project version)
       (throw (Exception. "need project and version to create pom.xml")))
-    (let [[gid aid] (util/extract-ids project)
+    (let [[project version] (pod/canonical-coord [project version])
+          [gid aid] (util/extract-ids project)
           pomdir    (io/file tgt "META-INF" "maven" gid aid)
           xmlfile   (io/file pomdir "pom.xml")
           propfile  (io/file pomdir "pom.properties")]
@@ -500,7 +501,7 @@
         (boot.pom/spit-pom! ~(.getPath xmlfile) ~(.getPath propfile) ~opts))
       (core/with-pre-wrap [fs]
         (util/info "Writing %s and %s...\n" (.getName xmlfile) (.getName propfile))
-        (-> fs (core/add-resource tgt) core/commit!)))))
+        (-> fs (core/add-resource tgt :meta {:project project}) core/commit!)))))
 
 (core/deftask sift
   "Transform the fileset, matching paths against regexes.
@@ -772,21 +773,30 @@
           (when @throw? (throw (Exception. "java compiler error")))))
       (-> fs (core/add-resource tgt) core/commit!))))
 
+(defn- sift-poms
+  [fileset project]
+  (let [prj-match (when project
+                    (let [[gid aid] (util/extract-ids project)]
+                      (str "/" gid "/" aid "/pom.xml")))
+        project?  #(if-not prj-match
+                     (:project %)
+                     (.endsWith (core/tmp-path %) prj-match))]
+    (if (< (count poms) 2) poms (->> poms (filter project?)))))
+
 (core/deftask jar
   "Build a jar file for the project."
 
   [f file PATH        str       "The target jar file name."
    M manifest KEY=VAL {str str} "The jar manifest map."
-   m main MAIN        sym       "The namespace containing the -main function."]
+   m main MAIN        sym       "The namespace containing the -main function."
+   p project SYM      sym       "The project symbol -- used to find the correct pom.xml file."]
 
   (let [old-fs (atom nil)
         tgt    (core/tmp-dir!)
         out    (atom nil)]
     (core/with-pre-wrap [fs]
       (let [new-fs    (core/output-fileset fs)
-            [pom & p] (->> (core/output-files fs)
-                           (core/by-name ["pom.xml"])
-                           (map core/tmp-file))
+            [pom & p] (map core/tmp-file (sift-poms fs project))
             {:keys [project version]}
             (when (and pom (not (seq p)))
               (pod/with-call-worker
@@ -795,6 +805,8 @@
                       (str (name project) "-" version ".jar"))
             fname   (or file pomname "project.jar")
             out*    (io/file tgt fname)]
+        (when (and project (seq p))
+          (util/warn "Multiple pom.xml files for project: %s\n" project))
         (when (not= @out out*)
           (when (and @out (.exists @out))
             (file/move @out out*))
