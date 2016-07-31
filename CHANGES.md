@@ -33,6 +33,7 @@
 - Added `-f, --file` &mdash; evaluates the contents of a file just like with
   the shebang script, but easier to use on platforms like Windows that don't
   have great shebang support [#465][465].
+- Added `-E, --exclusions` &mdash; adds symbol to env `:exclusions` [#472][472].
 - Removed `-t, --target-path` and `-T, --no-target` [#475][475].
 
 ##### Task Options
@@ -54,6 +55,7 @@ N/A
 [465]: https://github.com/boot-clj/boot/issues/465
 [469]: https://github.com/boot-clj/boot/issues/469
 [471]: https://github.com/boot-clj/boot/issues/471
+[472]: https://github.com/boot-clj/boot/issues/472
 [475]: https://github.com/boot-clj/boot/issues/475
 [476]: https://github.com/boot-clj/boot/issues/476
 [477]: https://github.com/boot-clj/boot/issues/477

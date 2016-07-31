@@ -25,6 +25,8 @@
     :assoc-fn #(let [[p v] (string/split %3 #":" 2)]
                  (update-in %1 [%2] (fnil conj [])
                             (pod/canonical-coord [(read-string p) (or v "RELEASE")])))]
+   ["-E" "--exclusions SYM"      "Add the SYM dependency to the set of global exclusions."
+    :assoc-fn #(update-in %1 [%2] (fnil conj #{}) (symbol %3))]
    ["-e" "--set-env KEY=VAL"     "Add KEY => VAL to project env map."
     :assoc-fn #(let [[k v] (string/split %3 #"=" 2)]
                  (update-in %1 [%2] (fnil assoc {}) (keyword k) v))]
@@ -176,7 +178,7 @@
               localforms  (when profile?
                             (some->> localscript slurp util/read-string-all))
               initial-env (->> [:source-paths :resource-paths :asset-paths
-                                :target-path :dependencies :checkouts :offline?]
+                                :dependencies :exclusions :checkouts :offline?]
                                (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
                                (merge {} (:set-env opts)))
               import-ns   (export-task-namespaces initial-env)
