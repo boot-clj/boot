@@ -16,6 +16,8 @@
   `terminal-notifier` program [#478][478].
 - Don't throw exceptions when source files are missing during filesystem patch
   operations [#471][471], [#477][477].
+- Preserve fileset metadata when TmpFiles are overwritten with add-resource,
+  add-source, etc.
 
 #### Tasks
 

@@ -281,7 +281,7 @@
           new-tree (-> (->tree src-dir) (filter-tree include exclude))
           mrg-tree (when mergers
                      (->tree (merge-trees! tree new-tree mergers scratch)))]
-      (assoc this :tree (merge tree new-tree mrg-tree))))
+      (assoc this :tree (merge-with merge tree new-tree mrg-tree))))
 
   (add-cached [this dest-dir cache-key cache-fn opts]
     (assert ((set (map file dirs)) dest-dir)
