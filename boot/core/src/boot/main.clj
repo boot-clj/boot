@@ -75,7 +75,7 @@
     [`(comment ~(format "end %s" tag))]))
 
 (defn emit [boot? argv userscript localscript bootscript import-ns]
-  (let [boot-use '[boot.core boot.util boot.task.built-in]]
+  (let [boot-use '[[boot.core :exclude [cp]] boot.util boot.task.built-in]]
     `(~(list 'ns 'boot.user
          (list* :use (concat boot-use import-ns)))
       ~@(when userscript (with-comments "global profile" userscript))

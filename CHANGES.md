@@ -17,13 +17,14 @@
 - Don't throw exceptions when source files are missing during filesystem patch
   operations [#471][471], [#477][477].
 
-#### Development
+#### Tasks
 
-N/A
+- Added the `cp` task &mdash; use `java -cp` style classpath strings instead
+  of Maven dependencies.
 
 ##### API Functions
 
-- `boot.pod/make-pod-cp` &mdash; creates a new pod from a given classpath.
+- Added `boot.pod/make-pod-cp` &mdash; creates a new pod from a given classpath.
 
 ##### Boot Options
 
