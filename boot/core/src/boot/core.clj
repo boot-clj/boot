@@ -935,23 +935,41 @@
   []
   (reset! *warnings* 0))
 
+(defn- take-subargs [open close [x & xs :as coll]]
+  (if (not= x open)
+    [nil coll]
+    (loop [[x & xs] xs depth 1 ret []]
+      (if (not x)
+        [ret []]
+        (cond (= x open)  (recur xs (inc depth) (conj ret x))
+              (= x close) (if (zero? (dec depth))
+                            [ret xs]
+                            (recur xs (dec depth) (conj ret x)))
+              :else       (recur xs depth (conj ret x)))))))
+
 (defn- construct-tasks
   "Given command line arguments (strings), constructs a task pipeline by
   resolving the task vars, calling the task constructors with the arguments
   for that task, and composing them to form the pipeline."
-  [& argv]
-  (loop [ret [] [op-str & args] argv]
+  [argv & {:keys [in-order]}]
+  (loop [ret [] [op-str & args :as argv] argv]
     (if-not op-str
       (apply comp (filter fn? ret))
-      (let [op (-> op-str symbol resolve)]
-        (when-not (and op (:boot.core/task (meta op)))
-          (throw (IllegalArgumentException. (format "No such task (%s)" op-str))))
-        (let [spec   (:argspec (meta op))
-              parsed (cli/parse-opts args spec :in-order true)]
-          (when (seq (:errors parsed))
-            (throw (IllegalArgumentException. (string/join "\n" (:errors parsed)))))
-          (let [[opts argv] (#'cli2/separate-cli-opts args spec)]
-            (recur (conj ret (apply (var-get op) opts)) argv)))))))
+      (case op-str
+        "--" (recur ret args)
+        "["  (let [[argv remainder] (take-subargs "[" "]" argv)]
+               (recur (conj ret (construct-tasks argv :in-order false)) remainder))
+        (let [op (-> op-str symbol resolve)]
+          (when-not (and op (:boot.core/task (meta op)))
+            (throw (IllegalArgumentException. (format "No such task (%s)" op-str))))
+          (let [spec   (:argspec (meta op))
+                parsed (cli/parse-opts args spec :in-order in-order)]
+            (when (seq (:errors parsed))
+              (throw (IllegalArgumentException. (string/join "\n" (:errors parsed)))))
+            (let [[opts argv] (if-not in-order
+                                [args nil]
+                                (#'cli2/separate-cli-opts args spec))]
+              (recur (conj ret (apply (var-get op) opts)) argv))))))))
 
 (defn- fileset-syncer
   "Given a seq of directories dirs, returns a stateful function of one
@@ -989,7 +1007,7 @@
           (util/with-let [_ nil]
             (run-tasks
               (cond (every? fn? argv)     (apply comp argv)
-                    (every? string? argv) (apply construct-tasks argv)
+                    (every? string? argv) (construct-tasks argv :in-order true)
                     :else (throw (IllegalArgumentException.
                                    "Arguments must be either all strings or all fns"))))))
        (catch ExecutionException e

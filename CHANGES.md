@@ -45,6 +45,12 @@
   `add-cached-{asset,source,resource}` variants &mdash; merges a map of metadata
   into all TmpFiles added to the fileset.
 
+##### Boot CLI Parsing
+
+- The `[` and `]` characters can now be used to group tasks with their options
+  and, more importantly, positional parameters. In the task body the positional
+  parameters are bound to `*args*` [#374][374].
+
 ##### Boot Options
 
 - Added `-E, --exclusions` &mdash; adds symbol to env `:exclusions` [#472][472].
@@ -78,6 +84,7 @@
 - The `speak` task, replaced by `notify`.
 
 [230]: https://github.com/boot-clj/boot/issues/230
+[374]: https://github.com/boot-clj/boot/issues/374
 [451]: https://github.com/boot-clj/boot/issues/451
 [465]: https://github.com/boot-clj/boot/issues/465
 [469]: https://github.com/boot-clj/boot/issues/469
