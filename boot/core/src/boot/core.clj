@@ -894,7 +894,7 @@
            (let [msg# (delay (format "deftask %s/%s was overridden\n" *ns* '~sym))]
              (boot.util/warn (if (<= @util/*verbosity* 2)
                                @msg#
-                               (ex/format-exception (Exception. @msg#)))))))
+                               (ex/format-exception (Exception. ^String @msg#)))))))
        (cli2/defclifn ~(vary-meta sym assoc ::task true)
          ~@heads
          ~bindings
