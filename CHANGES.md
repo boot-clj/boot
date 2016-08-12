@@ -24,6 +24,9 @@
   operations [#471][471], [#477][477].
 - Preserve fileset metadata when TmpFiles are overwritten with `add-resource`,
   `add-source`, etc.
+- Format paths in `boot.class.path` and `fake.class.path` system properties
+  with correct, platform-specific paths [#488][488].
+- Eliminate runtime reflection in `boot.core/deftask` macro [#490][490].
 
 #### Tasks
 
@@ -98,6 +101,8 @@
 [480]: https://github.com/boot-clj/boot/issues/480
 [483]: https://github.com/boot-clj/boot/issues/483
 [487]: https://github.com/boot-clj/boot/issues/487
+[488]: https://github.com/boot-clj/boot/issues/488
+[490]: https://github.com/boot-clj/boot/issues/490
 
 ## 2.6.0
 
