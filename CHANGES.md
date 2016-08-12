@@ -20,6 +20,7 @@
 - Use default voice when calling `say` on OSX [#476][476].
 - Fix typo in the `notify` task that prevented OSX from finding the
   `terminal-notifier` program [#478][478].
+- Fix typo in the `notify` task that caused exceptions on OSX [#491][491].
 - Don't throw exceptions when source files are missing during filesystem patch
   operations [#471][471], [#477][477].
 - Preserve fileset metadata when TmpFiles are overwritten with `add-resource`,
@@ -103,6 +104,7 @@
 [487]: https://github.com/boot-clj/boot/issues/487
 [488]: https://github.com/boot-clj/boot/issues/488
 [490]: https://github.com/boot-clj/boot/issues/490
+[491]: https://github.com/boot-clj/boot/issues/491
 
 ## 2.6.0
 
