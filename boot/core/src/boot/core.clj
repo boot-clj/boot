@@ -21,7 +21,7 @@
   (:import
     [boot App]
     [java.io File]
-    [java.nio.file Path]
+    [java.nio.file Path Paths]
     [java.net URLClassLoader URL]
     [java.lang.management ManagementFactory]
     [java.util.concurrent LinkedBlockingQueue TimeUnit Semaphore ExecutionException]))
@@ -165,7 +165,8 @@
                                    ((juxt :source-paths :resource-paths))
                                    (apply concat)
                                    (map #(.getAbsolutePath (io/file %))))
-              paths           (->> (pod/get-classpath) (map #(.getPath (URL. %))))
+              paths           (->> (pod/get-classpath)
+                                   (map #(.getPath (.toFile (Paths/get (.toURI (URL. %)))))))
               dir?            (comp (memfn isDirectory) io/file)
               fake-paths      (->> paths (remove dir?) (concat user-dirs))
               separated       (partial string/join (System/getProperty "path.separator"))
