@@ -3,12 +3,46 @@
 ;; vim: set ft=clojure:
 
 (set-env!
-  :dependencies '[[adzerk/clj-github-docs "0.1.0"]])
+  :dependencies '[[adzerk/clj-github-docs "0.1.1"]])
 
 (require
   '[adzerk.clj-github-docs :refer :all])
 
 (defn -main [& _]
+
+  (write-docs
+    :ns boot.task.built-in
+    :tag *boot-version*
+    :src "boot/core/src"
+    :doc "Boot built-in tasks."
+
+    (section
+      "Info"
+      help show)
+
+    (section
+      "Develop"
+      notify repl speak wait watch)
+
+    (section
+      "Fileset"
+      add-repo sift uber)
+
+    (section
+      "Build"
+      aot javac)
+
+    (section
+      "Package"
+      pom jar web war zip)
+
+    (section
+      "Deploy"
+      install push target)
+
+    (section
+      "Deprecated"
+      checkout))
 
   (write-docs
     :ns boot.util
@@ -31,12 +65,12 @@
 
     (section
       "Logging"
-      dbug info warn fail warn-deprecated)
+      dbug dbug* info warn fail warn-deprecated)
 
     (section
       "Useful Macros"
       guard while-let with-err-str with-let with-resolve with-rethrow
-      without-exiting dotoseq do-while-let)
+      without-exiting dotoseq do-while-let extends-protocol)
 
     (section
       "Printing"
@@ -44,8 +78,8 @@
 
     (section
       "Miscellaneous"
-      extract-ids auto-flush bind-syms dep-as-map let-assert-keys index-of
-      jarname path->ns read-string-all with-semaphore with-semaphore-noblock))
+      extract-ids auto-flush bind-syms dep-as-map map-as-dep let-assert-keys
+      index-of jarname path->ns read-string-all with-semaphore with-semaphore-noblock))
 
   (write-docs
     :ns boot.pod
@@ -62,21 +96,23 @@
       "Pods"
       get-pods call-in* with-call-in with-call-worker eval-in* with-eval-in
       with-eval-worker eval-fn-call get-pods make-pod require-in send!
-      destroy-pod pod-pool)
+      destroy-pod pod-pool pod-name this-pod with-invoke-in with-invoke-worker)
 
     (section
       "Classpath"
       add-classpath add-dependencies add-dependencies-in add-dependencies-worker
       dependency-loaded? get-classpath modifiable-classloader? resources
-      seal-app-classloader classloader-hierarchy classloader-resources copy-resource)
+      seal-app-classloader classloader-hierarchy classloader-resources
+      copy-resource resource-last-modified)
 
     (section
       "Dependencies"
+      resolve-release-versions
       resolve-dependencies resolve-dependency-jar resolve-dependency-jars
       resolve-nontransitive-dependencies apply-exclusions apply-global-exclusions
       canonical-coord copy-dependency-jar-entries default-dependencies
       dependency-pom-properties dependency-pom-properties-map outdated
-      extract-ids jars-dep-graph jars-in-dep-order)
+      extract-ids jars-dep-graph jars-in-dep-order coord->map map->coord)
 
     (section
       "Jars"
@@ -94,13 +130,8 @@
 
     (section
       "Deprecated / Internal"
-      set-pods! set-data! set-pod-id! set-worker-pod!))
-
-  (write-docs
-    :ns boot.task.built-in
-    :tag *boot-version*
-    :src "boot/core/src"
-    :doc "Boot built-in tasks.")
+      eval-in-caller eval-in-callee with-pod with-worker
+      set-pods! set-data! set-pod-id! set-worker-pod! set-this-pod!))
 
   (write-docs
     :ns boot.core
@@ -119,6 +150,7 @@
 
     (section
       "Boot Environment"
+      get-checkouts
       get-env set-env! merge-env! get-sys-env set-sys-env! pre-env! post-env!)
 
     (section
@@ -149,12 +181,12 @@
     (section
       "Filter Sequences Of TmpFiles"
       file-filter by-ext by-name by-path by-re not-by-ext not-by-name
-      not-by-path not-by-re)
+      not-by-path not-by-re by-meta not-by-meta)
 
     (section
       "Other Fileset Queries"
       ls fileset-namespaces input-fileset output-fileset user-dirs input-dirs
-      output-dirs)
+      output-dirs checkout-dirs)
 
     (section
       "Manipulate Fileset"
@@ -168,7 +200,7 @@
     (section
       "Misc. Helpers"
       gpg-decrypt json-generate json-parse yaml-generate yaml-parse touch
-      git-files empty-dir! sync! watch-dirs)
+      git-files empty-dir! sync! patch! watch-dirs template)
 
     (section
       "Deprecated / Internal"

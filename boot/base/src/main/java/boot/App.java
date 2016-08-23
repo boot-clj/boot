@@ -5,6 +5,7 @@ package boot;
 import java.io.*;
 import java.nio.channels.FileLock;
 import java.nio.channels.FileChannel;
+import java.lang.ref.WeakReference;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Map;
@@ -14,6 +15,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.WeakHashMap;
+import java.util.jar.JarFile;
+import java.util.jar.JarEntry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -37,6 +40,7 @@ public class App {
     private static String                   channel             = "RELEASE";
     private static String                   booturl             = "http://boot-clj.com";
     private static String                   githuburl           = "https://api.github.com/repos/boot-clj/boot/releases";
+    private static boolean                  update_always       = false;
     private static ClojureRuntimeShim       aethershim          = null;
     private static HashMap<String, File[]>  depsCache           = null;
 
@@ -50,21 +54,17 @@ public class App {
     public  static       String             getBootVersion()    { return bootversion; }
     public  static       String             getClojureName()    { return cljname; }
 
-    private static final WeakHashMap<ClojureRuntimeShim, Object> pods = new WeakHashMap<>();
-    private static final ConcurrentHashMap<String, String> stash = new ConcurrentHashMap<>();
+    private static final WeakHashMap<ClojureRuntimeShim, Object> pods  = new WeakHashMap<>();
+    private static final ConcurrentHashMap<String, Object>       stash = new ConcurrentHashMap<>();
 
     public static WeakHashMap<ClojureRuntimeShim, Object>
-    getPods() {
-        return pods; }
+    getPods() { return pods; }
+
+    public static Object
+    getStash(String key) throws Exception { return stash.remove(key); }
 
     public static String
-    getStash(String key) throws Exception {
-        String ret = stash.get(key);
-        stash.remove(key);
-        return ret; }
-
-    public static String
-    setStash(String value) throws Exception {
+    setStash(Object value) throws Exception {
         String key = UUID.randomUUID().toString();
         stash.put(key, value);
         return key; }
@@ -196,10 +196,17 @@ public class App {
         else { System.setProperty(k, dfl); return dfl; }}
 
     private static String
-    jarVersion(File f, String prefix) throws Exception {
-        String n = f.getName();
-        if (! n.startsWith(prefix)) return null;
-        else return n.substring(prefix.length()).replaceAll(".jar$", ""); }
+    jarVersion(File f) throws Exception {
+        String ret = null;
+        JarEntry e = null;
+        String pat = "META-INF/maven/boot/boot/pom.properties";
+        try (JarFile jar = new JarFile(f)) {
+            if ((e = jar.getJarEntry(pat)) != null) {
+                try (InputStream is = jar.getInputStream(e)) {
+                    Properties p = new Properties();
+                    p.load(is);
+                    ret = p.getProperty("version"); }}}
+        return ret; }
 
     private static Properties
     writeProps(File f) throws Exception {
@@ -216,7 +223,7 @@ public class App {
 
         if (bootversion == null)
             for (File x : resolveDepJars(a, "boot", channel, n, c))
-                if (null != (t = jarVersion(x, "boot-"))) bootversion = t;
+                if (null != (t = jarVersion(x))) bootversion = t;
 
         p.setProperty("BOOT_VERSION", bootversion);
         setDefaultProperty(p, "BOOT_CLOJURE_NAME",    n);
@@ -314,6 +321,7 @@ public class App {
         rt.invoke("boot.pod/seal-app-classloader");
         rt.invoke("boot.pod/set-data!", data);
         rt.invoke("boot.pod/set-pods!", pods);
+        rt.invoke("boot.pod/set-this-pod!", new WeakReference<ClojureRuntimeShim>(rt));
 
         pods.put(rt, new Object());
         return rt; }
@@ -360,7 +368,8 @@ public class App {
         shim.require("boot.aether");
         if (localrepo != null)
             shim.invoke("boot.aether/set-local-repo!", localrepo);
-        shim.invoke("boot.aether/update-always!");
+        if (update_always)
+            shim.invoke("boot.aether/update-always!");
         return (File[]) shim.invoke(
             "boot.aether/resolve-dependency-jars", sym, bootversion, cljname, cljversion); }
 
@@ -390,7 +399,10 @@ public class App {
             core.get().invoke("boot.main/-main", nextId(), worker.get(), hooks, args);
             return -1; }
         catch (Throwable t) {
-            return (t instanceof Exit) ? Integer.parseInt(t.getMessage()) : -2; }
+            if (t instanceof Exit) return Integer.parseInt(t.getMessage());
+            System.out.println("Boot failed to start:");
+            t.printStackTrace();
+            return -2; }
         finally {
             for (Runnable h : hooks) h.run();
             try { core.get().close(); }
@@ -409,6 +421,14 @@ public class App {
         p.setProperty("BOOT_VERSION",         config("BOOT_VERSION"));
         p.setProperty("BOOT_CLOJURE_NAME",    config("BOOT_CLOJURE_NAME"));
         p.setProperty("BOOT_CLOJURE_VERSION", config("BOOT_CLOJURE_VERSION"));
+        p.store(System.out, booturl); }
+
+    public static void
+    updateBoot(File bootprops, String version, String chan) throws Exception {
+        update_always = true;
+        bootversion   = version;
+        channel       = chan;
+        Properties p  = writeProps(bootprops);
         p.store(System.out, booturl); }
 
     public static void
@@ -431,7 +451,7 @@ public class App {
         File bootcache   = mkFile(cachehome, "cache", "boot");
 
         localrepo        = config("BOOT_LOCAL_REPO");
-        cljversion       = config("BOOT_CLOJURE_VERSION", "1.7.0");
+        cljversion       = config("BOOT_CLOJURE_VERSION", "1.8.0");
         cljname          = config("BOOT_CLOJURE_NAME", "org.clojure/clojure");
         aetherfile       = mkFile(cachehome, "lib", appversion, aetherjar);
 
@@ -440,9 +460,13 @@ public class App {
         if (args.length > 0
             && ((args[0]).equals("-u")
                 || (args[0]).equals("--update"))) {
-            bootversion  = null;
-            Properties p = writeProps(bootprops);
-            p.store(System.out, booturl);
+            updateBoot(bootprops, (args.length > 1) ? args[1] : null, "RELEASE");
+            System.exit(0); }
+
+        if (args.length > 0
+            && ((args[0]).equals("-U")
+                || (args[0]).equals("--update-snapshot"))) {
+            updateBoot(bootprops, null, "(0,)");
             System.exit(0); }
 
         if (args.length > 0

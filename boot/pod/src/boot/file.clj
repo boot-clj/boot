@@ -3,12 +3,13 @@
    [clojure.java.io  :as io]
    [clojure.set      :as set]
    [clojure.data     :as data]
-   [boot.from.digest :as digest])
+   [boot.from.digest :as digest]
+   [clojure.string   :as str])
   (:import
    [java.net URI]
    [java.io File]
    [java.nio.file.attribute FileAttribute]
-   [java.nio.file Files StandardCopyOption]
+   [java.nio.file Files StandardCopyOption FileVisitOption]
    [java.lang.management ManagementFactory])
   (:refer-clojure :exclude [sync name file-seq]))
 
@@ -40,6 +41,13 @@
       dir)))
 
 (def file-seq-nofollow #(file-seq % :follow-symlinks false))
+
+(defn walk-file-tree
+  "Wrap java.nio.Files/walkFileTree to easily toggle symlink-following behavior."
+  [root visitor & {:keys [follow-symlinks]
+                   :or   {follow-symlinks true}}]
+  (let [walk-opts (if follow-symlinks #{FileVisitOption/FOLLOW_LINKS} #{})]
+    (Files/walkFileTree root walk-opts Integer/MAX_VALUE visitor)))
 
 (defmacro guard [& exprs]
   `(try (do ~@exprs) (catch Throwable _#)))
@@ -232,7 +240,8 @@
 
 (defn match-filter?
   [filters f]
-  ((apply some-fn (map (partial partial re-find) filters)) (.getPath ^File f)))
+  (letfn [(normalize [path] (str/replace path #"\\" "/"))]
+    ((apply some-fn (map (partial partial re-find) filters)) (normalize (.getPath ^File f)))))
 
 (defn keep-filters?
   [include exclude f]

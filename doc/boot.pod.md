@@ -9,15 +9,15 @@ jar files, and classloaders.
 
 ##### Pods
 
- [`call-in*`](#call-in) [`destroy-pod`](#destroy-pod) [`eval-fn-call`](#eval-fn-call) [`eval-in*`](#eval-in) [`get-pods`](#get-pods) [`make-pod`](#make-pod) [`pod-pool`](#pod-pool) [`require-in`](#require-in) [`send!`](#send) [`with-call-in`](#with-call-in) [`with-call-worker`](#with-call-worker) [`with-eval-in`](#with-eval-in) [`with-eval-worker`](#with-eval-worker)
+ [`call-in*`](#call-in) [`destroy-pod`](#destroy-pod) [`eval-fn-call`](#eval-fn-call) [`eval-in*`](#eval-in) [`get-pods`](#get-pods) [`make-pod`](#make-pod) [`pod-name`](#pod-name) [`pod-pool`](#pod-pool) [`require-in`](#require-in) [`send!`](#send) [`this-pod`](#this-pod) [`with-call-in`](#with-call-in) [`with-call-worker`](#with-call-worker) [`with-eval-in`](#with-eval-in) [`with-eval-worker`](#with-eval-worker) [`with-invoke-in`](#with-invoke-in) [`with-invoke-worker`](#with-invoke-worker)
 
 ##### Classpath
 
- [`add-classpath`](#add-classpath) [`add-dependencies`](#add-dependencies) [`add-dependencies-in`](#add-dependencies-in) [`add-dependencies-worker`](#add-dependencies-worker) [`classloader-hierarchy`](#classloader-hierarchy) [`classloader-resources`](#classloader-resources) [`copy-resource`](#copy-resource) [`dependency-loaded?`](#dependency-loaded?) [`get-classpath`](#get-classpath) [`modifiable-classloader?`](#modifiable-classloader?) [`resources`](#resources) [`seal-app-classloader`](#seal-app-classloader)
+ [`add-classpath`](#add-classpath) [`add-dependencies`](#add-dependencies) [`add-dependencies-in`](#add-dependencies-in) [`add-dependencies-worker`](#add-dependencies-worker) [`classloader-hierarchy`](#classloader-hierarchy) [`classloader-resources`](#classloader-resources) [`copy-resource`](#copy-resource) [`dependency-loaded?`](#dependency-loaded?) [`get-classpath`](#get-classpath) [`modifiable-classloader?`](#modifiable-classloader?) [`resource-last-modified`](#resource-last-modified) [`resources`](#resources) [`seal-app-classloader`](#seal-app-classloader)
 
 ##### Dependencies
 
- [`apply-exclusions`](#apply-exclusions) [`apply-global-exclusions`](#apply-global-exclusions) [`canonical-coord`](#canonical-coord) [`copy-dependency-jar-entries`](#copy-dependency-jar-entries) [`default-dependencies`](#default-dependencies) [`dependency-pom-properties`](#dependency-pom-properties) [`dependency-pom-properties-map`](#dependency-pom-properties-map) [`extract-ids`](#extract-ids) [`jars-dep-graph`](#jars-dep-graph) [`jars-in-dep-order`](#jars-in-dep-order) [`outdated`](#outdated) [`resolve-dependencies`](#resolve-dependencies) [`resolve-dependency-jar`](#resolve-dependency-jar) [`resolve-dependency-jars`](#resolve-dependency-jars) [`resolve-nontransitive-dependencies`](#resolve-nontransitive-dependencies)
+ [`apply-exclusions`](#apply-exclusions) [`apply-global-exclusions`](#apply-global-exclusions) [`canonical-coord`](#canonical-coord) [`coord->map`](#coord->map) [`copy-dependency-jar-entries`](#copy-dependency-jar-entries) [`default-dependencies`](#default-dependencies) [`dependency-pom-properties`](#dependency-pom-properties) [`dependency-pom-properties-map`](#dependency-pom-properties-map) [`extract-ids`](#extract-ids) [`jars-dep-graph`](#jars-dep-graph) [`jars-in-dep-order`](#jars-in-dep-order) [`map->coord`](#map->coord) [`outdated`](#outdated) [`resolve-dependencies`](#resolve-dependencies) [`resolve-dependency-jar`](#resolve-dependency-jar) [`resolve-dependency-jars`](#resolve-dependency-jars) [`resolve-nontransitive-dependencies`](#resolve-nontransitive-dependencies) [`resolve-release-versions`](#resolve-release-versions)
 
 ##### Jars
 
@@ -33,11 +33,11 @@ jar files, and classloaders.
 
 ##### Deprecated / Internal
 
- [`set-data!`](#set-data) [`set-pod-id!`](#set-pod-id) [`set-pods!`](#set-pods) [`set-worker-pod!`](#set-worker-pod)
+ [`eval-in-callee`](#eval-in-callee) [`eval-in-caller`](#eval-in-caller) [`set-data!`](#set-data) [`set-pod-id!`](#set-pod-id) [`set-pods!`](#set-pods) [`set-this-pod!`](#set-this-pod) [`set-worker-pod!`](#set-worker-pod) [`with-pod`](#with-pod) [`with-worker`](#with-worker)
 
 <hr>
 
-### [`add-classpath`](../../2.5.5/boot/pod/src/boot/pod.clj#L64)
+### [`add-classpath`](../../2.6.0/boot/pod/src/boot/pod.clj#L65)
 
 ```clojure
 (add-classpath jar-or-dir) (add-classpath jar-or-dir classloader)
@@ -52,7 +52,7 @@ thread's context classloader).
 
 <hr>
 
-### [`add-dependencies`](../../2.5.5/boot/pod/src/boot/pod.clj#L480)
+### [`add-dependencies`](../../2.6.0/boot/pod/src/boot/pod.clj#L580)
 
 ```clojure
 (add-dependencies env)
@@ -65,7 +65,7 @@ jars to the classpath.
 
 <hr>
 
-### [`add-dependencies-in`](../../2.5.5/boot/pod/src/boot/pod.clj#L486)
+### [`add-dependencies-in`](../../2.6.0/boot/pod/src/boot/pod.clj#L586)
 
 ```clojure
 (add-dependencies-in pod env)
@@ -78,7 +78,7 @@ jars to the classpath in the pod.
 
 <hr>
 
-### [`add-dependencies-worker`](../../2.5.5/boot/pod/src/boot/pod.clj#L493)
+### [`add-dependencies-worker`](../../2.6.0/boot/pod/src/boot/pod.clj#L593)
 
 ```clojure
 (add-dependencies-worker env)
@@ -91,7 +91,7 @@ jars to the classpath in the worker pod.
 
 <hr>
 
-### [`add-shutdown-hook!`](../../2.5.5/boot/pod/src/boot/pod.clj#L269)
+### [`add-shutdown-hook!`](../../2.6.0/boot/pod/src/boot/pod.clj#L303)
 
 ```clojure
 (add-shutdown-hook! f)
@@ -110,7 +110,7 @@ the JVM exits otherwise).
 
 <hr>
 
-### [`apply-exclusions`](../../2.5.5/boot/pod/src/boot/pod.clj#L461)
+### [`apply-exclusions`](../../2.6.0/boot/pod/src/boot/pod.clj#L561)
 
 ```clojure
 (apply-exclusions excl [p v & opts :as dep])
@@ -123,7 +123,7 @@ vector dep, creating the :exclusions key and deduplicating as necessary.
 
 <hr>
 
-### [`apply-global-exclusions`](../../2.5.5/boot/pod/src/boot/pod.clj#L474)
+### [`apply-global-exclusions`](../../2.6.0/boot/pod/src/boot/pod.clj#L574)
 
 ```clojure
 (apply-global-exclusions excl deps)
@@ -136,7 +136,7 @@ See apply-exclusions.
 
 <hr>
 
-### [`call-in*`](../../2.5.5/boot/pod/src/boot/pod.clj#L297)
+### [`call-in*`](../../2.6.0/boot/pod/src/boot/pod.clj#L361)
 
 ```clojure
 (call-in* expr) (call-in* pod expr)
@@ -161,7 +161,7 @@ objects which are not printable/readable by Clojure.
 
 <hr>
 
-### [`caller-namespace`](../../2.5.5/boot/pod/src/boot/pod.clj#L694)
+### [`caller-namespace`](../../2.6.0/boot/pod/src/boot/pod.clj#L794)
 
 ```clojure
 (caller-namespace)
@@ -174,7 +174,7 @@ caller of the function.
 
 <hr>
 
-### [`canonical-coord`](../../2.5.5/boot/pod/src/boot/pod.clj#L399)
+### [`canonical-coord`](../../2.6.0/boot/pod/src/boot/pod.clj#L492)
 
 ```clojure
 (canonical-coord [id & more :as coord])
@@ -189,7 +189,7 @@ For example: (canonical-coord '[foo "1.2.3"]) ;=> [foo/foo "1.2.3"]
 
 <hr>
 
-### [`classloader-hierarchy`](../../2.5.5/boot/pod/src/boot/pod.clj#L50)
+### [`classloader-hierarchy`](../../2.6.0/boot/pod/src/boot/pod.clj#L51)
 
 ```clojure
 (classloader-hierarchy) (classloader-hierarchy tip)
@@ -203,7 +203,7 @@ if one is not provided.
 
 <hr>
 
-### [`classloader-resources`](../../2.5.5/boot/pod/src/boot/pod.clj#L94)
+### [`classloader-resources`](../../2.6.0/boot/pod/src/boot/pod.clj#L95)
 
 ```clojure
 (classloader-resources resource-name) (classloader-resources classloaders resource-name)
@@ -219,7 +219,7 @@ circumstances match what clojure.java.io/resource returns.
 
 <hr>
 
-### [`concat-merger`](../../2.5.5/boot/pod/src/boot/pod.clj#L543)
+### [`concat-merger`](../../2.6.0/boot/pod/src/boot/pod.clj#L643)
 
 ```clojure
 (concat-merger prev new out)
@@ -233,7 +233,21 @@ OutputStream out.
 
 <hr>
 
-### [`copy-dependency-jar-entries`](../../2.5.5/boot/pod/src/boot/pod.clj#L600)
+### [`coord->map`](../../2.6.0/boot/pod/src/boot/pod.clj#L153)
+
+```clojure
+(coord->map [p v & more])
+```
+
+```
+Returns the map representation for the given dependency vector. The map
+will include :project and :version keys in addition to any other keys in
+the dependency vector (eg., :scope, :exclusions, etc).
+```
+
+<hr>
+
+### [`copy-dependency-jar-entries`](../../2.6.0/boot/pod/src/boot/pod.clj#L700)
 
 ```clojure
 (copy-dependency-jar-entries env outdir coord & regexes)
@@ -250,20 +264,21 @@ least one regex will be extracted to outdir.
 
 <hr>
 
-### [`copy-resource`](../../2.5.5/boot/pod/src/boot/pod.clj#L194)
+### [`copy-resource`](../../2.6.0/boot/pod/src/boot/pod.clj#L218)
 
 ```clojure
 (copy-resource resource-path out-path)
 ```
 
 ```
-Copies the contents of the jar resource at resource-path to the path or File
-out-path on the filesystem. The copy operation is not atomic.
+Copies the contents of the classpath resource at resource-path to the path or
+File out-path on the filesystem, preserving last modified times when possible.
+The copy operation is not atomic.
 ```
 
 <hr>
 
-### [`copy-url`](../../2.5.5/boot/pod/src/boot/pod.clj#L209)
+### [`copy-url`](../../2.6.0/boot/pod/src/boot/pod.clj#L238)
 
 ```clojure
 (copy-url url-str out-path & {:keys [cache], :or {cache true}})
@@ -276,7 +291,7 @@ the :cache option is false caching of URLs is disabled.
 
 <hr>
 
-### [`data`](../../2.5.5/boot/pod/src/boot/pod.clj#L221)
+### [`data`](../../2.6.0/boot/pod/src/boot/pod.clj#L250)
 
 ```
 Set by boot.App/newCore, may be a ConcurrentHashMap for sharing data between
@@ -285,7 +300,7 @@ instances of Boot that are running inside of Boot.
 
 <hr>
 
-### [`default-dependencies`](../../2.5.5/boot/pod/src/boot/pod.clj#L685)
+### [`default-dependencies`](../../2.6.0/boot/pod/src/boot/pod.clj#L785)
 
 ```clojure
 (default-dependencies deps {:keys [dependencies], :as env})
@@ -298,7 +313,7 @@ favoring dependency versions in env over deps in case of conflict.
 
 <hr>
 
-### [`dependency-loaded?`](../../2.5.5/boot/pod/src/boot/pod.clj#L144)
+### [`dependency-loaded?`](../../2.6.0/boot/pod/src/boot/pod.clj#L145)
 
 ```clojure
 (dependency-loaded? [project & _])
@@ -312,7 +327,7 @@ isn't on the classpath.
 
 <hr>
 
-### [`dependency-pom-properties`](../../2.5.5/boot/pod/src/boot/pod.clj#L152)
+### [`dependency-pom-properties`](../../2.6.0/boot/pod/src/boot/pod.clj#L167)
 
 ```clojure
 (dependency-pom-properties coord)
@@ -325,7 +340,7 @@ Properties object corresponding to the dependency jar's pom.properties file.
 
 <hr>
 
-### [`dependency-pom-properties-map`](../../2.5.5/boot/pod/src/boot/pod.clj#L159)
+### [`dependency-pom-properties-map`](../../2.6.0/boot/pod/src/boot/pod.clj#L174)
 
 ```clojure
 (dependency-pom-properties-map coord)
@@ -338,7 +353,7 @@ of the contents of the jar's pom.properties file.
 
 <hr>
 
-### [`destroy-pod`](../../2.5.5/boot/pod/src/boot/pod.clj#L722)
+### [`destroy-pod`](../../2.6.0/boot/pod/src/boot/pod.clj#L822)
 
 ```clojure
 (destroy-pod pod)
@@ -350,7 +365,7 @@ Closes open resources held by the pod, making the pod eligible for GC.
 
 <hr>
 
-### [`env`](../../2.5.5/boot/pod/src/boot/pod.clj#L217)
+### [`env`](../../2.6.0/boot/pod/src/boot/pod.clj#L246)
 
 ```
 This pod's boot environment.
@@ -358,7 +373,7 @@ This pod's boot environment.
 
 <hr>
 
-### [`eval-fn-call`](../../2.5.5/boot/pod/src/boot/pod.clj#L289)
+### [`eval-fn-call`](../../2.6.0/boot/pod/src/boot/pod.clj#L323)
 
 ```clojure
 (eval-fn-call [f & args])
@@ -370,7 +385,7 @@ Given an expression of the form (f & args), resolves f and applies f to args.
 
 <hr>
 
-### [`eval-in*`](../../2.5.5/boot/pod/src/boot/pod.clj#L351)
+### [`eval-in*`](../../2.6.0/boot/pod/src/boot/pod.clj#L419)
 
 ```clojure
 (eval-in* expr) (eval-in* pod expr)
@@ -395,7 +410,31 @@ objects which are not printable/readable by Clojure.
 
 <hr>
 
-### [`extract-ids`](../../2.5.5/boot/pod/src/boot/pod.clj#L22)
+### [`eval-in-callee`](../../2.6.0/boot/pod/src/boot/pod.clj#L472)
+
+```clojure
+(eval-in-callee caller-pod callee-pod expr)
+```
+
+```
+FIXME: document this
+```
+
+<hr>
+
+### [`eval-in-caller`](../../2.6.0/boot/pod/src/boot/pod.clj#L476)
+
+```clojure
+(eval-in-caller caller-pod callee-pod expr)
+```
+
+```
+FIXME: document this
+```
+
+<hr>
+
+### [`extract-ids`](../../2.6.0/boot/pod/src/boot/pod.clj#L23)
 
 ```clojure
 (extract-ids sym)
@@ -407,7 +446,7 @@ Given a dependency symbol sym, returns a vector of [group-id artifact-id].
 
 <hr>
 
-### [`first-wins-merger`](../../2.5.5/boot/pod/src/boot/pod.clj#L553)
+### [`first-wins-merger`](../../2.6.0/boot/pod/src/boot/pod.clj#L653)
 
 ```clojure
 (first-wins-merger prev _ out)
@@ -419,7 +458,7 @@ Writes the InputStream prev to the OutputStream out.
 
 <hr>
 
-### [`get-classpath`](../../2.5.5/boot/pod/src/boot/pod.clj#L79)
+### [`get-classpath`](../../2.6.0/boot/pod/src/boot/pod.clj#L80)
 
 ```clojure
 (get-classpath) (get-classpath classloaders)
@@ -438,7 +477,7 @@ at subsets of the current classloader hierarchy, e.g.:
 
 <hr>
 
-### [`get-pods`](../../2.5.5/boot/pod/src/boot/pod.clj#L251)
+### [`get-pods`](../../2.6.0/boot/pod/src/boot/pod.clj#L285)
 
 ```clojure
 (get-pods name-or-pattern) (get-pods name-or-pattern unique?)
@@ -453,7 +492,7 @@ thrown unless exactly one pod matches.
 
 <hr>
 
-### [`into-merger`](../../2.5.5/boot/pod/src/boot/pod.clj#L533)
+### [`into-merger`](../../2.6.0/boot/pod/src/boot/pod.clj#L633)
 
 ```clojure
 (into-merger prev new out)
@@ -466,7 +505,7 @@ the data from new into prev, and writes the result to the OutputStream out.
 
 <hr>
 
-### [`jar-entries`](../../2.5.5/boot/pod/src/boot/pod.clj#L521)
+### [`jar-entries`](../../2.6.0/boot/pod/src/boot/pod.clj#L621)
 
 ```clojure
 (jar-entries path-or-jarfile & {:keys [cache], :or {cache true}})
@@ -479,7 +518,7 @@ string pairs corresponding to all entries contained the jar contains.
 
 <hr>
 
-### [`jar-entries*`](../../2.5.5/boot/pod/src/boot/pod.clj#L499)
+### [`jar-entries*`](../../2.6.0/boot/pod/src/boot/pod.clj#L599)
 
 ```clojure
 (jar-entries* path-or-jarfile)
@@ -492,7 +531,7 @@ entry in the jar path-or-jarfile, which can be a string or File.
 
 <hr>
 
-### [`jar-entries-memoized*`](../../2.5.5/boot/pod/src/boot/pod.clj#L517)
+### [`jar-entries-memoized*`](../../2.6.0/boot/pod/src/boot/pod.clj#L617)
 
 ```
 Memoized version of jar-entries*.
@@ -500,7 +539,7 @@ Memoized version of jar-entries*.
 
 <hr>
 
-### [`jars-dep-graph`](../../2.5.5/boot/pod/src/boot/pod.clj#L585)
+### [`jars-dep-graph`](../../2.6.0/boot/pod/src/boot/pod.clj#L685)
 
 ```clojure
 (jars-dep-graph env)
@@ -513,7 +552,7 @@ boot environment map env, including transitive dependencies.
 
 <hr>
 
-### [`jars-in-dep-order`](../../2.5.5/boot/pod/src/boot/pod.clj#L591)
+### [`jars-in-dep-order`](../../2.6.0/boot/pod/src/boot/pod.clj#L691)
 
 ```clojure
 (jars-in-dep-order env)
@@ -529,7 +568,7 @@ before jar B in the returned list.
 
 <hr>
 
-### [`lifecycle-pool`](../../2.5.5/boot/pod/src/boot/pod.clj#L621)
+### [`lifecycle-pool`](../../2.6.0/boot/pod/src/boot/pod.clj#L721)
 
 ```clojure
 (lifecycle-pool size create destroy & {:keys [priority]})
@@ -563,7 +602,7 @@ or :refresh, or no arguments.
 
 <hr>
 
-### [`make-pod`](../../2.5.5/boot/pod/src/boot/pod.clj#L705)
+### [`make-pod`](../../2.6.0/boot/pod/src/boot/pod.clj#L805)
 
 ```clojure
 (make-pod) (make-pod {:keys [directories dependencies], :as env})
@@ -576,7 +615,21 @@ may be given to initialize the pod with dependencies, directories, etc.
 
 <hr>
 
-### [`modifiable-classloader?`](../../2.5.5/boot/pod/src/boot/pod.clj#L57)
+### [`map->coord`](../../2.6.0/boot/pod/src/boot/pod.clj#L160)
+
+```clojure
+(map->coord {:keys [project version], :as more})
+```
+
+```
+Returns the dependency vector for the given map representation. The project
+and version will be taken from the values of the :project and :version keys
+and all other keys will be appended pairwise.
+```
+
+<hr>
+
+### [`modifiable-classloader?`](../../2.6.0/boot/pod/src/boot/pod.clj#L58)
 
 ```clojure
 (modifiable-classloader? cl)
@@ -590,7 +643,7 @@ be modified.
 
 <hr>
 
-### [`non-caching-url-input-stream`](../../2.5.5/boot/pod/src/boot/pod.clj#L202)
+### [`non-caching-url-input-stream`](../../2.6.0/boot/pod/src/boot/pod.clj#L231)
 
 ```clojure
 (non-caching-url-input-stream url-str)
@@ -604,7 +657,7 @@ may change.
 
 <hr>
 
-### [`outdated`](../../2.5.5/boot/pod/src/boot/pod.clj#L444)
+### [`outdated`](../../2.6.0/boot/pod/src/boot/pod.clj#L544)
 
 ```clojure
 (outdated env & {:keys [snapshots]})
@@ -619,7 +672,7 @@ only release versions will be considered.
 
 <hr>
 
-### [`pod-id`](../../2.5.5/boot/pod/src/boot/pod.clj#L230)
+### [`pod-id`](../../2.6.0/boot/pod/src/boot/pod.clj#L259)
 
 ```
 Each pod is numbered in the order in which it was created.
@@ -627,7 +680,20 @@ Each pod is numbered in the order in which it was created.
 
 <hr>
 
-### [`pod-pool`](../../2.5.5/boot/pod/src/boot/pod.clj#L729)
+### [`pod-name`](../../2.6.0/boot/pod/src/boot/pod.clj#L353)
+
+```clojure
+(pod-name pod) (pod-name pod new-name)
+```
+
+```
+Returns pod's name if called with one argument, sets pod's name to new-name
+and returns new-name if called with two arguments.
+```
+
+<hr>
+
+### [`pod-pool`](../../2.6.0/boot/pod/src/boot/pod.clj#L829)
 
 ```clojure
 (pod-pool env & {:keys [size init destroy]})
@@ -669,7 +735,7 @@ Options:
 
 <hr>
 
-### [`pods`](../../2.5.5/boot/pod/src/boot/pod.clj#L226)
+### [`pods`](../../2.6.0/boot/pod/src/boot/pod.clj#L255)
 
 ```
 A WeakHashMap whose keys are all of the currently running pods.
@@ -677,7 +743,7 @@ A WeakHashMap whose keys are all of the currently running pods.
 
 <hr>
 
-### [`pom-properties`](../../2.5.5/boot/pod/src/boot/pod.clj#L123)
+### [`pom-properties`](../../2.6.0/boot/pod/src/boot/pod.clj#L124)
 
 ```clojure
 (pom-properties jarpath)
@@ -691,7 +757,7 @@ multiple pom.properties files are present in the jar.
 
 <hr>
 
-### [`pom-properties-map`](../../2.5.5/boot/pod/src/boot/pod.clj#L165)
+### [`pom-properties-map`](../../2.6.0/boot/pod/src/boot/pod.clj#L180)
 
 ```clojure
 (pom-properties-map prop-or-jarpath)
@@ -704,7 +770,7 @@ pom-or-jarpath is either a slurpable thing or a Properties object.
 
 <hr>
 
-### [`pom-xml`](../../2.5.5/boot/pod/src/boot/pod.clj#L175)
+### [`pom-xml`](../../2.6.0/boot/pod/src/boot/pod.clj#L190)
 
 ```clojure
 (pom-xml jarpath) (pom-xml jarpath pompath)
@@ -719,7 +785,7 @@ resource path of the pom.xml file in the jar.
 
 <hr>
 
-### [`pom-xml-map`](../../2.5.5/boot/pod/src/boot/pod.clj#L339)
+### [`pom-xml-map`](../../2.6.0/boot/pod/src/boot/pod.clj#L407)
 
 ```clojure
 (pom-xml-map jarpath) (pom-xml-map jarpath pompath)
@@ -734,7 +800,7 @@ from the jar by the resource path specified by pompath.
 
 <hr>
 
-### [`require-in`](../../2.5.5/boot/pod/src/boot/pod.clj#L392)
+### [`require-in`](../../2.6.0/boot/pod/src/boot/pod.clj#L465)
 
 ```clojure
 (require-in pod ns)
@@ -746,7 +812,7 @@ Evaluates (require 'ns) in the pod. Avoid this function.
 
 <hr>
 
-### [`resolve-dependencies`](../../2.5.5/boot/pod/src/boot/pod.clj#L408)
+### [`resolve-dependencies`](../../2.6.0/boot/pod/src/boot/pod.clj#L501)
 
 ```clojure
 (resolve-dependencies env)
@@ -761,7 +827,7 @@ dependencies includes all transitive dependencies.
 
 <hr>
 
-### [`resolve-dependency-jar`](../../2.5.5/boot/pod/src/boot/pod.clj#L436)
+### [`resolve-dependency-jar`](../../2.6.0/boot/pod/src/boot/pod.clj#L536)
 
 ```clojure
 (resolve-dependency-jar env coord)
@@ -774,7 +840,7 @@ by coord, given the boot environment configuration env.
 
 <hr>
 
-### [`resolve-dependency-jars`](../../2.5.5/boot/pod/src/boot/pod.clj#L416)
+### [`resolve-dependency-jars`](../../2.6.0/boot/pod/src/boot/pod.clj#L516)
 
 ```clojure
 (resolve-dependency-jars env & [ignore-clj?])
@@ -790,7 +856,7 @@ BOOT_CLOJURE_NAME environment setting, which defaults to org.clojure.clojure).
 
 <hr>
 
-### [`resolve-nontransitive-dependencies`](../../2.5.5/boot/pod/src/boot/pod.clj#L429)
+### [`resolve-nontransitive-dependencies`](../../2.6.0/boot/pod/src/boot/pod.clj#L529)
 
 ```clojure
 (resolve-nontransitive-dependencies env dep)
@@ -804,7 +870,35 @@ dependencies of dep's dependencies).
 
 <hr>
 
-### [`resources`](../../2.5.5/boot/pod/src/boot/pod.clj#L106)
+### [`resolve-release-versions`](../../2.6.0/boot/pod/src/boot/pod.clj#L509)
+
+```clojure
+(resolve-release-versions env)
+```
+
+```
+Given environment map env, replaces the versions of dependencies that are
+specified with the special Maven RELEASE version with the concrete versions
+of the resolved dependencies.
+```
+
+<hr>
+
+### [`resource-last-modified`](../../2.6.0/boot/pod/src/boot/pod.clj#L209)
+
+```clojure
+(resource-last-modified resource-path)
+```
+
+```
+Returns the last modified time (long, milliseconds since epoch) of the
+classpath resource at resource-path. A result of 0 usually indicates that
+the modification time was not available for this resource.
+```
+
+<hr>
+
+### [`resources`](../../2.6.0/boot/pod/src/boot/pod.clj#L107)
 
 ```clojure
 (resources resource-name) (resources classloaders resource-name)
@@ -820,7 +914,7 @@ eturns.
 
 <hr>
 
-### [`seal-app-classloader`](../../2.5.5/boot/pod/src/boot/pod.clj#L28)
+### [`seal-app-classloader`](../../2.6.0/boot/pod/src/boot/pod.clj#L29)
 
 ```clojure
 (seal-app-classloader)
@@ -845,7 +939,7 @@ be needed in client code under normal circumstances.
 
 <hr>
 
-### [`send!`](../../2.5.5/boot/pod/src/boot/pod.clj#L283)
+### [`send!`](../../2.6.0/boot/pod/src/boot/pod.clj#L317)
 
 ```clojure
 (send! form)
@@ -857,7 +951,7 @@ This is ALPHA status, it may change, be renamed, or removed.
 
 <hr>
 
-### [`set-data!`](../../2.5.5/boot/pod/src/boot/pod.clj#L247)
+### [`set-data!`](../../2.6.0/boot/pod/src/boot/pod.clj#L280)
 
 ```clojure
 (set-data! x)
@@ -869,7 +963,7 @@ FIXME: document this
 
 <hr>
 
-### [`set-pod-id!`](../../2.5.5/boot/pod/src/boot/pod.clj#L248)
+### [`set-pod-id!`](../../2.6.0/boot/pod/src/boot/pod.clj#L281)
 
 ```clojure
 (set-pod-id! x)
@@ -881,7 +975,7 @@ FIXME: document this
 
 <hr>
 
-### [`set-pods!`](../../2.5.5/boot/pod/src/boot/pod.clj#L246)
+### [`set-pods!`](../../2.6.0/boot/pod/src/boot/pod.clj#L279)
 
 ```clojure
 (set-pods! x)
@@ -893,7 +987,19 @@ FIXME: document this
 
 <hr>
 
-### [`set-worker-pod!`](../../2.5.5/boot/pod/src/boot/pod.clj#L249)
+### [`set-this-pod!`](../../2.6.0/boot/pod/src/boot/pod.clj#L282)
+
+```clojure
+(set-this-pod! x)
+```
+
+```
+FIXME: document this
+```
+
+<hr>
+
+### [`set-worker-pod!`](../../2.6.0/boot/pod/src/boot/pod.clj#L283)
 
 ```clojure
 (set-worker-pod! x)
@@ -905,7 +1011,7 @@ FIXME: document this
 
 <hr>
 
-### [`shutdown-hooks`](../../2.5.5/boot/pod/src/boot/pod.clj#L239)
+### [`shutdown-hooks`](../../2.6.0/boot/pod/src/boot/pod.clj#L272)
 
 ```
 Atom containing shutdown hooks to be performed at exit. This is used instead
@@ -916,7 +1022,7 @@ boot. See #'boot.pod/add-shutdown-hook! for more info.
 
 <hr>
 
-### [`standard-jar-exclusions`](../../2.5.5/boot/pod/src/boot/pod.clj#L527)
+### [`standard-jar-exclusions`](../../2.6.0/boot/pod/src/boot/pod.clj#L627)
 
 ```
 Entries matching these Patterns will not be extracted from jars when they
@@ -925,7 +1031,7 @@ are exploded during uberjar construction.
 
 <hr>
 
-### [`standard-jar-mergers`](../../2.5.5/boot/pod/src/boot/pod.clj#L558)
+### [`standard-jar-mergers`](../../2.6.0/boot/pod/src/boot/pod.clj#L658)
 
 ```
 A vector containing vectors of the form [<path-matcher> <merger-fn>]. These
@@ -935,7 +1041,15 @@ or creating jar files. See boot.task.built-in/uber for more info.
 
 <hr>
 
-### [`unpack-jar`](../../2.5.5/boot/pod/src/boot/pod.clj#L566)
+### [`this-pod`](../../2.6.0/boot/pod/src/boot/pod.clj#L263)
+
+```
+A WeakReference to this pod's shim instance.
+```
+
+<hr>
+
+### [`unpack-jar`](../../2.6.0/boot/pod/src/boot/pod.clj#L666)
 
 ```clojure
 (unpack-jar jar-path dest-dir & opts)
@@ -950,7 +1064,7 @@ be preserved. Files will not be written atomically.
 
 <hr>
 
-### [`with-call-in`](../../2.5.5/boot/pod/src/boot/pod.clj#L321)
+### [`with-call-in`](../../2.6.0/boot/pod/src/boot/pod.clj#L385)
 
 ```clojure
 (with-call-in pod expr)
@@ -964,11 +1078,15 @@ These will be evaluated in the calling scope and substituted in the template
 like the ` (syntax-quote) reader macro.
 
 Note: Unlike syntax-quote, no name resolution is done on the template forms.
+
+Note2: The macro returned value will be nil unless it is
+printable/readable. For instance, returning File objects will not work
+as they are not printable/readable by Clojure.
 ```
 
 <hr>
 
-### [`with-call-worker`](../../2.5.5/boot/pod/src/boot/pod.clj#L334)
+### [`with-call-worker`](../../2.6.0/boot/pod/src/boot/pod.clj#L402)
 
 ```clojure
 (with-call-worker expr)
@@ -980,7 +1098,7 @@ Like with-call-in, evaluating expr in the worker pod.
 
 <hr>
 
-### [`with-eval-in`](../../2.5.5/boot/pod/src/boot/pod.clj#L375)
+### [`with-eval-in`](../../2.6.0/boot/pod/src/boot/pod.clj#L443)
 
 ```clojure
 (with-eval-in pod & body)
@@ -992,12 +1110,17 @@ to the caller. The expr may be a template containing the ~ (unqupte) and
 ~@ (unquote-splicing) reader macros. These will be evaluated in the calling
 scope and substituted in the template like the ` (syntax-quote) reader macro.
 
-Note: Unlike syntax-quote, no name resolution is done on the template forms.
+Note: Unlike syntax-quote, no name resolution is done on the template
+forms.
+
+Note2: The macro returned value will be nil unless it is
+printable/readable. For instance, returning File objects will not work
+as they are not printable/readable by Clojure.
 ```
 
 <hr>
 
-### [`with-eval-worker`](../../2.5.5/boot/pod/src/boot/pod.clj#L387)
+### [`with-eval-worker`](../../2.6.0/boot/pod/src/boot/pod.clj#L460)
 
 ```clojure
 (with-eval-worker & body)
@@ -1009,7 +1132,64 @@ Like with-eval-in, evaluating expr in the worker pod.
 
 <hr>
 
-### [`worker-pod`](../../2.5.5/boot/pod/src/boot/pod.clj#L234)
+### [`with-invoke-in`](../../2.6.0/boot/pod/src/boot/pod.clj#L331)
+
+```clojure
+(with-invoke-in pod [sym & args])
+```
+
+```
+Given a pod, a fully-qualified symbol sym, and args which are Java objects,
+invokes the function denoted by sym with the given args. This is a low-level
+interface--args are not serialized before being passed to the pod and the
+result is not deserialized before being returned. Passing Clojure objects as
+arguments or returning Clojure objects from the pod will result in undefined
+behavior.
+
+This macro correctly handles the case where pod is the current pod without
+thread binding issues: in this case the invocation will be done in another
+thread.
+```
+
+<hr>
+
+### [`with-invoke-worker`](../../2.6.0/boot/pod/src/boot/pod.clj#L348)
+
+```clojure
+(with-invoke-worker [sym & args])
+```
+
+```
+Like with-invoke-in, invoking the function in the worker pod.
+```
+
+<hr>
+
+### [`with-pod`](../../2.6.0/boot/pod/src/boot/pod.clj#L482)
+
+```clojure
+(with-pod pod & body)
+```
+
+```
+FIXME: document this
+```
+
+<hr>
+
+### [`with-worker`](../../2.6.0/boot/pod/src/boot/pod.clj#L488)
+
+```clojure
+(with-worker & body)
+```
+
+```
+FIXME: document this
+```
+
+<hr>
+
+### [`worker-pod`](../../2.6.0/boot/pod/src/boot/pod.clj#L267)
 
 ```
 A reference to the boot worker pod. All pods share access to the worker

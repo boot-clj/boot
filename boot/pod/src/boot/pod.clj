@@ -1,17 +1,18 @@
 (ns boot.pod
   (:require
-    [clojure.set                :as set]
-    [clojure.string             :as string]
-    [boot.util                  :as util]
-    [boot.file                  :as file]
-    [boot.from.backtick         :as bt]
-    [boot.from.digest           :as digest]
+    [clojure.set                  :as set]
+    [clojure.string               :as string]
+    [boot.util                    :as util]
+    [boot.file                    :as file]
+    [boot.xform                   :as xf]
+    [boot.from.backtick           :as bt]
     [boot.from.io.aviso.exception :as ex]
-    [clojure.java.io            :as io]
-    [dynapath.util              :as dp]
-    [dynapath.dynamic-classpath :as cp])
+    [clojure.java.io              :as io]
+    [dynapath.util                :as dp]
+    [dynapath.dynamic-classpath   :as cp])
   (:import
     [java.util.jar        JarFile]
+    [java.lang.ref        WeakReference]
     [java.util            Properties UUID]
     [java.net             URL URLClassLoader URLConnection]
     [java.util.concurrent ConcurrentLinkedQueue LinkedBlockingQueue TimeUnit]
@@ -149,6 +150,20 @@
   (let [[aid gid] (util/extract-ids project)]
     (io/resource (format "META-INF/maven/%s/%s/pom.properties" aid gid))))
 
+(defn coord->map
+  "Returns the map representation for the given dependency vector. The map
+  will include :project and :version keys in addition to any other keys in
+  the dependency vector (eg., :scope, :exclusions, etc)."
+  [[p v & more]]
+  (merge {:project p :version v} (apply hash-map more)))
+
+(defn map->coord
+  "Returns the dependency vector for the given map representation. The project
+  and version will be taken from the values of the :project and :version keys
+  and all other keys will be appended pairwise."
+  [{:keys [project version] :as more}]
+  (into [project version] (mapcat identity (dissoc more :project :version))))
+
 (defn dependency-pom-properties
   "Given a dependency coordinate of the form [id version ...], returns a
   Properties object corresponding to the dependency jar's pom.properties file."
@@ -191,13 +206,27 @@
          (with-open [in (.getInputStream jarfile entry)]
            (slurp in)))))))
 
+(defn resource-last-modified
+  "Returns the last modified time (long, milliseconds since epoch) of the
+  classpath resource at resource-path. A result of 0 usually indicates that
+  the modification time was not available for this resource."
+  [resource-path]
+  (let [c (.openConnection (io/resource resource-path))]
+      (try (.getLastModified c)
+           (finally (.. c getInputStream close)))))
+
 (defn copy-resource
-  "Copies the contents of the jar resource at resource-path to the path or File
-  out-path on the filesystem. The copy operation is not atomic."
+  "Copies the contents of the classpath resource at resource-path to the path or
+  File out-path on the filesystem, preserving last modified times when possible.
+  The copy operation is not atomic."
   [resource-path out-path]
-  (with-open [in  (io/input-stream (io/resource resource-path))
-              out (io/output-stream (doto (io/file out-path) io/make-parents))]
-    (io/copy in out)))
+  (let [url  (io/resource resource-path)
+        outf (doto (io/file out-path) io/make-parents)]
+    (with-open [in  (io/input-stream url)
+                out (io/output-stream outf)]
+      (io/copy in out)
+      (let [mtime (resource-last-modified resource-path)]
+        (when (< 0 mtime) (.setLastModified outf mtime))))))
 
 (defn non-caching-url-input-stream
   "Returns an InputStream from the URL constructed from url-str, with caching
@@ -231,6 +260,10 @@
   "Each pod is numbered in the order in which it was created."
   nil)
 
+(def this-pod
+  "A WeakReference to this pod's shim instance."
+  nil)
+
 (def worker-pod
   "A reference to the boot worker pod. All pods share access to the worker
   pod singleton instance."
@@ -246,6 +279,7 @@
 (defn set-pods!         [x] (alter-var-root #'pods        (constantly x)))
 (defn set-data!         [x] (alter-var-root #'data        (constantly x)))
 (defn set-pod-id!       [x] (alter-var-root #'pod-id      (constantly x)))
+(defn set-this-pod!     [x] (alter-var-root #'this-pod    (constantly x)))
 (defn set-worker-pod!   [x] (alter-var-root #'worker-pod  (constantly x)))
 
 (defn get-pods
@@ -294,6 +328,36 @@
     (apply f args)
     (throw (Exception. (format "can't resolve symbol (%s)" f)))))
 
+(defmacro with-invoke-in
+  "Given a pod, a fully-qualified symbol sym, and args which are Java objects,
+  invokes the function denoted by sym with the given args. This is a low-level
+  interface--args are not serialized before being passed to the pod and the
+  result is not deserialized before being returned. Passing Clojure objects as
+  arguments or returning Clojure objects from the pod will result in undefined
+  behavior.
+
+  This macro correctly handles the case where pod is the current pod without
+  thread binding issues: in this case the invocation will be done in another
+  thread."
+  [pod [sym & args]]
+  `(let [pod# ~pod]
+     (if (not= pod# (.get this-pod))
+       (.invoke pod# ~(str sym) ~@args)
+       (deref (future (.invoke pod# ~(str sym) ~@args))))))
+
+(defmacro with-invoke-worker
+  "Like with-invoke-in, invoking the function in the worker pod."
+  [[sym & args]]
+  `(with-invoke-in worker-pod (~sym ~@args)))
+
+(defn pod-name
+  "Returns pod's name if called with one argument, sets pod's name to new-name
+  and returns new-name if called with two arguments."
+  ([pod]
+   (.getName pod))
+  ([pod new-name]
+   (.setName pod new-name) new-name))
+
 (defn call-in*
   "Low-level interface by which expressions are evaluated in other pods. The
   two-arity version is invoked in the caller with a pod instance and an expr
@@ -314,8 +378,8 @@
        (binding [*print-meta* meta?]
          (pr-str (eval-fn-call expr)))))
   ([pod expr]
-     (let [ret (.invoke pod "boot.pod/call-in*"
-                 (pr-str {:meta? *print-meta* :expr expr}))]
+     (let [arg (pr-str {:meta? *print-meta* :expr expr})
+           ret (with-invoke-in pod (boot.pod/call-in* arg))]
        (util/guard (read-string ret)))))
 
 (defmacro with-call-in
@@ -325,7 +389,11 @@
   These will be evaluated in the calling scope and substituted in the template
   like the ` (syntax-quote) reader macro.
 
-  Note: Unlike syntax-quote, no name resolution is done on the template forms."
+  Note: Unlike syntax-quote, no name resolution is done on the template forms.
+
+  Note2: The macro returned value will be nil unless it is
+  printable/readable. For instance, returning File objects will not work
+  as they are not printable/readable by Clojure."
   [pod expr]
   `(if-not ~pod
      (eval-fn-call (bt/template ~expr))
@@ -359,7 +427,7 @@
 
   Unlike call-in*, expr can be any expression, without the restriction that it
   be of the form (f & args).
-  
+
   Note: Since forms must be serialized to pass from one pod to another it is
   not always appropriate to include metadata, as metadata may contain eg. File
   objects which are not printable/readable by Clojure."
@@ -368,24 +436,30 @@
        (binding [*print-meta* meta?]
          (pr-str (eval expr)))))
   ([pod expr]
-     (let [ret (.invoke pod "boot.pod/eval-in*"
-                 (pr-str {:meta? *print-meta* :expr expr}))]
+     (let [arg (pr-str {:meta? *print-meta* :expr expr})
+           ret (with-invoke-in pod (boot.pod/eval-in* arg))]
        (util/guard (read-string ret)))))
 
 (defmacro with-eval-in
-  "Given a pod and an expr, evaluates expr in the pod and returns the result
-  to the caller. The expr may be a template containing the ~ (unqupte) and
-  ~@ (unquote-splicing) reader macros. These will be evaluated in the calling
-  scope and substituted in the template like the ` (syntax-quote) reader macro.
+  "Given a pod and an expr, evaluates the body in the pod and returns the
+  result to the caller. The body may be a template containing the ~ (unqupte)
+  and ~@ (unquote-splicing) reader macros. These will be evaluated in the
+  calling scope and substituted in the template like the ` (syntax-quote)
+  reader macro.
 
-  Note: Unlike syntax-quote, no name resolution is done on the template forms."
+  Note: Unlike syntax-quote, no name resolution is done on the template
+  forms.
+
+  Note2: The macro returned value will be nil unless it is printable/readable.
+  For instance, returning File objects will not work as they are not printable
+  and readable by Clojure."
   [pod & body]
   `(if-not ~pod
      (eval (bt/template (do ~@body)))
      (eval-in* ~pod (bt/template (do ~@body)))))
 
 (defmacro with-eval-worker
-  "Like with-eval-in, evaluating expr in the worker pod."
+  "Like with-eval-in, evaluates the body in the worker pod."
   [& body]
   `(with-eval-in worker-pod ~@body))
 
@@ -396,14 +470,71 @@
     (with-eval-in
       (require '~(symbol (str ns))))))
 
+(defn eval-in-callee
+  "Implementation detail. This is the callee side of the boot.pod/with-pod
+  mechanism (i.e. this is the function that's called in the pod to perform
+  the work)."
+  [caller-pod callee-pod expr]
+  (eval (xf/->clj caller-pod callee-pod expr :for-eval true)))
+
+(defn eval-in-caller
+  "Implementation detail. This is the caller side of the boot.pod/with-pod
+  mechanism (i.e. this is the function that's called in the caller pod to
+  send work to the callee pod so the callee pod can perform the work)."
+  [caller-pod callee-pod expr]
+  (xf/->clj callee-pod caller-pod
+            (with-invoke-in (.get callee-pod)
+              (boot.pod/eval-in-callee caller-pod callee-pod expr))))
+
+(defmacro with-pod
+  "Like boot.pod/with-eval-in but with the ability to pass most types between
+  the caller and the pod.
+
+  Supports the normal types that are recognized by the Clojure reader, plus
+  functions, records, and all Java types. (The namespace in which the record
+  type is defined must be on the classpath in the pod.)"
+  [pod & body]
+  `(if-not ~pod
+     (eval (bt/template (do ~@body)))
+     (eval-in-caller this-pod (WeakReference. ~pod) (bt/template (do ~@body)))))
+
+(defmacro with-worker
+  "Like with-pod, evaluates the body in the worker pod."
+  [& body]
+  `(with-pod worker-pod ~@body))
+
+(defn canonical-id
+  "Given a project id symbol, returns the canonical form, with the group id
+  as the namespace of the resulting symbol only if it's not the same as the
+  artifact id.
+
+  For example: (canonical-id 'foo/foo) ;=> foo
+               (canonical-id 'foo/bar) ;=> foo/bar"
+  [id]
+  (when id
+    (let [[ns nm] ((juxt namespace name) id)]
+      (if (not= ns nm) id))))
+
+(defn full-id
+  "Given a project id symbol, returns the fully qualified form, with the group
+  id as the namespace of the resulting symbol and the artifact id as the name.
+
+  For example: (full-id 'foo)     ;=> foo/foo
+               (full-id 'foo/bar) ;=> foo/bar"
+  [id]
+  (when id
+    (let [[ns nm] ((juxt namespace name) id)]
+      (symbol (or ns nm) nm))))
+
 (defn canonical-coord
   "Given a dependency coordinate of the form [id version ...], returns the
-  canonical form, i.e. the id symbol is always fully qualified.
-  
-  For example: (canonical-coord '[foo \"1.2.3\"]) ;=> [foo/foo \"1.2.3\"]"
+  canonical form, i.e. the id symbol is not fully qualified when the artifact
+  and group ids are the same.
+
+  For example: (canonical-coord '[foo/foo \"1.2.3\"]) ;=> [foo \"1.2.3\"]
+               (canonical-coord '[foo/bar \"1.2.3\"]) ;=> [foo/bar \"1.2.3\"]"
   [[id & more :as coord]]
-  (let [[ns nm] ((juxt namespace name) id)]
-    (assoc-in (vec coord) [0] (if (not= ns nm) id (symbol nm)))))
+  (assoc-in (vec coord) [0] (canonical-id id)))
 
 (defn resolve-dependencies
   "Returns a seq of maps of the form {:jar <path> :dep <dependency vector>}
@@ -412,6 +543,13 @@
   dependencies includes all transitive dependencies."
   [env]
   (with-call-worker (boot.aether/resolve-dependencies ~env)))
+
+(defn resolve-release-versions
+  "Given environment map env, replaces the versions of dependencies that are
+  specified with the special Maven RELEASE version with the concrete versions
+  of the resolved dependencies."
+  [env]
+  (with-call-worker (boot.aether/resolve-release-versions ~env)))
 
 (defn resolve-dependency-jars
   "Returns a seq of File objects corresponding to the jar files associated with
@@ -574,7 +712,7 @@
             :when (not (.isDirectory entry))]
       (let [ent-name (.getName entry)
             out-file (doto (io/file dest-dir ent-name) io/make-parents)]
-        (try (util/dbug "Unpacking %s from %s...\n" ent-name (.getName jf))
+        (try (util/dbug* "Unpacking %s from %s...\n" ent-name (.getName jf))
              (with-open [in-stream  (.getInputStream jf entry)
                          out-stream (io/output-stream out-file)]
                (io/copy in-stream out-stream))
@@ -672,7 +810,7 @@
   [env pod]
   (doto pod
     (require-in "boot.pod")
-    (.invoke "boot.pod/set-worker-pod!" worker-pod)
+    (with-invoke-in (boot.pod/set-worker-pod! worker-pod))
     (with-eval-in
       (require 'boot.util 'boot.pod)
       (reset! boot.util/*verbosity* ~(deref util/*verbosity*))
@@ -704,9 +842,17 @@
 
 (defn make-pod
   "Returns a newly constructed pod. A boot environment configuration map, env,
-  may be given to initialize the pod with dependencies, directories, etc."
+  may be given to initialize the pod with dependencies, directories, etc.
+
+  The :name option sets the name of the pod. Default uses the namespace of
+  the caller as the pod's name.
+
+  The :data option sets the boot.pod/data object in the pod. The data object
+  is used to coordinate different pods, for example the data object could be
+  a BlockingQueue or ConcurrentHashMap shared with other pods. Default uses
+  boot.pod/data from the current pod."
   ([] (init-pod! env (boot.App/newPod nil data)))
-  ([{:keys [directories dependencies] :as env}]
+  ([{:keys [directories dependencies] :as env} & {:keys [name data]}]
      (let [dirs (map io/file directories)
            cljname (or (boot.App/getClojureName) "org.clojure/clojure")
            dfl  [['boot/pod (boot.App/getBootVersion)]
@@ -715,9 +861,28 @@
            jars (resolve-dependency-jars env)
            urls (concat dirs jars)]
        (doto (->> (into-array java.io.File urls)
-                  (boot.App/newShim nil data)
+                  (boot.App/newShim nil (or data boot.pod/data))
                   (init-pod! env))
-         (.setName (caller-namespace))))))
+         (pod-name (or name (caller-namespace)))))))
+
+(defn make-pod-cp
+  "Returns a new pod with the given classpath. Classpath may be a collection
+  of java.lang.String or java.io.File objects.
+
+  The :name and :data options are the same as for boot.pod/make-pod.
+
+  NB: The classpath must include Clojure (either clojure.jar or directories),
+  but must not include Boot's pod.jar, Shimdandy's impl, or Dynapath. These
+  are needed to bootstrap the pod, have no transitive dependencies, and are
+  added automatically."
+  [classpath & {:keys [name data]}]
+  (doto (->> (assoc env :dependencies [['boot/pod (boot.App/getBootVersion)]])
+             (resolve-dependency-jars)
+             (into (map io/file classpath))
+             (into-array java.io.File)
+             (boot.App/newShim nil (or data boot.pod/data))
+             (init-pod! nil))
+    (pod-name (or name (caller-namespace)))))
 
 (defn destroy-pod
   "Closes open resources held by the pod, making the pod eligible for GC."
@@ -730,7 +895,7 @@
   "Creates a pod pool service. The service maintains a pool of prebuilt pods
   with a current active pod and a number of pods in reserve, warmed and ready
   to go (it takes ~2s to load clojure.core into a pod).
-  
+
   Pool Service API:
   -----------------
 

@@ -45,7 +45,7 @@
 (def ^:dynamic *colorize?*
   "Atom containing the value that determines whether ANSI colors escape codes
   will be printed with boot output."
-  (atom false))
+  (atom (colorize?-system-default)))
 
 (defn- print*
   [verbosity color args]
@@ -54,37 +54,76 @@
       (print ((or color identity) (apply format args)))
       (flush))))
 
+(defmacro dbug*
+  "Macro version of boot.util/dbug, arguments are only evaluated when the
+  message will be printed (i.e., verbosity level >= 2)."
+  [fmt & args]
+  `(when (>= @*verbosity* 2)
+     (binding [*out* *err*]
+       (print (ansi/bold-cyan (format ~fmt ~@args))))))
+
 (defn dbug
   "Print DEBUG level message. Arguments of the form fmt & args suitable for
-  passing to clojure.core/format."
+  passing to clojure.core/format.
+
+  Note that boot.util/*verbosity* in a pod needs to be altered AFTER pod
+  creation or log level won't be affected."
   [& more]
-  (print* 2 ansi/bold-cyan   more))
+  (print* 2 ansi/bold-cyan more))
 
 (defn info
   "Print INFO level message. Arguments of the form fmt & args suitable for
-  passing to clojure.core/format."
+  passing to clojure.core/format.
+
+  Note that boot.util/*verbosity* in a pod needs to be altered AFTER pod
+  creation or log level won't be affected."
   [& more]
-  (print* 1 ansi/bold        more))
+  (print* 1 ansi/bold more))
 
 (defn warn
   "Print WARNING level message. Arguments of the form fmt & args suitable for
-  passing to clojure.core/format."
+  passing to clojure.core/format.
+
+  Note that boot.util/*verbosity* in a pod needs to be altered AFTER pod
+  creation or log level won't be affected."
   [& more]
   (print* 1 ansi/bold-yellow more))
 
 (defn fail
   "Print ERROR level message. Arguments of the form fmt & args suitable for
-  passing to clojure.core/format."
+  passing to clojure.core/format.
+
+  Note that boot.util/*verbosity* in a pod needs to be altered AFTER pod
+  creation or log level won't be affected."
   [& more]
-  (print* 1 ansi/bold-red    more))
+  (print* 1 ansi/bold-red more))
 
 (defn warn-deprecated
   "Print WARNING level message. Arguments of the form fmt & args suitable for
   passing to clojure.core/format. Respects the BOOT_WARN_DEPRECATED environment
-  variable, which if set to no suppresses these messages."
+  variable, which if set to no suppresses these messages.
+
+  Note that boot.util/*verbosity* in a pod needs to be altered AFTER pod
+  creation or log level won't be affected."
   [& args]
   (when-not (= "no" (boot.App/config "BOOT_WARN_DEPRECATED"))
     (apply warn args)))
+
+(defmacro extends-protocol
+  "Like extend-protocol but allows specifying multiple classes for each of the
+  implementations:
+  
+      (extends-protocol IFoo
+        clojure.lang.MapEntry         ; <-- this is the difference, multiple
+        clojure.lang.PersistentVector ; <-- classes per implementation
+        (-foo [x] (into [] (map bar x))))"
+  [protocol & specs]
+  (let [class? #(or (symbol? %) (nil? %))]
+    `(extend-protocol ~protocol
+       ~@(mapcat identity
+           (for [[classes impls] (partition 2 (partition-by class? specs))
+                 class classes]
+             `(~class ~@impls))))))
 
 (defmacro with-semaphore
   "Acquires a permit from the Semaphore sem, blocking if necessary, and then
@@ -93,10 +132,10 @@
   [sem & body]
   `(let [sem# ~sem]
      (.acquire sem#)
-     (dbug "Acquired %s...\n" sem#)
+     (dbug* "Acquired %s...\n" sem#)
      (try ~@body
           (finally (.release sem#)
-                   (dbug "Released %s...\n" sem#)))))
+                   (dbug* "Released %s...\n" sem#)))))
 
 (defmacro with-semaphore-noblock
   "Attempts to acquire a permit from the Semaphore sem. If successful the body
@@ -105,10 +144,10 @@
   [sem & body]
   `(let [sem# ~sem]
      (when (.tryAcquire sem#)
-       (dbug "Acquired %s...\n" sem#)
+       (dbug* "Acquired %s...\n" sem#)
        (try ~@body
             (finally (.release sem#)
-                     (dbug "Released %s...\n" sem#))))))
+                     (dbug* "Released %s...\n" sem#))))))
 
 (defmacro with-let
   "Binds resource to binding and evaluates body. Then, returns resource. It's
@@ -172,8 +211,11 @@
 
 (defmacro exit-error
   "Binds *out* to *err*, evaluates the body, and exits with non-zero status.
-  
-  Note: This macro does not call System.exit(), because this instance of boot
+
+  Notes:
+  * This is the preferred method for returning an exit code != 0, this
+  method returns 1.
+  * This macro does not call System.exit(), because this instance of boot
   may be nested in another boot instance. Instead a special method on boot.App
   is called which handles the exit behavior (calling shutdown hooks etc.)."
   [& body]
@@ -183,8 +225,11 @@
 
 (defmacro exit-ok
   "Evaluates the body, and exits with non-zero status.
-  
-  Note: This macro does not call System.exit(), because this instance of boot
+
+  Notes:
+  * Boot's main explicitly wraps user tasks in exit-ok so that in general
+  it is not necessary to call it for exiting with 0.
+  * This macro does not call System.exit(), because this instance of boot
   may be nested in another boot instance. Instead a special method on boot.App
   is called which handles the exit behavior (calling shutdown hooks etc.)."
   [& body]
@@ -287,6 +332,15 @@
   (let [d {:project project :version version}]
     (merge {:scope "compile"}
       (if-not (seq kvs) d (apply assoc d kvs)))))
+
+(defn map-as-dep
+  "Returns the given dependency vector with :project and :version put at
+  index 0 and 1 respectively and modifiers (eg. :scope, :exclusions,
+  etc) next."
+  [{:keys [project version] :as dep-map}]
+  (let [kvs (remove #(or (some #{:project :version} %)
+                         (= [:scope "compile"] %)) dep-map)]
+    (vec (remove nil? (into [project version] (mapcat identity kvs))))))
 
 (defn jarname
   "Generates a friendly name for the jar file associated with the given project

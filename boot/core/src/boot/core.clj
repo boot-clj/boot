@@ -16,15 +16,17 @@
     [boot.tmpdir                  :as tmpd]
     [boot.util                    :as util]
     [boot.from.io.aviso.exception :as ex]
-    [boot.from.clojure.tools.cli  :as cli])
+    [boot.from.clojure.tools.cli  :as cli]
+    [boot.from.backtick           :as bt])
   (:import
     [boot App]
     [java.io File]
+    [java.nio.file Path Paths]
     [java.net URLClassLoader URL]
     [java.lang.management ManagementFactory]
-    [java.util.concurrent LinkedBlockingQueue TimeUnit Semaphore]))
+    [java.util.concurrent LinkedBlockingQueue TimeUnit Semaphore ExecutionException]))
 
-(declare watch-dirs sync! post-env! get-env set-env! tmp-file tmp-dir ls)
+(declare watch-dirs post-env! get-env set-env! tmp-file tmp-dir ls empty-dir! patch!)
 
 (declare ^{:dynamic true :doc "The running version of boot app."}         *app-version*)
 (declare ^{:dynamic true :doc "The script's name (when run as script)."}  *boot-script*)
@@ -39,15 +41,29 @@
 ;; Internal helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^:private cli-base          (atom {}))
-(def ^:private tmpregistry       (atom nil))
+(def ^:private tmpregistry       (->> (io/file ".")
+                                      .getCanonicalFile
+                                      file/split-path
+                                      rest
+                                      (apply io/file (App/getBootDir) "cache" "tmp")
+                                      tmp/registry
+                                      tmp/init!
+                                      delay))
 (def ^:private cleanup-fns       (atom []))
 (def ^:private boot-env          (atom nil))
 (def ^:private tempdirs          (atom #{}))
 (def ^:private tempdirs-lock     (Semaphore. 1 true))
+(def ^:private sync-dirs-lock    (Semaphore. 1 true))
 (def ^:private src-watcher       (atom (constantly nil)))
 (def ^:private repo-config-fn    (atom identity))
+(def ^:private loaded-checkouts  (atom {}))
+(def ^:private checkout-dirs     (atom #{}))
 (def ^:private default-repos     [["clojars"       {:url "https://clojars.org/repo/"}]
                                   ["maven-central" {:url "https://repo1.maven.org/maven2"}]])
+(def ^:private default-mirrors   (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
+                                              m (boot.App/config "BOOT_MAVEN_CENTRAL_MIRROR")
+                                              f #(when %1 {%2 {:name (str %2 " mirror") :url %1}})]
+                                          (merge {} (f c "clojars") (f m "maven-central")))))
 
 (def ^:private masks
   {:user     {:user true}
@@ -56,7 +72,11 @@
    :cache    {:input nil :output nil}
    :asset    {:input nil :output true}
    :source   {:input true :output nil}
-   :resource {:input true :output true}})
+   :resource {:input true :output true}
+   :checkout {:input nil :output nil :user nil :checkout true}})
+
+(defn- genkw [& [prefix-string :as args]]
+  (->> [(ns-name *ns*) (apply gensym args)] (map str) (apply keyword)))
 
 (defn- get-dirs [this masks+]
   (let [dirs        (:dirs this)
@@ -89,11 +109,10 @@
         m (->> masks+ (map masks) (apply merge))
         in-fileset? (or (:input m) (:output m))]
     (util/with-let [d (tmp-dir* k)]
-      (when in-fileset?
-        (let [t (tmpd/map->TmpDir (assoc m :dir d))]
-          (swap! tempdirs conj t)
-          (when (:input t)
-            (set-env! :directories #(conj % (.getPath (:dir t))))))))))
+      (cond (:checkout m) (swap! checkout-dirs conj d)
+            in-fileset?   (swap! tempdirs conj (tmpd/map->TmpDir (assoc m :dir d))))
+      (when (or (:checkout m) (:input m))
+        (set-env! :directories #(conj % (.getPath d)))))))
 
 (defn- add-user-asset    [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :asset}) dir {}))
 (defn- add-user-source   [fileset dir] (tmpd/add fileset (get-add-dir fileset #{:user :source}) dir {}))
@@ -110,42 +129,57 @@
 
 (defn- sync-user-dirs!
   []
-  (doseq [[k d] {:source-paths   (user-source-dirs)
-                 :resource-paths (user-resource-dirs)
-                 :asset-paths    (user-asset-dirs)}]
-    (when-let [s (->> (get-env k)
-                      (filter #(.isDirectory (io/file %)))
-                      seq)]
-      (util/dbug "Syncing project dirs to temp dirs...\n")
-      (binding [file/*hard-link* false
-                file/*ignore*    @bootignore]
-        (util/with-semaphore tempdirs-lock
-          (apply file/sync! :time (first d) s))))))
+  (util/with-semaphore-noblock sync-dirs-lock
+    (let [debug-mesg (delay (util/dbug* "Syncing project dirs to temp dirs...\n"))]
+      (doseq [[k d] {:asset-paths    (user-asset-dirs)
+                     :source-paths   (user-source-dirs)
+                     :resource-paths (user-resource-dirs)
+                     :checkout-paths @checkout-dirs}]
+        @debug-mesg
+        (patch! (first d) (get-env k) :ignore @bootignore))
+      (util/dbug* "Sync complete.\n"))))
 
 (defn- set-fake-class-path!
-  "Sets the fake.class.path system property to reflect all JAR files on the
-  pod class path plus the :source-paths and :resource-paths. Note that these
-  directories are not actually on the class path (this is why it's the fake
-  class path). This property is a workaround for IDEs and tools that expect
-  the full class path to be determined by the java.class.path property.
+  "Sets the :fake-class-path environment property to reflect all JAR files on
+  the pod class path plus the :source-paths and :resource-paths. Note that
+  these directories are not actually on the class path (this is why it's the
+  fake class path). This property is a workaround for IDEs and tools that
+  expect the full class path to be determined by the java.class.path property.
 
-  Also sets the boot.class.path system property which is the same as above
+  Also sets the :boot-class-path environment property which is the same as above
   except that the actual class path directories are used instead of the user's
   project directories. This property can be used to configure Java tools that
   would otherwise be looking at java.class.path expecting it to have the full
   class path (the javac task uses it, for example, to configure the Java com-
-  piler class)."
+  piler class).
+
+  Also sets system properties fake.class.path and boot.class.path which mirror
+  their environment counterparts, but are updated jvm-wide when changed. They
+  are not reliable within a pod environment for this reason."
+
   []
-  (let [user-dirs  (->> (get-env)
-                        ((juxt :source-paths :resource-paths))
-                        (apply concat)
-                        (map #(.getAbsolutePath (io/file %))))
-        paths      (->> (pod/get-classpath) (map #(.getPath (URL. %))))
-        dir?       (comp (memfn isDirectory) io/file)
-        fake-paths (->> paths (remove dir?) (concat user-dirs))
-        separated  (partial string/join (System/getProperty "path.separator"))]
-    (System/setProperty "boot.class.path" (separated paths))
-    (System/setProperty "fake.class.path" (separated fake-paths))))
+  (.start
+    (Thread.
+      (bound-fn []
+        (let [user-dirs       (->> (get-env)
+                                   ((juxt :source-paths :resource-paths))
+                                   (apply concat)
+                                   (map #(.getAbsolutePath (io/file %))))
+              paths           (->> (pod/get-classpath)
+                                   (map #(.getPath (.toFile (Paths/get (.toURI (URL. %)))))))
+              dir?            (comp (memfn isDirectory) io/file)
+              fake-paths      (->> paths (remove dir?) (concat user-dirs))
+              separated       (partial string/join (System/getProperty "path.separator"))
+              boot-class-path (separated paths)
+              fake-class-path (separated fake-paths)]
+
+          (when (or (not= boot-class-path (get-env :boot-class-path))
+                    (not= fake-class-path (get-env :fake-class-path)))
+            (set-env! :fake-class-path fake-class-path
+                      :boot-class-path boot-class-path))
+          ;; Kept for backwards compatibility
+          (System/setProperty "boot.class.path" boot-class-path)
+          (System/setProperty "fake.class.path" fake-class-path))))))
 
 (defn- set-user-dirs!
   "Resets the file watchers that sync the project directories to their
@@ -153,7 +187,7 @@
   []
   (@src-watcher)
   (let [debounce  (or (get-env :watcher-debounce) 10)
-        env-keys  [:source-paths :resource-paths :asset-paths]
+        env-keys  [:source-paths :resource-paths :asset-paths :checkout-paths]
         dir-paths (set (->> (mapcat get-env env-keys)
                             (filter #(.isDirectory (io/file %)))))
         on-change (fn [_]
@@ -184,43 +218,87 @@
   (#'clojure.core/load-data-readers)
   (set! *data-readers* (.getRawRoot #'*data-readers*)))
 
+(defn- map-of-deps
+  "build a map of dependency sym to version, including transitive deps."
+  [env deps]
+  (->> (assoc env :dependencies deps)
+       pod/resolve-dependencies
+       (map (juxt (comp first :dep) (comp second :dep)))
+       (into {})))
+
 (defn- find-version-conflicts
   "compute a seq of [name new-coord old-coord] elements describing version conflicts
-   when resolving the 'old' dependency vector and the 'new' dependency vector"
+  when resolving the 'old' dependency vector and the 'new' dependency vector"
   [old new env]
-  (let [resolve-deps (fn [deps] (->> deps
-                                     (assoc env :dependencies)
-                                     pod/resolve-dependencies
-                                     (map (juxt (comp first :dep) (comp second :dep)))
-                                     (into {})))
-        old-deps (resolve-deps old)
-        new-deps (resolve-deps new)]
-    (->> new-deps
-         (map (fn [[name coord]] [name coord (get old-deps name coord)]))
-         (remove (fn [[name new-coord old-coord]] (= new-coord old-coord))))))
+  (let [clj-name (symbol (boot.App/getClojureName))
+        old-deps (-> (map-of-deps env old)
+                     (assoc clj-name (clojure-version)))]
+    (->> (map-of-deps env new) (keep (fn [[name coord]]
+                                       (let [c (old-deps name coord)]
+                                         (when (not= coord c) [name coord c])))))))
 
 (defn- report-version-conflicts
   "Warn, when the version of a dependency changes. Call this with the
   result of find-version-conflicts as arguments"
   [coll]
-  (doseq [[name new-coord old-coord] coll]
-    (util/warn "Warning: version conflict detected: %s version changes from %s to %s\n" name old-coord new-coord)))
-
-(defn- add-dependencies!
-  "Add Maven dependencies to the classpath, fetching them if necessary."
-  [old new env]
-  (assert (vector? new) "env :dependencies must be a vector")
-  (let [new (pod/apply-global-exclusions (:exclusions env) new)]
-    (report-version-conflicts (find-version-conflicts old new env))
-    (->> new (assoc env :dependencies) pod/add-dependencies)
-    (set-fake-class-path!)
-    new))
+  (let [clj-name (symbol (boot.App/getClojureName))]
+    (doseq [[name new-coord old-coord] coll]
+      (let [op (if (= name clj-name) "NOT" "ALSO")]
+        (-> "Classpath conflict: %s version %s already loaded, %s loading version %s\n"
+            (util/warn name old-coord op new-coord))))))
 
 (defn- add-directories!
   "Add URLs (directories or jar files) to the classpath."
   [dirs]
   (set-fake-class-path!)
   (doseq [dir dirs] (pod/add-classpath dir)))
+
+(defn- add-checkout-dependencies!
+  "Add checkout dependencies that have not already been added."
+  [{:keys [checkouts dependencies] :as env}]
+  (let [loaded-syms   (->> @loaded-checkouts keys set)
+        new-checkouts (->> checkouts (remove (comp loaded-syms first)))]
+    (loop [dirs [] [[p :as dep] & deps] new-checkouts]
+      (if-not p
+        (when (seq dirs) (add-directories! dirs))
+        (let [env       (dissoc env :checkouts)
+              tmp       (tmp-dir* (genkw "checkout-tmp"))
+              tmp-state (atom nil)
+              jar-path  (pod/resolve-dependency-jar env dep)
+              jar-dir   (.getParent (io/file jar-path))
+              debounce  (or (:watcher-debounce env) 10)
+              on-change (fn [_]
+                          (util/dbug* "Refreshing checkout dependency %s...\n" (str p))
+                          (util/with-semaphore tempdirs-lock
+                            (with-open [jarfs (fs/mkjarfs (io/file jar-path))]
+                              (->> (patch! tmp [(fs/->path jarfs)] :state @tmp-state)
+                                   (reset! tmp-state)))))]
+          (util/info "Adding checkout dependency %s...\n" (str p))
+          (set-env! :checkout-paths #(conj % (.getPath tmp)))
+          (watch-dirs on-change [jar-dir] :debounce debounce)
+          (swap! loaded-checkouts assoc p {:dir tmp :jar (io/file jar-path)})
+          (recur (conj dirs (.getPath tmp)) deps))))))
+
+(defn- add-dependencies!
+  "Add Maven dependencies to the classpath, fetching them if necessary."
+  [old new {:keys [exclusions checkouts] :as env}]
+  (assert (vector? new) "env :dependencies must be a vector")
+  (let [versions (reduce #(apply assoc %1 (take 2 %2)) {} checkouts)
+        dep-syms (set (map first new))
+        chk-syms (set (map first checkouts))
+        missing  (set/difference chk-syms dep-syms)
+        new      (->> (pod/apply-global-exclusions exclusions new)
+                      (mapv (fn [[p v :as d]] (assoc d 1 (versions p v))))
+                      (assoc env :dependencies)
+                      (pod/resolve-release-versions)
+                      :dependencies)]
+    (when (seq missing)
+      (util/warn "Checkout deps missing from :dependencies in env: %s\n" (string/join ", " missing)))
+    (report-version-conflicts (find-version-conflicts old new env))
+    (->> new (assoc env :dependencies) pod/add-dependencies)
+    (add-checkout-dependencies! env)
+    (set-fake-class-path!)
+    new))
 
 (defn- configure!*
   "Performs side-effects associated with changes to the env atom. Boot adds this
@@ -242,8 +320,10 @@
    (add-wagon! old new env nil))
   ([old new env scheme-map]
    (doseq [maven-coord new]
-     (pod/with-call-worker
-       (boot.aether/add-wagon ~env ~maven-coord ~scheme-map)))
+     (let [{:keys [schemes] :as coord-map} (pod/coord->map maven-coord)
+           maven-coord (pod/map->coord (dissoc coord-map :schemes))]
+       (pod/with-call-worker
+         (boot.aether/add-wagon ~env ~maven-coord ~(or scheme-map schemes)))))
    new))
 
 (defn- order-set-env-keys
@@ -266,7 +346,7 @@
            warn# (delay (util/warn-deprecated @msg#))]
        (do (defn ~(with-meta was {:deprecated version}) [& args#]
              @warn#
-             (util/dbug (ex/format-exception (Exception. @msg#)))
+             (util/dbug* (ex/format-exception (Exception. @msg#)))
              (apply ~is args#))
            (alter-meta! #'~was assoc :doc @msg#)))))
 
@@ -417,47 +497,143 @@
        (tmpd/cp fileset src-file)))
 
 (defn add-asset
-  "Add the contents of the java.io.File dir to the fileset's assets."
-  [fileset ^File dir & {:keys [mergers include exclude] :as opts}]
+  "Add the contents of the java.io.File dir to the fileset's assets.
+
+  Option :include and :exclude, a #{} of regex expressions, control
+  which paths are added; a path is only added if it matches an :include
+  regex and does not match any :exclude regexes.
+
+  If the operation produces duplicate entries, they will be merged using
+  the rules specified by the :mergers option. A merge rule is a
+  [regex fn] pair, where fn takes three parameters:
+
+  - an InputStream for the previous entry,
+  - an InputStream of the new entry,
+  - and an OutputStream that will replace the entry.
+
+  You will typically use default mergers as in:
+
+    [[ #\"data_readers.clj$\"    into-merger       ]
+     [ #\"META-INF/services/.*\" concat-merger     ]
+     [ #\".*\"                   first-wins-merger ]]
+
+  The merge rule regular expressions are tested in order, and the fn
+  from the first match is applied.
+
+  The :meta option can be used to provide a map of metadata which will be
+  merged into each TmpFile added to the fileset."
+  [fileset ^File dir & {:keys [mergers include exclude meta] :as opts}]
   (tmpd/add fileset (get-add-dir fileset #{:asset}) dir opts))
 
 (defn add-cached-asset
-  "FIXME: document"
-  [fileset cache-key cache-fn & {:keys [mergers include exclude] :as opts}]
+  "Like add-asset, but takes a cache-key (string) and cache-fn instead of
+  a directory. If the cache-key is not found in Boot's fileset cache then the
+  cache-fn is invoked with a single argument -- a directory in which to write
+  the files that Boot should add to the cache -- and the contents of this
+  directory are then added to the cache. In either case the cached files are
+  then added to the fileset.
+
+  The opts options are the same as those documented for boot.core/add-asset."
+  [fileset cache-key cache-fn & {:keys [mergers include exclude meta] :as opts}]
   (tmpd/add-cached fileset (get-add-dir fileset #{:asset}) cache-key cache-fn opts))
 
 (defn mv-asset
-  "FIXME: document"
+  "Given a collection of tmpfiles, moves them in the fileset such that they
+  become asset files."
   [fileset tmpfiles]
   (tmpd/add-tmp fileset (get-add-dir fileset #{:asset}) tmpfiles))
 
 (defn add-source
-  "Add the contents of the java.io.File dir to the fileset's sources."
-  [fileset ^File dir & {:keys [mergers include exclude] :as opts}]
+  "Add the contents of the java.io.File dir to the fileset's sources.
+
+  Option :include and :exclude, a #{} of regex expressions, control
+  which paths are added; a path is only added if it matches an :include
+  regex and does not match any :exclude regexes.
+
+  If the operation produces duplicate entries, they will be merged using
+  the rules specified by the :mergers option. A merge rule is a
+  [regex fn] pair, where fn takes three parameters:
+
+  - an InputStream for the previous entry,
+  - an InputStream of the new entry,
+  - and an OutputStream that will replace the entry.
+
+  You will typically use default mergers as in:
+
+    [[ #\"data_readers.clj$\"    into-merger       ]
+     [ #\"META-INF/services/.*\" concat-merger     ]
+     [ #\".*\"                   first-wins-merger ]]
+
+  The merge rule regular expressions are tested in order, and the fn
+  from the first match is applied.
+
+  The :meta option can be used to provide a map of metadata which will be
+  merged into each TmpFile added to the fileset."
+  [fileset ^File dir & {:keys [mergers include exclude meta] :as opts}]
   (tmpd/add fileset (get-add-dir fileset #{:source}) dir opts))
 
 (defn add-cached-source
-  "FIXME: document"
-  [fileset cache-key cache-fn & {:keys [mergers include exclude] :as opts}]
+  "Like add-source, but takes a cache-key (string) and cache-fn instead of
+  a directory. If the cache-key is not found in Boot's fileset cache then the
+  cache-fn is invoked with a single argument -- a directory in which to write
+  the files that Boot should add to the cache -- and the contents of this
+  directory are then added to the cache. In either case the cached files are
+  then added to the fileset.
+
+  The opts options are the same as those documented for boot.core/add-source."
+  [fileset cache-key cache-fn & {:keys [mergers include exclude meta] :as opts}]
   (tmpd/add-cached fileset (get-add-dir fileset #{:source}) cache-key cache-fn opts))
 
 (defn mv-source
-  "FIXME: document"
+  "Given a collection of tmpfiles, moves them in the fileset such that they
+  become source files."
   [fileset tmpfiles]
   (tmpd/add-tmp fileset (get-add-dir fileset #{:source}) tmpfiles))
 
 (defn add-resource
-  "Add the contents of the java.io.File dir to the fileset's resources."
-  [fileset ^File dir & {:keys [mergers include exclude] :as opts}]
+  "Add the contents of the java.io.File dir to the fileset's resources.
+
+  Option :include and :exclude, a #{} of regex expressions, control
+  which paths are added; a path is only added if it matches an :include
+  regex and does not match any :exclude regexes.
+
+  If the operation produces duplicate entries, they will be merged using
+  the rules specified by the :mergers option. A merge rule is a
+  [regex fn] pair, where fn takes three parameters:
+
+  - an InputStream for the previous entry,
+  - an InputStream of the new entry,
+  - and an OutputStream that will replace the entry.
+
+  You will typically use default mergers as in:
+
+    [[ #\"data_readers.clj$\"    into-merger       ]
+     [ #\"META-INF/services/.*\" concat-merger     ]
+     [ #\".*\"                   first-wins-merger ]]
+
+  The merge rule regular expressions are tested in order, and the fn
+  from the first match is applied.
+
+  The :meta option can be used to provide a map of metadata which will be
+  merged into each TmpFile added to the fileset."
+  [fileset ^File dir & {:keys [mergers include exclude meta] :as opts}]
   (tmpd/add fileset (get-add-dir fileset #{:resource}) dir opts))
 
 (defn add-cached-resource
-  "FIXME: document"
-  [fileset cache-key cache-fn & {:keys [mergers include exclude] :as opts}]
+  "Like add-resource, but takes a cache-key (string) and cache-fn instead of
+  a directory. If the cache-key is not found in Boot's fileset cache then the
+  cache-fn is invoked with a single argument -- a directory in which to write
+  the files that Boot should add to the cache -- and the contents of this
+  directory are then added to the cache. In either case the cached files are
+  then added to the fileset.
+
+  The opts options are the same as those documented for boot.core/add-resource."
+  [fileset cache-key cache-fn & {:keys [mergers include exclude meta] :as opts}]
   (tmpd/add-cached fileset (get-add-dir fileset #{:resource}) cache-key cache-fn opts))
 
 (defn mv-resource
-  "FIXME: document"
+  "Given a collection of tmpfiles, moves them in the fileset such that they
+  become resource files."
   [fileset tmpfiles]
   (tmpd/add-tmp fileset (get-add-dir fileset #{:resource}) tmpfiles))
 
@@ -519,6 +695,16 @@
   [dest & srcs]
   (apply file/sync! :time dest srcs))
 
+(defn patch!
+  "Given prev-state "
+  [dest srcs & {:keys [ignore state link]}]
+  (let [dest    (fs/->path dest)
+        before  (or state (fs/mktree dest))
+        merge'  #(->> (fs/mktree (fs/->path %2) :ignore ignore)
+                      (fs/merge-trees %1))]
+    (let [after (reduce merge' (fs/mktree) srcs)]
+      (fs/patch! dest before after :link link))))
+
 ;; Boot Environment ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn watch-dirs
@@ -536,7 +722,7 @@
         (let [q       (LinkedBlockingQueue.)
               watcher (apply file/watcher! :time dirs)
               paths   (into-array String dirs)
-              k       (.invoke pod/worker-pod "boot.watcher/make-watcher" q paths)]
+              k       (pod/with-invoke-worker (boot.watcher/make-watcher q paths))]
           (daemon
             (loop [ret (util/guard [(.take q)])]
               (when ret
@@ -545,7 +731,7 @@
                   (let [changed (watcher)]
                     (when-not (empty? changed) (callback changed))
                     (recur (util/guard [(.take q)])))))))
-          #(.invoke pod/worker-pod "boot.watcher/stop-watcher" k)))))
+          #(pod/with-invoke-worker (boot.watcher/stop-watcher k))))))
 
 (defn rebuild!
   "Manually trigger build watch."
@@ -556,23 +742,18 @@
   "Initialize the boot environment. This is normally run once by boot at
   startup. There should be no need to call this function directly."
   []
-  (->> (io/file ".")
-       .getCanonicalFile
-       file/split-path
-       rest
-       (apply io/file (App/getBootDir) "cache" "tmp")
-       tmp/registry
-       tmp/init!
-       (reset! tmpregistry))
   (doto boot-env
     (reset! {:watcher-debounce 10
+             :checkouts        []
              :dependencies     []
              :directories      #{}
              :source-paths     #{}
              :resource-paths   #{}
+             :checkout-paths   #{}
              :asset-paths      #{}
-             :target-path      "target"
-             :repositories     default-repos})
+             :exclusions       #{}
+             :repositories     default-repos
+             :mirrors          @default-mirrors})
     (add-watch ::boot #(configure!* %3 %4)))
   (set-fake-class-path!)
   (tmp-dir** nil :asset)
@@ -581,6 +762,7 @@
   (tmp-dir** nil :user :asset)
   (tmp-dir** nil :user :source)
   (tmp-dir** nil :user :resource)
+  (tmp-dir** nil :user :checkout)
   (pod/add-shutdown-hook! do-cleanup!))
 
 (defmulti post-env!
@@ -594,6 +776,7 @@
 (defmethod post-env! :directories      [key old new env] (add-directories! new))
 (defmethod post-env! :source-paths     [key old new env] (set-user-dirs!))
 (defmethod post-env! :resource-paths   [key old new env] (set-user-dirs!))
+(defmethod post-env! :checkout-paths   [key old new env] (set-user-dirs!))
 (defmethod post-env! :asset-paths      [key old new env] (set-user-dirs!))
 (defmethod post-env! :watcher-debounce [key old new env] (set-user-dirs!))
 
@@ -605,8 +788,9 @@
 
 (defn- merge-or-replace [x y]   (if-not (coll? x) y (into x y)))
 (defn- merge-if-coll    [x y]   (if-not (coll? x) x (into x y)))
-(defn- assert-set       [k new] (assert (set? new) (format "env %s must be a set" k)))
+(defn- assert-set       [k new] (assert (set? new) (format "env %s must be a set" k)) new)
 (defn- canonical-repo   [repo]  (if (map? repo) repo {:url repo}))
+(defn- canonical-deps   [deps]  (mapv pod/canonical-coord deps))
 
 (defn- assert-disjoint
   [env key new]
@@ -620,13 +804,15 @@
               "The :source-paths, :resource-paths, and :asset-paths must not overlap."))))
 
 (defmethod pre-env! ::default       [key old new env] new)
-(defmethod pre-env! :directories    [key old new env] (set/union old new))
-(defmethod pre-env! :source-paths   [key old new env] (assert-set key new) (assert-disjoint env key new))
-(defmethod pre-env! :resource-paths [key old new env] (assert-set key new) (assert-disjoint env key new))
-(defmethod pre-env! :asset-paths    [key old new env] (assert-set key new) (assert-disjoint env key new))
-(defmethod pre-env! :wagons         [key old new env] (add-wagon! old new env))
-(defmethod pre-env! :dependencies   [key old new env] (add-dependencies! old new env))
+(defmethod pre-env! :directories    [key old new env] (set/union old (assert-set key new)))
+(defmethod pre-env! :source-paths   [key old new env] (assert-disjoint env key (assert-set key new)))
+(defmethod pre-env! :resource-paths [key old new env] (assert-disjoint env key (assert-set key new)))
+(defmethod pre-env! :asset-paths    [key old new env] (assert-disjoint env key (assert-set key new)))
+(defmethod pre-env! :wagons         [key old new env] (add-wagon! old (canonical-deps new) env))
+(defmethod pre-env! :checkouts      [key old new env] (canonical-deps new))
+(defmethod pre-env! :dependencies   [key old new env] (add-dependencies! old (canonical-deps new) env))
 (defmethod pre-env! :repositories   [key old new env] (->> new (mapv (fn [[k v]] [k (@repo-config-fn (canonical-repo v))]))))
+(defmethod pre-env! :certificates   [key old new env] (pod/with-call-worker (boot.aether/load-certificates! ~new)))
 
 (add-watch repo-config-fn (gensym) (fn [& _] (set-env! :repositories identity)))
 
@@ -637,6 +823,13 @@
   example)."
   ([ ] @repo-config-fn)
   ([f] (reset! repo-config-fn f)))
+
+(defn get-checkouts
+  "FIXME"
+  []
+  (let [deps (->> :dependencies (get-env) (group-by first))]
+    (->> @loaded-checkouts
+         (reduce-kv #(assoc %1 %2 (assoc %3 :dep (first (deps %2)))) {}))))
 
 (defn get-env
   "Returns the value associated with the key `k` in the boot environment, or
@@ -654,11 +847,11 @@
   clojure.core/update-in works."
   [& kvs]
   (doseq [[k v] (order-set-env-keys (partition 2 kvs))]
-      (let [v'  (if-not (fn? v) v (v (get-env k)))
-            v'' (if-let [b (get @cli-base k)] (merge-if-coll b v') v')]
-        (assert (printable-readable? v'')
-                (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v'')))
-        (swap! boot-env update-in [k] (partial pre-env! k) v'' @boot-env))))
+    (let [v'  (if-not (fn? v) v (v (get-env k)))
+          v'' (if-let [b (get @cli-base k)] (merge-if-coll b v') v')]
+      (assert (printable-readable? v'')
+              (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v'')))
+      (swap! boot-env update-in [k] (partial pre-env! k) v'' @boot-env))))
 
 (defn merge-env!
   "Merges the new values into the current values for the given keys in the env
@@ -699,8 +892,10 @@
     `(do
        (when-let [existing-deftask# (resolve '~sym)]
          (when (= *ns* (-> existing-deftask# meta :ns))
-           (boot.util/warn
-             "Warning: deftask %s/%s was overridden\n" *ns* '~sym)))
+           (let [msg# (delay (format "deftask %s/%s was overridden\n" *ns* '~sym))]
+             (boot.util/warn (if (<= @util/*verbosity* 2)
+                               @msg#
+                               (ex/format-exception (Exception. ^String @msg#)))))))
        (cli2/defclifn ~(vary-meta sym assoc ::task true)
          ~@heads
          ~bindings
@@ -727,12 +922,12 @@
   fileset containing only the latest project files."
   [& [fileset]]
   (let [fileset (when fileset (rm fileset (user-files fileset)))]
-    (sync-user-dirs!)
     (-> (new-fileset)
-        (add-user-asset (first (user-asset-dirs)))
-        (add-user-source (first (user-source-dirs)))
+        (add-user-asset    (first (user-asset-dirs)))
+        (add-user-source   (first (user-source-dirs)))
         (add-user-resource (first (user-resource-dirs)))
-        (update-in [:tree] merge (:tree fileset)))))
+        (update-in [:tree] merge (:tree fileset))
+        (vary-meta merge (meta fileset)))))
 
 (defn reset-build!
   "Resets mutable build state to default values. This includes such things as
@@ -741,23 +936,41 @@
   []
   (reset! *warnings* 0))
 
+(defn- take-subargs [open close [x & xs :as coll]]
+  (if (not= x open)
+    [nil coll]
+    (loop [[x & xs] xs depth 1 ret []]
+      (if (not x)
+        [ret []]
+        (cond (= x open)  (recur xs (inc depth) (conj ret x))
+              (= x close) (if (zero? (dec depth))
+                            [ret xs]
+                            (recur xs (dec depth) (conj ret x)))
+              :else       (recur xs depth (conj ret x)))))))
+
 (defn- construct-tasks
   "Given command line arguments (strings), constructs a task pipeline by
   resolving the task vars, calling the task constructors with the arguments
   for that task, and composing them to form the pipeline."
-  [& argv]
-  (loop [ret [] [op-str & args] argv]
+  [argv & {:keys [in-order]}]
+  (loop [ret [] [op-str & args :as argv] argv]
     (if-not op-str
       (apply comp (filter fn? ret))
-      (let [op (-> op-str symbol resolve)]
-        (when-not (and op (:boot.core/task (meta op)))
-          (throw (IllegalArgumentException. (format "No such task (%s)" op-str))))
-        (let [spec   (:argspec (meta op))
-              parsed (cli/parse-opts args spec :in-order true)]
-          (when (seq (:errors parsed))
-            (throw (IllegalArgumentException. (string/join "\n" (:errors parsed)))))
-          (let [[opts argv] (#'cli2/separate-cli-opts args spec)]
-            (recur (conj ret (apply (var-get op) opts)) argv)))))))
+      (case op-str
+        "--" (recur ret args)
+        "["  (let [[argv remainder] (take-subargs "[" "]" argv)]
+               (recur (conj ret (construct-tasks argv :in-order false)) remainder))
+        (let [op (-> op-str symbol resolve)]
+          (when-not (and op (:boot.core/task (meta op)))
+            (throw (IllegalArgumentException. (format "No such task (%s)" op-str))))
+          (let [spec   (:argspec (meta op))
+                parsed (cli/parse-opts args spec :in-order in-order)]
+            (when (seq (:errors parsed))
+              (throw (IllegalArgumentException. (string/join "\n" (:errors parsed)))))
+            (let [[opts argv] (if-not in-order
+                                [args nil]
+                                (#'cli2/separate-cli-opts args spec))]
+              (recur (conj ret (apply (var-get op) opts)) argv))))))))
 
 (defn- fileset-syncer
   "Given a seq of directories dirs, returns a stateful function of one
@@ -773,7 +986,7 @@
     (fn [fs & {:keys [link]}]
       (let [link  (when link :tmp)
             [a b] [@prev (reset! prev (output-fileset fs))]]
-        (mapv deref (for [d @dirs :let [p! (partial fs/patch! (fs/mkfs d) a b :link)]]
+        (mapv deref (for [d @dirs :let [p! (partial fs/patch! (fs/->path d) a b :link)]]
                       (future (try (p! link)
                                    (catch Throwable t
                                      (if-not link (throw t) (p! nil)))))))))))
@@ -783,15 +996,8 @@
   state, and runs the pipeline."
   [task-stack]
   (binding [*warnings* (atom 0)]
-    (let [fs      (commit! (reset-fileset))
-          target? (not= "no" (boot.App/config "BOOT_EMIT_TARGET"))
-          depr    (delay (util/warn-deprecated "Implicit target dir is deprecated, please use the target task instead.\n")
-                         (util/warn-deprecated "Set BOOT_EMIT_TARGET=no to disable implicit target dir.\n"))
-          sync!   (if-not target?
-                    identity
-                    (comp (fn [_] @depr)
-                          (fileset-syncer [(get-env :target-path)] :clean true)))]
-      ((task-stack #(do (sync! %) (sync-user-dirs!) %)) fs))))
+    (let [fs (commit! (reset-fileset))]
+      ((task-stack #(do (sync-user-dirs!) %)) fs))))
 
 (defn boot
   "The REPL equivalent to the command line 'boot'. If all arguments are
@@ -802,9 +1008,11 @@
           (util/with-let [_ nil]
             (run-tasks
               (cond (every? fn? argv)     (apply comp argv)
-                    (every? string? argv) (apply construct-tasks argv)
+                    (every? string? argv) (construct-tasks argv :in-order true)
                     :else (throw (IllegalArgumentException.
                                    "Arguments must be either all strings or all fns"))))))
+       (catch ExecutionException e
+         (throw (.getCause e)))
        (finally (do-cleanup!))))
 
 ;; Low-Level Tasks, Helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -933,6 +1141,13 @@
 
 ;; Task Utility Functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmacro template
+  "The syntax-quote (aka quasiquote) reader macro as a normal macro. Provides
+  the unquote ~ and unquote-splicing ~@ metacharacters for templating forms
+  without performing symbol resolution."
+  [form]
+  `(bt/template ~form))
+
 (defn gpg-decrypt
   "Uses gpg(1) to decrypt a file and returns its contents as a string. The
   :as :edn option can be passed to read the contents as an EDN form."
@@ -974,14 +1189,36 @@
   [& {:keys [untracked]}]
   (git/ls-files :untracked untracked))
 
+(defn- filter-files [seq-pred files negate?]
+  ((if negate? remove filter)
+   #(some identity (seq-pred %)) files))
+
 (defn file-filter
   "A file filtering function factory. FIXME: more documenting here."
   [mkpred]
   (fn [criteria files & [negate?]]
     (let [tmp?   (partial satisfies? tmpd/ITmpFile)
-          ->file #(if (tmp? %) (io/file (tmp-path %)) (io/file %))]
-      ((if negate? remove filter)
-       #(some identity ((apply juxt (map mkpred criteria)) (->file %))) files))))
+          ->file #(if (tmp? %) (io/file (tmp-path %)) (io/file %))
+          pred (apply juxt (mapv mkpred criteria))]
+      (filter-files #(pred (->file %)) files negate?))))
+
+(defn by-meta
+  "This function takes two arguments: `preds` and `files`, where `preds` is a
+  seq of predicates to be applied to the file metadata and `files` is a seq of
+  file objects obtained from the fileset with the help of `boot.core/ls` or any
+  other way. Returns a seq of files in `files` which match all of the
+  predicates in `preds`. `negate?` inverts the result.
+
+  This function will not unwrap the `File` objects from `TmpFiles`."
+  [preds files & [negate?]]
+  (filter-files (apply juxt preds) files negate?))
+
+(defn not-by-meta
+  "Negated version of `by-meta`.
+
+  This function will not unwrap the `File` objects from `TmpFiles`."
+  [preds files]
+  (by-meta preds files true))
 
 (defn by-name
   "This function takes two arguments: `names` and `files`, where `names` is

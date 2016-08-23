@@ -28,13 +28,21 @@ clean:
 	(cd boot/aether && lein clean)
 	(cd boot/pod && lein clean)
 	(cd boot/worker && lein clean)
+	(rm -Rfv bin)
+	(rm -fv .installed .deployed .tested)
 
-bin/lein:
+mkdirs:
 	mkdir -p bin
+
+bin/lein: mkdirs
 	wget https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein -O bin/lein
 	chmod 755 bin/lein
 
-deps: bin/lein
+bin/boot: mkdirs
+	curl -fsSLo bin/boot https://github.com/boot-clj/boot-bin/releases/download/latest/boot.sh
+	chmod 755 bin/boot
+
+deps: bin/lein bin/boot
 
 $(bootjar): $(verfile) boot/boot/project.clj
 	(cd boot/boot && lein install)
@@ -62,7 +70,7 @@ $(corejar): $(verfile) boot/core/project.clj $(shell find boot/core/src)
 $(baseuber): boot/base/pom.xml $(shell find boot/base/src/main)
 	(cd boot/base && mvn -q assembly:assembly -DdescriptorId=jar-with-dependencies)
 
-.installed: $(basejar) $(alljars)
+.installed: mkdirs $(basejar) $(alljars)
 	cp $(baseuber) $(distjar)
 	# FIXME: this is just for testing -- remove before release
 	mkdir -p $$HOME/.boot/cache/bin/$(version)
@@ -86,5 +94,8 @@ install: .installed
 
 deploy: .deployed
 
-test:
-	echo "<< no tests yet >>"
+.tested: bin/boot
+	(export BOOT_VERSION=$(version) && export BOOT_EMIT_TARGET=no && cd boot/core && ../../bin/boot -x test)
+	date > .tested
+
+test: .installed .tested

@@ -10,6 +10,7 @@
 
 .deployed
 .installed
+.tested
 
 ### MAVEN (include pom.xml in /base) ###########################################
 

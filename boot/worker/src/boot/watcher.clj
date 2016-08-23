@@ -58,7 +58,7 @@
 
 (defn- register-recursive
   [service path events]
-  (util/dbug "registering %s %s\n" path events)
+  (util/dbug* "registering %s %s\n" path events)
   (register service path events)
   (doseq [dir (.listFiles (io/file path))]
     (when (.isDirectory dir)
@@ -76,15 +76,15 @@
   (try
     (.take service)
     (catch java.nio.file.ClosedWatchServiceException _
-      (util/dbug "watch service closed\n"))
+      (util/dbug* "watch service closed\n"))
     (catch com.barbarysoftware.watchservice.ClosedWatchServiceException _
-      (util/dbug "watch service closed\n"))))
+      (util/dbug* "watch service closed\n"))))
 
 (defn- send-it!
   [queue]
   ;; It doesn't matter what we send because the information in the watch keys
   ;; is completely unreliable and useless, so we send the sentinel "changed!".
-  (util/dbug "sending change event\n")
+  (util/dbug* "sending change event\n")
   (.offer queue "changed!"))
 
 (defn- service
@@ -95,19 +95,19 @@
     (-> #(let [watch-key (take-watch-key service)]
            (when-let [path (and watch-key (or (.watchable watch-key) ""))]
              (if-not (.isValid watch-key)
-               (util/dbug "invalid watch key %s\n" (.watchable watch-key))
+               (util/dbug* "invalid watch key %s\n" (.watchable watch-key))
                (do (doseq [event (.pollEvents watch-key)]
                      (let [dir     (.toFile path)
                            changed (io/file dir (str (.context event)))
                            etype   (enum->kw service (.kind event))
                            dir?    (.isDirectory changed)]
-                       (util/dbug "event: %s %s %s\n" etype dir? path)
+                       (util/dbug* "event: %s %s %s\n" etype dir? path)
                        (when (and dir? (= :create etype))
                          (try (doreg service changed)
                               (catch Throwable t
-                                (util/dbug "error registering %s: %s\n" path t))))))
+                                (util/dbug* "error registering %s: %s\n" path t))))))
                    (when-not (.reset watch-key)
-                     (util/dbug "failed to reset watch key %s\n" path))))
+                     (util/dbug* "failed to reset watch key %s\n" path))))
              (send-it! queue)
              (recur)))
         Thread. .start)

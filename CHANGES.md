@@ -1,5 +1,182 @@
 # Changes
 
+## Master
+
+#### Improved
+
+- Follow symlinks when building fileset from project dirs [#483][483].
+- Documented `boot.core/add-cached-{asset,source,resource}` fns.
+- Warn when asked to load a version of Clojure into the core pod (via
+  `:dependencies`) that is different from the implicitly loaded version
+  specified by `BOOT_CLOJURE_VERSION` [#230][230], [#469][469].
+- Corrected docstring for `boot.pod/canonical-coord`.
+- Throw helpful exception when `deftask` argument vector isn't a vector [#487][487].
+
+#### Fixed
+
+- Print stack trace when core pod fails to load [#480][480].
+- Fix issue where `boot.util/map-as-dep` would flatten collections like
+  `:exclusions` in the dependency vector [#479][479].
+- Use default voice when calling `say` on OSX [#476][476].
+- Fix typo in the `notify` task that prevented OSX from finding the
+  `terminal-notifier` program [#478][478].
+- Fix typo in the `notify` task that caused exceptions on OSX [#491][491].
+- Don't throw exceptions when source files are missing during filesystem patch
+  operations [#471][471], [#477][477].
+- Preserve fileset metadata when TmpFiles are overwritten with `add-resource`,
+  `add-source`, etc.
+- Format paths in `boot.class.path` and `fake.class.path` system properties
+  with correct, platform-specific paths [#488][488].
+- Eliminate runtime reflection in `boot.core/deftask` macro [#490][490].
+
+#### Tasks
+
+- Added the `with-cp` task &mdash; use `java -cp` style classpath strings
+  instead of Maven dependencies.
+- The `pom` task now adds `:project` metadata to the created pom.xml and
+  pom.properties TmpFiles in the fileset. This metadata is used by eg. the
+  `jar` task to select the "real" pom from multiple poms that might be in the
+  fileset from the `uber` task, etc. [#451][451]
+
+##### API Functions
+
+- Added `boot.pod/make-pod-cp` &mdash; creates a new pod from a given classpath.
+- Added `boot.pod/canonical-id` &mdash; returns the canonical form of a maven
+  dependency id symbol.
+- Added `boot.pod/full-id` &mdash; returns the fully-qualified form of a maven
+  dependency id symbol.
+- Added `:meta` option to `boot.core/add-{asset,source,resource}` fns (and their
+  `add-cached-{asset,source,resource}` variants &mdash; merges a map of metadata
+  into all TmpFiles added to the fileset.
+
+##### Boot CLI Parsing
+
+- The `[` and `]` characters can now be used to group tasks with their options
+  and, more importantly, positional parameters. In the task body the positional
+  parameters are bound to `*args*` [#374][374].
+
+##### Boot Options
+
+- Added `-E, --exclusions` &mdash; adds symbol to env `:exclusions` [#472][472].
+- Added `-f, --file` &mdash; evaluates the contents of a file just like with
+  the shebang script, but easier to use on platforms like Windows that don't
+  have great shebang support [#465][465].
+- Added `-i, --init` &mdash; evaluates a form after evaluating the profile.boot
+  forms but before the main script or build.boot forms [#465][465].
+- Added `-x, --exclude-clojure` &mdash; adds `org.clojure/clojure` as a global
+  exclusion (useful in combination with `--dependencies` when you don't have a
+  build.boot file, as most dependencies will depend on some random version of
+  clojure and you'll get a warning about it) [#230][230], [#469][469].
+- Removed `-t, --target-path` and `-T, --no-target` [#475][475].
+
+##### Task Options
+
+- Added `-p, --project` option to the `jar` task &mdash; specifies the project
+  id when there are multiple pom.xml files &mdash; should only be needed in the
+  case where the jar will contain multiple poms and either the desired pom was
+  not created via the `pom` task or there are multiple poms created by the `pom`
+  task in the fileset [#451][451].
+- Added `-C, --no-color` option to the `repl` task &mdash; disables ANSI color
+  codes in REPL client output.
+
+##### Boot Environment
+
+- Removed `:target-path` [#475][475].
+
+#### Deprecated
+
+- The `speak` task, replaced by `notify`.
+
+[230]: https://github.com/boot-clj/boot/issues/230
+[374]: https://github.com/boot-clj/boot/issues/374
+[451]: https://github.com/boot-clj/boot/issues/451
+[465]: https://github.com/boot-clj/boot/issues/465
+[469]: https://github.com/boot-clj/boot/issues/469
+[471]: https://github.com/boot-clj/boot/issues/471
+[472]: https://github.com/boot-clj/boot/issues/472
+[475]: https://github.com/boot-clj/boot/issues/475
+[476]: https://github.com/boot-clj/boot/issues/476
+[477]: https://github.com/boot-clj/boot/issues/477
+[478]: https://github.com/boot-clj/boot/issues/478
+[479]: https://github.com/boot-clj/boot/issues/479
+[480]: https://github.com/boot-clj/boot/issues/480
+[483]: https://github.com/boot-clj/boot/issues/483
+[487]: https://github.com/boot-clj/boot/issues/487
+[488]: https://github.com/boot-clj/boot/issues/488
+[490]: https://github.com/boot-clj/boot/issues/490
+[491]: https://github.com/boot-clj/boot/issues/491
+
+## 2.6.0
+
+#### Improved
+
+- More efficient syncing of project directories with Boot's internal ones.
+- Easier to read tree representation for the `show --fileset` output.
+
+#### Fixed
+
+- Don't set `:update :always` in aether when resolving Boot's own dependencies
+  unless Boot is being updated.
+- Correctly handle case when `:source-paths` or `:resource-paths` are set to
+  the empty set (`#{}`).
+- Correctly set last modified time when copying classpath resource.
+
+#### Development
+
+- Boot test suite (!!!) to test Boot itself, with parallel test runner capability
+  and continuous integration.
+
+##### API Functions
+
+- `boot.pod/this-pod` &mdash; a `WeakReference` to the current pod
+- `boot.pod/with-invoke-in` &mdash; low-level invocation, no serialization
+- `boot.pod/with-invoke-worker` &mdash; as above but invokes in the worker pod
+- `boot.pod/pod-name` &mdash; get/set the name of a pod
+- `boot.pod/coord->map` &mdash; dependency vector to map helper function
+- `boot.pod/map->coord` &mdash; map to dependency vector helper function
+- `boot.pod/resource-last-modified` &mdash; returns last modified time of a classpath resource
+- `boot.core/get-checkouts` &mdash; returns a map of info about loaded checkout dependencies
+- `boot.util/dbug*` &mdash; like `boot.util/dbug` but a macro (doesn't eval its
+  arguments unless the verbosity level is DEBUG or above)
+
+##### Boot Options
+
+- `-c`, `--checkouts` boot option / `:checkouts` env key &mdash; deeper
+  integration for checkout dependencies
+- `-o`, `--offline` boot option &mdash; disable downloading Maven dependencies
+  from remote repositories (doesn't apply to Boot's own dependencies)
+- `-U`, `--update-snapshot` boot option &mdash; updates boot to latest snapshot
+  version
+- optional argument to `-u`, `--update` &mdash; sets global default boot version
+
+##### Task Options
+
+- `-v`, `--verify-deps` option to `show` task &mdash; verify jar signatures and
+  show deps tree [#375][375]
+
+##### Boot Environment
+
+- wagon dependencies now accept a `:schemes` key &mdash; specify the handler
+  classes for the wagon when the wagon jar has no `leiningen/wagons.clj` entry.
+- `BOOT_CERTIFICATES` &mdash; specify file paths for SSL certificates.
+- `BOOT_CLOJARS_REPO` &mdash; specify Maven repo url for `clojars`.
+- `BOOT_CLOJARS_MIRROR` &mdash; specify Maven mirror url for `clojars`.
+- `BOOT_MAVEN_CENTRAL_REPO` &mdash; specify Maven repo url for `maven-central`.
+- `BOOT_MAVEN_CENTRAL_MIRROR` &mdash; specify Maven mirror url for `maven-central`.
+
+#### Deprecated
+
+- The `checkout` task, replaced by the `--checkouts` boot option
+
+[345]: https://github.com/boot-clj/boot/issues/345
+
+## 2.5.5
+
+#### Fixed
+
+- Issue with 2.5.4 where it was possible for boot to exit before all files
+  were written to target dir.
+
 ## 2.5.4
 
 #### Fixed

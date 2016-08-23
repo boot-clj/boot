@@ -36,14 +36,8 @@
           (.exists (File. "/usr/bin/espeak"))
           (sh "espeak" "-v+f2" msg)
           (.exists (File. "/usr/bin/say"))
-          (sh "say" "-v" "Vicki" msg)
+          (sh "say" msg)
           :else (play! (or file (path-for theme "warning"))))))))
 
-#_(defmacro cljs-warnings
-  [warnings & body]
-  (try (require 'cljs.analyzer)
-       `(cljs.analyzer/with-warning-handlers
-          (conj cljs.analyzer/*cljs-warning-handlers*
-                (fn [& _#] (swap! ~warnings inc)))
-          ~@body)
-       (catch Throwable _ `(do ~@body))))
+(defn notify! [{:keys [file theme type]}]
+  (play! (or file (path-for theme (name type)))))

@@ -91,7 +91,7 @@
         docstring (cond
                     incr? (format "Increase %s" (decap doc))
                     flag? doc
-                    atom? (format "Set %s to %s." (depunc (decap doc)) optarg)
+                    atom? (format "%s sets %s." optarg (depunc (decap doc)))
                     :else (let [f "Conj %s onto %s"
                                 v ((parse-fn optarg) (str optarg))]
                             (format f (if (string? v) v (pr-str (mapv symbol v))) (decap doc))))]
@@ -163,12 +163,13 @@
     (:summary (cli/parse-opts [] cli-args))))
 
 (defn- split-args [args]
-  (loop [kw {} cli [] [arg & more] args]
-    (if-not arg
-      {:kw kw :cli cli}
-      (if-not (keyword? arg)
-        (recur kw (conj cli arg) more)
-        (recur (assoc kw arg (first more)) cli (rest more))))))
+  (loop [split {} [arg & more] args]
+    (cond
+      (nil? arg) split
+      (not (keyword? arg)) (recur (update-in split [:cli] (fnil conj []) arg) more)
+      (empty? more) (update-in split [:errors] (fnil conj [])
+                               (str "no value supplied for option " arg))
+      :else (recur (assoc-in split [:kw arg] (first more)) (rest more)))))
 
 (defmacro ^:private assert
   [test fmt & args]
@@ -216,6 +217,9 @@
         (if (string? (first forms))
           forms
           (list* "No description provided." forms))
+        _ (when-not (vector? argspecs)
+            (throw (IllegalArgumentException.
+                     (format "Parameter declaration should be a vector: %s" argspecs))))
         argspecs (argspec-seq argspecs)]
     (assert-argspecs (mapcat identity argspecs))
     (let [doc      (string/replace doc #"\n  " "\n")
@@ -228,13 +232,13 @@
           clj-doc  (format "%s\n\nKeyword Args:\n%s\n" doc (clj-summary argspecs))
           varmeta  {:doc clj-doc :arglists arglists :argspec cli-args}]
       `(-> (fn [& args#]
-             (let [{kws# :kw clis# :cli} (#'split-args args#)
-                   [opts# args#] (#'separate-cli-opts clis# ~cli-args)
+             (let [split# (#'split-args args#)
+                   [opts# args#] (#'separate-cli-opts (:cli split#) ~cli-args)
                    parsed#   (cli/parse-opts opts# ~cli-args)
-                   ~bindings (merge kws# (:options parsed#))
+                   ~bindings (merge (:kw split#) (:options parsed#))
                    ~'*args*  args#
                    ~'*usage* #(print ~cli-doc)]
-               (when-let [e# (seq (:errors parsed#))]
+               (when-let [e# (seq (mapcat :errors [split# parsed#]))]
                  (throw (IllegalArgumentException. (string/join "\n" e#))))
                ~@(mapv (partial apply argspec->assert) argspecs)
                ~@(mapv (partial apply argspec->deprecation-warning) argspecs)

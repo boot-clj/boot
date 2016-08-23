@@ -1,37 +1,75 @@
 (ns boot.aether
   (:require
-   [clojure.java.io             :as io]
-   [clojure.string              :as string]
-   [clojure.pprint              :as pprint]
-   [cemerick.pomegranate.aether :as aether]
-   [boot.util                   :as util]
-   [boot.pod                    :as pod]
-   [boot.gpg                    :as gpg]
-   [boot.from.io.aviso.ansi     :as ansi]
-   [boot.kahnsort               :as ksort])
+    [clojure.java.io             :as io]
+    [clojure.string              :as string]
+    [clojure.pprint              :as pprint]
+    [cemerick.pomegranate.aether :as aether]
+    [boot.util                   :as util]
+    [boot.pod                    :as pod]
+    [boot.gpg                    :as gpg]
+    [boot.from.io.aviso.ansi     :as ansi]
+    [boot.kahnsort               :as ksort])
   (:import
-   [boot App]
-   [java.io File]
-   [java.util.jar JarFile]
-   [java.util.regex Pattern]
-   [org.sonatype.aether.resolution DependencyResolutionException]))
+    [boot App]
+    [java.io File]
+    [java.util.jar JarFile]
+    [java.util.regex Pattern]
+    [org.sonatype.aether.resolution DependencyResolutionException]
+    [org.sonatype.aether.transfer MetadataNotFoundException ArtifactNotFoundException]))
 
 (def offline?             (atom false))
 (def update?              (atom :daily))
 (def local-repo           (atom nil))
-(def default-repositories (atom [["clojars"       {:url "https://clojars.org/repo/"}]
-                                 ["maven-central" {:url "https://repo1.maven.org/maven2/"}]]))
+(def default-repositories (delay (let [c (boot.App/config "BOOT_CLOJARS_REPO")
+                                       m (boot.App/config "BOOT_MAVEN_CENTRAL_REPO")]
+                                   [["clojars"       {:url (or c "https://clojars.org/repo/")}]
+                                    ["maven-central" {:url (or m "https://repo1.maven.org/maven2/")}]])))
+(def default-mirrors      (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
+                                       m (boot.App/config "BOOT_MAVEN_CENTRAL_MIRROR")
+                                       f #(when %1 {%2 {:name (str %2 " mirror") :url %1}})]
+                                   (merge {} (f c "clojars") (f m "maven-central")))))
 
 (defn set-offline!    [x] (reset! offline? x))
 (defn set-update!     [x] (reset! update? x))
 (defn update-always!  []  (set-update! :always))
 (defn set-local-repo! [x] (reset! local-repo x))
 
+(defmulti on-transfer (fn [info] (:type info)))
+
+(defmethod on-transfer :started
+  [{:keys [method] {:keys [name repository size]} :resource}]
+  (letfn [(->k [size]
+            (when-not (neg? size)
+              (format " (%sk)" (Math/round (double (max 1 (/ size 1024)))))))]
+    (util/info "%s %s %s %s%s\n"
+      (case method :get "Retrieving" :put "Sending")
+      (.getName (io/file name))
+      (case method :get "from" :put "to")
+      repository
+      (str (->k size)))))
+
+(defmethod on-transfer :succeeded
+  [_])
+
+(defmethod on-transfer :corrupted
+  [{:keys [error]}]
+  (when error
+    (util/fail "%s\n" (.getMessage error))))
+
+(defmethod on-transfer :failed
+  [{:keys [error]}]
+  (when (and error
+             (not (instance? MetadataNotFoundException error))
+             (not (instance? ArtifactNotFoundException error)))
+    (util/fail "%s\n" (.getMessage error))))
+
+(defmethod on-transfer :default
+  [_])
+
 (defn transfer-listener
-  [{type :type meth :method {name :name repo :repository} :resource err :error :as info}]
+  [info]
   (util/dbug "Aether: %s\n" (with-out-str (pprint/pprint info)))
-  (when (and (.endsWith name ".jar") (= type :started))
-    (util/info "Retrieving %s from %s\n" (.getName (io/file name)) repo)))
+  (on-transfer info))
 
 (defn ^{:boot/from :technomancy/leiningen} build-url
   "Creates java.net.URL from string"
@@ -72,7 +110,7 @@
                            (map (juxt first (fn [[x y]] (update-in y [:update] #(or % @update?))))))
       :local-repo        (or (:local-repo env) @local-repo nil)
       :offline?          (or @offline? (:offline? env))
-      :mirrors           (:mirrors env)
+      :mirrors           (merge @default-mirrors (:mirrors env))
       :proxy             (or (:proxy env) (get-proxy-settings))
       :transfer-listener transfer-listener
       :repository-session-fn (if (= @update? :always)
@@ -94,15 +132,16 @@
   "Given an env map, returns a list of maps of the form
      {:dep [foo/bar \"1.2.3\"], :jar \"file:...\"}
    corresponding to the resolved dependencies (including transitive deps)."
-  [env]
-  (->> [:dependencies :repositories :local-repo :offline? :mirrors :proxy]
-    (select-keys env)
-    resolve-dependencies-memoized*
-    ksort/topo-sort
-    (map (fn [x] {:dep x :jar (dep->path x)}))))
+  [{:keys [checkouts] :as env}]
+  (let [checkouts (set (map first checkouts))]
+    (->> [:dependencies :repositories :local-repo :offline? :mirrors :proxy]
+         (select-keys env)
+         resolve-dependencies-memoized*
+         ksort/topo-sort
+         (keep (fn [[p :as x]] (when-not (checkouts p) {:dep x :jar (dep->path x)}))))))
 
 (defn resolve-dependency-jars
-  "Given an env map, resolves dependencies and returns a list of dependency jar 
+  "Given an env map, resolves dependencies and returns a list of dependency jar
   file paths.
 
   The 3-arity is used by boot.App to resolve dependencies for the core pods.
@@ -111,9 +150,9 @@
   ([env] (->> env resolve-dependencies (map :jar)))
   ([sym-str version cljversion] (resolve-dependency-jars sym-str version nil cljversion))
   ([sym-str version cljname cljversion]
-     (let [cljname (or cljname "org.clojure/clojure")]
-       (->> {:dependencies [[(symbol cljname) cljversion] [(symbol sym-str) version]]}
-            resolve-dependencies (map (comp io/file :jar)) (into-array java.io.File)))))
+   (let [cljname (or cljname "org.clojure/clojure")]
+     (->> {:dependencies [[(symbol cljname) cljversion] [(symbol sym-str) version]]}
+          resolve-dependencies (map (comp io/file :jar)) (into-array java.io.File)))))
 
 (defn resolve-nontransitive-dependencies
   "Given an env map and a single dependency coordinates vector, resolves the
@@ -224,15 +263,23 @@
     ((verify-colors verification) (pr-str dep))
     (pr-str dep)))
 
+(defn resolve-release-versions
+  [env]
+  (let [versions (->> (resolve-dependencies-memoized* env) keys
+                      (reduce #(assoc %1 (first %2) (second %2)) {}))]
+    (update-in env [:dependencies]
+               (partial mapv (fn [[sym _ & more]]
+                               (into [sym (versions sym)] more))))))
+
 (defn dep-tree
   "Returns the printed dependency graph as a string."
   [env & [verify?]]
   (-> env
-    resolve-dependencies-memoized*
-    (->> (aether/dependency-hierarchy (:dependencies env)))
-    (cond-> verify? (verify-deps env))
-    (util/print-tree (when verify? sig-status-prefix) colorize-dep)
-    with-out-str))
+      resolve-dependencies-memoized*
+      (->> (aether/dependency-hierarchy (:dependencies env)))
+      (cond-> verify? (verify-deps env))
+      (util/print-tree (when verify? sig-status-prefix) colorize-dep)
+      with-out-str))
 
 (defn- pom-xml-parse-string
   [pom-str]
@@ -248,18 +295,43 @@
   [pom-str]
   (doto (File/createTempFile "pom" ".xml") (.deleteOnExit) (spit pom-str)))
 
+(defn- jarpath-on-artifact-map
+  "Infer packaging type from `jarpath` or `packaging` in pom and add it
+   to `artefact-map` if a mapping for `jarpath` not already exists."
+  [artifact-map {:keys [project version packaging classifier] :as pom} jarpath]
+  (if (some #{jarpath} (vals artifact-map))
+    artifact-map
+    (assoc
+      artifact-map
+      (conj
+        [project version]
+        :extension (cond
+                     packaging
+                     packaging
+
+                     (.endsWith (str jarpath) "war")
+                     "war"
+
+                     :else
+                     "jar")
+
+        :classifier classifier)
+      jarpath)))
+
 (defn install
   ([env jarpath]
    (install env jarpath nil))
   ([env jarpath pompath]
-   (let [pom-str                   (pod/pom-xml jarpath pompath)
-         {:keys [project version]} (pom-xml-parse-string pom-str)
-         pomfile                   (pom-xml-tmp pom-str)]
+   (install env jarpath pompath nil))
+  ([env jarpath pompath artifact-map]
+   (let [pom-str                           (pod/pom-xml jarpath pompath)
+         {:keys [project version] :as pom} (pom-xml-parse-string pom-str)
+         pomfile                           (pom-xml-tmp pom-str)]
      (aether/install
-       :coordinates [project version]
-       :jar-file    (io/file jarpath)
-       :pom-file    (io/file pomfile)
-       :local-repo  (or (:local-repo env) @local-repo nil)))))
+       :coordinates  [project version]
+       :pom-file     (io/file pomfile)
+       :artifact-map (jarpath-on-artifact-map artifact-map pom jarpath)
+       :local-repo   (or (:local-repo env) @local-repo nil)))))
 
 (defn deploy
   ([env repo jarpath]
@@ -269,14 +341,14 @@
      (deploy env repo jarpath nil pom-or-artifacts)
      (deploy env repo jarpath pom-or-artifacts nil)))
   ([env [repo-id repo-settings] jarpath pompath artifact-map]
-   (let [pom-str                   (pod/pom-xml jarpath pompath)
-         {:keys [project version]} (pom-xml-parse-string pom-str)
-         pomfile                   (pom-xml-tmp pom-str)]
+   (let [pom-str                           (pod/pom-xml jarpath pompath)
+         {:keys [project version] :as pom} (pom-xml-parse-string pom-str)
+         pomfile                           (pom-xml-tmp pom-str)]
      (aether/deploy
        :coordinates  [project version]
-       :jar-file     (io/file jarpath)
        :pom-file     (io/file pomfile)
-       :artifact-map artifact-map
+       :artifact-map (jarpath-on-artifact-map artifact-map pom jarpath)
+       :transfer-listener transfer-listener
        :repository   {repo-id repo-settings}
        :local-repo   (or (:local-repo env) @local-repo nil)))))
 
@@ -298,3 +370,23 @@
   [env coord & [mapping]]
   (pod/add-dependencies (assoc env :dependencies [coord]))
   (load-wagon-mappings mapping))
+
+(defn ^{:boot/from :technomancy/leiningen} load-certificates!
+  "Load the SSL certificates specified by the project and register them for use by Aether."
+  [certificates]
+  (when (seq certificates)
+    ;; lazy-loading might give a launch speed boost here
+    (require 'boot.ssl)
+    (let [make-context (resolve 'boot.ssl/make-sslcontext)
+          read-certs (resolve 'boot.ssl/read-certs)
+          default-certs (resolve 'boot.ssl/default-trusted-certs)
+          override-wagon-registry! (resolve 'boot.ssl/override-wagon-registry!)
+          https-registry (resolve 'boot.ssl/https-registry)
+          certs (mapcat read-certs certificates)
+          context (make-context (into (default-certs) certs))]
+      (override-wagon-registry! (https-registry context)))))
+
+(when-let [certs (boot.App/config "BOOT_CERTIFICATES")]
+  (let [certs (string/split certs #":")]
+    (util/dbug "Using SSL certificates: %s\n" certs)
+    (load-certificates! certs)))

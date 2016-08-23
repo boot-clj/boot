@@ -1,84 +1,187 @@
 (ns boot.filesystem
   (:require
-    [clojure.java.io :as io]
-    [boot.file       :as file]
-    [boot.util       :as util]
-    [boot.tmpdir     :as tmpd])
+    [clojure.java.io        :as io]
+    [clojure.set            :as set]
+    [clojure.data           :as data]
+    [clojure.string         :as string]
+    [boot.filesystem.patch  :as fsp]
+    [boot.file              :as file]
+    [boot.from.digest       :as digest :refer [md5]]
+    [boot.util              :as util   :refer [with-let]])
   (:import
-   [java.net URI]
-   [java.io File]
-   [java.nio.file.attribute FileAttribute FileTime]
-   [java.util.zip ZipEntry ZipOutputStream ZipException]
-   [java.util.jar JarEntry JarOutputStream Manifest Attributes$Name]
-   [java.nio.file Files FileSystems StandardCopyOption StandardOpenOption]))
+    [java.net URI]
+    [java.io File]
+    [java.util.zip ZipEntry ZipOutputStream ZipException]
+    [java.util.jar JarEntry JarOutputStream Manifest Attributes$Name]
+    [java.nio.file.attribute FileAttribute FileTime PosixFilePermission
+     PosixFilePermissions]
+    [java.nio.file Path Files FileSystems StandardCopyOption StandardOpenOption
+     LinkOption SimpleFileVisitor FileVisitResult]))
 
-(def copy-opts (into-array StandardCopyOption [StandardCopyOption/REPLACE_EXISTING]))
-(def open-opts (into-array StandardOpenOption [StandardOpenOption/CREATE]))
+(set! *warn-on-reflection* true)
 
-(defn mkfs
-  [^File rootdir]
-  (.toPath rootdir))
+(def continue     FileVisitResult/CONTINUE)
+(def skip-subtree FileVisitResult/SKIP_SUBTREE)
+(def link-opts    (into-array LinkOption []))
+(def tmp-attrs    (into-array FileAttribute []))
+(def copy-opts    (into-array StandardCopyOption [StandardCopyOption/REPLACE_EXISTING]))
+(def open-opts    (into-array StandardOpenOption [StandardOpenOption/CREATE]))
+(def read-only    (PosixFilePermissions/fromString "r--r--r--"))
+
+(defprotocol IToPath
+  (->path [x] "Returns a java.nio.file.Path for x."))
+
+(extend-protocol IToPath
+  java.nio.file.Path
+  (->path [x] x)
+
+  java.io.File
+  (->path [x] (.toPath x))
+
+  java.lang.String
+  (->path [x] (.toPath (io/file x)))
+
+  java.nio.file.FileSystem
+  (->path [x] (first (.getRootDirectories x))))
+
+(defn path->segs
+  [^Path path]
+  (->> path .iterator iterator-seq (map str)))
+
+(defn- ^Path segs->path
+  [^Path any-path-same-filesystem segs]
+  (let [segs-ary (into-array String (rest segs))]
+    (-> (.getFileSystem any-path-same-filesystem)
+        (.getPath (first segs) segs-ary))))
+
+(defn- rel
+  [^Path root segs]
+  (.resolve root (segs->path root segs)))
 
 (defn mkjarfs
-  [^File jarfile]
-  (io/make-parents jarfile)
-  (FileSystems/newFileSystem
-    (URI. (str "jar:" (.toURI jarfile))) {"create" "true"}))
+  [^File jarfile & {:keys [create]}]
+  (when create (io/make-parents jarfile))
+  (let [jaruri (->> jarfile .getCanonicalFile .toURI (str "jar:") URI/create)]
+    (FileSystems/newFileSystem jaruri {"create" (str (boolean create))})))
 
-(defn mkpath
-  [fs file]
-  (if (instance? java.nio.file.Path fs)
-    (.resolve fs (.toPath file))
-    (let [[seg & segs] (file/split-path file)]
-      (.getPath fs seg (into-array String segs)))))
+(defn mkignores
+  [ignores]
+  (some->> (seq ignores) (map #(partial re-find %)) (apply some-fn)))
+
+(defn mkvisitor
+  [^Path root tree & {:keys [ignore]}]
+  (let [ign? (mkignores ignore)]
+    (proxy [SimpleFileVisitor] []
+      (preVisitDirectory [path attr]
+        (let [p (.relativize root path)]
+          (try (if (and ign? (ign? (.toString p))) skip-subtree continue)
+               (catch java.nio.file.NoSuchFileException _
+                 (util/dbug* "Filesystem: file not found: %s\n" (.toString p))
+                 skip-subtree))))
+      (visitFile [path attr]
+        (with-let [_ continue]
+          (let [p (.relativize root path)
+                s (path->segs p)]
+            (try (when-not (and ign? (ign? (.toString p)))
+                   (->> (.toMillis (Files/getLastModifiedTime path link-opts))
+                        (hash-map :path s :file path :time)
+                        (swap! tree assoc s)))
+                 (catch java.nio.file.NoSuchFileException _
+                   (util/dbug* "Filesystem: file not found: %s\n" (.toString p))))))))))
+
+(defrecord FileSystemTree [root tree])
+
+(defn mktree
+  ([] (FileSystemTree. nil nil))
+  ([root & {:keys [ignore]}]
+   (FileSystemTree.
+     root
+     @(with-let [tree (atom {})]
+        (file/walk-file-tree root (mkvisitor root tree :ignore ignore))))))
+
+(defn merge-trees
+  [{tree1 :tree} {tree2 :tree}]
+  (FileSystemTree. (:root tree1) (merge tree1 tree2)))
+
+(defn tree-diff
+  [{t1 :tree :as before} {t2 :tree :as after}]
+  (let [reducer #(assoc %1 %2 (:time %3))
+        [d1 d2] (map #(reduce-kv reducer {} %) [t1 t2])
+        [x y _] (map (comp set keys) (data/diff d1 d2))]
+    {:adds (->> (set/difference   y x) (select-keys t2) (assoc after :tree))
+     :rems (->> (set/difference   x y) (select-keys t1) (assoc after :tree))
+     :chgs (->> (set/intersection x y) (select-keys t2) (assoc after :tree))}))
+
+(defn tree-patch
+  [before after link]
+  (let [->p     (partial segs->path (:root before))
+        writeop (if (= :all link) :link :write)
+        {:keys [adds rems chgs]} (tree-diff before after)]
+    (-> (->> rems :tree vals (map #(vector :delete (:path %))))
+        (into (for [x (->> adds :tree (merge (:tree chgs)) vals)]
+                [writeop (:path x) (:file x) (:time x)])))))
+
+(defmethod fsp/patch FileSystemTree
+  [before after link]
+  (tree-patch before after link))
+
+(defmethod fsp/patch-result FileSystemTree
+  [before after]
+  (let [update-file #(assoc %1 :file (rel (:root before) %2))
+        update-path #(-> after (get-in [:tree %]) (update-file %))
+        update-tree (fn [xs k _] (assoc xs k (update-path k)))]
+    (assoc before :tree (reduce-kv update-tree {} (:tree after)))))
 
 (defn mkparents!
-  [path]
+  [^Path path]
   (when-let [p (.getParent path)]
     (Files/createDirectories p (into-array FileAttribute []))))
 
 (defn touch!
-  [fs path time]
-  (let [dst (mkpath fs (io/file path))]
-    (util/dbug "Filesystem: touching %s...\n" path)
+  [dest path time]
+  (let [dst (rel dest path)]
+    (util/dbug* "Filesystem: touching %s...\n" (string/join "/" path))
     (Files/setLastModifiedTime dst (FileTime/fromMillis time))))
 
 (defn copy!
-  [fs path file time]
-  (let [src (.toPath file)
-        dst (mkpath fs (io/file path))]
-    (util/dbug "Filesystem: copying %s...\n" path)
-    (Files/copy src (doto dst mkparents!) copy-opts)
-    (Files/setLastModifiedTime dst (FileTime/fromMillis time))))
+  [^Path dest path ^Path src time]
+  (let [dst (doto (rel dest path) mkparents!)]
+    (util/dbug* "Filesystem: copying %s...\n" (string/join "/" path))
+    (try (Files/copy ^Path src ^Path dst copy-opts)
+         (Files/setLastModifiedTime dst (FileTime/fromMillis time))
+         (catch java.nio.file.NoSuchFileException ex
+           (util/dbug* "Filesystem: %s\n", (str ex))))))
 
 (defn link!
-  [fs path file]
-  (let [src (.toPath file)
-        dst (mkpath fs (io/file path))]
-    (util/dbug "Filesystem: linking %s...\n" path)
-    (Files/deleteIfExists dst)
-    (Files/createLink (doto dst mkparents!) src)))
+  [dest path src]
+  (let [dst (rel dest path)]
+    (util/dbug* "Filesystem: linking %s...\n" (string/join "/" path))
+    (try (Files/deleteIfExists dst)
+         (Files/createLink (doto dst mkparents!) src)
+         (catch java.nio.file.NoSuchFileException ex
+           (util/dbug* "Filesystem: %s\n" (str ex))))))
 
 (defn delete!
-  [fs path]
-  (util/dbug "Filesystem: deleting %s...\n" path)
-  (Files/delete (mkpath fs (io/file path))))
+  [dest path]
+  (util/dbug* "Filesystem: deleting %s...\n" (string/join "/" path))
+  (try (Files/delete (rel dest path))
+       (catch java.nio.file.NoSuchFileException ex
+         (util/dbug* "Filesystem: %s\n" (str ex)))))
 
 (defn write!
-  [fs writer path]
-  (let [dst (mkpath fs (io/file path))]
+  [dest writer path]
+  (let [dst (rel dest path)]
     (mkparents! dst)
     (with-open [os (Files/newOutputStream dst open-opts)]
-      (util/dbug "Filesystem: writing %s...\n" path)
+      (util/dbug* "Filesystem: writing %s...\n" (string/join "/" path))
       (.write writer os))))
 
 (defn patch!
-  [fs old-fs new-fs & {:keys [link]}]
-  (doseq [[op & [arg1 arg2]] (tmpd/patch old-fs new-fs :link link)]
-    (let [[p1 f1 t1] ((juxt tmpd/path tmpd/file tmpd/time) arg1)
-          [p2 f2 t2] (when arg2 ((juxt tmpd/path tmpd/file tmpd/time) arg2))]
+  [dest before after & {:keys [link]}]
+  (with-let [_ (fsp/patch-result before after)]
+    (doseq [[op path & [arg1 arg2]] (fsp/patch before after link)]
       (case op
-        :delete (delete! fs p1)
-        :write  (copy!   fs p1 f1 t1)
-        :link   (link!   fs p1 f1)
-        :touch  (touch!  fs p1 t1)))))
+        :delete (delete! dest path)
+        :write  (copy!   dest path arg1 arg2)
+        :link   (link!   dest path arg1)
+        :touch  (touch!  dest path arg1)))))
