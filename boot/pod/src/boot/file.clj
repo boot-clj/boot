@@ -240,7 +240,8 @@
 
 (defn match-filter?
   [filters f]
-  (letfn [(normalize [path] (str/replace path #"\\" "/"))]
+  (let [windows?  (boot.App/isWindows)
+        normalize #(if-not windows? % (str/replace % #"\\" "/"))]
     ((apply some-fn (map (partial partial re-find) filters)) (normalize (.getPath ^File f)))))
 
 (defn keep-filters?

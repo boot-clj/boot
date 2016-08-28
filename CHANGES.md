@@ -37,6 +37,10 @@
   pom.properties TmpFiles in the fileset. This metadata is used by eg. the
   `jar` task to select the "real" pom from multiple poms that might be in the
   fileset from the `uber` task, etc. [#451][451]
+- The `watch` task now accepts `--include` and `--exclude` options to restrict
+  the set of paths that will trigger a rebuild [#312][312].
+- The `watch` task now accpets `--debounce` option to adjust how long it will
+  wait for all filesystem events to have fired before a rebuild is triggered.
 
 ##### API Functions
 
@@ -88,6 +92,7 @@
 - The `speak` task, replaced by `notify`.
 
 [230]: https://github.com/boot-clj/boot/issues/230
+[312]: https://github.com/boot-clj/boot/issues/312
 [374]: https://github.com/boot-clj/boot/issues/374
 [451]: https://github.com/boot-clj/boot/issues/451
 [465]: https://github.com/boot-clj/boot/issues/465

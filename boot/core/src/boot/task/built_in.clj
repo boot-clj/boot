@@ -373,15 +373,15 @@
       (sync! fs :link (not no-link)))))
 
 (core/deftask watch
-  "Call the next handler when source files change.
+  "Call the next handler when source files change."
 
-  Debouncing time is 10ms by default."
+  [q quiet          bool     "Suppress all output from running jobs."
+   v verbose        bool     "Print which files have changed."
+   M manual         bool     "Use a manual trigger instead of a file watcher."
+   d debounce MS    int      "Debounce time (how long to wait for filesystem events) in milliseconds."
+   i include REGEX  #{regex} "The set of regexes the paths of changed files must match for watch to fire."
+   e exclude REGEX  #{regex} "The set of regexes the paths of changed files must not match for watch to fire."]
 
-  [q quiet         bool "Suppress all output from running jobs."
-   v verbose       bool "Print which files have changed."
-   M manual        bool "Use a manual trigger instead of a file watcher."]
-
-  (pod/require-in pod/worker-pod "boot.watcher")
   (fn [next-task]
     (fn [fileset]
       (let [q            (LinkedBlockingQueue.)
@@ -391,7 +391,10 @@
                               (into (core/user-dirs fileset))
                               (map (memfn getPath)))
             watcher      (apply file/watcher! :time srcdirs)
-            debounce     (core/get-env :watcher-debounce)
+            incl-excl    (if-not (or (seq include) (seq exclude))
+                           identity
+                           (let [f (partial file/keep-filters? include exclude)]
+                             (partial filter (comp f io/file second))))
             watch-target (if manual core/new-build-at core/last-file-change)]
         (.offer q (System/currentTimeMillis))
         (add-watch watch-target k #(.offer q %4))
@@ -403,7 +406,7 @@
               (recur (conj ret more))
               (let [start        (System/currentTimeMillis)
                     etime        #(- (System/currentTimeMillis) start)
-                    changed      (watcher)
+                    changed      (when-not manual (incl-excl (watcher)))
                     should-fire? (or manual (not (empty? changed)))]
                 (when should-fire?
                   (when verbose
