@@ -29,6 +29,7 @@
 - Format paths in `boot.class.path` and `fake.class.path` system properties
   with correct, platform-specific paths [#488][488].
 - Eliminate runtime reflection in `boot.core/deftask` macro [#490][490].
+- Create bootscript tmpfile with mode `0600` instead of `0664`.
 
 #### Tasks
 
