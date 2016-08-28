@@ -6,6 +6,7 @@
 
 - Follow symlinks when building fileset from project dirs [#483][483].
 - Documented `boot.core/add-cached-{asset,source,resource}` fns.
+- Documented `boot.core/patch!` fn [#497][497].
 - Warn when asked to load a version of Clojure into the core pod (via
   `:dependencies`) that is different from the implicitly loaded version
   specified by `BOOT_CLOJURE_VERSION` [#230][230], [#469][469].
@@ -110,6 +111,7 @@
 [488]: https://github.com/boot-clj/boot/issues/488
 [490]: https://github.com/boot-clj/boot/issues/490
 [491]: https://github.com/boot-clj/boot/issues/491
+[497]: https://github.com/boot-clj/boot/issues/497
 
 ## 2.6.0
 

@@ -696,7 +696,26 @@
   (apply file/sync! :time dest srcs))
 
 (defn patch!
-  "Given prev-state "
+  "Given a dest and a sequence of srcs, all of which satisfying the IToPath
+  protocol, updates dest such that it contains the union of the contents of
+  srcs and returns an immutable value reflecting the final state of dest. The
+  String, java.io.File, java.nio.file.Path, and java.nio.file.FileSystem types
+  satisfy IToPath.
+
+  Paths in dest that are not in any of the srcs will be removed; paths in any
+  of the srcs that are not in dest or have different contents than the path
+  in dest will be copied (or hardlinked, see :link option below).
+
+  The :ignore option specifies a set of regex patterns for paths that will be
+  ignored.
+
+  The :state option specifies the initial state of dest (usually set to the
+  value returned by a previous call to this function). When provided, this
+  option makes the patching operation more efficient by eliminating the need
+  to scan dest to establish its current state.
+
+  The :link option specifies whether to create hardlinks instead of copying
+  files from srcs to dest."
   [dest srcs & {:keys [ignore state link]}]
   (let [dest    (fs/->path dest)
         before  (or state (fs/mktree dest))
