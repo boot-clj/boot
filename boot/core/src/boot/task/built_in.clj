@@ -496,7 +496,7 @@
                :packaging (or packaging "jar"))]
     (when-not (and project version)
       (throw (Exception. "need project and version to create pom.xml")))
-    (let [[project version] (pod/canonical-coord [project version])
+    (let [[project version] (util/canonical-coord [project version])
           [gid aid] (util/extract-ids project)
           pomdir    (io/file tgt "META-INF" "maven" gid aid)
           xmlfile   (io/file pomdir "pom.xml")
@@ -782,7 +782,7 @@
   (let [poms      (->> (core/output-files fileset)
                        (core/by-name ["pom.xml"]))
         prj-match (when project
-                    (str "/" (pod/full-id project) "/pom.xml"))
+                    (str "/" (util/full-id project) "/pom.xml"))
         project?  #(if-not prj-match
                      (:project %)
                      (.endsWith (core/tmp-path %) prj-match))]

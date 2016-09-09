@@ -809,7 +809,7 @@
 (defn- merge-if-coll    [x y]   (if-not (coll? x) x (into x y)))
 (defn- assert-set       [k new] (assert (set? new) (format "env %s must be a set" k)) new)
 (defn- canonical-repo   [repo]  (if (map? repo) repo {:url repo}))
-(defn- canonical-deps   [deps]  (mapv pod/canonical-coord deps))
+(defn- canonical-deps   [deps]  (mapv util/canonical-coord deps))
 
 (defn- assert-disjoint
   [env key new]
