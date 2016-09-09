@@ -782,7 +782,7 @@
   (let [poms      (->> (core/output-files fileset)
                        (core/by-name ["pom.xml"]))
         prj-match (when project
-                    (str "/" (pod/full-id project) "/pom.xml"))
+                    (str "/" (util/full-id project) "/pom.xml"))
         project?  #(if-not prj-match
                      (:project %)
                      (.endsWith (core/tmp-path %) prj-match))]
