@@ -325,6 +325,40 @@
   (let [[group artifact] ((juxt namespace name) sym)]
     [(or group artifact) artifact]))
 
+(defn canonical-id
+  "Given a project id symbol, returns the canonical form, with the group id
+  as the namespace of the resulting symbol only if it's not the same as the
+  artifact id.
+
+  For example: (canonical-id 'foo/foo) ;=> foo
+               (canonical-id 'foo/bar) ;=> foo/bar"
+  [id]
+  (when (symbol? id)
+    (let [[ns nm] ((juxt namespace name) id)]
+      (if (not= ns nm) id (symbol ns)))))
+
+(defn full-id
+  "Given a project id symbol, returns the fully qualified form, with the group
+  id as the namespace of the resulting symbol and the artifact id as the name.
+
+  For example: (full-id 'foo)     ;=> foo/foo
+               (full-id 'foo/bar) ;=> foo/bar"
+  [id]
+  (when (symbol? id)
+    (let [[ns nm] ((juxt namespace name) id)]
+      (symbol (or ns nm) nm))))
+
+(defn canonical-coord
+  "Given a dependency coordinate of the form [id version ...], returns the
+  canonical form, i.e. the id symbol is not fully qualified when the artifact
+  and group ids are the same.
+
+  For example: (canonical-coord '[foo/foo \"1.2.3\"]) ;=> [foo \"1.2.3\"]
+               (canonical-coord '[foo/bar \"1.2.3\"]) ;=> [foo/bar \"1.2.3\"]"
+  [[id & more :as coord]]
+  (when (symbol? id)
+    (assoc-in (vec coord) [0] (canonical-id id))))
+
 (defn dep-as-map
   "Returns the given dependency vector as a map with :project and :version
   keys plus any modifiers (eg. :scope, :exclusions, etc).  If the version

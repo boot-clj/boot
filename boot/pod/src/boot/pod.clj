@@ -503,39 +503,6 @@
   [& body]
   `(with-pod worker-pod ~@body))
 
-(defn canonical-id
-  "Given a project id symbol, returns the canonical form, with the group id
-  as the namespace of the resulting symbol only if it's not the same as the
-  artifact id.
-
-  For example: (canonical-id 'foo/foo) ;=> foo
-               (canonical-id 'foo/bar) ;=> foo/bar"
-  [id]
-  (when id
-    (let [[ns nm] ((juxt namespace name) id)]
-      (if (not= ns nm) id))))
-
-(defn full-id
-  "Given a project id symbol, returns the fully qualified form, with the group
-  id as the namespace of the resulting symbol and the artifact id as the name.
-
-  For example: (full-id 'foo)     ;=> foo/foo
-               (full-id 'foo/bar) ;=> foo/bar"
-  [id]
-  (when id
-    (let [[ns nm] ((juxt namespace name) id)]
-      (symbol (or ns nm) nm))))
-
-(defn canonical-coord
-  "Given a dependency coordinate of the form [id version ...], returns the
-  canonical form, i.e. the id symbol is not fully qualified when the artifact
-  and group ids are the same.
-
-  For example: (canonical-coord '[foo/foo \"1.2.3\"]) ;=> [foo \"1.2.3\"]
-               (canonical-coord '[foo/bar \"1.2.3\"]) ;=> [foo/bar \"1.2.3\"]"
-  [[id & more :as coord]]
-  (assoc-in (vec coord) [0] (canonical-id id)))
-
 (defn resolve-dependencies
   "Returns a seq of maps of the form {:jar <path> :dep <dependency vector>}
   corresponding to the fully resolved dependency graph as specified in the
@@ -575,7 +542,7 @@
   "Returns the path to the jar file associated with the dependency specified
   by coord, given the boot environment configuration env."
   [env coord]
-  (let [coord (canonical-coord coord)]
+  (let [coord (util/canonical-coord coord)]
     (->> [coord] (assoc env :dependencies) resolve-dependencies
       (filter #(= (first coord) (first (:dep %)))) first :jar)))
 
@@ -587,7 +554,7 @@
   [env & {:keys [snapshots]}]
   (with-call-worker (boot.aether/update-always!))
   (let [v+ (if snapshots "(0,)" "RELEASE")]
-    (->> (for [[p v & _ :as coord] (->> env :dependencies (map canonical-coord))
+    (->> (for [[p v & _ :as coord] (->> env :dependencies (map util/canonical-coord))
                                    :when (not (= v "LATEST"))]
            (util/guard
              (let [env' (-> env (assoc :dependencies [(assoc coord 1 v+)]))

@@ -3,6 +3,27 @@
    [clojure.test :refer :all]
    [boot.util :as util :refer :all]))
 
+(deftest check-canonical-id
+  (is (nil? (canonical-id nil)))
+  (is (nil? (canonical-id "BAD")))
+  (is (nil? (canonical-id 0xBAD)))
+  (is (= 'foo (canonical-id 'foo/foo)))
+  (is (= 'foo/bar (canonical-id 'foo/bar))))
+
+(deftest check-full-id
+  (is (nil? (full-id nil)))
+  (is (nil? (full-id "BAD")))
+  (is (nil? (full-id 0xBAD)))
+  (is (= 'foo/foo (full-id 'foo)))
+  (is (= 'foo/bar (full-id 'foo/bar))))
+
+(deftest check-canonical-coord
+  (is (nil? (canonical-coord nil)))
+  (is (nil? (canonical-coord [])))
+  (is (thrown? Exception (canonical-coord 0xBAD)))
+  (is (= '[foo "1.2.3" :scope "test"] (canonical-coord '[foo/foo "1.2.3" :scope "test"])))
+  (is (= '[foo/bar "1.2.3" :scope "test"] (canonical-coord '[foo/bar "1.2.3" :scope "test"]))))
+
 (deftest dep-mgt-functions
   
   (let [project 'com.example/project
