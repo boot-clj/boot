@@ -19,12 +19,12 @@
    ["-c" "--checkouts SYM:VER"   "Add checkout dependency (eg. -c foo/bar:1.2.3)."
     :assoc-fn #(let [[p v] (string/split %3 #":" 2)]
                  (update-in %1 [%2] (fnil conj [])
-                            (pod/canonical-coord [(read-string p) (or v "(0,)")])))]
+                            (util/canonical-coord [(read-string p) (or v "(0,)")])))]
    ["-C" "--no-colors"           "Remove ANSI escape codes from printed output."]
    ["-d" "--dependencies SYM:VER" "Add dependency to project (eg. -d foo/bar:1.2.3)."
     :assoc-fn #(let [[p v] (string/split %3 #":" 2)]
                  (update-in %1 [%2] (fnil conj [])
-                            (pod/canonical-coord [(read-string p) (or v "RELEASE")])))]
+                            (util/canonical-coord [(read-string p) (or v "RELEASE")])))]
    ["-E" "--exclusions SYM"      "Add the SYM dependency to the set of global exclusions."
     :assoc-fn #(update-in %1 [%2] (fnil conj #{}) (symbol %3))]
    ["-e" "--set-env KEY=VAL"     "Add KEY => VAL to project env map."
