@@ -5,6 +5,7 @@
   (:require [clojure.test    :refer :all]
             [clojure.java.io :as io]
             [boot.file       :as file]
+            [boot.pod        :as pod]
             [boot.tmpdir     :as tmp]))
 
 (defn tempdir []
@@ -13,7 +14,7 @@
 (defn make-fs []
   (let [dir (tempdir)]
     {:dir dir
-     :fs  (TmpFileSet. [(tmp/map->TmpDir {:dir dir})] {} (tempdir))}))
+     :fs  (TmpFileSet. [(tmp/map->TmpDir {:dir dir})] {} (tempdir) (tempdir))}))
 
 (defn spit-to [dir path contents]
   (spit (doto (apply io/file dir path) io/make-parents) contents))
@@ -38,7 +39,7 @@
                  (spit-to ["b" "c"] "bar"))
         src2   (doto (tempdir)
                  (spit-to ["b" "c"] "baz"))
-        fs     (-> fs (tmp/add dir src1) tmp/commit!)
+        fs     (-> fs (tmp/add dir src1 {}) tmp/commit!)
         before {'("a") "foo" '("b" "c") "bar"}
         after  {'("a") "foo" '("b" "c") "baz"}]
 
@@ -52,7 +53,7 @@
       (is (= before (map-fs-contents fs))))
 
     (testing "adding dir to fileset can clobber paths"
-      (let [fs (-> fs (tmp/add dir src2) tmp/commit!)]
+      (let [fs (-> fs (tmp/add dir src2 {}) tmp/commit!)]
         (is (= after (map-fs-contents fs)))))
 
     (testing "re-committing fileset restores former contents"
@@ -60,3 +61,23 @@
         (is (= before (map-fs-contents fs)))))
 
     ))
+
+(deftest check-aliases-work
+  (let [dep ['foo/bar "1.2.3"]
+        dep-map {:project 'foo/bar
+                 :version "1.2.3"
+                 :extension "jar"
+                 :scope "compile"}]
+    (is (= dep-map (pod/coord->map dep)))
+    (is (= dep (pod/map->coord dep-map)))
+
+    (is (= 'foo (pod/canonical-id 'foo/foo)))
+    (is (= 'foo/bar (pod/canonical-id 'foo/bar)))
+
+    (is (= 'foo/foo (pod/full-id 'foo/foo)))
+    (is (= 'foo/bar (pod/full-id 'foo/bar)))
+
+    (is (= '[foo "1.2.3"] (pod/canonical-coord '[foo/foo "1.2.3"])))
+
+    (is (= ["foo" "foo"] (pod/extract-ids 'foo)))
+    (is (= ["foo" "bar"] (pod/extract-ids 'foo/bar)))))

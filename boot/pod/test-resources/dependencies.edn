@@ -1,0 +1,2 @@
+[[example/project1 "1.0.0" :scope "test"]
+ [example/project2 "2.0.0" :scope "compile"]]

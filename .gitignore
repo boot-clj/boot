@@ -49,3 +49,9 @@ pom.xml.asc
 /zzz/
 /launch4j-config.xml
 /launch4j/
+
+### INTELLIJ ###################################################################
+
+.idea
+*.iml
+
