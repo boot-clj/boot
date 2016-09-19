@@ -385,7 +385,7 @@
 (defmacro with-call-in
   "Given a pod and an expr of the form (f & args), resolves f in the pod,
   applies it to args, and returns the result to the caller. The expr may be a
-  template containing the ~ (unqupte) and ~@ (unquote-splicing) reader macros.
+  template containing the ~ (unquote) and ~@ (unquote-splicing) reader macros.
   These will be evaluated in the calling scope and substituted in the template
   like the ` (syntax-quote) reader macro.
 
@@ -442,7 +442,7 @@
 
 (defmacro with-eval-in
   "Given a pod and an expr, evaluates the body in the pod and returns the
-  result to the caller. The body may be a template containing the ~ (unqupte)
+  result to the caller. The body may be a template containing the ~ (unquote)
   and ~@ (unquote-splicing) reader macros. These will be evaluated in the
   calling scope and substituted in the template like the ` (syntax-quote)
   reader macro.
