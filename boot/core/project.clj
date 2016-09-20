@@ -16,4 +16,3 @@
   :dependencies   [[org.clojure/clojure "1.6.0"  :scope "provided"]
                    [boot/base           ~version :scope "provided"]
                    [boot/pod            ~version :scope "compile"]])
-

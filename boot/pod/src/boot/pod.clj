@@ -20,11 +20,13 @@
     [java.nio.file        Files StandardCopyOption])
   (:refer-clojure :exclude [add-classpath]))
 
-(defn extract-ids
-  "Given a dependency symbol sym, returns a vector of [group-id artifact-id]."
-  [sym]
-  (let [[group artifact] ((juxt namespace name) sym)]
-    [(or group artifact) artifact]))
+;; aliases to utility functions to preserve backward compatibility
+(def coord->map util/dep-as-map)
+(def map->coord util/map-as-dep) 
+(def canonical-id util/canonical-id)
+(def full-id util/full-id)
+(def canonical-coord util/canonical-coord)
+(def extract-ids util/extract-ids)
 
 (defn seal-app-classloader
   "Implements the DynamicClasspath protocol to the AppClassLoader class such
@@ -149,20 +151,6 @@
   [[project & _]]
   (let [[aid gid] (util/extract-ids project)]
     (io/resource (format "META-INF/maven/%s/%s/pom.properties" aid gid))))
-
-(defn coord->map
-  "Returns the map representation for the given dependency vector. The map
-  will include :project and :version keys in addition to any other keys in
-  the dependency vector (eg., :scope, :exclusions, etc)."
-  [[p v & more]]
-  (merge {:project p :version v} (apply hash-map more)))
-
-(defn map->coord
-  "Returns the dependency vector for the given map representation. The project
-  and version will be taken from the values of the :project and :version keys
-  and all other keys will be appended pairwise."
-  [{:keys [project version] :as more}]
-  (into [project version] (mapcat identity (dissoc more :project :version))))
 
 (defn dependency-pom-properties
   "Given a dependency coordinate of the form [id version ...], returns a
@@ -502,39 +490,6 @@
   "Like with-pod, evaluates the body in the worker pod."
   [& body]
   `(with-pod worker-pod ~@body))
-
-(defn canonical-id
-  "Given a project id symbol, returns the canonical form, with the group id
-  as the namespace of the resulting symbol only if it's not the same as the
-  artifact id.
-
-  For example: (canonical-id 'foo/foo) ;=> foo
-               (canonical-id 'foo/bar) ;=> foo/bar"
-  [id]
-  (when id
-    (let [[ns nm] ((juxt namespace name) id)]
-      (if (not= ns nm) id))))
-
-(defn full-id
-  "Given a project id symbol, returns the fully qualified form, with the group
-  id as the namespace of the resulting symbol and the artifact id as the name.
-
-  For example: (full-id 'foo)     ;=> foo/foo
-               (full-id 'foo/bar) ;=> foo/bar"
-  [id]
-  (when id
-    (let [[ns nm] ((juxt namespace name) id)]
-      (symbol (or ns nm) nm))))
-
-(defn canonical-coord
-  "Given a dependency coordinate of the form [id version ...], returns the
-  canonical form, i.e. the id symbol is not fully qualified when the artifact
-  and group ids are the same.
-
-  For example: (canonical-coord '[foo/foo \"1.2.3\"]) ;=> [foo \"1.2.3\"]
-               (canonical-coord '[foo/bar \"1.2.3\"]) ;=> [foo/bar \"1.2.3\"]"
-  [[id & more :as coord]]
-  (assoc-in (vec coord) [0] (canonical-id id)))
 
 (defn resolve-dependencies
   "Returns a seq of maps of the form {:jar <path> :dep <dependency vector>}

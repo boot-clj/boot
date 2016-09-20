@@ -5,6 +5,7 @@
     [clojure.pprint              :as pprint]
     [cemerick.pomegranate.aether :as aether]
     [boot.util                   :as util]
+    [boot.deps-util              :as deps-util]
     [boot.pod                    :as pod]
     [boot.gpg                    :as gpg]
     [boot.from.io.aviso.ansi     :as ansi]
@@ -104,7 +105,7 @@
   [env]
   (try
     (aether/resolve-dependencies
-      :coordinates       (:dependencies env)
+      :coordinates       (deps-util/merge-deps (:dependencies env) (:managed-dependencies env))
       :repositories      (->> (or (seq (:repositories env)) @default-repositories)
                            (map (juxt first (fn [[x y]] (if (map? y) y {:url y}))))
                            (map (juxt first (fn [[x y]] (update-in y [:update] #(or % @update?))))))
