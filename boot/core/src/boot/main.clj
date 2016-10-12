@@ -189,7 +189,10 @@
               import-ns   (export-task-namespaces initial-env)
               scriptforms (emit boot? args userforms localforms bootforms import-ns (:init opts))
               scriptstr   (binding [*print-meta* true]
-                            (str (string/join "\n\n" (map pr-boot-form scriptforms)) "\n"))]
+                            (str (->> scriptforms
+                                     (map pr-boot-form)
+                                     (map-indexed (fn [i form] (format "%s %s" i form)))
+                                     (string/join "\n\n")) "\n"))]
 
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
 
