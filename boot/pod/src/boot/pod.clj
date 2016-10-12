@@ -508,12 +508,13 @@
   as the namespace of the resulting symbol only if it's not the same as the
   artifact id.
 
-  For example: (canonical-id 'foo/foo) ;=> foo
-               (canonical-id 'foo/bar) ;=> foo/bar"
+  Examples: (canonical-id 'foo) ;=> 'foo
+            (canonical-id 'foo/foo) ;=> 'foo
+            (canonical-id 'foo/bar) ;=> 'foo/bar"
   [id]
   (when id
     (let [[ns nm] ((juxt namespace name) id)]
-      (if (not= ns nm) id))))
+      (if (not= ns nm) (symbol id) (symbol nm)))))
 
 (defn full-id
   "Given a project id symbol, returns the fully qualified form, with the group
