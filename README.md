@@ -431,7 +431,7 @@ Look for the `:boot/from` key in metadata attached to vars or namespaces.
 
 ## License
 
-Copyright © 2013 Alan Dipert and Micha Niskin
+Copyright © 2013-2016 Alan Dipert and Micha Niskin
 
 Distributed under the Eclipse Public License, the same as Clojure.
 

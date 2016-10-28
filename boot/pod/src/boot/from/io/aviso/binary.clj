@@ -1,7 +1,6 @@
 (ns boot.from.io.aviso.binary
-  {:boot/from :AvisoNovate/pretty
-   :doc "Utilities for formatting binary data (byte arrays) or binary deltas."}
-  (:import (java.lang StringBuilder))
+  "Utilities for formatting binary data (byte arrays) or binary deltas."
+  {:boot/from :AvisoNovate/pretty:0.1.30}
   (:require [boot.from.io.aviso
              [ansi :as ansi]
              [columns :as c]
@@ -18,8 +17,8 @@
 
 (extend-type (Class/forName "[B")
   BinaryData
-  (data-length [ary] (alength ary))
-  (byte-at [ary index] (aget ary index)))
+  (data-length [ary] (alength (bytes ary)))
+  (byte-at [ary index] (aget (bytes ary) index)))
 
 ;;; Extends String as a convenience; assumes that the
 ;;; String is in utf-8.
@@ -27,12 +26,18 @@
 (extend-type String
   BinaryData
   (data-length [s] (.length s))
-  (byte-at [s index] (-> s (.charAt index) byte)))
+  (byte-at [s index] (-> s (.charAt index) int byte)))
+
+(extend-type StringBuilder
+  BinaryData
+  (data-length [sb] (.length sb))
+  (byte-at [sb index]
+    (-> sb (.charAt index) int byte)))
 
 (extend-type nil
   BinaryData
-  (data-length [this] 0)
-  (byte-at [this index] (throw (IndexOutOfBoundsException. "Can't use byte-at with nil."))))
+  (data-length [_] 0)
+  (byte-at [_ index] (throw (IndexOutOfBoundsException. "Can't use byte-at with nil."))))
 
 (def ^:private ^:const bytes-per-diff-line 16)
 (def ^:private ^:const bytes-per-ascii-line 16)
@@ -40,7 +45,7 @@
 
 (def ^:private printable-chars
       (into #{}
-            (map byte (str "abcdefghijklmnopqrstuvwyz"
+            (map byte (str "abcdefghijklmnopqrstuvwxyz"
                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                            "0123456789"
                            " !@#$%^&*()-_=+[]{}\\|'\";:,./<>?`~"))))
@@ -89,10 +94,10 @@
   - [[BinaryData]] to write
   - option keys and values:
 
-      `:ascii` boolean
+      :ascii - boolean
       : true to enable ASCII mode
 
-      `:line-bytes` number
+      :line-bytes - number
       : number of bytes per line (defaults to 16 for ASCII, 32 otherwise)
 
   In ASCII mode, the output is 16 bytes per line, but each line includes the ASCII printable characters:
@@ -105,10 +110,13 @@
   A placeholder character (a space with magenta background) is used for any non-printable
   character."
   ([data]
-   (write-binary *out* data))
-  ([writer data & {show-ascii? :ascii
-                   per-line-option :line-bytes}]
-   (let [per-line (or per-line-option
+   (write-binary *out* data nil))
+  ([writer data]
+   (write-binary writer data nil))
+  ([writer data options]
+   (let [{show-ascii?     :ascii
+          per-line-option :line-bytes} options
+         per-line  (or per-line-option
                       (if show-ascii? bytes-per-ascii-line bytes-per-line))
          formatter (apply c/format-columns
                           (if show-ascii?
@@ -119,12 +127,14 @@
        (let [remaining (- (data-length data) offset)]
          (when (pos? remaining)
            (write-line writer formatter show-ascii? offset data (min per-line remaining))
-           (recur (+ per-line offset))))))))
+           (recur (long (+ per-line offset)))))))))
 
 (defn format-binary
   "Formats the data using [[write-binary]] and returns the result as a string."
-  [data & options]
-  (apply w/into-string write-binary data options))
+  ([data]
+   (format-binary data nil))
+  ([data options]
+   (apply w/into-string write-binary data options)))
 
 (defn- match?
   [byte-offset data-length data alternate-length alternate]
@@ -179,7 +189,7 @@
      (loop [offset 0]
        (when (pos? (- target-length offset))
          (write-delta-line writer offset expected-length expected actual-length actual)
-         (recur (+ bytes-per-diff-line offset)))))))
+         (recur (long (+ bytes-per-diff-line offset))))))))
 
 (defn format-binary-delta
   "Formats the delta using [[write-binary-delta]] and returns the result as a string."

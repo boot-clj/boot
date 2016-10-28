@@ -255,9 +255,8 @@
   [ex]
   (case @*verbosity*
     0 nil
-    1 (pretty/write-exception *err* ex
-        {:properties true :filter repl/standard-frame-filter})
-    2 (pretty/write-exception *err* ex {:properties true})
+    1 (pretty/write-exception *err* ex nil)
+    2 (pretty/write-exception *err* ex {:filter nil})
     (binding [*out* *err*] (.printStackTrace ex))))
 
 (defn print-tree
