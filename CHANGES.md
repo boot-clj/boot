@@ -12,6 +12,7 @@
   specified by `BOOT_CLOJURE_VERSION` [#230][230], [#469][469].
 - Corrected docstring for `boot.pod/canonical-coord`.
 - Throw helpful exception when `deftask` argument vector isn't a vector [#487][487].
+- Now uses io.aviso/pretty 0.1.30: this affects the order of reported stack frames [#355][355].
 
 #### Fixed
 
