@@ -104,6 +104,7 @@
   [env]
   (try
     (aether/resolve-dependencies
+      :managed-coordinates (:managed-dependencies env)
       :coordinates       (:dependencies env)
       :repositories      (->> (or (seq (:repositories env)) @default-repositories)
                            (map (juxt first (fn [[x y]] (if (map? y) y {:url y}))))
