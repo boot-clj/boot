@@ -1,6 +1,6 @@
 (ns boot.from.io.aviso.writer
-  {:boot/from :AvisoNovate/pretty
-   :doc "The StringWriter protocol is used as the target of any written output."}
+  "The StringWriter protocol is used as the target of any written output."
+  {:boot/from :AvisoNovate/pretty:0.1.30}
   (:import
     [java.io Writer]))
 
@@ -16,9 +16,8 @@
 (extend-protocol StringWriter
   StringBuilder
   (write-string [this ^CharSequence string] (.append this string))
-  (flush-writer [this] nil))
+  (flush-writer [this] nil)
 
-(extend-protocol StringWriter
   Writer
   (write-string [this ^CharSequence string] (.append this string))
   (flush-writer [this] (.flush this)))
