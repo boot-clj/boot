@@ -44,7 +44,6 @@
   the set of paths that will trigger a rebuild [#312][312].
 - The `watch` task now accpets `--debounce` option to adjust how long it will
   wait for all filesystem events to have fired before a rebuild is triggered.
-- The `repl` task now pretty-prints values via puget when printing in color.
 
 ##### API Functions
 
