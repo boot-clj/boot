@@ -1,6 +1,6 @@
 (ns boot.from.io.aviso.ansi
   "Help with generating textual output that includes ANSI escape codes for formatting."
-  {:boot/from :AvisoNovate/pretty:0.1.32}
+  {:boot/from :AvisoNovate/pretty:0.1.33}
  (:import
     [java.util.regex Pattern])
   (:require

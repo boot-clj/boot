@@ -1,6 +1,6 @@
 (ns boot.from.io.aviso.writer
   "The StringWriter protocol is used as the target of any written output."
-  {:boot/from :AvisoNovate/pretty:0.1.32}
+  {:boot/from :AvisoNovate/pretty:0.1.33}
   (:import
     [java.io Writer]))
 

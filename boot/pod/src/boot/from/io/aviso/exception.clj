@@ -1,6 +1,6 @@
 (ns boot.from.io.aviso.exception
   "Format and present exceptions in a pretty (structured, formatted) way."
-  {:boot/from :AvisoNovate/pretty:0.1.32}
+  {:boot/from :AvisoNovate/pretty:0.1.33}
   (:use boot.from.io.aviso.ansi)
   (:require [clojure
              [pprint :as pp]

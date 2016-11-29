@@ -3,7 +3,7 @@
   may be left or right justified. Generally, columns are sized to the largest item in the column.
   When a value is provided in a column, it may be associated with an explicit width which is helpful
   when the value contains non-printing characters (such as those defined in the `io.aviso.ansi` namespace)."
-  {:boot/from :AvisoNovate/pretty:0.1.32} 
+  {:boot/from :AvisoNovate/pretty:0.1.33} 
   (:require [clojure.string :as str]
             [boot.from.io.aviso
              [ansi :as ansi]
