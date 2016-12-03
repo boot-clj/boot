@@ -22,6 +22,7 @@
    [boot.pedantic        :as pedantic])
   (:import
    [java.io File]
+   [java.nio.file.attribute PosixFilePermissions]
    [java.util Arrays]
    [java.util.concurrent LinkedBlockingQueue TimeUnit]
    [javax.tools ToolProvider DiagnosticCollector Diagnostic$Kind]))
@@ -361,16 +362,24 @@
     (core/with-post-wrap [_] @(promise))
     (core/with-pass-thru [fs] (Thread/sleep time))))
 
+(defn- mk-posix-file-permissions [posix-string]
+  (try
+    (when posix-string
+      (PosixFilePermissions/fromString posix-string))
+    (catch IllegalArgumentException _
+      (util/warn "Could not parse mode string, ignoring...\n"))))
+
 (core/deftask target
   "Writes output files to the given directory on the filesystem."
   [d dir PATH #{str} "The set of directories to write to (target)."
+   m mode VAL str    "The mode of written files in 'rwxrwxrwx' format"
    L no-link  bool   "Don't create hard links."
    C no-clean bool   "Don't clean target before writing project files."]
   (let [dir   (or (seq dir) ["target"])
         sync! (#'core/fileset-syncer dir :clean (not no-clean))]
     (core/with-pass-thru [fs]
       (util/info "Writing target dir(s)...\n")
-      (sync! fs :link (not no-link)))))
+      (sync! fs :link (not no-link) :mode (mk-posix-file-permissions mode)))))
 
 (core/deftask watch
   "Call the next handler when source files change."

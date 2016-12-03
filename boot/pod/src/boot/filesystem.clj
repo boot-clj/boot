@@ -155,20 +155,22 @@
     (Files/setLastModifiedTime dst (FileTime/fromMillis time))))
 
 (defn copy!
-  [^Path dest path ^Path src time]
+  [^Path dest path ^Path src time & {:keys [mode]}]
   (let [dst (doto (rel dest path) mkparents!)]
     (util/dbug* "Filesystem: copying %s...\n" (string/join "/" path))
     (try (Files/copy ^Path src ^Path dst copy-opts)
          (Files/setLastModifiedTime dst (FileTime/fromMillis time))
+         (when mode (Files/setPosixFilePermissions dst mode))
          (catch java.nio.file.NoSuchFileException ex
            (util/dbug* "Filesystem: %s\n", (str ex))))))
 
 (defn link!
-  [dest path src]
+  [dest path src & {:keys [mode]}]
   (let [dst (rel dest path)]
     (util/dbug* "Filesystem: linking %s...\n" (string/join "/" path))
     (try (Files/deleteIfExists dst)
          (Files/createLink (doto dst mkparents!) src)
+         (when mode (Files/setPosixFilePermissions dst mode))
          (catch java.nio.file.NoSuchFileException ex
            (util/dbug* "Filesystem: %s\n" (str ex))))))
 
@@ -188,11 +190,11 @@
       (writer-fn os))))
 
 (defn patch!
-  [dest before after & {:keys [link]}]
+  [dest before after & {:keys [link mode]}]
   (with-let [_ (fsp/patch-result before after)]
     (doseq [[op path & [arg1 arg2]] (fsp/patch before after link)]
       (case op
         :delete (delete! dest path)
-        :write  (copy!   dest path arg1 arg2)
-        :link   (link!   dest path arg1)
+        :write  (copy!   dest path arg1 arg2 :mode mode)
+        :link   (link!   dest path arg1 :mode mode)
         :touch  (touch!  dest path arg1)))))

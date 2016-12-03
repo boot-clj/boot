@@ -1,5 +1,12 @@
 # Changes
 
+## Master
+
+##### Task Options
+- Added `-m, --mode` option to the `target` task &mdash; specifies the file
+  mode for written files &mdash; should only be used when default `rw-------`
+  is not enough.
+
 ## 2.7.0
 
 #### Improved
