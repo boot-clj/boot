@@ -13,6 +13,7 @@
 - Corrected docstring for `boot.pod/canonical-coord`.
 - Throw helpful exception when `deftask` argument vector isn't a vector [#487][487].
 - Now uses io.aviso/pretty 0.1.33: this affects the order of reported stack frames [#355][355].
+  The old behavior [can be restored with user configuration][pretty-config].
 - Exceptions are now always reportted using pretty, regardless of the setting of 
   BOOT_COLOR (or the -C flag), but when colorization is disabled, pretty
   exception reporting will not use an ANSI color codes in its output.
@@ -411,3 +412,4 @@
 [220]: https://github.com/boot-clj/boot/issues/220
 [d8782413]: https://github.com/boot-clj/boot/commit/d8782413a16bfafbc0a069bf2a77ae74c029a5ca
 [243]: https://github.com/boot-clj/boot/issues/243
+[pretty-config]: https://github.com/boot-clj/boot/wiki/Configuring-Boot#configuring-stack-trace-display
