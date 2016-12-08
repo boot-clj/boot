@@ -251,13 +251,17 @@
      (binding [*err* s#] ~@body (str s#))))
 
 (defn print-ex
-  "Print exception to *err* as appropriate for the current *verbosity* level."
+  "Print exception to *err* as appropriate for the current *verbosity* level.
+
+  If ex-data contains truthy :boot.util/omit-stacktrace? value, only exception
+  message is shown."
   [ex]
-  (case @*verbosity*
-    0 nil
-    1 (pretty/write-exception *err* ex nil)
-    2 (pretty/write-exception *err* ex {:filter nil})
-    (binding [*out* *err*] (.printStackTrace ex))))
+  (cond
+    (= 0 @*verbosity*) nil
+    (::omit-stacktrace? (ex-data ex)) (fail (.getMessage ex))
+    (= 1 @*verbosity*) (pretty/write-exception *err* ex nil)
+    (= 2 @*verbosity*) (pretty/write-exception *err* ex {:filter nil})
+    :else (binding [*out* *err*] (.printStackTrace ex))))
 
 (defn print-tree
   "Pretty prints tree, with the optional prefixes prepended to each line. The
