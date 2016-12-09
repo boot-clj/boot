@@ -17,13 +17,17 @@
 
 (defn play! [file]
   (fg-first-time!
-    (future
-      (-> (or (.getResourceAsStream (clojure.lang.RT/baseLoader) file)
-            (FileInputStream. (io/file file))
-            (or (throw (RuntimeException. (str file " not found.")))))
-        java.io.BufferedInputStream.
-        javazoom.jl.player.Player.
-        .play))))
+   (future
+     (try
+       (-> (or (.getResourceAsStream (clojure.lang.RT/baseLoader) file)
+               (FileInputStream. (io/file file))
+               (throw (RuntimeException. (str file " not found."))))
+           java.io.BufferedInputStream.
+           javazoom.jl.player.Player.
+           .play)
+       (catch Exception e
+         (util/warn "\nError attempting to play sound file: %s\n\n"
+                    (.getMessage e)))))))
 
 (defn success! [theme file] (play! (or file (path-for theme "success"))))
 (defn failure! [theme file] (play! (or file (path-for theme "failure"))))
