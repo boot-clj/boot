@@ -48,8 +48,10 @@
   fileset from the `uber` task, etc. [#451][451]
 - The `watch` task now accepts `--include` and `--exclude` options to restrict
   the set of paths that will trigger a rebuild [#312][312].
-- The `watch` task now accpets `--debounce` option to adjust how long it will
+- The `watch` task now accepts `--debounce` option to adjust how long it will
   wait for all filesystem events to have fired before a rebuild is triggered.
+- On systems without audio output ,the `notify` task now prints an error
+  message instead of throwing an exception [#523][523]
 
 ##### API Functions
 
@@ -125,6 +127,7 @@
 [491]: https://github.com/boot-clj/boot/issues/491
 [497]: https://github.com/boot-clj/boot/issues/497
 [528]: https://github.com/boot-clj/boot/pull/528
+[523]: https://github.com/boot-clj/boot/pull/523
 
 ## 2.6.0
 
