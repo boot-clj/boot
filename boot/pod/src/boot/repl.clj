@@ -3,13 +3,21 @@
     [clojure.java.io :as io]
     [boot.pod        :as pod]
     [boot.file       :as file]
-    [boot.util       :as util]))
+    [boot.util       :as util]
+    [boot.from.io.aviso.repl :as pretty-repl]
+    [boot.from.io.aviso.exception :refer [*fonts*]]))
 
 (def ^:dynamic *default-dependencies*
   (atom '[[org.clojure/tools.nrepl "0.2.12" :exclusions [[org.clojure/clojure]]]]))
 
+(defn ^:private disable-exception-colors
+  [handler]
+  (fn [msg]
+    (binding [*fonts* nil]
+      (handler msg))))
+
 (def ^:dynamic *default-middleware*
-  (atom (if-not @util/*colorize?* [] ['boot.from.io.aviso.nrepl/pretty-middleware])))
+  (atom (if-not @util/*colorize?* [disable-exception-colors] [])))
 
 (def ^:private start-server
   (delay (require 'boot.repl-server)
@@ -41,6 +49,7 @@
   [opts]
   (util/with-let [{:keys [compile-path]} (-> opts compile-path nrepl-middleware)]
     (pod/add-classpath compile-path)
+    (pretty-repl/install-pretty-exceptions)
     (when-let [deps (nrepl-dependencies opts)]
       (pod/add-dependencies (assoc pod/env :dependencies deps)))))
 

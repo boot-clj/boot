@@ -2,7 +2,6 @@
   (:require
    [boot.repl                              :as repl]
    [boot.util                              :as util]
-   [boot.from.io.aviso.nrepl               :as pretty]
    [clojure.java.io                        :as io]
    [clojure.tools.nrepl.server             :as server]
    [clojure.tools.nrepl.middleware         :as middleware]
@@ -40,10 +39,6 @@
         {:requires #{#'session/session}
          :expects #{"eval"}})
       (alter-var-root (constantly @wrap-init-vars')))))
-
-(middleware/set-descriptor!
-  #'pretty/pretty-middleware
-  {:requires #{} :expects #{}})
 
 (defn ->var
   [thing]
