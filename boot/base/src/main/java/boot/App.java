@@ -7,7 +7,6 @@ import java.nio.channels.FileLock;
 import java.nio.channels.FileChannel;
 import java.lang.ref.WeakReference;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.Map;
 import java.util.Date;
 import java.util.UUID;
@@ -306,7 +305,7 @@ public class App {
 
         for (int i=0; i<jarFiles.length; i++) urls[i] = jarFiles[i].toURI().toURL();
 
-        ClassLoader cl = new URLClassLoader(urls, App.class.getClassLoader());
+        ClassLoader cl = new AddableClassLoader(urls, App.class.getClassLoader());
         ClojureRuntimeShim rt = ClojureRuntimeShim.newRuntime(cl);
 
         rt.setName(name != null ? name : "anonymous");
@@ -319,6 +318,7 @@ public class App {
 
         rt.require("boot.pod");
         rt.invoke("boot.pod/seal-app-classloader");
+        rt.invoke("boot.pod/extend-addable-classloader");
         rt.invoke("boot.pod/set-data!", data);
         rt.invoke("boot.pod/set-pods!", pods);
         rt.invoke("boot.pod/set-this-pod!", new WeakReference<ClojureRuntimeShim>(rt));
