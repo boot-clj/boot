@@ -14,7 +14,7 @@
 - Throw helpful exception when `deftask` argument vector isn't a vector [#487][487].
 - Now uses io.aviso/pretty 0.1.33: this affects the order of reported stack frames [#355][355].
   The old behavior [can be restored with user configuration][pretty-config].
-- Exceptions are now always reportted using pretty, regardless of the setting of 
+- Exceptions are now always reported using pretty, regardless of the setting of 
   BOOT_COLOR (or the -C flag), but when colorization is disabled, pretty
   exception reporting will not use an ANSI color codes in its output.
   This is often preferable when output from Boot is being logged to a
