@@ -19,6 +19,7 @@
   exception reporting will not use an ANSI color codes in its output.
   This is often preferable when output from Boot is being logged to a
   file.
+- Support [managed dependencies](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html) by upgrading [pomegranate](https://github.com/cemerick/pomegranate) to 0.3.1. [#526][526]
 
 #### Fixed
 
@@ -128,6 +129,7 @@
 [497]: https://github.com/boot-clj/boot/issues/497
 [528]: https://github.com/boot-clj/boot/pull/528
 [523]: https://github.com/boot-clj/boot/pull/523
+[526]: https://github.com/boot-clj/boot/pull/526
 
 ## 2.6.0
 
