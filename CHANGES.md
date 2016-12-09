@@ -38,6 +38,9 @@
   with correct, platform-specific paths [#488][488].
 - Eliminate runtime reflection in `boot.core/deftask` macro [#490][490].
 - Create bootscript tmpfile with mode `0600` instead of `0664`.
+- Previously, setting BOOT_COLOR to false was ignored, and the isWindows
+  check overruled the BOOT_COLOR selection. Now, the default for colorization
+  from isWindows is set only if BOOT_COLOR is blank [#536][536]
 
 #### Tasks
 
@@ -130,6 +133,7 @@
 [528]: https://github.com/boot-clj/boot/pull/528
 [523]: https://github.com/boot-clj/boot/pull/523
 [526]: https://github.com/boot-clj/boot/pull/526
+[536]: https://github.com/boot-clj/boot/pull/536
 
 ## 2.6.0
 
