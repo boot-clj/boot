@@ -22,7 +22,7 @@
 (def local-repo           (atom nil))
 (def default-repositories (delay (let [c (boot.App/config "BOOT_CLOJARS_REPO")
                                        m (boot.App/config "BOOT_MAVEN_CENTRAL_REPO")]
-                                   [["clojars"       {:url (or c "https://clojars.org/repo/")}]
+                                   [["clojars"       {:url (or c "https://repo.clojars.org/")}]
                                     ["maven-central" {:url (or m "https://repo1.maven.org/maven2/")}]])))
 (def default-mirrors      (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
                                        m (boot.App/config "BOOT_MAVEN_CENTRAL_MIRROR")
