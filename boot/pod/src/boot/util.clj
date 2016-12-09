@@ -6,7 +6,6 @@
     [clojure.string               :as string]
     [boot.file                    :as file]
     [boot.from.io.aviso.ansi      :as ansi]
-    [boot.from.io.aviso.repl      :as repl]
     [boot.from.io.aviso.exception :as pretty]
     [boot.from.me.raynes.conch    :as conch])
   (:import
@@ -19,14 +18,18 @@
 (declare print-ex)
 
 (defn colorize?-system-default
-  "Return whether we should colorize output on this system. This is
-  true, unless we're on Windows, where this is false. The default
-  console on Windows does not interprete ansi escape codes. The
-  default can be overriden by setting the environment variable
-  BOOT_COLOR=1 or BOOT_COLOR=yes to turn it on or any other value to
-  turn it off."
+  "Return whether we should colorize output on this system. The default
+  console on Windows does not interprete ANSI escape codes, so colorized
+  output is disabled on Windows by default, but enabled by default
+  on other platforms. The default can be overriden by setting the
+  environment variable or configuration option BOOT_COLOR to
+  either '1' or 'yes' to enable it; any other value disables
+  colorization."
   []
-  (or (#{"1" "yes"} (boot.App/config "BOOT_COLOR")) (not (boot.App/isWindows))))
+  (let [value (boot.App/config "BOOT_COLOR")]
+    (if-not (string/blank? value)
+      (#{"1" "yes"} (string/lower-case value))
+      (not (boot.App/isWindows)))))
 
 (def ^:dynamic *verbosity*
   "Atom containing the verbosity level, 1 is lowest, 3 highest. Level 2
