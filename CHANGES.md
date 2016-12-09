@@ -91,6 +91,10 @@
   task in the fileset [#451][451].
 - Added `-C, --no-color` option to the `repl` task &mdash; disables ANSI color
   codes in REPL client output.
+  
+##### Pods
+
+- Upgraded dynapath to 0.2.4 in order to support Java 9 [#528][528]
 
 ##### Boot Environment
 
@@ -120,6 +124,7 @@
 [490]: https://github.com/boot-clj/boot/issues/490
 [491]: https://github.com/boot-clj/boot/issues/491
 [497]: https://github.com/boot-clj/boot/issues/497
+[528]: https://github.com/boot-clj/boot/pull/528
 
 ## 2.6.0
 
