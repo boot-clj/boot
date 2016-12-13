@@ -1,6 +1,6 @@
 # Changes
 
-## Master
+## 2.7.0
 
 #### Improved
 
@@ -20,6 +20,7 @@
   This is often preferable when output from Boot is being logged to a
   file.
 - Support [managed dependencies](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html) by upgrading [pomegranate](https://github.com/cemerick/pomegranate) to 0.3.1. [#526][526]
+- Use the [Fastly CDN version of Clojars](https://groups.google.com/d/msg/clojure/WhBu4CB_ekg/YzE9e-iBAAAJ) by default. [#540][540]
 
 #### Fixed
 
@@ -100,7 +101,7 @@
   
 ##### Pods
 
-- Upgraded dynapath to 0.2.4 in order to support Java 9 [#528][528]
+- Upgraded dynapath to 0.2.5 in order to support Java 9. [#528][528], [#539][539]
 
 ##### Boot Environment
 
@@ -109,6 +110,16 @@
 #### Deprecated
 
 - The `speak` task, replaced by `notify`.
+
+#### Java 9
+
+> Java 9 is slated for release sometime next year. It introduces breaking
+> changes, and Boot might need to be continually updated to ensure that we're
+> compatible with Java 9 once it's released.
+
+- Improvements to work with Java 9 (boot repl works on Java 9-ea+148) that
+  upgrade dynapath to 0.2.5. These changes require a newer boot-bin to function,
+  but are backward compatible on Java 7 and 8. [#539][539]
 
 [230]: https://github.com/boot-clj/boot/issues/230
 [312]: https://github.com/boot-clj/boot/issues/312
@@ -134,6 +145,8 @@
 [523]: https://github.com/boot-clj/boot/pull/523
 [526]: https://github.com/boot-clj/boot/pull/526
 [536]: https://github.com/boot-clj/boot/pull/536
+[540]: https://github.com/boot-clj/boot/pull/540
+[539]: https://github.com/boot-clj/boot/pull/539
 
 ## 2.6.0
 
