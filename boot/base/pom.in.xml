@@ -32,7 +32,7 @@
     </repository>
     <repository>
       <id>clojars</id>
-      <url>https://clojars.org/repo/</url>
+      <url>https://repo.clojars.org/</url>
     </repository>
     <repository>
       <id>maven-central</id>

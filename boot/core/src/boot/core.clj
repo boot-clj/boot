@@ -58,7 +58,7 @@
 (def ^:private repo-config-fn    (atom identity))
 (def ^:private loaded-checkouts  (atom {}))
 (def ^:private checkout-dirs     (atom #{}))
-(def ^:private default-repos     [["clojars"       {:url "https://clojars.org/repo/"}]
+(def ^:private default-repos     [["clojars"       {:url "https://repo.clojars.org/"}]
                                   ["maven-central" {:url "https://repo1.maven.org/maven2"}]])
 (def ^:private default-mirrors   (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
                                               m (boot.App/config "BOOT_MAVEN_CENTRAL_MIRROR")
