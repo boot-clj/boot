@@ -365,7 +365,9 @@
 (defn- mk-posix-file-permissions [posix-string]
   (try
     (when posix-string
-      (PosixFilePermissions/fromString posix-string))
+      (if (boot.App/isWindows)
+        (util/warn "Filemode not supported on Windows\n")
+        (PosixFilePermissions/fromString posix-string)))
     (catch IllegalArgumentException _
       (util/warn "Could not parse mode string, ignoring...\n"))))
 

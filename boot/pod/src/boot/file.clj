@@ -21,10 +21,14 @@
 (def ^:dynamic *sync-delete* true)
 (def ^:dynamic *hard-link*   true)
 
+(def windows? (boot.App/isWindows))
+
 (def tmpfile-permissions
   (into-array FileAttribute
-              [(PosixFilePermissions/asFileAttribute
-                 (PosixFilePermissions/fromString "rw-------"))]))
+              (if windows?
+                []
+                [(PosixFilePermissions/asFileAttribute
+                  (PosixFilePermissions/fromString "rw-------"))])))
 
 (defn file? [f] (when (try (.isFile (io/file f)) (catch Throwable _)) f))
 (defn dir? [f] (when (try (.isDirectory (io/file f)) (catch Throwable _)) f))
@@ -247,8 +251,7 @@
 
 (defn match-filter?
   [filters f]
-  (let [windows?  (boot.App/isWindows)
-        normalize #(if-not windows? % (str/replace % #"\\" "/"))]
+  (let [normalize #(if-not windows? % (str/replace % #"\\" "/"))]
     ((apply some-fn (map (partial partial re-find) filters)) (normalize (.getPath ^File f)))))
 
 (defn keep-filters?

@@ -38,6 +38,8 @@
 (def read-only
   (PosixFilePermissions/fromString "r--r--r--"))
 
+(def windows? (boot.App/isWindows))
+
 (defprotocol IToPath
   (->path [x] "Returns a java.nio.file.Path for x."))
 
@@ -160,7 +162,7 @@
     (util/dbug* "Filesystem: copying %s...\n" (string/join "/" path))
     (try (Files/copy ^Path src ^Path dst copy-opts)
          (Files/setLastModifiedTime dst (FileTime/fromMillis time))
-         (when mode (Files/setPosixFilePermissions dst mode))
+         (when (and mode (not windows?)) (Files/setPosixFilePermissions dst mode))
          (catch java.nio.file.NoSuchFileException ex
            (util/dbug* "Filesystem: %s\n", (str ex))))))
 
@@ -170,7 +172,7 @@
     (util/dbug* "Filesystem: linking %s...\n" (string/join "/" path))
     (try (Files/deleteIfExists dst)
          (Files/createLink (doto dst mkparents!) src)
-         (when mode (Files/setPosixFilePermissions dst mode))
+         (when (and mode (not windows?)) (Files/setPosixFilePermissions dst mode))
          (catch java.nio.file.NoSuchFileException ex
            (util/dbug* "Filesystem: %s\n" (str ex))))))
 
