@@ -1002,10 +1002,10 @@
   (let [prev   (atom nil)
         clean! (if clean empty-dir! identity)
         dirs   (delay (mapv #(doto (io/file %) .mkdirs clean!) dirs))]
-    (fn [fs & {:keys [link]}]
+    (fn [fs & {:keys [link mode]}]
       (let [link  (when link :tmp)
             [a b] [@prev (reset! prev (output-fileset fs))]]
-        (mapv deref (for [d @dirs :let [p! (partial fs/patch! (fs/->path d) a b :link)]]
+        (mapv deref (for [d @dirs :let [p! (partial fs/patch! (fs/->path d) a b :mode mode :link)]]
                       (future (try (p! link)
                                    (catch Throwable t
                                      (if-not link (throw t) (p! nil)))))))))))
