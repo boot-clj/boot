@@ -1,11 +1,16 @@
 # Changes
 
-## Master
+## 2.7.1
 
-##### Task Options
+#### Fixed
+
+- Fixed a Windows regression in the user script generation code introduced by [f339a8d](https://github.com/boot-clj/boot/commit/f339a8d9464bfc0e05f9c963744377e91a042c48). [#541][541]
+
+#### Tasks
+
 - Added `-m, --mode` option to the `target` task &mdash; specifies the file
   mode for written files &mdash; should only be used when default `rw-------`
-  is not enough.
+  is not enough. [#537][537]
 
 ## 2.7.0
 
@@ -45,7 +50,7 @@
 - Format paths in `boot.class.path` and `fake.class.path` system properties
   with correct, platform-specific paths [#488][488].
 - Eliminate runtime reflection in `boot.core/deftask` macro [#490][490].
-- Create bootscript tmpfile with mode `0600` instead of `0664`.
+d- Create bootscript tmpfile with mode `0600` instead of `0664`.
 - Previously, setting BOOT_COLOR to false was ignored, and the isWindows
   check overruled the BOOT_COLOR selection. Now, the default for colorization
   from isWindows is set only if BOOT_COLOR is blank [#536][536]
@@ -154,6 +159,8 @@
 [536]: https://github.com/boot-clj/boot/pull/536
 [540]: https://github.com/boot-clj/boot/pull/540
 [539]: https://github.com/boot-clj/boot/pull/539
+[541]: https://github.com/boot-clj/boot/issues/541
+[537]: https://github.com/boot-clj/boot/pull/537
 
 ## 2.6.0
 
