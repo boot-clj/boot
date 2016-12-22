@@ -161,6 +161,7 @@ d- Create bootscript tmpfile with mode `0600` instead of `0664`.
 [539]: https://github.com/boot-clj/boot/pull/539
 [541]: https://github.com/boot-clj/boot/issues/541
 [537]: https://github.com/boot-clj/boot/pull/537
+[355]: https://github.com/boot-clj/boot/issues/355
 
 ## 2.6.0
 
