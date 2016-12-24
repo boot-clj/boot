@@ -33,13 +33,21 @@
 (defmethod notify-method "Mac OS X"
   [_ {:keys [message title icon uid] :as notification}]
   (if (program-exists? "terminal-notifier")
-    (shell/sh "terminal-notifier" "-message" message "-title" title "-contentImage" icon "-group" uid)
+    (shell/sh "terminal-notifier"
+              "-message" (str message)
+              "-title" (str title)
+              "-contentImage" (str icon)
+              "-group" (str uid))
     ((get-method notify-method :default) :default notification)))
 
 (defmethod notify-method "Linux"
   [_ {:keys [message title icon] :as notification}]
   (if (program-exists? "notify-send")
-    (shell/sh "notify-send" title message "--icon" icon)
+    (shell/sh "notify-send"
+              (str title)
+              (str message)
+              "--icon"
+              (str icon))
     ((get-method notify-method :default) :default notification)))
 
 (defmethod notify-method :default
