@@ -2,7 +2,9 @@
   (:require [clojure.java.io    :as io]
             [clojure.java.shell :as shell]
             [boot.core          :as core]
-            [boot.pod           :as pod]))
+            [boot.pod           :as pod]
+            [boot.util          :as util]
+            [boot.from.io.aviso.ansi :as ansi]))
 
 (defn get-themefiles [theme tmp-dir]
   (let [resource   #(vector %2 (format "boot/notify/%s_%s.mp3" %1 %2))
@@ -66,7 +68,11 @@
 
 (defmethod notify-method :default
   [_ {:keys [message title]}]
-  (printf "%s: %s" title message))
+  (util/info "%s%s %s \u2022 %s\n"
+             ansi/reset-font
+             (ansi/italic "notification:")
+             (ansi/bold title)
+             message))
 
 (defn ^{:boot/from :jeluard/boot-notify} visual-notify!
   [data]
