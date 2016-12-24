@@ -26,18 +26,32 @@
   [s]
   (= 0 (:exit (shell/sh "sh" "-c" (format "command -v %s" s)))))
 
+(defn- escape [s]
+  (pr-str (str s)))
+
 (defmulti notify-method
   (fn [os _message]
     os))
 
 (defmethod notify-method "Mac OS X"
   [_ {:keys [message title icon uid] :as notification}]
-  (if (program-exists? "terminal-notifier")
+  (cond
+    (program-exists? "terminal-notifier")
     (shell/sh "terminal-notifier"
               "-message" (str message)
               "-title" (str title)
               "-contentImage" (str icon)
               "-group" (str uid))
+
+    (program-exists? "osascript")
+    (shell/sh "osascript"
+              "-e"
+              (str "display notification"
+                   (escape message)
+                   "with title"
+                   (escape title)))
+
+    :else
     ((get-method notify-method :default) :default notification)))
 
 (defmethod notify-method "Linux"
