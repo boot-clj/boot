@@ -33,6 +33,7 @@
   file.
 - Support [managed dependencies](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html) by upgrading [pomegranate](https://github.com/cemerick/pomegranate) to 0.3.1. [#526][526]
 - Use the [Fastly CDN version of Clojars](https://groups.google.com/d/msg/clojure/WhBu4CB_ekg/YzE9e-iBAAAJ) by default. [#540][540]
+- Allow tasks to hide exception stacktrace with `:boot.util/omit-stracktrace?` ex-data property [#486][486], [#532][532].
 
 #### Fixed
 
