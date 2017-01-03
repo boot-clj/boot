@@ -57,13 +57,53 @@
       (print ((or color identity) (apply format args)))
       (flush))))
 
+(defmacro print**
+  "Macro version of boot.util/print* but arguments are only evaluated
+  when the message will be printed."
+  [verbosity color fmt args]
+  `(when (>= @*verbosity* ~verbosity)
+     (binding [*out* *err*]
+       (print ((or ~color identity) (format ~fmt ~@args)))
+       (flush))))
+
+(defmacro trace*
+  "Tracing macro, arguments are only evaluated when the message will be
+  printed (i.e., verbosity level >= 3)."
+  [fmt & args]
+  `(print** 3 ansi/cyan ~fmt ~args))
+
 (defmacro dbug*
   "Macro version of boot.util/dbug, arguments are only evaluated when the
   message will be printed (i.e., verbosity level >= 2)."
   [fmt & args]
-  `(when (>= @*verbosity* 2)
-     (binding [*out* *err*]
-       (print (ansi/bold-cyan (format ~fmt ~@args))))))
+  `(print** 2 ansi/bold-cyan ~fmt ~args))
+
+(defmacro info*
+  "Macro version of boot.util/info, arguments are only evaluated when
+  the message will be printed (i.e., verbosity level >= 1)."
+  [fmt & args]
+  `(print** 1 ansi/bold ~fmt ~@args))
+
+(defmacro warn*
+  "Macro version of boot.util/warn, arguments are only evaluated when
+  the message will be printed.."
+  [fmt & args]
+  `(print** 1 ansi/bold-yellow ~fmt ~@args))
+
+(defmacro fail*
+  "Macro version of boot.util/fail, arguments are only evaluated when
+  the message will be printed.."
+  [fmt & args]
+  `(print** 1 ansi/bold-red ~fmt ~@args))
+
+(defn trace
+  "Print TRACE level message. Arguments of the form fmt & args suitable for
+  passing to clojure.core/format.
+
+  Note that boot.util/*verbosity* in a pod needs to be altered AFTER pod
+  creation or log level won't be affected."
+  [& more]
+  (print* 3 ansi/cyan more))
 
 (defn dbug
   "Print DEBUG level message. Arguments of the form fmt & args suitable for
