@@ -410,6 +410,25 @@
         (throw (Exception. (-> "%s: non-zero exit status (%d)"
                                (format (first args) status))))))))
 
+(defn dosh-timed
+  "Evaluates args as a shell command, blocking on completion up to `timeout-ms`
+   and throwing an exception on non-zero exit status. Output from the shell is
+   streamed to stdout and stderr as it is produced."
+  [timeout-ms & args]
+  (let [args (remove nil? args)]
+    (assert (every? string? args))
+    (let [opts   (into [:redirect-err true] (when *sh-dir* [:dir *sh-dir*]))
+          proc   (apply conch/proc (concat args opts))
+          _      (future (conch/stream-to-out proc :out))
+          status (conch/exit-code proc timeout-ms)]
+      (cond
+        (= status :timeout)
+        (throw (Exception. (-> "%s: timed out after %sms"
+                               (format (first args) timeout-ms))))
+        (not (zero? status))
+        (throw (Exception. (-> "%s: non-zero exit status (%d)"
+                               (format (first args) status))))))))
+
 (defmacro without-exiting
   "Evaluates body in a context where System/exit doesn't work. Returns result
   of evaluating body, or nil if code in body attempted to exit."
