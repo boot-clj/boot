@@ -4,12 +4,12 @@ cache:
 - C:\Users\appveyor\bin
 - C:\Users\appveyor\.lein\self-installs
 init:
+- cmd: 
+install:
 - cmd: >-
     set PATH=C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
     set MSYSTEM=MINGW64
     set MSYS=winsymlinks=lnk
-install:
-- cmd:
 build_script:
 - cmd: >-
     set PATH=%APPVEYOR_BUILD_FOLDER%\bin;%PATH%
