@@ -8,11 +8,14 @@ init:
 install:
 - cmd: >-
     set PATH=C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
+    
     set MSYSTEM=MINGW64
+    
     set MSYS=winsymlinks=lnk
 build_script:
 - cmd: >-
     set PATH=%APPVEYOR_BUILD_FOLDER%\bin;%PATH%
+    
     bash -lc "cd $APPVEYOR_BUILD_FOLDER; make deps"
 test_script:
 - cmd: >-
