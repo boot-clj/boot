@@ -82,19 +82,19 @@
   "Macro version of boot.util/info, arguments are only evaluated when
   the message will be printed (i.e., verbosity level >= 1)."
   [fmt & args]
-  `(print** 1 ansi/bold ~fmt ~@args))
+  `(print** 1 ansi/bold ~fmt ~args))
 
 (defmacro warn*
   "Macro version of boot.util/warn, arguments are only evaluated when
-  the message will be printed.."
+  the message will be printed (i.e., verbosity level >= 1)."
   [fmt & args]
-  `(print** 1 ansi/bold-yellow ~fmt ~@args))
+  `(print** 1 ansi/bold-yellow ~fmt ~args))
 
 (defmacro fail*
   "Macro version of boot.util/fail, arguments are only evaluated when
-  the message will be printed.."
+  the message will be printed (i.e., verbosity level >= 1)."
   [fmt & args]
-  `(print** 1 ansi/bold-red ~fmt ~@args))
+  `(print** 1 ansi/bold-red ~fmt ~args))
 
 (defn trace
   "Print TRACE level message. Arguments of the form fmt & args suitable for
