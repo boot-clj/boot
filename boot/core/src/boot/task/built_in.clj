@@ -45,6 +45,7 @@
                  ["" "BOOT_FILE"                 "Build script name (build.boot)."]
                  ["" "BOOT_GPG_COMMAND"          "System gpg command (gpg)."]
                  ["" "BOOT_HOME"                 "Directory where boot stores global state (~/.boot)."]
+                 ["" "BOOT_WATCHERS_DISABLE"      "Set to 'yes' to turn off inotify/FSEvents watches."]
                  ["" "BOOT_JAVA_COMMAND"         "Specify the Java executable (java)."]
                  ["" "BOOT_JVM_OPTIONS"          "Specify JVM options (Unix/Linux/OSX only)."]
                  ["" "BOOT_LOCAL_REPO"           "The local Maven repo path (~/.m2/repository)."]

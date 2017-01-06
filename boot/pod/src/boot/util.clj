@@ -17,6 +17,20 @@
 
 (declare print-ex)
 
+(defn watchers?-system-default
+  "Return whether we should register file watches on this
+  system. Constrained environments like clould build containers limit
+  the number of inotify handles, and watchers are only necessary for
+  interactive dev, not one-shot jobs.  environment variable or
+  configuration option BOOT_WATCHERS_DISABLE to either '1' or 'yes' to
+  disable inotify; any other value keeps normal behavior."
+  []
+  (let [value (boot.App/config "BOOT_WATCHERS_DISABLE")]
+    (if (string/blank? value)
+      true
+      (not (#{"1" "yes"}
+            (string/lower-case value))))))
+
 (defn colorize?-system-default
   "Return whether we should colorize output on this system. The default
   console on Windows does not interprete ANSI escape codes, so colorized
@@ -49,6 +63,10 @@
   "Atom containing the value that determines whether ANSI colors escape codes
   will be printed with boot output."
   (atom (colorize?-system-default)))
+
+(def ^:dynamic *watchers?*
+  "Atom containing the value that determines whether inotify watches are registered"
+  (atom (watchers?-system-default)))
 
 (defn- print*
   [verbosity color args]
