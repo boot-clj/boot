@@ -1,5 +1,13 @@
 # Changes
 
+## master
+
+#### API Functions
+
+- Added `boot.util/dosh-timed`. It works like `boot.util/dosh` except it takes `timeout-ms` as the first argument, and throws an exception when the shell command takes more than `timeout-ms` milliseconds to execute. [#561][561]
+
+[561]: https://github.com/boot-clj/boot/issues/561
+
 ## 2.7.1
 
 #### Fixed
