@@ -213,10 +213,11 @@
     (let [props   (or (seq props) [:id])
           d1      (diff-tree t1 props)
           d2      (diff-tree t2 props)
-          [x y _] (map (comp set keys) (data/diff d1 d2))]
-      {:added   (->> (set/difference   y x) (select-keys t2) (assoc after :tree))
-       :removed (->> (set/difference   x y) (select-keys t1) (assoc after :tree))
-       :changed (->> (set/intersection x y) (select-keys t2) (assoc after :tree))})))
+          [x y z] (map (comp set keys) (data/diff d1 d2))
+          changed-keys (set/union (set/intersection x y) (set/intersection (set/union x y) z))]
+      {:added   (->> (set/difference y x changed-keys) (select-keys t2) (assoc after :tree))
+       :removed (->> (set/difference x y changed-keys) (select-keys t1) (assoc after :tree))
+       :changed (->> changed-keys                      (select-keys t2) (assoc after :tree))})))
 
 (defn- fatal-conflict?
   [^File dest]
