@@ -22,7 +22,7 @@
 
 (deftest relative-to-test
   (testing "Nil base"
-    (is (= "out/goog/base.js"          (str (relative-to nil      (io/file "out/goog/base.js"))))))
+    (is (thrown? AssertionError        (str (relative-to nil      (io/file "out/goog/base.js"))))))
 
   (testing "File inside base"
     (is (= "out/goog/base.js"          (str (relative-to test-dir (io/file "public/js/out/goog/base.js"))))))
@@ -42,6 +42,7 @@
     (testing "Unix-style paths"
       (is (match-filter? filters (io/file "META-INF/MANIFEST.MF"))))
     (testing "Windows-style paths"
-      (is (match-filter? filters (io/file "META-INF\\MANIFEST.MF"))))
+      (binding [windows? true]
+        (is (match-filter? filters (io/file "META-INF\\MANIFEST.MF")))))
     (testing "Sanity check for failure"
       (is (not (match-filter? filters (io/file "META-INF/MANIFEST.NO")))))))

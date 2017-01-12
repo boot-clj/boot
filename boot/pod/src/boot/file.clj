@@ -21,7 +21,7 @@
 (def ^:dynamic *sync-delete* true)
 (def ^:dynamic *hard-link*   true)
 
-(def windows? (boot.App/isWindows))
+(def ^:dynamic windows? (boot.App/isWindows))
 
 (def tmpfile-permissions
   (into-array FileAttribute
