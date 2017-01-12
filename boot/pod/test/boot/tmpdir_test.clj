@@ -59,3 +59,19 @@
       (is (has-path? (:changed diff) "path"))
       (is (not (has-path? (:added diff) "path")))
       (is (not (has-path? (:removed diff) "path"))))))
+
+(deftest diff*-edge-test
+  (let [before {}
+        after {}
+        diff (#'tmpd/diff* before after)]
+    (testing "Empty dicts"
+      (is (empty? (:added diff)))
+      (is (empty? (:removed diff)))
+      (is (empty? (:changed diff)))))
+  (let [before nil
+        after nil
+        diff (#'tmpd/diff* before after)]
+    (testing "Nil"
+      (is (empty? (:added diff)))
+      (is (empty? (:removed diff)))
+      (is (empty? (:changed diff))))))
