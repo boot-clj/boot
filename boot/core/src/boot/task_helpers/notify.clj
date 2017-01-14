@@ -1,6 +1,5 @@
 (ns boot.task-helpers.notify
   (:require [clojure.java.io    :as io]
-            [clojure.java.shell :as shell]
             [boot.core          :as core]
             [boot.pod           :as pod]
             [boot.util          :as util]
@@ -24,9 +23,16 @@
     (io/copy (io/input-stream (io/resource "boot-logo-3.png")) f)
     (.getAbsolutePath f)))
 
+(defn sh-with-timeout [& args]
+  (try
+    (apply util/dosh-timed 1000 args)
+    0
+    (catch Exception _
+      1)))
+
 (defn- ^{:boot/from :jeluard/boot-notify} program-exists?
   [s]
-  (= 0 (:exit (shell/sh "sh" "-c" (format "command -v %s" s)))))
+  (= 0 (sh-with-timeout "sh" "-c" (format "command -v %s >/dev/null" s))))
 
 (defn- escape [s]
   (pr-str (str s)))
@@ -39,19 +45,21 @@
   [_ {:keys [message title icon uid] :as notification}]
   (cond
     (program-exists? "terminal-notifier")
-    (shell/sh "terminal-notifier"
-              "-message" (str message)
-              "-title" (str title)
-              "-contentImage" (str icon)
-              "-group" (str uid))
+    (sh-with-timeout
+     "terminal-notifier"
+     "-message" (str message)
+     "-title" (str title)
+     "-contentImage" (str icon)
+     "-group" (str uid))
 
     (program-exists? "osascript")
-    (shell/sh "osascript"
-              "-e"
-              (str "display notification"
-                   (escape message)
-                   "with title"
-                   (escape title)))
+    (sh-with-timeout
+     "osascript"
+     "-e"
+     (str "display notification"
+          (escape message)
+          "with title"
+          (escape title)))
 
     :else
     ((get-method notify-method :default) :default notification)))
@@ -59,11 +67,12 @@
 (defmethod notify-method "Linux"
   [_ {:keys [message title icon] :as notification}]
   (if (program-exists? "notify-send")
-    (shell/sh "notify-send"
-              (str title)
-              (str message)
-              "--icon"
-              (str icon))
+    (sh-with-timeout
+     "notify-send"
+     (str title)
+     (str message)
+     "--icon"
+     (str icon))
     ((get-method notify-method :default) :default notification)))
 
 (defmethod notify-method :default
