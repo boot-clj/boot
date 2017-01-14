@@ -37,9 +37,20 @@
 (defn- escape [s]
   (pr-str (str s)))
 
+(defn- notify-default [{:keys [message title]}]
+  (util/info "%s%s %s \u2022 %s\n"
+             ansi/reset-font
+             (ansi/italic "notification:")
+             (ansi/bold title)
+             message))
+
 (defmulti notify-method
-  (fn [os _message]
+  (fn [os _notification]
     os))
+
+(defmethod notify-method :default
+  [_ notification]
+  (notify-default notification))
 
 (defmethod notify-method "Mac OS X"
   [_ {:keys [message title icon uid] :as notification}]
@@ -62,7 +73,7 @@
           (escape title)))
 
     :else
-    ((get-method notify-method :default) :default notification)))
+    (notify-default notification)))
 
 (defmethod notify-method "Linux"
   [_ {:keys [message title icon] :as notification}]
@@ -73,15 +84,7 @@
      (str message)
      "--icon"
      (str icon))
-    ((get-method notify-method :default) :default notification)))
-
-(defmethod notify-method :default
-  [_ {:keys [message title]}]
-  (util/info "%s%s %s \u2022 %s\n"
-             ansi/reset-font
-             (ansi/italic "notification:")
-             (ansi/bold title)
-             message))
+    (notify-default notification)))
 
 (defn ^{:boot/from :jeluard/boot-notify} visual-notify!
   [data]
