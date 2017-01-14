@@ -27,7 +27,8 @@
   (try
     (apply util/dosh-timed 1000 args)
     0
-    (catch Exception _
+    (catch Exception e
+      (util/print-ex e)
       1)))
 
 (defn- ^{:boot/from :jeluard/boot-notify} program-exists?
