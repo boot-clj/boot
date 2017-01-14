@@ -22,9 +22,6 @@
   (is (not (parent? test-dir (io/file "foo/js/public/out/goog/base.js")))))
 
 (deftest relative-to-test
-  (testing "Nil base"
-    (is (thrown? AssertionError        (relative-to nil (io/file "out/goog/base.js")))))
-
   (let [normalize #(if-not windows? % (str/replace % #"\\" "/"))]
     (testing "File inside base"
       (is (= "out/goog/base.js"          (str (normalize (relative-to test-dir (io/file "public/js/out/goog/base.js")))))))
@@ -40,10 +37,7 @@
 
 (deftest match-filter?-test
   (let [filters #{#"^META-INF/MANIFEST.MF$"}]
-    (testing "Unix-style paths"
-      (is (match-filter? filters (io/file "META-INF/MANIFEST.MF"))))
-    (testing "Windows-style paths"
-      (binding [windows? true]
-        (is (match-filter? filters (io/file "META-INF\\MANIFEST.MF")))))
+    (testing "Valid paths"
+      (is (match-filter? filters (io/file "META-INF" "MANIFEST.MF"))))
     (testing "Sanity check for failure"
-      (is (not (match-filter? filters (io/file "META-INF/MANIFEST.NO")))))))
+      (is (not (match-filter? filters (io/file "META-INF" "MANIFEST.NO")))))))
