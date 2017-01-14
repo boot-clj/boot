@@ -34,6 +34,12 @@
   [s]
   (= 0 (sh-with-timeout "sh" "-c" (format "command -v %s >/dev/null" s))))
 
+(defn- try-notify-with-shell-program [program-name & args]
+  (and
+   (program-exists? program-name)
+   (= 0
+      (apply sh-with-timeout program-name args))))
+
 (defn- escape [s]
   (pr-str (str s)))
 
@@ -54,37 +60,34 @@
 
 (defmethod notify-method "Mac OS X"
   [_ {:keys [message title icon uid] :as notification}]
-  (cond
-    (program-exists? "terminal-notifier")
-    (sh-with-timeout
-     "terminal-notifier"
-     "-message" (str message)
-     "-title" (str title)
-     "-contentImage" (str icon)
-     "-group" (str uid))
+  (or
+   (try-notify-with-shell-program
+    "terminal-notifier"
+    "-message" (str message)
+    "-title" (str title)
+    "-contentImage" (str icon)
+    "-group" (str uid))
 
-    (program-exists? "osascript")
-    (sh-with-timeout
-     "osascript"
-     "-e"
-     (str "display notification"
-          (escape message)
-          "with title"
-          (escape title)))
+   (try-notify-with-shell-program
+    "osascript"
+    "-e"
+    (str "display notification"
+         (escape message)
+         "with title"
+         (escape title)))
 
-    :else
-    (notify-default notification)))
+   (notify-default notification)))
 
 (defmethod notify-method "Linux"
   [_ {:keys [message title icon] :as notification}]
-  (if (program-exists? "notify-send")
-    (sh-with-timeout
-     "notify-send"
-     (str title)
-     (str message)
-     "--icon"
-     (str icon))
-    (notify-default notification)))
+  (or
+   (try-notify-with-shell-program
+    "notify-send"
+    (str title)
+    (str message)
+    "--icon"
+    (str icon))
+   (notify-default notification)))
 
 (defn ^{:boot/from :jeluard/boot-notify} visual-notify!
   [data]
