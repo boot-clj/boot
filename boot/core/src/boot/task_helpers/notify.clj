@@ -27,7 +27,7 @@
   (util/warn
    "An exception was thrown while trying to send a notification. To see more info, increase the verbosity of your build with e.g. \"boot -v\" or \"boot -vv\"\n"))
 
-(defn sh-with-timeout [& args]
+(defn- sh-with-timeout [& args]
   (try
     (apply util/dosh-timed 1000 args)
     0
@@ -37,9 +37,15 @@
         (util/print-ex e))
       1)))
 
+(defn- warn-program-not-found [program-name]
+  (util/warn "Could not find the '%s' program on PATH.\n" program-name)
+  false)
+
 (defn- ^{:boot/from :jeluard/boot-notify} program-exists?
-  [s]
-  (= 0 (sh-with-timeout "sh" "-c" (format "command -v %s >/dev/null" s))))
+  [program-name]
+  (or
+   (= 0 (sh-with-timeout "sh" "-c" (format "command -v %s >/dev/null" program-name)))
+   (warn-program-not-found program-name)))
 
 (defn- try-notify-with-shell-program [program-name & args]
   (and
