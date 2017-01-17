@@ -23,12 +23,18 @@
     (io/copy (io/input-stream (io/resource "boot-logo-3.png")) f)
     (.getAbsolutePath f)))
 
+(defn- warn-ex-thrown []
+  (util/warn
+   "An exception was thrown while trying to send a notification. To see more info, increase the verbosity of your build with e.g. \"boot -v\" or \"boot -vv\"\n"))
+
 (defn sh-with-timeout [& args]
   (try
     (apply util/dosh-timed 1000 args)
     0
     (catch Exception e
-      (util/print-ex e)
+      (if (= 1 @util/*verbosity*)
+        (warn-ex-thrown)
+        (util/print-ex e))
       1)))
 
 (defn- ^{:boot/from :jeluard/boot-notify} program-exists?
