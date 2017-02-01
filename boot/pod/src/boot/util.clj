@@ -253,6 +253,15 @@
   `(let [s# (new java.io.StringWriter)]
      (binding [*err* s#] ~@body (str s#))))
 
+(defn- ensure-ends-in-newline [s]
+  (if s
+    (if (.endsWith s "\n")
+      s
+      (str s "\n"))))
+
+(defn- escape-format-string [s]
+  (string/replace s #"%" "%%"))
+
 (defn print-ex
   "Print exception to *err* as appropriate for the current *verbosity* level.
 
@@ -261,7 +270,7 @@
   [ex]
   (cond
     (= 0 @*verbosity*) nil
-    (::omit-stacktrace? (ex-data ex)) (fail (.getMessage ex))
+    (::omit-stacktrace? (ex-data ex)) (fail (-> (.getMessage ex) escape-format-string ensure-ends-in-newline))
     (= 1 @*verbosity*) (pretty/write-exception *err* ex nil)
     (= 2 @*verbosity*) (pretty/write-exception *err* ex {:filter nil})
     :else (binding [*out* *err*] (.printStackTrace ex))))

@@ -2,6 +2,12 @@
 
 ## master
 
+#### Fixed
+
+- When printing exception message from exception using `:boot.util/omit-stacktrace?`,
+escape `%` in message to prevent errors about bad string formatting, and
+ensure that message ends in a newline.
+
 #### API Functions
 
 - Added `boot.util/dosh-timed`. It works like `boot.util/dosh` except it takes `timeout-ms` as the first argument, and throws an exception when the shell command takes more than `timeout-ms` milliseconds to execute. [#561][561]
