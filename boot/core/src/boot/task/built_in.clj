@@ -732,19 +732,21 @@
   [a all          bool   "Compile all namespaces."
    n namespace NS #{sym} "The set of namespaces to compile."]
 
-  (let [tgt         (core/tmp-dir!)
-        pod-env     (update-in (core/get-env) [:directories] conj (.getPath tgt))
-        compile-pod (future (pod/make-pod pod-env))]
-    (core/with-pre-wrap [fs]
-      (core/empty-dir! tgt)
-      (let [all-nses (->> fs core/fileset-namespaces)
-            nses     (->> all-nses (set/intersection (if all all-nses namespace)) sort)]
-        (pod/with-eval-in @compile-pod
-          (binding [*compile-path* ~(.getPath tgt)]
-            (doseq [[idx ns] (map-indexed vector '~nses)]
-              (boot.util/info "Compiling %s/%s %s...\n" (inc idx) (count '~nses) ns)
-              (compile ns)))))
-      (-> fs (core/add-resource tgt) core/commit!))))
+  (if (empty? *opts*)
+    (throw (Exception. "You must specify a flag to this aot task. Refer to documentation for list of available options"))
+    (let [tgt         (core/tmp-dir!)
+          pod-env     (update-in (core/get-env) [:directories] conj (.getPath tgt))
+          compile-pod (future (pod/make-pod pod-env))]
+      (core/with-pre-wrap [fs]
+        (core/empty-dir! tgt)
+        (let [all-nses (->> fs core/fileset-namespaces)
+              nses     (->> all-nses (set/intersection (if all all-nses namespace)) sort)]
+          (pod/with-eval-in @compile-pod
+            (binding [*compile-path* ~(.getPath tgt)]
+              (doseq [[idx ns] (map-indexed vector '~nses)]
+                (boot.util/info "Compiling %s/%s %s...\n" (inc idx) (count '~nses) ns)
+                (compile ns)))))
+        (-> fs (core/add-resource tgt) core/commit!)))))
 
 (core/deftask javac
   "Compile java sources."
