@@ -20,19 +20,33 @@
   artifactId connection description dependencies dependency exclusion
   exclusions developerConnection enabled groupId id license licenses
   modelVersion name email project scope tag url scm version comments
-  developer developers packaging classifier)
+  developer developers packaging classifier parent relativePath)
 
 ;;; private ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn pom-parent-parse [z]
+  (let [gid (util/guard (xml1-> z :groupId text))
+        aid (util/guard (xml1-> z :artifactId text))
+        v (util/guard (xml1-> z :version text))
+        dep (when aid
+              (if (= gid aid)
+                [(symbol aid) v]
+                [(symbol gid aid) v]))
+        rp (util/guard (xml1-> z :relativePath text))]
+    {:dependency dep
+     :relative-path rp}))
 
 (defn pom-xml-parse-string [xml-str]
   (let [z   (-> xml-str .getBytes ByteArrayInputStream. parse xml-zip)
         gid (util/guard (xml1-> z :groupId text))
-        aid (util/guard (xml1-> z :artifactId text))]
+        aid (util/guard (xml1-> z :artifactId text))
+        parent-z (util/guard (xml1-> z :parent))]
     {:project     (util/guard (if (= gid aid) (symbol aid) (symbol gid aid)))
      :version     (util/guard (xml1-> z :version text))
      :description (util/guard (xml1-> z :description text))
      :classifier  (util/guard (xml1-> z :classifier text))
      :url         (util/guard (xml1-> z :url text))
+     :parent      (when parent-z (pom-parent-parse parent-z))
      :scm         {:url (util/guard (xml1-> z :scm :url text))
                    :tag (util/guard (xml1-> z :scm :tag text))}}))
 
@@ -55,6 +69,7 @@
                 u :url
                 c :classifier
                 deps :dependencies
+                prnt :parent
                 :as env}]
   (let [[g a] (util/extract-ids p)
         ls    (map (fn [[name url]] {:name name :url url}) l)]
@@ -63,6 +78,15 @@
       :xmlns:xsi          "http://www.w3.org/2001/XMLSchema-instance"
       :xsi:schemaLocation "http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
       (modelVersion "4.0.0")
+      (when prnt
+        (let [[p v & {rp :relative-path}] prnt
+              [g a] (util/extract-ids p)]
+          (parent
+           (groupId    g)
+            (artifactId a)
+            (version    v)
+            (when rp
+              (relativePath rp)))))
       (groupId      g)
       (artifactId   a)
       (version      v)

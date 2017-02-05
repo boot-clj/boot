@@ -541,16 +541,17 @@
   classifier to your pom.xml, which translates to adding :classifier to this
   task."
 
-  [p project SYM           sym         "The project id (eg. foo/bar)."
-   v version VER           str         "The project version."
-   d description DESC      str         "The project description."
-   c classifier STR        str         "The project classifier."
-   P packaging STR         str         "The project packaging type, i.e. war, pom"
-   u url URL               str         "The project homepage url."
-   s scm KEY=VAL           {kw str}    "The project scm map (KEY is one of url, tag, connection, developerConnection)."
-   l license NAME:URL      {str str}   "The map {name url} of project licenses."
-   o developers NAME:EMAIL {str str}   "The map {name email} of project developers."
-   D dependencies SYM:VER  [[sym str]] "The project dependencies vector (overrides boot env dependencies)."]
+  [p project SYM           sym           "The project id (eg. foo/bar)."
+   v version VER           str           "The project version."
+   d description DESC      str           "The project description."
+   c classifier STR        str           "The project classifier."
+   P packaging STR         str           "The project packaging type, i.e. war, pom"
+   u url URL               str           "The project homepage url."
+   s scm KEY=VAL           {kw str}      "The project scm map (KEY is one of url, tag, connection, developerConnection)."
+   l license NAME:URL      {str str}     "The map {name url} of project licenses."
+   o developers NAME:EMAIL {str str}     "The map {name email} of project developers."
+   D dependencies SYM:VER  [[sym str]]   "The project dependencies vector (overrides boot env dependencies)."
+   a parent SYM:VER=PATH   [sym str str] "The project dependency vector of the parent project, path included."]
 
   (let [tgt  (core/tmp-dir!)
         tag  (or (:tag scm) (util/guard (git/last-commit)))
@@ -561,7 +562,8 @@
                :dependencies deps
                :developers developers
                :classifier classifier
-               :packaging (or packaging "jar"))]
+               :packaging (or packaging "jar")
+               :parent parent)]
     (when-not (and project version)
       (throw (Exception. "need project and version to create pom.xml")))
     (let [[project version] (pod/canonical-coord [project version])
