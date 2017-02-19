@@ -5,7 +5,8 @@
   (:require [clojure.test    :refer :all]
             [clojure.java.io :as io]
             [boot.file       :as file]
-            [boot.tmpdir     :as tmp]))
+            [boot.tmpdir     :as tmp]
+            [boot.pod        :as pod]))
 
 (defn tempdir []
   (.toFile (Files/createTempDirectory "tmpdir" (into-array FileAttribute []))))
@@ -13,7 +14,7 @@
 (defn make-fs []
   (let [dir (tempdir)]
     {:dir dir
-     :fs  (TmpFileSet. [(tmp/map->TmpDir {:dir dir})] {} (tempdir))}))
+     :fs  (TmpFileSet. [(tmp/map->TmpDir {:dir dir})] {} (tempdir) {})}))
 
 (defn spit-to [dir path contents]
   (spit (doto (apply io/file dir path) io/make-parents) contents))
@@ -38,7 +39,7 @@
                  (spit-to ["b" "c"] "bar"))
         src2   (doto (tempdir)
                  (spit-to ["b" "c"] "baz"))
-        fs     (-> fs (tmp/add dir src1) tmp/commit!)
+        fs     (-> fs (tmp/add dir src1 {}) tmp/commit!)
         before {'("a") "foo" '("b" "c") "bar"}
         after  {'("a") "foo" '("b" "c") "baz"}]
 
@@ -52,7 +53,7 @@
       (is (= before (map-fs-contents fs))))
 
     (testing "adding dir to fileset can clobber paths"
-      (let [fs (-> fs (tmp/add dir src2) tmp/commit!)]
+      (let [fs (-> fs (tmp/add dir src2 {}) tmp/commit!)]
         (is (= after (map-fs-contents fs)))))
 
     (testing "re-committing fileset restores former contents"
@@ -60,3 +61,9 @@
         (is (= before (map-fs-contents fs)))))
 
     ))
+
+(deftest canonical
+  (testing "boot.pod/canonical-id"
+    (is (= 'foo (pod/canonical-id 'foo)) "In case there is no group, return artifact")
+    (is (= 'foo (pod/canonical-id 'foo/foo)) "In case group and artifact are the same, return only one of them")
+    (is (= 'foo/bar (pod/canonical-id 'foo/bar)) "In case group and artifact are the different, return the entire symbol")))

@@ -6,7 +6,6 @@
     [clojure.string               :as string]
     [boot.file                    :as file]
     [boot.from.io.aviso.ansi      :as ansi]
-    [boot.from.io.aviso.repl      :as repl]
     [boot.from.io.aviso.exception :as pretty]
     [boot.from.me.raynes.conch    :as conch])
   (:import
@@ -19,14 +18,18 @@
 (declare print-ex)
 
 (defn colorize?-system-default
-  "Return whether we should colorize output on this system. This is
-  true, unless we're on Windows, where this is false. The default
-  console on Windows does not interprete ansi escape codes. The
-  default can be overriden by setting the environment variable
-  BOOT_COLOR=1 or BOOT_COLOR=yes to turn it on or any other value to
-  turn it off."
+  "Return whether we should colorize output on this system. The default
+  console on Windows does not interprete ANSI escape codes, so colorized
+  output is disabled on Windows by default, but enabled by default
+  on other platforms. The default can be overriden by setting the
+  environment variable or configuration option BOOT_COLOR to
+  either '1' or 'yes' to enable it; any other value disables
+  colorization."
   []
-  (or (#{"1" "yes"} (boot.App/config "BOOT_COLOR")) (not (boot.App/isWindows))))
+  (let [value (boot.App/config "BOOT_COLOR")]
+    (if-not (string/blank? value)
+      (#{"1" "yes"} (string/lower-case value))
+      (not (boot.App/isWindows)))))
 
 (def ^:dynamic *verbosity*
   "Atom containing the verbosity level, 1 is lowest, 3 highest. Level 2
@@ -250,15 +253,27 @@
   `(let [s# (new java.io.StringWriter)]
      (binding [*err* s#] ~@body (str s#))))
 
+(defn- ensure-ends-in-newline [s]
+  (if s
+    (if (.endsWith s "\n")
+      s
+      (str s "\n"))))
+
+(defn- escape-format-string [s]
+  (string/replace s #"%" "%%"))
+
 (defn print-ex
-  "Print exception to *err* as appropriate for the current *verbosity* level."
+  "Print exception to *err* as appropriate for the current *verbosity* level.
+
+  If ex-data contains truthy :boot.util/omit-stacktrace? value, only exception
+  message is shown."
   [ex]
-  (case @*verbosity*
-    0 nil
-    1 (pretty/write-exception *err* ex
-        {:properties true :filter repl/standard-frame-filter})
-    2 (pretty/write-exception *err* ex {:properties true})
-    (binding [*out* *err*] (.printStackTrace ex))))
+  (cond
+    (= 0 @*verbosity*) nil
+    (::omit-stacktrace? (ex-data ex)) (fail (-> (.getMessage ex) escape-format-string ensure-ends-in-newline))
+    (= 1 @*verbosity*) (pretty/write-exception *err* ex nil)
+    (= 2 @*verbosity*) (pretty/write-exception *err* ex {:filter nil})
+    :else (binding [*out* *err*] (.printStackTrace ex))))
 
 (defn print-tree
   "Pretty prints tree, with the optional prefixes prepended to each line. The
@@ -327,20 +342,22 @@
 
 (defn dep-as-map
   "Returns the given dependency vector as a map with :project and :version
-  keys plus any modifiers (eg. :scope, :exclusions, etc)."
-  [[project version & kvs]]
-  (let [d {:project project :version version}]
-    (merge {:scope "compile"}
-      (if-not (seq kvs) d (apply assoc d kvs)))))
+  keys plus any modifiers (eg. :scope, :exclusions, etc).  If the version
+  is not specified, nil will be used."
+  [[project & terms]]
+  (let [[version & kvs] (if (odd? (count terms)) terms (cons nil terms))
+        d {:project project :version version :scope "compile"}]
+    (if-not (seq kvs) d (apply assoc d kvs))))
 
 (defn map-as-dep
   "Returns the given dependency vector with :project and :version put at
-  index 0 and 1 respectively and modifiers (eg. :scope, :exclusions,
-  etc) next."
+  indexes 0 and 1 respectively (if the values are not nil) and modifiers
+  (e.g. :scope, :exclusions, etc.) and their values afterwards."
   [{:keys [project version] :as dep-map}]
   (let [kvs (remove #(or (some #{:project :version} %)
-                         (= [:scope "compile"] %)) dep-map)]
-    (vec (remove nil? (into [project version] (mapcat identity kvs))))))
+                         (= [:scope "compile"] %)) dep-map)
+        d (vec (remove nil? [project version]))]
+    (vec (into d (mapcat identity kvs)))))
 
 (defn jarname
   "Generates a friendly name for the jar file associated with the given project
@@ -399,6 +416,25 @@
     (assert (every? string? args))
     (let [status ((apply sh args))]
       (when-not (= 0 status)
+        (throw (Exception. (-> "%s: non-zero exit status (%d)"
+                               (format (first args) status))))))))
+
+(defn dosh-timed
+  "Evaluates args as a shell command, blocking on completion up to `timeout-ms`
+   and throwing an exception on non-zero exit status. Output from the shell is
+   streamed to stdout and stderr as it is produced."
+  [timeout-ms & args]
+  (let [args (remove nil? args)]
+    (assert (every? string? args))
+    (let [opts   (into [:redirect-err true] (when *sh-dir* [:dir *sh-dir*]))
+          proc   (apply conch/proc (concat args opts))
+          _      (future (conch/stream-to-out proc :out))
+          status (conch/exit-code proc timeout-ms)]
+      (cond
+        (= status :timeout)
+        (throw (Exception. (-> "%s: timed out after %sms"
+                               (format (first args) timeout-ms))))
+        (not (zero? status))
         (throw (Exception. (-> "%s: non-zero exit status (%d)"
                                (format (first args) status))))))))
 

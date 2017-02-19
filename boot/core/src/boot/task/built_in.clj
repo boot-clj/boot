@@ -22,6 +22,7 @@
    [boot.pedantic        :as pedantic])
   (:import
    [java.io File]
+   [java.nio.file.attribute PosixFilePermissions]
    [java.util Arrays]
    [java.util.concurrent LinkedBlockingQueue TimeUnit]
    [javax.tools ToolProvider DiagnosticCollector Diagnostic$Kind]))
@@ -361,27 +362,37 @@
     (core/with-post-wrap [_] @(promise))
     (core/with-pass-thru [fs] (Thread/sleep time))))
 
+(defn- mk-posix-file-permissions [posix-string]
+  (try
+    (when posix-string
+      (if (boot.App/isWindows)
+        (util/warn "Filemode not supported on Windows\n")
+        (PosixFilePermissions/fromString posix-string)))
+    (catch IllegalArgumentException _
+      (util/warn "Could not parse mode string, ignoring...\n"))))
+
 (core/deftask target
   "Writes output files to the given directory on the filesystem."
   [d dir PATH #{str} "The set of directories to write to (target)."
+   m mode VAL str    "The mode of written files in 'rwxrwxrwx' format"
    L no-link  bool   "Don't create hard links."
    C no-clean bool   "Don't clean target before writing project files."]
   (let [dir   (or (seq dir) ["target"])
         sync! (#'core/fileset-syncer dir :clean (not no-clean))]
     (core/with-pass-thru [fs]
       (util/info "Writing target dir(s)...\n")
-      (sync! fs :link (not no-link)))))
+      (sync! fs :link (not no-link) :mode (mk-posix-file-permissions mode)))))
 
 (core/deftask watch
-  "Call the next handler when source files change.
+  "Call the next handler when source files change."
 
-  Debouncing time is 10ms by default."
+  [q quiet          bool     "Suppress all output from running jobs."
+   v verbose        bool     "Print which files have changed."
+   M manual         bool     "Use a manual trigger instead of a file watcher."
+   d debounce MS    int      "Debounce time (how long to wait for filesystem events) in milliseconds."
+   i include REGEX  #{regex} "The set of regexes the paths of changed files must match for watch to fire."
+   e exclude REGEX  #{regex} "The set of regexes the paths of changed files must not match for watch to fire."]
 
-  [q quiet         bool "Suppress all output from running jobs."
-   v verbose       bool "Print which files have changed."
-   M manual        bool "Use a manual trigger instead of a file watcher."]
-
-  (pod/require-in pod/worker-pod "boot.watcher")
   (fn [next-task]
     (fn [fileset]
       (let [q            (LinkedBlockingQueue.)
@@ -391,7 +402,10 @@
                               (into (core/user-dirs fileset))
                               (map (memfn getPath)))
             watcher      (apply file/watcher! :time srcdirs)
-            debounce     (core/get-env :watcher-debounce)
+            incl-excl    (if-not (or (seq include) (seq exclude))
+                           identity
+                           (let [f (partial file/keep-filters? include exclude)]
+                             (partial filter (comp f io/file second))))
             watch-target (if manual core/new-build-at core/last-file-change)]
         (.offer q (System/currentTimeMillis))
         (add-watch watch-target k #(.offer q %4))
@@ -403,7 +417,7 @@
               (recur (conj ret more))
               (let [start        (System/currentTimeMillis)
                     etime        #(- (System/currentTimeMillis) start)
-                    changed      (watcher)
+                    changed      (when-not manual (incl-excl (watcher)))
                     should-fire? (or manual (not (empty? changed)))]
                 (when should-fire?
                   (when verbose

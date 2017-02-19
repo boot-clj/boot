@@ -91,7 +91,7 @@
   [^Path root ^File blob tree link]
   (let [m {:dir (.toFile root) :bdir blob}]
     (proxy [SimpleFileVisitor] []
-      (visitFile [path attr]
+      (visitFile [^Path path attr]
         (with-let [_ fs/continue]
           (let [p (str (.relativize root path))]
             (try (let [h (digest/md5 (.toFile path))

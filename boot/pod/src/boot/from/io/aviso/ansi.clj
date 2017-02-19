@@ -1,7 +1,7 @@
 (ns boot.from.io.aviso.ansi
-  {:boot/from :AvisoNovate/pretty
-   :doc "Help with generating textual output that includes ANSI escape codes for formatting."}
-  (:import
+  "Help with generating textual output that includes ANSI escape codes for formatting."
+  {:boot/from :AvisoNovate/pretty:0.1.33}
+ (:import
     [java.util.regex Pattern])
   (:require
     [clojure.string :as str]))
@@ -20,20 +20,22 @@
   "Resets the font, clearing bold, italic, color, and background color."
   (str csi sgr))
 
-(defn ^:private def-sgr-const
+(defmacro ^:private def-sgr-const
   "Utility for defining a font-modifying constant."
-  [symbol-name & codes]
-  (eval
-    `(def ^:const ~(symbol symbol-name) ~(str csi (str/join ";" codes) sgr))))
+  [symbol-name color-name & codes]
+  `(def ~(vary-meta (symbol symbol-name) assoc :const true)
+     ~(format "Constant for ANSI code to enable %s text." color-name)
+     (str csi ~(str/join ";" codes) sgr)))
 
-(defn ^:private def-sgr-fn
+(defmacro ^:private def-sgr-fn
   "Utility for creating a function that enables some combination of SGR codes around some text, but resets
   the font after the text."
-  [fn-name & codes]
-  (eval
+  [fn-name color-name & codes]
+  (let [arg 'text]
     `(defn ~(symbol fn-name)
-       [text#]
-       (str ~(str csi (str/join ";" codes) sgr) text# reset-font))))
+       ~(format "Wraps the provided text with ANSI codes to render as %s text." color-name)
+       [~arg]
+       (str csi ~(str/join ";" codes) sgr ~arg reset-font))))
 
 ;;; Define functions and constants for each color. The functions accept a string
 ;;; and wrap it with the ANSI codes to set up a rendition before the text,
@@ -52,28 +54,38 @@
 ;;;   - bold-C-font; enable bold text in that color (e.g., "bold-green-font")
 ;;;   - bold-C-bg-font; enable background in that bold color (e.g., "bold-green-bg-font")
 
-(doall
-  (map-indexed (fn [index color-name]
-                 (def-sgr-fn color-name (+ 30 index))
-                 (def-sgr-fn (str color-name "-bg") (+ 40 index))
-                 (def-sgr-fn (str "bold-" color-name) 1 (+ 30 index))
-                 (def-sgr-fn (str "bold-" color-name "-bg") 1 (+ 40 index))
-                 (def-sgr-const (str color-name "-font") (+ 30 index))
-                 (def-sgr-const (str color-name "-bg-font") (+ 40 index))
-                 (def-sgr-const (str "bold-" color-name "-font") 1 (+ 30 index))
-                 (def-sgr-const (str "bold-" color-name "-bg-font") 1 (+ 40 index)))
-               ["black" "red" "green" "yellow" "blue" "magenta" "cyan" "white"]))
+(defmacro ^:private define-colors
+  []
+  `(do
+     ~@(map-indexed
+         (fn [index color-name]
+           `(do
+              (def-sgr-fn ~color-name ~color-name ~(+ 30 index))
+              (def-sgr-fn ~(str color-name "-bg") ~(str color-name " background") ~(+ 40 index))
+              (def-sgr-fn ~(str "bold-" color-name) ~(str "bold " color-name) 1 ~(+ 30 index))
+              (def-sgr-fn ~(str "bold-" color-name "-bg") ~(str "bold " color-name " background") 1 ~(+ 40 index))
+              (def-sgr-const ~(str color-name "-font") ~color-name ~(+ 30 index))
+              (def-sgr-const ~(str color-name "-bg-font") ~(str color-name " background") ~(+ 40 index))
+              (def-sgr-const ~(str "bold-" color-name "-font") ~(str "bold " color-name) 1 ~(+ 30 index))
+              (def-sgr-const ~(str "bold-" color-name "-bg-font") ~(str "bold " color-name " background") 1 ~(+ 40 index))))
+         ["black" "red" "green" "yellow" "blue" "magenta" "cyan" "white"])))
+
+(define-colors)
 
 ;; ANSI defines quite a few more, but we're limiting to those that display properly in the
 ;; Cursive REPL.
 
-(def-sgr-fn "bold" 1)
-(def-sgr-fn "italic" 3)
-(def-sgr-fn "inverse" 7)
+(defmacro ^:private define-fonts
+  []
+  `(do
+     ~@(for [[font-name code] [['bold 1]
+                               ['italic 3]
+                               ['inverse 7]]]
+         `(do
+            (def-sgr-fn ~font-name ~font-name ~code)
+            (def-sgr-const ~(str font-name "-font") ~font-name ~code)))))
 
-(def ^:const bold-font (str csi 1 sgr))
-(def ^:const italic-font (str csi 3 sgr))
-(def ^:const inverse-font (str csi 7 sgr))
+(define-fonts)
 
 (def ^:const ^:private ansi-pattern (Pattern/compile "\\e\\[.*?m"))
 

@@ -26,11 +26,32 @@
   (let [[group artifact] ((juxt namespace name) sym)]
     [(or group artifact) artifact]))
 
+(defn extend-addable-classloader
+  "Opens up the class loader used to create the shim for
+  modification. Once seal-app-classloader is called, this will be the
+  highest class loader user code can modify.
+
+  This function is called during Boot's bootstrapping phase, and shouldn't
+  be needed in client code under normal circumstances."
+  []
+  (extend boot.AddableClassLoader
+    cp/DynamicClasspath
+    (assoc dynapath.dynamic-classpath/base-readable-addable-classpath
+      :classpath-urls #(seq (.getURLs %))
+      :add-classpath-url #(.addURL %1 %2))))
+
+(def sealed-classloader-fns
+  (assoc cp/base-readable-addable-classpath
+    :classpath-urls #(seq (.getURLs %))
+    :can-add? (constantly false)))
+
 (defn seal-app-classloader
-  "Implements the DynamicClasspath protocol to the AppClassLoader class such
-  that instances of this class will refuse attempts at runtime modification
-  by libraries that do so via dynapath[1]. The system class loader is of the
-  type AppClassLoader.
+  "Implements the DynamicClasspath protocol to the AppClassLoader and
+  boot's ParentClassLoader classes such that instances of those
+  classes will refuse attempts at runtime modification by libraries
+  that do so via dynapath[1]. The system class loader is of the type
+  AppClassLoader under Java < 9, and the top-level class loader used
+  by boot is a ParentClassLoader.
 
   The purpose of this is to ensure that Clojure libraries do not pollute the
   higher-level class loaders with classes and interfaces created dynamically
@@ -42,11 +63,21 @@
   [1]: https://github.com/tobias/dynapath
   [2]: https://github.com/clojure-emacs/cider-nrepl/blob/36333cae25fd510747321f86e2f0369fcb7b4afd/README.md#with-jboss-asjboss-eapwildfly"
   []
-  (extend sun.misc.Launcher$AppClassLoader
-    cp/DynamicClasspath
-    (assoc cp/base-readable-addable-classpath
-      :classpath-urls #(seq (.getURLs %))
-      :can-add? (constantly false))))
+  (try
+    ;; this import will fail if the user doesn't have a new enough boot.sh
+    (import boot.bin.ParentClassLoader)
+    (eval '(extend boot.bin.ParentClassLoader
+             dynapath.dynamic-classpath/DynamicClasspath
+             boot.pod/sealed-classloader-fns))
+    (catch Exception _))
+  
+  (try
+    ;; this import will fail if the user is using Java 9
+    (import sun.misc.Launcher$AppClassLoader)
+    (eval '(extend sun.misc.Launcher$AppClassLoader
+             dynapath.dynamic-classpath/DynamicClasspath
+             boot.pod/sealed-classloader-fns))
+    (catch Exception _)))
 
 (defn ^{:boot/from :cemerick/pomegranate} classloader-hierarchy
   "Returns a seq of classloaders, with the tip of the hierarchy first.
@@ -385,7 +416,7 @@
 (defmacro with-call-in
   "Given a pod and an expr of the form (f & args), resolves f in the pod,
   applies it to args, and returns the result to the caller. The expr may be a
-  template containing the ~ (unqupte) and ~@ (unquote-splicing) reader macros.
+  template containing the ~ (unquote) and ~@ (unquote-splicing) reader macros.
   These will be evaluated in the calling scope and substituted in the template
   like the ` (syntax-quote) reader macro.
 
@@ -442,7 +473,7 @@
 
 (defmacro with-eval-in
   "Given a pod and an expr, evaluates the body in the pod and returns the
-  result to the caller. The body may be a template containing the ~ (unqupte)
+  result to the caller. The body may be a template containing the ~ (unquote)
   and ~@ (unquote-splicing) reader macros. These will be evaluated in the
   calling scope and substituted in the template like the ` (syntax-quote)
   reader macro.
@@ -508,12 +539,13 @@
   as the namespace of the resulting symbol only if it's not the same as the
   artifact id.
 
-  For example: (canonical-id 'foo/foo) ;=> foo
-               (canonical-id 'foo/bar) ;=> foo/bar"
+  Examples: (canonical-id 'foo) ;=> 'foo
+            (canonical-id 'foo/foo) ;=> 'foo
+            (canonical-id 'foo/bar) ;=> 'foo/bar"
   [id]
   (when id
     (let [[ns nm] ((juxt namespace name) id)]
-      (if (not= ns nm) id))))
+      (if (not= ns nm) (symbol id) (symbol nm)))))
 
 (defn full-id
   "Given a project id symbol, returns the fully qualified form, with the group

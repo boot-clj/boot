@@ -8,9 +8,9 @@
   (:import
    [java.net URI]
    [java.io File]
-   [java.nio.file.attribute FileAttribute]
+   [java.lang.management ManagementFactory]
    [java.nio.file Files StandardCopyOption FileVisitOption]
-   [java.lang.management ManagementFactory])
+   [java.nio.file.attribute FileAttribute PosixFilePermissions])
   (:refer-clojure :exclude [sync name file-seq]))
 
 (set! *warn-on-reflection* true)
@@ -20,6 +20,15 @@
 (def ^:dynamic *ignore*      nil)
 (def ^:dynamic *sync-delete* true)
 (def ^:dynamic *hard-link*   true)
+
+(def windows? (boot.App/isWindows))
+
+(def tmpfile-permissions
+  (into-array FileAttribute
+              (if windows?
+                []
+                [(PosixFilePermissions/asFileAttribute
+                  (PosixFilePermissions/fromString "rw-------"))])))
 
 (defn file? [f] (when (try (.isFile (io/file f)) (catch Throwable _)) f))
 (defn dir? [f] (when (try (.isDirectory (io/file f)) (catch Throwable _)) f))
@@ -128,9 +137,11 @@
 
 (defn ^File tmpfile
   ([prefix postfix]
-   (doto (java.io.File/createTempFile prefix postfix) .deleteOnExit))
-  ([prefix postfix dir]
-   (doto (java.io.File/createTempFile prefix postfix dir) .deleteOnExit)))
+   (let [path (Files/createTempFile prefix postfix tmpfile-permissions)]
+     (doto (.toFile path) (.deleteOnExit))))
+  ([prefix postfix ^File dir]
+   (let [path (Files/createTempFile (.toPath dir) prefix postfix tmpfile-permissions)]
+     (doto (.toFile path) (.deleteOnExit)))))
 
 (defn ^File tmpdir
   ([prefix]
@@ -240,7 +251,7 @@
 
 (defn match-filter?
   [filters f]
-  (letfn [(normalize [path] (str/replace path #"\\" "/"))]
+  (let [normalize #(if-not windows? % (str/replace % #"\\" "/"))]
     ((apply some-fn (map (partial partial re-find) filters)) (normalize (.getPath ^File f)))))
 
 (defn keep-filters?

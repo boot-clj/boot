@@ -96,6 +96,7 @@ deploy: .deployed
 
 .tested: bin/boot
 	(export BOOT_VERSION=$(version) && export BOOT_EMIT_TARGET=no && cd boot/core && ../../bin/boot -x test)
+    # (cd boot/pod && lein test)
 	date > .tested
 
 test: .installed .tested

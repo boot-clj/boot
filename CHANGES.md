@@ -1,16 +1,53 @@
 # Changes
 
-## Master
+## master
+
+#### Fixed
+
+- When printing exception message from exception using `:boot.util/omit-stacktrace?`,
+escape `%` in message to prevent errors about bad string formatting, and
+ensure that message ends in a newline.
+
+#### API Functions
+
+- Added `boot.util/dosh-timed`. It works like `boot.util/dosh` except it takes `timeout-ms` as the first argument, and throws an exception when the shell command takes more than `timeout-ms` milliseconds to execute. [#561][561]
+
+[561]: https://github.com/boot-clj/boot/issues/561
+
+## 2.7.1
+
+#### Fixed
+
+- Fixed a Windows regression in the user script generation code introduced by [f339a8d](https://github.com/boot-clj/boot/commit/f339a8d9464bfc0e05f9c963744377e91a042c48). [#541][541]
+
+#### Tasks
+
+- Added `-m, --mode` option to the `target` task &mdash; specifies the file
+  mode for written files &mdash; should only be used when default `rw-------`
+  is not enough. [#537][537]
+
+## 2.7.0
 
 #### Improved
 
 - Follow symlinks when building fileset from project dirs [#483][483].
 - Documented `boot.core/add-cached-{asset,source,resource}` fns.
+- Documented `boot.core/patch!` fn [#497][497].
 - Warn when asked to load a version of Clojure into the core pod (via
   `:dependencies`) that is different from the implicitly loaded version
   specified by `BOOT_CLOJURE_VERSION` [#230][230], [#469][469].
 - Corrected docstring for `boot.pod/canonical-coord`.
 - Throw helpful exception when `deftask` argument vector isn't a vector [#487][487].
+- Now uses io.aviso/pretty 0.1.33: this affects the order of reported stack frames [#355][355].
+  The old behavior [can be restored with user configuration][pretty-config].
+- Exceptions are now always reported using pretty, regardless of the setting of 
+  BOOT_COLOR (or the -C flag), but when colorization is disabled, pretty
+  exception reporting will not use an ANSI color codes in its output.
+  This is often preferable when output from Boot is being logged to a
+  file.
+- Support [managed dependencies](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html) by upgrading [pomegranate](https://github.com/cemerick/pomegranate) to 0.3.1. [#526][526]
+- Use the [Fastly CDN version of Clojars](https://groups.google.com/d/msg/clojure/WhBu4CB_ekg/YzE9e-iBAAAJ) by default. [#540][540]
+- Allow tasks to hide exception stacktrace with `:boot.util/omit-stracktrace?` ex-data property [#486][486], [#532][532].
 
 #### Fixed
 
@@ -28,6 +65,10 @@
 - Format paths in `boot.class.path` and `fake.class.path` system properties
   with correct, platform-specific paths [#488][488].
 - Eliminate runtime reflection in `boot.core/deftask` macro [#490][490].
+d- Create bootscript tmpfile with mode `0600` instead of `0664`.
+- Previously, setting BOOT_COLOR to false was ignored, and the isWindows
+  check overruled the BOOT_COLOR selection. Now, the default for colorization
+  from isWindows is set only if BOOT_COLOR is blank [#536][536]
 
 #### Tasks
 
@@ -37,6 +78,12 @@
   pom.properties TmpFiles in the fileset. This metadata is used by eg. the
   `jar` task to select the "real" pom from multiple poms that might be in the
   fileset from the `uber` task, etc. [#451][451]
+- The `watch` task now accepts `--include` and `--exclude` options to restrict
+  the set of paths that will trigger a rebuild [#312][312].
+- The `watch` task now accepts `--debounce` option to adjust how long it will
+  wait for all filesystem events to have fired before a rebuild is triggered.
+- On systems without audio output ,the `notify` task now prints an error
+  message instead of throwing an exception [#523][523]
 
 ##### API Functions
 
@@ -78,6 +125,10 @@
   task in the fileset [#451][451].
 - Added `-C, --no-color` option to the `repl` task &mdash; disables ANSI color
   codes in REPL client output.
+  
+##### Pods
+
+- Upgraded dynapath to 0.2.5 in order to support Java 9. [#528][528], [#539][539]
 
 ##### Boot Environment
 
@@ -87,7 +138,18 @@
 
 - The `speak` task, replaced by `notify`.
 
+#### Java 9
+
+> Java 9 is slated for release sometime next year. It introduces breaking
+> changes, and Boot might need to be continually updated to ensure that we're
+> compatible with Java 9 once it's released.
+
+- Improvements to work with Java 9 (boot repl works on Java 9-ea+148) that
+  upgrade dynapath to 0.2.5. These changes require a newer boot-bin to function,
+  but are backward compatible on Java 7 and 8. [#539][539]
+
 [230]: https://github.com/boot-clj/boot/issues/230
+[312]: https://github.com/boot-clj/boot/issues/312
 [374]: https://github.com/boot-clj/boot/issues/374
 [451]: https://github.com/boot-clj/boot/issues/451
 [465]: https://github.com/boot-clj/boot/issues/465
@@ -105,6 +167,18 @@
 [488]: https://github.com/boot-clj/boot/issues/488
 [490]: https://github.com/boot-clj/boot/issues/490
 [491]: https://github.com/boot-clj/boot/issues/491
+[497]: https://github.com/boot-clj/boot/issues/497
+[528]: https://github.com/boot-clj/boot/pull/528
+[523]: https://github.com/boot-clj/boot/pull/523
+[526]: https://github.com/boot-clj/boot/pull/526
+[536]: https://github.com/boot-clj/boot/pull/536
+[540]: https://github.com/boot-clj/boot/pull/540
+[539]: https://github.com/boot-clj/boot/pull/539
+[541]: https://github.com/boot-clj/boot/issues/541
+[537]: https://github.com/boot-clj/boot/pull/537
+[355]: https://github.com/boot-clj/boot/issues/355
+[486]: https://github.com/boot-clj/boot/issues/486
+[532]: https://github.com/boot-clj/boot/pull/532
 
 ## 2.6.0
 
@@ -397,3 +471,4 @@
 [220]: https://github.com/boot-clj/boot/issues/220
 [d8782413]: https://github.com/boot-clj/boot/commit/d8782413a16bfafbc0a069bf2a77ae74c029a5ca
 [243]: https://github.com/boot-clj/boot/issues/243
+[pretty-config]: https://github.com/boot-clj/boot/wiki/Configuring-Boot#configuring-stack-trace-display

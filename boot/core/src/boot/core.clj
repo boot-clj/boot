@@ -58,7 +58,7 @@
 (def ^:private repo-config-fn    (atom identity))
 (def ^:private loaded-checkouts  (atom {}))
 (def ^:private checkout-dirs     (atom #{}))
-(def ^:private default-repos     [["clojars"       {:url "https://clojars.org/repo/"}]
+(def ^:private default-repos     [["clojars"       {:url "https://repo.clojars.org/"}]
                                   ["maven-central" {:url "https://repo1.maven.org/maven2"}]])
 (def ^:private default-mirrors   (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
                                               m (boot.App/config "BOOT_MAVEN_CENTRAL_MIRROR")
@@ -696,7 +696,26 @@
   (apply file/sync! :time dest srcs))
 
 (defn patch!
-  "Given prev-state "
+  "Given a dest and a sequence of srcs, all of which satisfying the IToPath
+  protocol, updates dest such that it contains the union of the contents of
+  srcs and returns an immutable value reflecting the final state of dest. The
+  String, java.io.File, java.nio.file.Path, and java.nio.file.FileSystem types
+  satisfy IToPath.
+
+  Paths in dest that are not in any of the srcs will be removed; paths in any
+  of the srcs that are not in dest or have different contents than the path
+  in dest will be copied (or hardlinked, see :link option below).
+
+  The :ignore option specifies a set of regex patterns for paths that will be
+  ignored.
+
+  The :state option specifies the initial state of dest (usually set to the
+  value returned by a previous call to this function). When provided, this
+  option makes the patching operation more efficient by eliminating the need
+  to scan dest to establish its current state.
+
+  The :link option specifies whether to create hardlinks instead of copying
+  files from srcs to dest."
   [dest srcs & {:keys [ignore state link]}]
   (let [dest    (fs/->path dest)
         before  (or state (fs/mktree dest))
@@ -983,10 +1002,10 @@
   (let [prev   (atom nil)
         clean! (if clean empty-dir! identity)
         dirs   (delay (mapv #(doto (io/file %) .mkdirs clean!) dirs))]
-    (fn [fs & {:keys [link]}]
+    (fn [fs & {:keys [link mode]}]
       (let [link  (when link :tmp)
             [a b] [@prev (reset! prev (output-fileset fs))]]
-        (mapv deref (for [d @dirs :let [p! (partial fs/patch! (fs/->path d) a b :link)]]
+        (mapv deref (for [d @dirs :let [p! (partial fs/patch! (fs/->path d) a b :mode mode :link)]]
                       (future (try (p! link)
                                    (catch Throwable t
                                      (if-not link (throw t) (p! nil)))))))))))
