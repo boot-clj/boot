@@ -479,6 +479,29 @@
           (core/with-post-wrap [_]
             (when (or client (not server)) @repl-cli)))))
 
+(core/deftask socket-server
+  "Start a socket server.
+
+  The default behavior is to serve a simple REPL handled by
+  clojure.core.server/repl. To serve a different handler function, specify a
+  symbol using `--accept'.
+
+  If no bind address is specified, the socket server will listen on 127.0.0.1.
+
+  If no port is specified, an open port will be chosen automatically. The port
+  number is written to .socket-port in the current directory.
+
+  The REPL can be accessed with the command
+
+     $ nc localhost $(cat .server-port)"
+
+  [b bind ADDR      str    "The address server listens on."
+   p port PORT      int    "The port to listen to."
+   a accept ACCEPT  sym    "Namespaced symbol of the accept function to invoke."]
+  (let [repl-soc (delay (repl/launch-socket-server *opts*))]
+    (core/with-pass-thru [fs]
+      @repl-soc)))
+
 (core/deftask pom
   "Create project pom.xml file.
 
