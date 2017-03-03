@@ -10,7 +10,7 @@ ensure that message ends in a newline.
 
 ##### Tasks
 
-- New task, `socket-server`, for starting a [Clojure 1.8.0+ socket server](https://clojure.org/reference/repl_and_main#_launching_a_socket_server) [#549][549]
+- New task, `socket-server`, for starting a [Clojure 1.8.0+ socket server](https://clojure.org/reference/repl_and_main#_launching_a_socket_server). [#549][549]
 
 #### API Functions
 
