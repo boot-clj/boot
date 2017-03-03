@@ -2,6 +2,10 @@
 
 ## master
 
+#### Improved
+
+- `set-env!` works even if the user has set `*print-level*` or `*print-length*` to non-nil in their `$BOOT_HOME/profile.boot`. [#587][587] [#586][586]
+
 #### Fixed
 
 - When printing exception message from exception using `:boot.util/omit-stacktrace?`,
@@ -18,6 +22,8 @@ ensure that message ends in a newline.
 
 [549]: https://github.com/boot-clj/boot/pull/549
 [561]: https://github.com/boot-clj/boot/issues/561
+[586]: https://github.com/boot-clj/boot/pull/586
+[587]: https://github.com/boot-clj/boot/pull/587
 
 ## 2.7.1
 
