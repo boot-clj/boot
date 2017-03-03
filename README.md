@@ -11,8 +11,7 @@ Clojure projects from scripts written in Clojure that run in the context of
 the project.
 
 > If you have questions or need help, please [visit our Discourse site][discourse].
-> You can find other developers and users in [the `#bootclj` channel on freenode IRC][irc]
-> and [the `#boot` channel on Clojurians Slack][slack].
+> You can find other developers and users in [the `#boot` channel on Clojurians Slack][slack].
 
 ### Another Build Tool?
 
