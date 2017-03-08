@@ -250,7 +250,7 @@
               :let [prev (get-in prev [:tree (path tmpf)])
                     exists? (.exists ^File (file prev))
                     op (if exists? "removing" "no-op")]]
-        (util/dbug* "Commit: %-8s %s %s...\n" op (id prev) (path prev))
+        (util/trace* "Commit: %-8s %s %s...\n" op (id prev) (path prev))
         (when exists? (file/delete-file (file prev))))
       (let [this (loop [this this
                         [tmpf & tmpfs]
@@ -265,7 +265,7 @@
                                       (update-in this [:tree] dissoc p))]
                          (if err? 
                            (util/warn "Merge conflict: not adding %s\n" p)
-                           (do (util/dbug* "Commit: adding   %s %s...\n" (id tmpf) p)
+                           (do (util/trace* "Commit: adding   %s %s...\n" (id tmpf) p)
                                (file/hard-link src dst)))
                          (recur this tmpfs))))]
         (with-let [_ this]
