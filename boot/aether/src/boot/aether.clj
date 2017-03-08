@@ -68,7 +68,7 @@
 
 (defn transfer-listener
   [info]
-  (util/dbug "Aether: %s\n" (with-out-str (pprint/pprint info)))
+  (util/dbug* "Aether: %s\n" (with-out-str (pprint/pprint info)))
   (on-transfer info))
 
 (defn ^{:boot/from :technomancy/leiningen} build-url
