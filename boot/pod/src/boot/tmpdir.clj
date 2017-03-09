@@ -100,7 +100,11 @@
                    (add-blob! blob path i link)
                    (swap! tree assoc p (map->TmpFile (assoc m :path p :id i :hash h :time t))))
                  (catch java.nio.file.NoSuchFileException _
-                   (util/dbug* "Tmpdir: file not found: %s\n" (.toString p))))) )))))
+                   (util/dbug* "Tmpdir: file not found: %s\n" (.toString p)))))))
+      (visitFileFailed [^Path path ^java.io.IOException e]
+        (with-let [_ fs/skip-subtree]
+          (let [p (str (.relativize root path))]
+            (util/dbug* "Tmpdir: failed to visit: %s\n" (.toString p))))))))
 
 (defn- dir->tree!
   [^File dir ^File blob]
@@ -263,7 +267,7 @@
                              err? (fatal-conflict? dst)
                              this (or (and (not err?) this)
                                       (update-in this [:tree] dissoc p))]
-                         (if err? 
+                         (if err?
                            (util/warn "Merge conflict: not adding %s\n" p)
                            (do (util/trace* "Commit: adding   %s %s...\n" (id tmpf) p)
                                (file/hard-link src dst)))
