@@ -1220,8 +1220,7 @@
   (fn [criteria files & [negate?]]
     (let [tmp?   (partial satisfies? tmpd/ITmpFile)
           ->file #(if (tmp? %) (io/file (tmp-path %)) (io/file %))
-          pred (apply juxt (mapv mkpred (if (empty? criteria) (throw (Exception. "Exception: the set of criteria was found to be empty.")))))
-               (criteria)] 
+          pred (if (empty? criteria) nil ((apply juxt (mapv mkpred))))]
       (filter-files #(pred (->file %)) files negate?))))
 
 (defn by-meta
