@@ -733,7 +733,7 @@
    n namespace NS #{sym} "The set of namespaces to compile."]
 
   (when (empty? *opts*)
-    (throw (Exception. "You must specify a flag to this aot task. Refer to documentation for list of available options")))
+    (util/warn "No flags specified for aot task, skipping...\n"))
   (let [tgt         (core/tmp-dir!)
         pod-env     (update-in (core/get-env) [:directories] conj (.getPath tgt))
         compile-pod (future (pod/make-pod pod-env))]
