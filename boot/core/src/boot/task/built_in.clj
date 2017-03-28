@@ -483,6 +483,21 @@
           (core/with-post-wrap [_]
             (when (or client (not server)) @repl-cli)))))
 
+(core/deftask bare-repl
+  "Start a bare REPL session for the current project.
+
+   Compared to the repl task, the bare-repl task starts up more quickly but
+   lacks features such as nREPL connectivity and colored stacktraces.
+
+   Use the rlwrap Unix tool to add readline functionality:
+
+   # rlwrap boot bare-repl"
+  [e eval EXPR      edn   "The form the client will evaluate in the boot.user ns."
+   i init PATH      str   "The file to evaluate in the boot.user ns."
+   n init-ns NS     sym   "The initial REPL namespace."]
+  (core/with-pass-thru [_]
+    (repl/launch-bare-repl *opts*)))
+
 (core/deftask socket-server
   "Start a socket server.
 
