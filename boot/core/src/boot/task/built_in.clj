@@ -378,7 +378,7 @@
    m mode VAL str    "The mode of written files in 'rwxrwxrwx' format"
    L no-link  bool   "Don't create hard links."
    C no-clean bool   "Don't clean target before writing project files."]
-  (let [dir   (or (seq dir) ["target"])
+  (let [dir   (or (seq dir) [(:target-path (core/get-env))] ["target"])
         sync! (#'core/fileset-syncer dir :clean (not no-clean))]
     (core/with-pass-thru [fs]
       (util/info "Writing target dir(s)...\n")
