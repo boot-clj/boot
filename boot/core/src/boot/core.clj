@@ -1255,7 +1255,7 @@
   (by-name names files true))
 
 (defn by-path
-  "This function takes two arguments: `paths` and `files`, where `path` is
+  "This function takes two arguments: `paths` and `files`, where `paths` is
   a seq of path strings like `[\"a/b/c/foo.clj\" \"bar.xml\"]` and `files` is
   a seq of file objects. Returns a seq of the files in `files` which have file
   paths listed in `paths`."
