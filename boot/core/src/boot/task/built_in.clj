@@ -348,9 +348,10 @@
                        (update-in [:dependencies] #(exclude (filter include? %))))]
           (if-let [conflicts (and safe (not-empty (dep-conflicts env)))]
             (throw (ex-info "Unresolved dependency conflicts." {:conflicts conflicts}))
-            (let [resolved        (pod/resolve-dependency-jars env)
+            (let [source-path     (into [] :source-paths)           
+                  resolved        (pod/resolve-dependency-jars env)
                   relative-paths  (map (partial relativize local-repo) resolved)]
-              (spit file-out (apply str (interpose ":" relative-paths))))))))))
+              (spit file-out (apply str (interpose ":" relative-paths) (interpose ":" source-path))))))))))
 
 (core/deftask wait
   "Wait before calling the next handler.
