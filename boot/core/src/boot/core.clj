@@ -865,12 +865,14 @@
   value of that key and the result will become the new value (similar to how
   clojure.core/update-in works."
   [& kvs]
-  (doseq [[k v] (order-set-env-keys (partition 2 kvs))]
-    (let [v'  (if-not (fn? v) v (v (get-env k)))
-          v'' (if-let [b (get @cli-base k)] (merge-if-coll b v') v')]
-      (assert (printable-readable? v'')
-              (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v'')))
-      (swap! boot-env update-in [k] (partial pre-env! k) v'' @boot-env))))
+  (binding [*print-level* nil
+            *print-length* nil]
+    (doseq [[k v] (order-set-env-keys (partition 2 kvs))]
+      (let [v'  (if-not (fn? v) v (v (get-env k)))
+            v'' (if-let [b (get @cli-base k)] (merge-if-coll b v') v')]
+        (assert (printable-readable? v'')
+                (format "value not readable by Clojure reader\n%s => %s" (pr-str k) (pr-str v'')))
+        (swap! boot-env update-in [k] (partial pre-env! k) v'' @boot-env)))))
 
 (defn merge-env!
   "Merges the new values into the current values for the given keys in the env
@@ -1253,7 +1255,7 @@
   (by-name names files true))
 
 (defn by-path
-  "This function takes two arguments: `paths` and `files`, where `path` is
+  "This function takes two arguments: `paths` and `files`, where `paths` is
   a seq of path strings like `[\"a/b/c/foo.clj\" \"bar.xml\"]` and `files` is
   a seq of file objects. Returns a seq of the files in `files` which have file
   paths listed in `paths`."

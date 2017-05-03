@@ -1,4 +1,10 @@
-# Boot [![Build Status](https://travis-ci.org/boot-clj/boot.svg?branch=master)](https://travis-ci.org/boot-clj/boot) [![Stories in Ready][waffle-badge]][waffle-board]
+<a href="http://boot-clj.com/">
+  <img src="http://boot-clj.com/assets/images/logos/boot-logo-3.png" alt="Boot Logo" title="Boot" align="right" width="225px" />
+</a>
+
+# Boot 
+
+[![Build Status](https://travis-ci.org/boot-clj/boot.svg?branch=master)](https://travis-ci.org/boot-clj/boot) [![Stories in Ready][waffle-badge]][waffle-board]
 
 [change log][changes] | [installation][4] | [getting started][start] | [documentation][wiki] | [API docs][api-docs]
 
@@ -8,8 +14,7 @@ Clojure projects from scripts written in Clojure that run in the context of
 the project.
 
 > If you have questions or need help, please [visit our Discourse site][discourse].
-> You can find other developers and users in [the `#bootclj` channel on freenode IRC][irc]
-> and [the `#boot` channel on Clojurians Slack][slack].
+> You can find other developers and users in [the `#boot` channel on Clojurians Slack][slack].
 
 ### Another Build Tool?
 
