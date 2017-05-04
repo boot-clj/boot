@@ -13,7 +13,8 @@
   (:import
     [java.io File]
     [java.util Properties]
-    [java.nio.file Path Files SimpleFileVisitor]))
+    [java.nio.file Path Files SimpleFileVisitor]
+    [java.nio.file.attribute BasicFileAttributes]))
 
 (set! *warn-on-reflection* true)
 
@@ -91,16 +92,17 @@
   [^Path root ^File blob tree link]
   (let [m {:dir (.toFile root) :bdir blob}]
     (proxy [SimpleFileVisitor] []
-      (visitFile [^Path path attr]
+      (visitFile [^Path path ^BasicFileAttributes attr]
         (with-let [_ fs/continue]
           (let [p (str (.relativize root path))]
-            (try (let [h (digest/md5 (.toFile path))
-                       t (.toMillis (Files/getLastModifiedTime path fs/link-opts))
-                       i (str h "." t)]
+            (when-not (.isSymbolicLink attr)
+              (try (let [h (digest/md5 (.toFile path))
+                         t (.toMillis (Files/getLastModifiedTime path fs/link-opts))
+                         i (str h "." t)]
                    (add-blob! blob path i link)
                    (swap! tree assoc p (map->TmpFile (assoc m :path p :id i :hash h :time t))))
                  (catch java.nio.file.NoSuchFileException _
-                   (util/dbug* "Tmpdir: file not found: %s\n" (.toString p))))) )))))
+                   (util/dbug* "Tmpdir: file not found: %s\n" (.toString p))))) ))))))
 
 (defn- dir->tree!
   [^File dir ^File blob]
@@ -263,7 +265,7 @@
                              err? (fatal-conflict? dst)
                              this (or (and (not err?) this)
                                       (update-in this [:tree] dissoc p))]
-                         (if err? 
+                         (if err?
                            (util/warn "Merge conflict: not adding %s\n" p)
                            (do (util/trace* "Commit: adding   %s %s...\n" (id tmpf) p)
                                (file/hard-link src dst)))
