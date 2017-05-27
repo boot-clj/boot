@@ -413,6 +413,8 @@ Make your build the default by editing your `$HOME/.boot/boot.properties` file:
 BOOT_VERSION=<version>
 ```
 
+For guidelines for contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Attribution
 
 Code from other projects was incorporated into boot wherever necessary to
