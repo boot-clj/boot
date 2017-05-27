@@ -14,6 +14,7 @@
 escape `%` in message to prevent errors about bad string formatting, and
 ensure that message ends in a newline.
 - Artifact upload slow because of an expensive evaluation of a debugging arguments for all calls to `transfer-listener` [#565][565] [#558][558]
+- With-cp does not consider source/resource paths
 
 ##### Tasks
 
@@ -31,6 +32,7 @@ ensure that message ends in a newline.
 [565]: https://github.com/boot-clj/boot/pull/565
 [558]: https://github.com/boot-clj/boot/pull/558
 [567]: https://github.com/boot-clj/boot/pull/567
+[611]: https://github.com/boot-clj/boot/pull/611
 
 ## 2.7.1
 
