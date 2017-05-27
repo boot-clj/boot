@@ -2,10 +2,36 @@
 
 ## master
 
+#### Breaking
+
+If you happen to receive "Tried to use insecure HTTP repository without TLS",
+it means your project was configured to download dependencies from a repository
+that does not use TLS encryption.
+This is NOT suppored anymore because it exposes you to trivially-executed
+man-in-the-middle attacks.
+In the rare event that you don't care about the security of the machines
+running your project, you can enable support for unprotected repositories by
+explicitely set a custom `wagon-factory`:
+
+    ;; never do this
+    (require 'cemerick.pomegranate.aether)
+    (cemerick.pomegranate.aether/register-wagon-factory!
+     "http "#(org.apache.maven.wagon.providers.http.HttpWagon.))
+
+It's also possible you have a dependency which includes a reference to an
+insecure repository for retrieving its own dependencies. If this happens it is
+strongly recommended to add an `:exclusion` and report a bug with the
+dependency which does this.
+
+Kudos to the folks working on
+[the related `pomegranate` PR](https://github.com/cemerick/pomegranate/pull/83)
+and `technomancy` for the above explanation.
+
 #### Improved
 
 - Boot is officially Maven Central compatible. Make sure the `sources` and `javadoc` artifacts are on the fileset and `:classifier` is correctly set.
 - Environment variables BOOT_AS_ROOT, BOOT_WATCHERS_DISABLE und BOOT_COLOR accept `true` as a truthy value beside `1` and `yes` [#631][631]
+- Bump [pomegranate](https://github.com/cemerick/pomegranate) and [dynapath](https://github.com/tobias/dynapath) to `1.0.0`. [#612][612]
 
 #### Fixed
 
@@ -20,6 +46,7 @@
 [654]: https://github.com/boot-clj/boot/issues/654
 [566]: https://github.com/boot-clj/boot/pull/566
 [631]: https://github.com/boot-clj/boot/issues/631
+[612]: https://github.com/boot-clj/boot/pull/612
 
 ## 2.7.2
 
