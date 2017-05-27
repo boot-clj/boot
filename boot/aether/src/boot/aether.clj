@@ -14,8 +14,8 @@
     [java.io File]
     [java.util.jar JarFile]
     [java.util.regex Pattern]
-    [org.sonatype.aether.resolution DependencyResolutionException]
-    [org.sonatype.aether.transfer MetadataNotFoundException ArtifactNotFoundException]))
+    [org.eclipse.aether.resolution DependencyResolutionException]
+    [org.eclipse.aether.transfer MetadataNotFoundException ArtifactNotFoundException]))
 
 (def offline?             (atom false))
 (def update?              (atom :daily))
