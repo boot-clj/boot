@@ -58,3 +58,21 @@
   [{:keys [bind port init-ns middleware handler] :as options}]
   (let [opts (->> options setup-nrepl-env!)]
     (@start-server opts)))
+
+(defn launch-socket-server
+  "See #boot.task.built-in/socket-server for explanation of options."
+  [{:keys [bind port accept]}]
+  (let [opts {:host (or bind "127.0.0.1")
+              :port (or port 0)
+              :name (gensym "socket-server")
+              :accept (or accept 'clojure.core.server/repl)}]
+    (try
+      (require 'clojure.core.server)
+      (catch java.io.FileNotFoundException e
+        (throw (ex-info "Socket server requires Clojure version 1.8.0 or above"
+                        {:version (clojure-version)}
+                        e))))
+    (let [effective-port (-> ((resolve 'clojure.core.server/start-server) opts)
+                             (.getLocalPort))]
+      (doto (io/file ".socket-port") .deleteOnExit (spit effective-port))
+      (util/info "Socket server started on port %s on host %s.\n" effective-port (:host opts)))))

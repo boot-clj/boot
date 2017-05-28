@@ -58,11 +58,12 @@
 
 (defn- register-recursive
   [service path events]
-  (util/dbug* "registering %s %s\n" path events)
-  (register service path events)
-  (doseq [dir (.listFiles (io/file path))]
-    (when (.isDirectory dir)
-      (register-recursive service dir events))))
+  (when @util/*watchers?*
+    (util/dbug* "registering %s %s\n" path events)
+    (register service path events)
+    (doseq [dir (.listFiles (io/file path))]
+      (when (.isDirectory dir)
+        (register-recursive service dir events)))))
 
 (defn- new-watch-service []
   (if (= "Mac OS X" (System/getProperty "os.name"))

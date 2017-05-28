@@ -2,11 +2,37 @@
 
 ## master
 
+#### Improved
+
+- `set-env!` works even if the user has set `*print-level*` or `*print-length*` to non-nil in their `$BOOT_HOME/profile.boot`. [#587][587] [#586][586]
+- `tmpfile` "Commit: adding..." messages now only appear with `-vv` which eases debugging tasks with `-v` [#557][557]
+- Pod tests pass and can be run with `make` [#567][567]
+
+#### Fixed
+
+- When printing exception message from exception using `:boot.util/omit-stacktrace?`,
+escape `%` in message to prevent errors about bad string formatting, and
+ensure that message ends in a newline.
+- Artifact upload slow because of an expensive evaluation of a debugging arguments for all calls to `transfer-listener` [#565][565] [#558][558]
+- With-cp does not consider source/resource paths
+
+##### Tasks
+
+- Added the `socket-server` task for starting a [Clojure 1.8.0+ socket server](https://clojure.org/reference/repl_and_main#_launching_a_socket_server). [#549][549]
+
 #### API Functions
 
 - Added `boot.util/dosh-timed`. It works like `boot.util/dosh` except it takes `timeout-ms` as the first argument, and throws an exception when the shell command takes more than `timeout-ms` milliseconds to execute. [#561][561]
 
+[549]: https://github.com/boot-clj/boot/pull/549
 [561]: https://github.com/boot-clj/boot/issues/561
+[586]: https://github.com/boot-clj/boot/pull/586
+[587]: https://github.com/boot-clj/boot/pull/587
+[557]: https://github.com/boot-clj/boot/pull/557
+[565]: https://github.com/boot-clj/boot/pull/565
+[558]: https://github.com/boot-clj/boot/pull/558
+[567]: https://github.com/boot-clj/boot/pull/567
+[611]: https://github.com/boot-clj/boot/pull/611
 
 ## 2.7.1
 

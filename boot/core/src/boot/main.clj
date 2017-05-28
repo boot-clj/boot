@@ -32,6 +32,7 @@
                  (update-in %1 [%2] (fnil assoc {}) (keyword k) v))]
    ["-i" "--init EXPR"           "Evaluate EXPR in the boot.user context."
     :assoc-fn #(update-in %1 [%2] (fnil conj []) (read-string %3))]
+   [nil  "--disable-watchers"    "Disable registering file watches (inotify/FSEvents) for constrained environments."]
    ["-f" "--file PATH"           "Evaluate PATH (implies -BP). Args and options passed to -main."]
    ["-h" "--help"                "Print basic usage and help info."]
    ["-o" "--offline"             "Don't attempt to access remote repositories." :id :offline?]
@@ -144,7 +145,10 @@
         boot?             (and boot? (not (:file opts)))
         verbosity         (if (:quiet opts)
                             (* -1 @util/*verbosity*)
-                            (or (:verbose opts) 0))]
+                            (or (:verbose opts) 0))
+        watchers?          (if (:disable-watchers opts)
+                             false
+                             @util/*watchers?*)]
 
     (when (seq errs)
       (util/exit-error
@@ -155,9 +159,12 @@
 
     (swap! util/*verbosity* + verbosity)
 
+    (reset! util/*watchers?* watchers?)
+
     (pod/with-eval-in worker-pod
       (require '[boot.util :as util])
-      (swap! util/*verbosity* + ~verbosity))
+      (swap! util/*verbosity* + ~verbosity)
+      (reset! util/*watchers?* ~watchers?))
 
     (binding [*out*               (util/auto-flush *out*)
               *err*               (util/auto-flush *err*)

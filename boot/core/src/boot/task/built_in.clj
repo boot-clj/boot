@@ -45,6 +45,7 @@
                  ["" "BOOT_FILE"                 "Build script name (build.boot)."]
                  ["" "BOOT_GPG_COMMAND"          "System gpg command (gpg)."]
                  ["" "BOOT_HOME"                 "Directory where boot stores global state (~/.boot)."]
+                 ["" "BOOT_WATCHERS_DISABLE"      "Set to 'yes' to turn off inotify/FSEvents watches."]
                  ["" "BOOT_JAVA_COMMAND"         "Specify the Java executable (java)."]
                  ["" "BOOT_JVM_OPTIONS"          "Specify JVM options (Unix/Linux/OSX only)."]
                  ["" "BOOT_LOCAL_REPO"           "The local Maven repo path (~/.m2/repository)."]
@@ -348,8 +349,11 @@
           (if-let [conflicts (and safe (not-empty (dep-conflicts env)))]
             (throw (ex-info "Unresolved dependency conflicts." {:conflicts conflicts}))
             (let [resolved        (pod/resolve-dependency-jars env)
-                  relative-paths  (map (partial relativize local-repo) resolved)]
-              (spit file-out (apply str (interpose ":" relative-paths))))))))))
+                  relative-paths  (map (partial relativize local-repo) resolved)
+                  source-paths    (:source-paths env)]
+              (spit file-out (apply str (->> (concat source-paths relative-paths)
+                                             (interpose ":")
+                                             (into [])))))))))))
 
 (core/deftask wait
   "Wait before calling the next handler.
@@ -478,6 +482,29 @@
             (when (or server (not client)) @repl-svr))
           (core/with-post-wrap [_]
             (when (or client (not server)) @repl-cli)))))
+
+(core/deftask socket-server
+  "Start a socket server.
+
+  The default behavior is to serve a simple REPL handled by
+  clojure.core.server/repl. To serve a different handler function, specify a
+  symbol using `--accept'.
+
+  If no bind address is specified, the socket server will listen on 127.0.0.1.
+
+  If no port is specified, an open port will be chosen automatically. The port
+  number is written to .socket-port in the current directory.
+
+  The REPL can be accessed with the command
+
+     $ nc localhost $(cat .server-port)"
+
+  [b bind ADDR      str    "The address server listens on."
+   p port PORT      int    "The port to listen to."
+   a accept ACCEPT  sym    "Namespaced symbol of the accept function to invoke."]
+  (let [repl-soc (delay (repl/launch-socket-server *opts*))]
+    (core/with-pass-thru [fs]
+      @repl-soc)))
 
 (core/deftask pom
   "Create project pom.xml file.

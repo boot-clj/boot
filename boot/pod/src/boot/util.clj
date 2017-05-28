@@ -17,6 +17,20 @@
 
 (declare print-ex)
 
+(defn watchers?-system-default
+  "Return whether we should register file watches on this
+  system. Constrained environments like clould build containers limit
+  the number of inotify handles, and watchers are only necessary for
+  interactive dev, not one-shot jobs.  environment variable or
+  configuration option BOOT_WATCHERS_DISABLE to either '1' or 'yes' to
+  disable inotify; any other value keeps normal behavior."
+  []
+  (let [value (boot.App/config "BOOT_WATCHERS_DISABLE")]
+    (if (string/blank? value)
+      true
+      (not (#{"1" "yes"}
+            (string/lower-case value))))))
+
 (defn colorize?-system-default
   "Return whether we should colorize output on this system. The default
   console on Windows does not interprete ANSI escape codes, so colorized
@@ -50,6 +64,10 @@
   will be printed with boot output."
   (atom (colorize?-system-default)))
 
+(def ^:dynamic *watchers?*
+  "Atom containing the value that determines whether inotify watches are registered"
+  (atom (watchers?-system-default)))
+
 (defn- print*
   [verbosity color args]
   (when (>= @*verbosity* verbosity)
@@ -57,13 +75,53 @@
       (print ((or color identity) (apply format args)))
       (flush))))
 
+(defmacro print**
+  "Macro version of boot.util/print* but arguments are only evaluated
+  when the message will be printed."
+  [verbosity color fmt args]
+  `(when (>= @*verbosity* ~verbosity)
+     (binding [*out* *err*]
+       (print ((or ~color identity) (format ~fmt ~@args)))
+       (flush))))
+
+(defmacro trace*
+  "Tracing macro, arguments are only evaluated when the message will be
+  printed (i.e., verbosity level >= 3)."
+  [fmt & args]
+  `(print** 3 ansi/cyan ~fmt ~args))
+
 (defmacro dbug*
   "Macro version of boot.util/dbug, arguments are only evaluated when the
   message will be printed (i.e., verbosity level >= 2)."
   [fmt & args]
-  `(when (>= @*verbosity* 2)
-     (binding [*out* *err*]
-       (print (ansi/bold-cyan (format ~fmt ~@args))))))
+  `(print** 2 ansi/bold-cyan ~fmt ~args))
+
+(defmacro info*
+  "Macro version of boot.util/info, arguments are only evaluated when
+  the message will be printed (i.e., verbosity level >= 1)."
+  [fmt & args]
+  `(print** 1 ansi/bold ~fmt ~args))
+
+(defmacro warn*
+  "Macro version of boot.util/warn, arguments are only evaluated when
+  the message will be printed (i.e., verbosity level >= 1)."
+  [fmt & args]
+  `(print** 1 ansi/bold-yellow ~fmt ~args))
+
+(defmacro fail*
+  "Macro version of boot.util/fail, arguments are only evaluated when
+  the message will be printed (i.e., verbosity level >= 1)."
+  [fmt & args]
+  `(print** 1 ansi/bold-red ~fmt ~args))
+
+(defn trace
+  "Print TRACE level message. Arguments of the form fmt & args suitable for
+  passing to clojure.core/format.
+
+  Note that boot.util/*verbosity* in a pod needs to be altered AFTER pod
+  creation or log level won't be affected."
+  [& more]
+  (print* 3 ansi/cyan more))
 
 (defn dbug
   "Print DEBUG level message. Arguments of the form fmt & args suitable for
@@ -253,6 +311,15 @@
   `(let [s# (new java.io.StringWriter)]
      (binding [*err* s#] ~@body (str s#))))
 
+(defn- ensure-ends-in-newline [s]
+  (if s
+    (if (.endsWith s "\n")
+      s
+      (str s "\n"))))
+
+(defn- escape-format-string [s]
+  (string/replace s #"%" "%%"))
+
 (defn print-ex
   "Print exception to *err* as appropriate for the current *verbosity* level.
 
@@ -261,7 +328,7 @@
   [ex]
   (cond
     (= 0 @*verbosity*) nil
-    (::omit-stacktrace? (ex-data ex)) (fail (.getMessage ex))
+    (::omit-stacktrace? (ex-data ex)) (fail (-> (.getMessage ex) escape-format-string ensure-ends-in-newline))
     (= 1 @*verbosity*) (pretty/write-exception *err* ex nil)
     (= 2 @*verbosity*) (pretty/write-exception *err* ex {:filter nil})
     :else (binding [*out* *err*] (.printStackTrace ex))))
