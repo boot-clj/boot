@@ -207,7 +207,7 @@
 (defn- diff*
   [{t1 :tree :as before} {t2 :tree :as after} props]
   (if-not before
-    {:added   after
+    {:added   (or after {:tree {}})
      :removed (assoc after :tree {})
      :changed (assoc after :tree {})}
     (let [props   (or (seq props) [:id])

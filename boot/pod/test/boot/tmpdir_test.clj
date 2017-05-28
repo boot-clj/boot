@@ -63,15 +63,17 @@
 (deftest diff*-edge-test
   (let [before {}
         after {}
-        diff (#'tmpd/diff* before after)]
+        diff (#'tmpd/diff* before after [:hash :time])
+        empty-fs {:tree {}}]
     (testing "Empty dicts"
-      (is (empty? (:added diff)))
-      (is (empty? (:removed diff)))
-      (is (empty? (:changed diff)))))
+      (is (= empty-fs (:added diff)))
+      (is (= empty-fs (:removed diff)))
+      (is (= empty-fs (:changed diff)))))
   (let [before nil
         after nil
-        diff (#'tmpd/diff* before after)]
+        diff (#'tmpd/diff* before after [:hash :time])
+        empty-fs {:tree {}}]
     (testing "Nil"
-      (is (empty? (:added diff)))
-      (is (empty? (:removed diff)))
-      (is (empty? (:changed diff))))))
+      (is (= empty-fs (:added diff)))
+      (is (= empty-fs (:removed diff)))
+      (is (= empty-fs (:changed diff))))))
