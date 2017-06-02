@@ -216,7 +216,8 @@
 
   (let [themefiles (notify/get-themefiles theme (core/tmp-dir!))
         sounds (merge themefiles soundfiles)
-        base-visual-opts {:title (or title "Boot")
+        title (or title "Boot")
+        base-visual-opts {:title title
                           :uid   (or uid title)
                           :icon  (or icon (notify/boot-logo))}
         messages (merge {:success "Success!" :warning "%s warning/s" :failure "%s"}
