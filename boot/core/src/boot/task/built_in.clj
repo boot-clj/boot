@@ -1001,6 +1001,7 @@
                                (util/info "Signing %s...\n" (.getName f))
                                (gpg/sign-jar tgt f pom {:gpg-key gpg-user-id
                                                         :gpg-passphrase gpg-passphrase}))]
+            (util/debug* "Signed artifact-map %s\n" artifact-map)
             (assert (or (not ensure-branch) (= b ensure-branch))
                     (format "current git branch is %s but must be %s" b ensure-branch))
             (assert (or (not ensure-clean) clean?)

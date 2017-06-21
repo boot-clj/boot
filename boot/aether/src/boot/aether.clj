@@ -342,11 +342,11 @@
      (deploy env repo jarpath nil pom-or-artifacts)
      (deploy env repo jarpath pom-or-artifacts nil)))
   ([env [repo-id repo-settings] jarpath pompath artifact-map]
-   (let [pom-str                           (pod/pom-xml jarpath pompath)
-         {:keys [project version] :as pom} (pom-xml-parse-string pom-str)
-         pomfile                           (pom-xml-tmp pom-str)]
+   (let [pom-str                                      (pod/pom-xml jarpath pompath)
+         {:keys [project version classifier] :as pom} (pom-xml-parse-string pom-str)
+         pomfile                                      (pom-xml-tmp pom-str)]
      (aether/deploy
-       :coordinates  [project version]
+       :coordinates  [project version :classifier classifier]
        :pom-file     (io/file pomfile)
        :artifact-map (jarpath-on-artifact-map artifact-map pom jarpath)
        :transfer-listener transfer-listener
