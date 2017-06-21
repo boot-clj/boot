@@ -50,7 +50,7 @@
     (str file ".asc")))
 
 (defn sign-jar
-  [outdir jarfile pompath opts]
+  [outdir jarfile pompath gpg-options]
   (shell/with-sh-dir
     outdir
     (let [jarname (.getName jarfile)
@@ -59,7 +59,7 @@
                     (.deleteOnExit)
                     (spit (pod/pom-xml jarfile pompath)))
           pomout  (io/file outdir (.replaceAll jarname "\\.jar$" ".pom.asc"))
-          sign-it #(slurp (sign (.getPath %) opts))]
+          sign-it #(slurp (sign (.getPath %) gpg-options))]
       (spit pomout (sign-it pomfile))
       (spit jarout (sign-it jarfile))
       {[:extension "jar.asc"] (.getPath jarout)
