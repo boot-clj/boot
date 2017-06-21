@@ -509,7 +509,12 @@
 (core/deftask pom
   "Create project pom.xml file.
 
-  The project and version must be specified to make a pom.xml."
+  The project and version must be specified to make a pom.xml.
+
+  Note that if you want to install some other artifact along with the main one,
+  for instance the classic sources or javadoc artifact, you have to add the
+  classifier to your pom.xml, which translates to adding :classifier to this
+  task."
 
   [p project SYM           sym         "The project id (eg. foo/bar)."
    v version VER           str         "The project version."
@@ -930,7 +935,12 @@
 
     The jar could be installed with the following boot command:
 
-        $ boot install -f warp-0.1.0.jar -p tailrecursion/warp"
+        $ boot install -f warp-0.1.0.jar -p tailrecursion/warp
+
+  Note that if you want to install some other artifact along with the main one,
+  for instance the classic sources or javadoc artifact, you have to add the
+  classifier to your pom.xml, which translates to adding :classifier to the pom
+  task."
 
   [f file PATH str "The jar file to install."
    p pom PATH  str "The pom.xml file to use."]
