@@ -335,23 +335,20 @@
        :local-repo   (or (:local-repo env) @local-repo nil)))))
 
 (defn deploy
-  ([env repo jarpath]
-   (deploy env repo jarpath nil))
-  ([env repo jarpath pom-or-artifacts]
-   (if (map? pom-or-artifacts)
-     (deploy env repo jarpath nil pom-or-artifacts)
-     (deploy env repo jarpath pom-or-artifacts nil)))
-  ([env [repo-id repo-settings] jarpath pompath artifact-map]
-   (let [pom-str                           (pod/pom-xml jarpath pompath)
-         {:keys [project version] :as pom} (pom-xml-parse-string pom-str)
-         pomfile                           (pom-xml-tmp pom-str)]
-     (aether/deploy
-       :coordinates  [project version]
-       :pom-file     (io/file pomfile)
-       :artifact-map (jarpath-on-artifact-map artifact-map pom jarpath)
-       :transfer-listener transfer-listener
-       :repository   {repo-id repo-settings}
-       :local-repo   (or (:local-repo env) @local-repo nil)))))
+  "Deploy a jar file.
+
+  The pom always needs to be passed along and valid, if artifact map is "
+  [env [repo-id repo-settings] jarpath pompath artifact-map]
+  (let [pom-str                                      (pod/pom-xml jarpath pompath)
+        {:keys [project version classifier] :as pom} (pom-xml-parse-string pom-str)
+        pomfile                                      (pom-xml-tmp pom-str)]
+    (aether/deploy
+     :coordinates  [project version :classifier classifier]
+     :pom-file     (when-not classifier (io/file pomfile))
+     :artifact-map (jarpath-on-artifact-map artifact-map pom jarpath)
+     :transfer-listener transfer-listener
+     :repository   {repo-id repo-settings}
+     :local-repo   (or (:local-repo env) @local-repo nil))))
 
 (def ^:private wagon-files (atom #{}))
 
