@@ -7,6 +7,8 @@
 - `set-env!` works even if the user has set `*print-level*` or `*print-length*` to non-nil in their `$BOOT_HOME/profile.boot`. [#587][587] [#586][586]
 - `tmpfile` "Commit: adding..." messages now only appear with `-vv` which eases debugging tasks with `-v` [#557][557]
 - Pod tests pass and can be run with `make` [#567][567]
+- Improved error message when a user tries to use a multi-arity format for
+  tasks.
 
 #### Fixed
 

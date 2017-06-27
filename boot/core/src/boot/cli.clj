@@ -246,6 +246,12 @@
            (with-meta ~varmeta)))))
 
 (defmacro defclifn [sym & forms]
+  (let [no-doc-string-forms (if (string? (first forms))
+                              (rest forms)
+                              forms)]
+    (if (and (list? (first no-doc-string-forms))
+             (vector? (first (first no-doc-string-forms))))
+      (throw (IllegalArgumentException. "Multiple arity format not supported for tasks. Use single arity format. Ex (deftask build [x y ...] ;commands)"))))
   `(let [var#    (def ~sym (clifn ~@forms))
          fmtdoc# (comp string/trim (#'indent 2))
          meta#   (update-in (meta ~sym) [:doc] fmtdoc#)]
