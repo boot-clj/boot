@@ -175,11 +175,11 @@
             (throw t)))))))
 
 (core/deftask ^{:boot/from :jeluard/boot-notify} notify
-  "Aural and visual notifications during build.
+  "Audible and visual notifications during build.
 
-  Default audio themes: system (the default), ordinance, pillsbury,
-  and woodblock. New themes can be included via jar dependency with
-  the sound files as resources:
+  Default audio themes: system (the default), ordinance, pillsbury and
+  woodblock. New themes can be included via jar dependency with the
+  sound files as resources:
 
       boot
       └── notify
@@ -190,8 +190,8 @@
   Sound files specified individually take precedence over theme sounds.
 
   For visual notifications, there is a default implementation that
-  tries to use the `terminal-notifier' program on OS X systems, and
-  the `notify-send' program on Linux systems.
+  tries to use the `terminal-notifier' or `osascript` programs on OS X
+  systems, and the `notify-send' program on Linux systems.
 
   You can also supply custom notification functions via the *-notify-fn
   options. Both are functions that take one argument which is a map of
@@ -201,7 +201,14 @@
   - :type, :file, and :theme.
 
   The visual notification function will receive a map with four keys
-  - :title, :uid, :icon, and :message."
+  - :title, :uid, :icon, and :message.
+
+  The `notify` task always attempts to catch any exceptions that are
+  thrown so as not to cause your build to fail. If no notifications
+  are happening even if you specify `audible` or `visual`, you can see
+  any exceptions that are being caught by changing
+  `boot.util/*verbosity*` (at the command-line use: `boot -v` or `boot
+  -vv`)."
 
   [a audible                    bool      "Play an audible notification"
    v visual                     bool      "Display a visual notification"
@@ -216,7 +223,8 @@
 
   (let [themefiles (notify/get-themefiles theme (core/tmp-dir!))
         sounds (merge themefiles soundfiles)
-        base-visual-opts {:title (or title "Boot")
+        title (or title "Boot")
+        base-visual-opts {:title title
                           :uid   (or uid title)
                           :icon  (or icon (notify/boot-logo))}
         messages (merge {:success "Success!" :warning "%s warning/s" :failure "%s"}
