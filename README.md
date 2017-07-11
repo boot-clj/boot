@@ -80,7 +80,11 @@ $ sudo bash -c "cd /usr/local/bin && curl -fsSLo boot https://github.com/boot-cl
 
 #### Windows
 
-Download [boot.exe][boot-exe], then:
+Package managers:
+
+* [Chocolatey](https://chocolatey.org/) &mdash; `choco install boot-clj`
+
+Otherwise, download [boot.exe][boot-exe], then:
 
 ```bat
 :: Using %SystemRoot% here, but can be any folder on user's %PATH%
