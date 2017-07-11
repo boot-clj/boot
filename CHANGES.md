@@ -20,6 +20,7 @@ ensure that message ends in a newline.
 ##### Tasks
 
 - Added the `socket-server` task for starting a [Clojure 1.8.0+ socket server](https://clojure.org/reference/repl_and_main#_launching_a_socket_server). [#549][549]
+- Added the `call` task to execute arbitrary code as part of the pipeline, either via an existing function symbol or by providing a form. Similar to [lein run](https://github.com/technomancy/leiningen#basic-usage), `call` can be used, for example, to start a [component system](https://github.com/stuartsierra/component).
 - Added the `bare-repl` task for starting a simple interactive REPL session (a la [clojure.main/repl](https://clojure.org/reference/repl_and_main#_launching_a_repl)) without launching a nREPL server. [#582][582]
 
 #### API Functions
