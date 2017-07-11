@@ -7,8 +7,9 @@
 - `set-env!` works even if the user has set `*print-level*` or `*print-length*` to non-nil in their `$BOOT_HOME/profile.boot`. [#587][587] [#586][586]
 - `tmpfile` "Commit: adding..." messages now only appear with `-vv` which eases debugging tasks with `-v` [#557][557]
 - Pod tests pass and can be run with `make` [#567][567]
-- Improved error message when a user tries to use a multi-arity format for
-  tasks.
+- Improved error message when a user tries to use a multi-arity format for tasks.
+- Sift now outputs meaningful things on debug [#581][581]
+- `file-filter` (called by all `by-*` functions) throws an error if no criteria are specified.
 
 #### Fixed
 
@@ -16,10 +17,14 @@
 escape `%` in message to prevent errors about bad string formatting, and
 ensure that message ends in a newline.
 - Artifact upload slow because of an expensive evaluation of a debugging arguments for all calls to `transfer-listener` [#565][565] [#558][558]
+- With-cp does not consider source/resource paths
+- Evaluation of boot script is now done via string concatenation and `load-string`, rather than `read-string` [#571][571]
 
 ##### Tasks
 
 - Added the `socket-server` task for starting a [Clojure 1.8.0+ socket server](https://clojure.org/reference/repl_and_main#_launching_a_socket_server). [#549][549]
+- Added the `call` task to execute arbitrary code as part of the pipeline, either via an existing function symbol or by providing a form. Similar to [lein run](https://github.com/technomancy/leiningen#basic-usage), `call` can be used, for example, to start a [component system](https://github.com/stuartsierra/component).
+- Added the `bare-repl` task for starting a simple interactive REPL session (a la [clojure.main/repl](https://clojure.org/reference/repl_and_main#_launching_a_repl)) without launching a nREPL server. [#582][582]
 
 #### API Functions
 
@@ -33,6 +38,8 @@ ensure that message ends in a newline.
 [565]: https://github.com/boot-clj/boot/pull/565
 [558]: https://github.com/boot-clj/boot/pull/558
 [567]: https://github.com/boot-clj/boot/pull/567
+[581]: https://github.com/boot-clj/boot/pull/581
+[611]: https://github.com/boot-clj/boot/pull/611
 
 ## 2.7.1
 
