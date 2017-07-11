@@ -19,6 +19,7 @@ ensure that message ends in a newline.
 - Artifact upload slow because of an expensive evaluation of a debugging arguments for all calls to `transfer-listener` [#565][565] [#558][558]
 - With-cp does not consider source/resource paths
 - Evaluation of boot script is now done via string concatenation and `load-string`, rather than `read-string` [#571][571]
+- Improve robustness of built-in `notify` task [#551](https://github.com/boot-clj/boot/pull/551)
 
 ##### Tasks
 
