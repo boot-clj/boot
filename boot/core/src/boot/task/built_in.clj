@@ -626,6 +626,7 @@
         process (reduce-kv #(comp (action %2 %3) %1) identity *opts*)]
     (core/with-pre-wrap [fs]
       (util/info "Sifting output files...\n")
+      (util/dbug* "%s\n" (util/pp-str (assoc *opts* :invert v?)))
       (-> fs process core/commit!))))
 
 (core/deftask add-repo

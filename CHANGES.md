@@ -7,6 +7,7 @@
 - `set-env!` works even if the user has set `*print-level*` or `*print-length*` to non-nil in their `$BOOT_HOME/profile.boot`. [#587][587] [#586][586]
 - `tmpfile` "Commit: adding..." messages now only appear with `-vv` which eases debugging tasks with `-v` [#557][557]
 - Pod tests pass and can be run with `make` [#567][567]
+- Sift now outputs meaningful things on debug [#581][581]
 - `file-filter` (called by all `by-*` functions) throws an error if no criteria are specified.
 
 #### Fixed
@@ -36,6 +37,7 @@ ensure that message ends in a newline.
 [565]: https://github.com/boot-clj/boot/pull/565
 [558]: https://github.com/boot-clj/boot/pull/558
 [567]: https://github.com/boot-clj/boot/pull/567
+[581]: https://github.com/boot-clj/boot/pull/581
 [611]: https://github.com/boot-clj/boot/pull/611
 
 ## 2.7.1
