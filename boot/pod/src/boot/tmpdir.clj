@@ -103,8 +103,7 @@
                    (util/dbug* "Tmpdir: file not found: %s\n" (.toString p)))))))
       (visitFileFailed [^Path path ^java.io.IOException e]
         (with-let [_ fs/skip-subtree]
-          (let [p (str (.relativize root path))]
-            (util/dbug* "Tmpdir: failed to visit: %s\n" (.toString p))))))))
+          (util/dbug* "Tmpdir: failed to visit: %s\n" (str (.relativize root path))))))))
 
 (defn- dir->tree!
   [^File dir ^File blob]
