@@ -80,7 +80,11 @@ $ sudo bash -c "cd /usr/local/bin && curl -fsSLo boot https://github.com/boot-cl
 
 #### Windows
 
-Download [boot.exe][boot-exe], then:
+Package managers:
+
+* [Chocolatey](https://chocolatey.org/) &mdash; `choco install boot-clj`
+
+Otherwise, download [boot.exe][boot-exe], then:
 
 ```bat
 :: Using %SystemRoot% here, but can be any folder on user's %PATH%
@@ -412,6 +416,8 @@ Make your build the default by editing your `$HOME/.boot/boot.properties` file:
 # <version> is the version of your build
 BOOT_VERSION=<version>
 ```
+
+For guidelines for contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Attribution
 

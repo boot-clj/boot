@@ -349,8 +349,11 @@
           (if-let [conflicts (and safe (not-empty (dep-conflicts env)))]
             (throw (ex-info "Unresolved dependency conflicts." {:conflicts conflicts}))
             (let [resolved        (pod/resolve-dependency-jars env)
-                  relative-paths  (map (partial relativize local-repo) resolved)]
-              (spit file-out (apply str (interpose ":" relative-paths))))))))))
+                  relative-paths  (map (partial relativize local-repo) resolved)
+                  source-paths    (:source-paths env)]
+              (spit file-out (apply str (->> (concat source-paths relative-paths)
+                                             (interpose ":")
+                                             (into [])))))))))))
 
 (core/deftask wait
   "Wait before calling the next handler.
@@ -479,6 +482,21 @@
             (when (or server (not client)) @repl-svr))
           (core/with-post-wrap [_]
             (when (or client (not server)) @repl-cli)))))
+
+(core/deftask bare-repl
+  "Start a bare REPL session for the current project.
+
+   Compared to the repl task, the bare-repl task starts up more quickly but
+   lacks features such as nREPL connectivity and colored stacktraces.
+
+   Use the rlwrap Unix tool to add readline functionality:
+
+   # rlwrap boot bare-repl"
+  [e eval EXPR      edn   "The form the client will evaluate in the boot.user ns."
+   i init PATH      str   "The file to evaluate in the boot.user ns."
+   n init-ns NS     sym   "The initial REPL namespace."]
+  (core/with-pass-thru [_]
+    (repl/launch-bare-repl *opts*)))
 
 (core/deftask socket-server
   "Start a socket server.
@@ -1022,3 +1040,42 @@
                 (util/info "Tag %s already created for %s\n" tag commit)
                 (do (util/info "Creating tag %s...\n" v)
                     (git/tag v "release"))))))))))
+
+(core/deftask call
+  "Call a function or evaluate a piece of code
+
+Multiple functions or forms can be specified. For namespaced functions, the
+namespace is automatically required. Execution occurs before tasks appearing
+later in the pipeline (or after the tasks, if --post is specified)."
+  [f function SYMBOL [sym] "Functions to execute"
+   e eval     FORM   [edn] "Forms to execute"
+   p print           bool  "Print results to *out*"
+   P post            bool  "Execute after rather than before subsequent tasks"
+   o once            bool  "Run only once if used with watch"]
+  (let [called? (atom false)
+        run (fn []
+              (when (or (not once) (not @called?))
+                (doseq [ns (->> function
+                                (map #(some-> % namespace symbol))
+                                (remove nil?)
+                                set)]
+                  (require ns))
+                (doseq [sym function]
+                  (if-let [f (resolve sym)]
+                    (do
+                      (util/dbug "Invoking %s...\n" sym)
+                      (cond-> (f)
+                        print println))
+                    (throw (RuntimeException. (str "Could not resolve symbol " sym)))))
+                (doseq [form eval]
+                  (util/dbug "Evaluating %s...\n" (pr-str form))
+                  (cond-> (clojure.core/eval form)
+                    print println))
+                (reset! called? true)))]
+    (if post
+      (core/with-post-wrap [fileset]
+        (run)
+        fileset)
+      (core/with-pre-wrap [fileset]
+        (run)
+        fileset))))
