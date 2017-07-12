@@ -68,7 +68,7 @@ Package managers:
 
 Otherwise:
 
-* Download [boot.sh][boot-sh].
+* Download [boot.sh][boot-sh] and save as `boot`
 * Make it executable.
 * Move it to somewhere in your `$PATH`.
 
