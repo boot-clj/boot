@@ -18,7 +18,7 @@ escape `%` in message to prevent errors about bad string formatting, and
 ensure that message ends in a newline.
 - Artifact upload slow because of an expensive evaluation of a debugging arguments for all calls to `transfer-listener` [#565][565] [#558][558]
 - With-cp does not consider source/resource paths
-- Evaluation of boot script is now done via string concatenation and `load-string`, rather than `read-string` [#571][571]
+- Evaluation of boot script is now done via string concatenation and `load-string`, rather than `read-string` [#547][547]
 - Improve robustness of built-in `notify` task [#551](https://github.com/boot-clj/boot/pull/551)
 
 ##### Tasks
@@ -41,7 +41,7 @@ ensure that message ends in a newline.
 [567]: https://github.com/boot-clj/boot/pull/567
 [581]: https://github.com/boot-clj/boot/pull/581
 [611]: https://github.com/boot-clj/boot/pull/611
-[571]: https://github.com/boot-clj/boot/pull/571
+[547]: https://github.com/boot-clj/boot/pull/547
 
 ## 2.7.1
 
