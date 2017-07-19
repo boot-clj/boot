@@ -41,6 +41,7 @@ ensure that message ends in a newline.
 [567]: https://github.com/boot-clj/boot/pull/567
 [581]: https://github.com/boot-clj/boot/pull/581
 [611]: https://github.com/boot-clj/boot/pull/611
+[571]: https://github.com/boot-clj/boot/pull/571
 
 ## 2.7.1
 
