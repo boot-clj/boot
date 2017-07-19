@@ -9,7 +9,7 @@
 - Pod tests pass and can be run with `make` [#567][567]
 - Improved error message when a user tries to use a multi-arity format for tasks. [#574][574]
 - Sift now outputs meaningful things on debug [#581][581]
-- `file-filter` (called by all `by-*` functions) throws an error if no criteria are specified.
+- `file-filter` (called by all `by-*` functions) throws an error if no criteria are specified. [#555][555]
 
 #### Fixed
 
@@ -43,6 +43,7 @@ ensure that message ends in a newline.
 [611]: https://github.com/boot-clj/boot/pull/611
 [547]: https://github.com/boot-clj/boot/pull/547
 [574]: https://github.com/boot-clj/boot/issues/574
+[555]: https://github.com/boot-clj/boot/issues/555
 
 ## 2.7.1
 
