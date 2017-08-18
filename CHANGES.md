@@ -2,6 +2,8 @@
 
 ## master
 
+## 2.7.2
+
 #### Improved
 
 - `set-env!` works even if the user has set `*print-level*` or `*print-length*` to non-nil in their `$BOOT_HOME/profile.boot`. [#587][587] [#586][586]
@@ -21,7 +23,7 @@ ensure that message ends in a newline.
 - Evaluation of boot script is now done via string concatenation and `load-string`, rather than `read-string` [#547][547]
 - Improve robustness of built-in `notify` task [#551](https://github.com/boot-clj/boot/pull/551)
 
-##### Tasks
+#### Tasks
 
 - Added the `socket-server` task for starting a [Clojure 1.8.0+ socket server](https://clojure.org/reference/repl_and_main#_launching_a_socket_server). [#549][549]
 - Added the `call` task to execute arbitrary code as part of the pipeline, either via an existing function symbol or by providing a form. Similar to [lein run](https://github.com/technomancy/leiningen#basic-usage), `call` can be used, for example, to start a [component system](https://github.com/stuartsierra/component).
