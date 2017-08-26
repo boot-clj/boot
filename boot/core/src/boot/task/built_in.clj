@@ -520,7 +520,7 @@
 
   The REPL can be accessed with the command
 
-     $ nc localhost $(cat .server-port)"
+     $ nc localhost $(cat .socket-port)"
 
   [b bind ADDR      str    "The address server listens on."
    p port PORT      int    "The port to listen to."
