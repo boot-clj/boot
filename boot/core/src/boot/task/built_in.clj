@@ -1011,19 +1011,25 @@
   (let [tgt (core/tmp-dir!)]
     (core/with-pass-thru [fs]
       (core/empty-dir! tgt)
-      (let [jarfiles (or (and file [(io/file file)])
+      (let [jarfiles (or (and file [(if-let [fs-jar (get-in fs [:tree file])]
+                                      (core/tmp-file fs-jar)
+                                      (io/file file))])
                          (->> (core/output-files fs)
                               (core/by-ext [".jar"])
                               ((if (seq file-regex) #(core/by-re file-regex %) identity))
                               (map core/tmp-file)))
-            ; Get options from Boot env by repo name
+            ;; Get options from Boot env by repo name
             r        (get (->> (core/get-env :repositories) (into {})) repo)
             repo-map (merge r (when repo-map ((core/configure-repositories!) repo-map)))]
         (when-not (and repo-map (seq jarfiles))
           (throw (Exception. "missing jar file or repo not found")))
         (doseq [f jarfiles]
-          (let [{{t :tag} :scm
-                 v :version} (pod/pom-xml-map f pom)
+          (assert (.exists f) (str "Could not find jarfile " (.getPath f) " in fileset or filesystem"))
+          (let [pom-f        (or (some-> (get-in fs [:tree pom])
+                                         core/tmp-file
+                                         (.getPath))
+                                 pom) ; default to raw io/file based lookup
+                {{t :tag} :scm v :version} (pod/pom-xml-map f pom-f)
                 b            (util/guard (git/branch-current))
                 commit       (util/guard (git/last-commit))
                 tags         (util/guard (git/ls-tags))
@@ -1050,7 +1056,7 @@
             (util/info "Deploying %s...\n" (.getName f))
             (pod/with-call-worker
               (boot.aether/deploy
-                ~(core/get-env) ~[repo repo-map] ~(.getPath f) ~pom ~artifact-map))
+                ~(core/get-env) ~[repo repo-map] ~(.getPath f) ~pom-f ~artifact-map))
             (when tag
               (if (and tags (= commit (get tags tag)))
                 (util/info "Tag %s already created for %s\n" tag commit)
