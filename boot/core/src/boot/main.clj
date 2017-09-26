@@ -76,23 +76,36 @@
    (cli/parse-opts args cli-opts :in-order true)))
 
 (defn- with-comments [tag forms]
-  (concat
-    [`(comment ~(format "start %s" tag))]
+  (string/join
+   "\n"
+   [(format ";; start %s" tag)
     forms
-    [`(comment ~(format "end %s" tag))]))
+    (format ";; end %s" tag)]))
+
+(defn pr-boot-form [form]
+  (if (<= @util/*verbosity* 1)
+    (pr-str form)
+    (let [[op & [msg & more]] form]
+      (with-out-str (pp/write form :dispatch pp/code-dispatch)))))
 
 (defn emit [boot? argv userscript localscript bootscript import-ns inits]
   (let [boot-use '[boot.core boot.util boot.task.built-in]]
-    `(~(list 'ns 'boot.user
-         (list* :use (concat boot-use import-ns)))
-      ~@(when userscript (with-comments "global profile" userscript))
-      ~@(when localscript (with-comments "local profile" localscript))
-      ~@(when (seq inits) (with-comments "--init exprs" inits))
-      ~@(with-comments "boot script" bootscript)
-      (let [boot?# ~boot?]
-        (if-not boot?#
-          (when-let [main# (resolve 'boot.user/-main)] (main# ~@argv))
-          (core/boot ~@(or (seq argv) ["boot.task.built-in/help"])))))))
+    (str
+     (string/join
+      "\n\n"
+      (remove
+       nil?
+       [(pr-boot-form `(ns boot.user (:use ~@(concat boot-use import-ns))))
+        (when userscript (with-comments "global profile" userscript))
+        (when localscript (with-comments "local profile" localscript))
+        (when inits (with-comments "--init exprs" inits))
+        (with-comments "boot script" bootscript)
+        (pr-boot-form
+         `(let [boot?# ~boot?]
+            (if-not boot?#
+              (when-let [main# (resolve 'boot.user/-main)] (main# ~@argv))
+              (core/boot ~@(or (seq argv) ["boot.task.built-in/help"])))))]))
+     "\n")))
 
 (defn shebang? [arg]
   (when (and (<= 0 (.indexOf arg (int \/))) (.exists (io/file arg)))
@@ -102,14 +115,6 @@
           full-pat  (re-pattern (format "^#!\\s*\\Q%s\\E(?:\\s+.*)?$" full-path))
           base-pat  (re-pattern (format "^#!\\s*/usr/bin/env\\s+\\Q%s\\E(?:\\s+.*)?$" base-path))]
       (or (re-find full-pat bang-line) (re-find base-pat bang-line)))))
-
-(defn pr-boot-form [form]
-  (if (<= @util/*verbosity* 1)
-    (pr-str form)
-    (let [[op & [msg & more]] form]
-      (if (and (= op 'clojure.core/comment) (not more) (string? msg))
-        (format ";; %s" msg)
-        (with-out-str (pp/write form :dispatch pp/code-dispatch))))))
 
 (defn parse-bootignore [f]
   (when (.isFile f)
@@ -184,19 +189,18 @@
               userscript  (or userscript (exists? (io/file (App/getBootDir) "profile.boot")))
               localscript (exists? (io/file "profile.boot"))
               profile?    (not (:no-profile opts))
-              bootforms   (some->> arg0 slurp util/read-string-all)
-              userforms   (when profile?
-                            (some->> userscript slurp util/read-string-all))
-              localforms  (when profile?
-                            (some->> localscript slurp util/read-string-all))
+              bootstr     (some->> arg0 slurp)
+              userstr     (when profile?
+                            (some->> userscript slurp))
+              localstr    (when profile?
+                            (some->> localscript slurp))
               initial-env (->> [:source-paths :resource-paths :asset-paths
                                 :dependencies :exclusions :checkouts :offline?]
                                (reduce #(if-let [v (opts %2)] (assoc %1 %2 v) %1) {})
                                (merge {} (:set-env opts)))
               import-ns   (export-task-namespaces initial-env)
-              scriptforms (emit boot? args userforms localforms bootforms import-ns (:init opts))
               scriptstr   (binding [*print-meta* true]
-                            (str (string/join "\n\n" (map pr-boot-form scriptforms)) "\n"))]
+                            (emit boot? args userstr localstr bootstr import-ns (:init opts)))]
 
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
 
@@ -206,15 +210,13 @@
 
           (#'core/init!)
 
-          (let [tmpf (.getPath (file/tmpfile "boot.user" ".clj"))]
-            (pod/with-call-worker (boot.aether/load-wagon-mappings))
-            (apply core/set-env! (->> initial-env (mapcat identity) seq))
-            (reset! @#'core/cli-base initial-env)
-            (try (doto tmpf (spit scriptstr) (load-file))
-                 (catch clojure.lang.Compiler$CompilerException cx
-                   (let [l (.-line cx)
-                         s (->> (io/file (.-source cx)) .getPath)
-                         c (.getCause cx)
-                         m (.getMessage (or c cx))
-                         x (or c cx)]
-                     (throw (ex-info m (sorted-map :file s :line l) x)))))))))))
+          (pod/with-call-worker (boot.aether/load-wagon-mappings))
+          (apply core/set-env! (->> initial-env (mapcat identity) seq))
+          (reset! @#'core/cli-base initial-env)
+          (try (load-string scriptstr)
+               (catch clojure.lang.Compiler$CompilerException cx
+                 (let [l (.-line cx)
+                       c (.getCause cx)
+                       m (.getMessage (or c cx))
+                       x (or c cx)]
+                   (throw (ex-info m (sorted-map :line l) x))))))))))

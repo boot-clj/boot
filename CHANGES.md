@@ -2,12 +2,24 @@
 
 ## master
 
+#### Fixed
+
+- When directories or files cannot be opened by boot, don't fail but log something in debug level [#598][598] & [#629][629]
+- `fileset-diff` correctly handles nested data structures [#566][566]
+
+[598]: https://github.com/boot-clj/boot/pull/598
+[629]: https://github.com/boot-clj/boot/pull/629
+
+## 2.7.2
+
 #### Improved
 
 - `set-env!` works even if the user has set `*print-level*` or `*print-length*` to non-nil in their `$BOOT_HOME/profile.boot`. [#587][587] [#586][586]
 - `tmpfile` "Commit: adding..." messages now only appear with `-vv` which eases debugging tasks with `-v` [#557][557]
 - Pod tests pass and can be run with `make` [#567][567]
-- `fileset-diff` correctly handles nested data structures [#566][566]
+- Improved error message when a user tries to use a multi-arity format for tasks. [#574][574]
+- Sift now outputs meaningful things on debug [#581][581]
+- `file-filter` (called by all `by-*` functions) throws an error if no criteria are specified. [#555][555]
 
 #### Fixed
 
@@ -16,10 +28,14 @@ escape `%` in message to prevent errors about bad string formatting, and
 ensure that message ends in a newline.
 - Artifact upload slow because of an expensive evaluation of a debugging arguments for all calls to `transfer-listener` [#565][565] [#558][558]
 - With-cp does not consider source/resource paths
+- Evaluation of boot script is now done via string concatenation and `load-string`, rather than `read-string` [#547][547]
+- Improve robustness of built-in `notify` task [#551](https://github.com/boot-clj/boot/pull/551)
 
-##### Tasks
+#### Tasks
 
 - Added the `socket-server` task for starting a [Clojure 1.8.0+ socket server](https://clojure.org/reference/repl_and_main#_launching_a_socket_server). [#549][549]
+- Added the `call` task to execute arbitrary code as part of the pipeline, either via an existing function symbol or by providing a form. Similar to [lein run](https://github.com/technomancy/leiningen#basic-usage), `call` can be used, for example, to start a [component system](https://github.com/stuartsierra/component).
+- Added the `bare-repl` task for starting a simple interactive REPL session (a la [clojure.main/repl](https://clojure.org/reference/repl_and_main#_launching_a_repl)) without launching a nREPL server. [#582][582]
 
 #### API Functions
 
@@ -33,7 +49,12 @@ ensure that message ends in a newline.
 [565]: https://github.com/boot-clj/boot/pull/565
 [558]: https://github.com/boot-clj/boot/pull/558
 [567]: https://github.com/boot-clj/boot/pull/567
+[581]: https://github.com/boot-clj/boot/pull/581
 [611]: https://github.com/boot-clj/boot/pull/611
+[547]: https://github.com/boot-clj/boot/pull/547
+[574]: https://github.com/boot-clj/boot/issues/574
+[555]: https://github.com/boot-clj/boot/issues/555
+[582]: https://github.com/boot-clj/boot/issues/582
 
 ## 2.7.1
 

@@ -68,7 +68,7 @@ Package managers:
 
 Otherwise:
 
-* Download [boot.sh][boot-sh].
+* Download [boot.sh][boot-sh] and save as `boot`
 * Make it executable.
 * Move it to somewhere in your `$PATH`.
 
@@ -80,7 +80,11 @@ $ sudo bash -c "cd /usr/local/bin && curl -fsSLo boot https://github.com/boot-cl
 
 #### Windows
 
-Download [boot.exe][boot-exe], then:
+Package managers:
+
+* [Chocolatey](https://chocolatey.org/) &mdash; `choco install boot-clj`
+
+Otherwise, download [boot.exe][boot-exe], then:
 
 ```bat
 :: Using %SystemRoot% here, but can be any folder on user's %PATH%
@@ -179,8 +183,7 @@ manifest with value `bar`,
 * And finally the `install` task with no options.
 
 Boot composes the pipeline and runs it, building your project. Your local
-Maven repository will now contain `my-project-0.1.0.jar`. The jar file will
-also be found in the default output directory: `target`.
+Maven repository will now contain `my-project-0.1.0.jar`.
 
 ### Build From the REPL
 
