@@ -50,6 +50,17 @@
     (str file ".asc")))
 
 (defn sign-jar
+  "Sign a jar.
+
+  If you receive a \"Could not sign ... gpg: no default secret key: secret key
+  not available\" error, make sure boot is using the right gpg executable.  You
+  can use the BOOT_GPG_COMMAND environment variable for that.
+
+  In order to use gpg2, for instance, run:
+
+    BOOT_GPG_COMMAND=gpg2 boot push --gpg-sign ...
+
+  You rarely need to use this directly."
   [outdir jarfile pompath opts]
   (shell/with-sh-dir
     outdir

@@ -980,7 +980,15 @@
   The repo option is required. The repo option is used to get repository
   map from Boot envinronment. Additional repo-map option can be used to
   add options, like credentials, or to provide complete repo-map if Boot
-  envinronment doesn't hold the named repository."
+  envinronment doesn't hold the named repository.
+
+  If you receive a \"Could not sign ... gpg: no default secret key: secret key
+  not available\" error, make sure boot is using the right gpg executable.  You
+  can use the BOOT_GPG_COMMAND environment variable for that.
+
+  In order to use gpg2, for instance, run:
+
+    BOOT_GPG_COMMAND=gpg2 boot push --gpg-sign ..."
 
   [f file PATH            str      "The jar file to deploy."
    P pom PATH             str      "The pom.xml file to use (see install task)."
