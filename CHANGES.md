@@ -5,6 +5,7 @@
 #### Fixed
 
 - When directories or files cannot be opened by boot, don't fail but log something in debug level [#598][598] & [#629][629]
+- `fileset-diff` correctly handles nested data structures [#566][566]
 
 [598]: https://github.com/boot-clj/boot/pull/598
 [629]: https://github.com/boot-clj/boot/pull/629
