@@ -298,7 +298,7 @@
 
 (defn- jarpath-on-artifact-map
   "Infer packaging type from `jarpath` or `packaging` in pom and add it
-   to `artefact-map` if a mapping for `jarpath` not already exists."
+   to `artifact-map` if a mapping for `jarpath` not already exists."
   [artifact-map {:keys [project version packaging classifier] :as pom} jarpath]
   (if (some #{jarpath} (vals artifact-map))
     artifact-map
@@ -325,13 +325,19 @@
   ([env jarpath pompath]
    (install env jarpath pompath nil))
   ([env jarpath pompath artifact-map]
+   (util/trace* "env %s\n" env)
+   (util/dbug* "Input jarpath %s\n" jarpath)
+   (util/dbug* "Input pompath %s\n" pompath)
+   (util/dbug* "Input artifact-map %s\n" artifact-map)
    (let [pom-str                           (pod/pom-xml jarpath pompath)
          {:keys [project version] :as pom} (pom-xml-parse-string pom-str)
-         pomfile                           (pom-xml-tmp pom-str)]
+         pomfile                           (pom-xml-tmp pom-str)
+         artifact-map                      (jarpath-on-artifact-map artifact-map pom jarpath)]
+     (util/dbug* "Generated artifact-map %s\n" artifact-map)
      (aether/install
        :coordinates  [project version]
        :pom-file     (io/file pomfile)
-       :artifact-map (jarpath-on-artifact-map artifact-map pom jarpath)
+       :artifact-map artifact-map
        :local-repo   (or (:local-repo env) @local-repo nil)))))
 
 (defn deploy
