@@ -1023,16 +1023,26 @@
           (throw (Exception. "missing jar file or repo not found")))
         (doseq [f jarfiles]
           (let [{{t :tag} :scm
-                 v :version} (pod/pom-xml-map f pom)
-                b            (util/guard (git/branch-current))
-                commit       (util/guard (git/last-commit))
-                tags         (util/guard (git/ls-tags))
-                clean?       (util/guard (git/clean?))
-                snapshot?    (.endsWith v "-SNAPSHOT")
-                artifact-map (when gpg-sign
-                               (util/info "Signing %s...\n" (.getName f))
-                               (gpg/sign-jar tgt f pom {:gpg-key gpg-user-id
-                                                        :gpg-passphrase gpg-passphrase}))]
+                 v :version
+                 c :classifier} (pod/pom-xml-map f pom)
+                b               (util/guard (git/branch-current))
+                commit          (util/guard (git/last-commit))
+                tags            (util/guard (git/ls-tags))
+                clean?          (util/guard (git/clean?))
+                snapshot?       (.endsWith v "-SNAPSHOT")
+                main-artifact?  (nil? c)
+                artifact-map    (when gpg-sign
+                                  (let [gpg-options  {:gpg-key gpg-user-id
+                                                      :gpg-passphrase gpg-passphrase}
+                                        jar-artifact (do (util/info "Signing %s...\n" (.getName f))
+                                                         (gpg/sign-jar tgt f gpg-options))
+                                        ;; If it has :classifier, it is probably not the
+                                        ;; main artifact so we skip signing its pom
+                                        pom-artifact (when main-artifact?
+                                                       (util/info "Signing POM %s...\n" pom)
+                                                       (gpg/sign-pom tgt f pom gpg-options))]
+                                    (into {} [jar-artifact pom-artifact])))]
+            (util/dbug* "Signed artifact-map %s\n" artifact-map)
             (assert (or (not ensure-branch) (= b ensure-branch))
                     (format "current git branch is %s but must be %s" b ensure-branch))
             (assert (or (not ensure-clean) clean?)
