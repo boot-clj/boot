@@ -22,13 +22,13 @@
   system. Constrained environments like clould build containers limit
   the number of inotify handles, and watchers are only necessary for
   interactive dev, not one-shot jobs.  environment variable or
-  configuration option BOOT_WATCHERS_DISABLE to either '1' or 'yes' to
-  disable inotify; any other value keeps normal behavior."
+  configuration option BOOT_WATCHERS_DISABLE to either '1' or 'yes' or
+  'true' to disable inotify; any other value keeps normal behavior."
   []
   (let [value (boot.App/config "BOOT_WATCHERS_DISABLE")]
     (if (string/blank? value)
       true
-      (not (#{"1" "yes"}
+      (not (#{"1" "yes" "true"}
             (string/lower-case value))))))
 
 (defn colorize?-system-default
@@ -37,12 +37,12 @@
   output is disabled on Windows by default, but enabled by default
   on other platforms. The default can be overriden by setting the
   environment variable or configuration option BOOT_COLOR to
-  either '1' or 'yes' to enable it; any other value disables
+  either '1' or 'yes' or 'true' to enable it; any other value disables
   colorization."
   []
   (let [value (boot.App/config "BOOT_COLOR")]
     (if-not (string/blank? value)
-      (#{"1" "yes"} (string/lower-case value))
+      (#{"1" "yes" "true"} (string/lower-case value))
       (not (boot.App/isWindows)))))
 
 (def ^:dynamic *verbosity*
