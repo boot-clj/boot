@@ -5,6 +5,7 @@
 #### Improved
 
 - Boot is officially Maven Central compatible. Make sure the `sources` and `javadoc` artifacts are on the fileset and `:classifier` is correctly set.
+- Environment variables BOOT_AS_ROOT, BOOT_WATCHERS_DISABLE und BOOT_COLOR accept `true` as a truthy value beside `1` and `yes` [#631][631]
 
 #### Fixed
 
@@ -18,6 +19,7 @@
 [629]: https://github.com/boot-clj/boot/pull/629
 [654]: https://github.com/boot-clj/boot/issues/654
 [566]: https://github.com/boot-clj/boot/pull/566
+[631]: https://github.com/boot-clj/boot/issues/631
 
 ## 2.7.2
 

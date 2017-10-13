@@ -105,8 +105,8 @@ Return whether we should colorize output on this system. This is
 true, unless we're on Windows, where this is false. The default
 console on Windows does not interprete ansi escape codes. The
 default can be overriden by setting the environment variable
-BOOT_COLOR=1 or BOOT_COLOR=yes to turn it on or any other value to
-turn it off.
+BOOT_COLOR=1 or BOOT_COLOR=yes or BOOT_COLOR=true to turn it on
+or any other value to turn it off.
 ```
 
 <hr>
