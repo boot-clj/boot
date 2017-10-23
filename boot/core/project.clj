@@ -13,7 +13,7 @@
   :repositories   [["clojars"  {:url "https://clojars.org/repo" :creds :gpg :sign-releases false}]]
   :license        {:name "Eclipse Public License"
                    :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies   [[org.clojure/clojure "1.6.0"  :scope "provided"]
+  :dependencies   [[org.clojure/clojure "1.9.0-beta2" :scope "provided"]
                    [boot/base           ~version :scope "provided"]
                    [boot/pod            ~version :scope "compile"]])
 
