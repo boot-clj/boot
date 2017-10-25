@@ -328,7 +328,13 @@
   [ex]
   (cond
     (= 0 @*verbosity*) nil
-    (::omit-stacktrace? (ex-data ex)) (fail (-> (.getMessage ex) escape-format-string ensure-ends-in-newline))
+    (::omit-stacktrace? (ex-data ex)) 
+    (fail (-> (.getMessage ex) 
+              (str (let [info (dissoc (ex-data ex) ::omit-stacktrace?)]
+                     (when (seq (dissoc info :line))
+                       (str "\n" (with-out-str (clojure.pprint/pprint info))))))
+              escape-format-string 
+              ensure-ends-in-newline))
     (= 1 @*verbosity*) (pretty/write-exception *err* ex nil)
     (= 2 @*verbosity*) (pretty/write-exception *err* ex {:filter nil})
     :else (binding [*out* *err*] (.printStackTrace ex))))
