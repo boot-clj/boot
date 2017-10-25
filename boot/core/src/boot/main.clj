@@ -219,4 +219,4 @@
                        c (.getCause cx)
                        m (.getMessage (or c cx))
                        x (or c cx)]
-                   (throw (ex-info m (sorted-map :line l) x))))))))))
+                   (throw (ex-info m (merge (sorted-map :line l) (ex-data c) x))))))))))
