@@ -433,8 +433,8 @@ pulled in code from the following projects (thanks, guys!)
 * [clojure/tools.cli][55]
 * [bbloom/backtick][56]
 * [AvisoNovate/pretty][57]
-* [google/hesokuri][58]
-* [barbarysoftware/watchservice][59]
+* google/hesokuri
+* [barbarysoftware/watchservice][58]
 
 The boot source is also annotated to provide attribution wherever possible.
 Look for the `:boot/from` key in metadata attached to vars or namespaces.
@@ -469,8 +469,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [55]: https://github.com/clojure/tools.cli
 [56]: https://github.com/brandonbloom/backtick
 [57]: https://github.com/AvisoNovate/pretty
-[58]: https://github.com/google/hesokuri
-[59]: https://code.google.com/p/barbarywatchservice/
+[58]: https://code.google.com/p/barbarywatchservice/
 
 [l4j]: http://sourceforge.net/projects/launch4j/files/launch4j-3/3.8/
 [waffle-badge]: https://badge.waffle.io/boot-clj/boot.svg?label=ready&title=Ready
