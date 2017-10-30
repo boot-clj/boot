@@ -11,10 +11,12 @@
 - When directories or files cannot be opened by boot, don't fail but log something in debug level [#598][598] & [#629][629]
 - `fileset-diff` correctly handles nested data structures [#566][566]
 - Boot does not sign jars with classifiers [#625][625]
+- Allow clojure source jar onto the classpath [#654][654]
 
 [598]: https://github.com/boot-clj/boot/pull/598
 [625]: https://github.com/boot-clj/boot/pull/625
 [629]: https://github.com/boot-clj/boot/pull/629
+[654]: https://github.com/boot-clj/boot/issues/654
 
 ## 2.7.2
 
