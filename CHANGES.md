@@ -17,6 +17,7 @@
 [625]: https://github.com/boot-clj/boot/pull/625
 [629]: https://github.com/boot-clj/boot/pull/629
 [654]: https://github.com/boot-clj/boot/issues/654
+[566]: https://github.com/boot-clj/boot/pull/566
 
 ## 2.7.2
 
