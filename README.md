@@ -13,7 +13,7 @@ provides a runtime environment that includes all of the tools needed to build
 Clojure projects from scripts written in Clojure that run in the context of
 the project.
 
-> If you have questions or need help, please [visit our Discourse site][discourse].
+> If you have questions or need help, please [visit the Discourse site][discourse].
 > You can find other developers and users in [the `#boot` channel on Clojurians Slack][slack].
 
 ### Another Build Tool?
@@ -474,7 +474,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [l4j]: http://sourceforge.net/projects/launch4j/files/launch4j-3/3.8/
 [waffle-badge]: https://badge.waffle.io/boot-clj/boot.svg?label=ready&title=Ready
 [waffle-board]: http://waffle.io/boot-clj/boot
-[discourse]: http://hoplon.discoursehosting.net/
+[discourse]: https://clojureverse.org/c/projects/boot
 [irc]: http://webchat.freenode.net/?channels=bootclj
 [slack]: http://clojurians.net/
 [changes]: https://github.com/boot-clj/boot/blob/master/CHANGES.md
