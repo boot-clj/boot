@@ -7,7 +7,7 @@ generally happy to answer any questions you might have that aren't served by
 this document. The best places to find us are:
 
 * [The `#boot` channel on Clojurians Slack][slack]
-* [Our Discourse site][discourse].
+* [Discourse site][discourse].
 
 Thank you in advance for your contribution, and for getting in touch with us if
 you have any questions or problems!
@@ -152,7 +152,7 @@ This task is also available to users programmatically. They could use your task 
 
 [api-docs]: https://github.com/boot-clj/boot/tree/master/doc
 [changes]: https://github.com/boot-clj/boot/blob/master/CHANGES.md
-[discourse]: http://hoplon.discoursehosting.net/
+[discourse]: https://clojureverse.org/c/projects/boot
 [slack]: http://clojurians.net/
 [wiki]: https://github.com/boot-clj/boot/wiki
 [license]: https://github.com/boot-clj/boot/blob/master/LICENSE
