@@ -65,6 +65,8 @@ Package managers:
 
 * [Homebrew][brew] &mdash; `brew install boot-clj`
 * [nix](http://nixos.org/nix) &mdash; `nix-env -i boot`
+* [docker](https://www.docker.com/) &mdash; Use [`clojure`](https://hub.docker.com/_/clojure/) image with `boot` tag.
+    - CircleCI also maintains image with [additional tooling](https://circleci.com/docs/2.0/circleci-images/): [`circleci/clojure`](https://hub.docker.com/r/circleci/clojure/)
 
 Otherwise:
 
