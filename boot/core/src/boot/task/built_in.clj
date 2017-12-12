@@ -473,6 +473,8 @@
    m middleware SYM [sym] "The REPL middleware vector."
    x handler SYM    sym   "The REPL handler (overrides middleware options)."]
 
+  (when (string? eval)
+    (util/warn "When passing :eval to the repl task in your build.boot, use a quoted form instead of a string\n"))
   (let [cpl-path (.getPath (core/tmp-dir!))
         srv-opts (->> [:bind :port :init-ns :middleware :handler :pod]
                       (select-keys *opts*))
