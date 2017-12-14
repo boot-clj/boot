@@ -1,37 +1,27 @@
 If you are reporting a bug, please fill in the template below and label the
 issue with `bug` and any other relevant labels. If you wish to contribute an
-idea for a feature or improvement, please
-read
+idea for a feature or improvement, please read
 [CONTRIBUTING.md](https://github.com/boot-clj/boot/blob/master/CONTRIBUTING.md)
 before submitting. Thank you! :thumbsup:
 
-# Boot Bug Report
+### Problem Description
 
-## Platform details
+> If your problem includes an exception, please provide a stactrace. A full, unfiltered
+> stacktrace can be obtained by running boot with the `-vv` option (verbosity lvl2).
+
+### Steps to reproduce
+
+### Platform details
 
 Platform (macOS, Linux, Windows):
 Platform version:
 JRE/JDK version (`java -version`):
 
-## Boot details
+### Boot details
 
 Boot version (2.7.1):
 `build.boot` present? (yes/no):
 `~/.boot/profile` present? (yes/no):
 Task name? (if applicable):
 
-### `build.boot` content (if applicable)
-
-```clojure
-;; build.boot content here
-```
-
-### `~/.boot/profile` content (if applicable)
-
-```clojure
-;; ~/.boot/profile content here
-```
-
-## Description
-
-## Steps to reproduce
+Please also provide the contents of `build.boot` and `~/.boot/profile` (if applicable).
