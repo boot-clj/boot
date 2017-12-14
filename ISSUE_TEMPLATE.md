@@ -1,8 +1,7 @@
 If you are reporting a bug, please fill in the template below and label the
 issue with `bug` and any other relevant labels. If you wish to contribute an
-idea for a feature or improvement, please read
-[CONTRIBUTING.md](https://github.com/boot-clj/boot/blob/master/CONTRIBUTING.md)
-before submitting. Thank you! :thumbsup:
+idea for a feature or improvement, please read the contribution guidelines
+linked in the yellow box above before submitting. Thank you! 👍
 
 ### Problem Description
 
