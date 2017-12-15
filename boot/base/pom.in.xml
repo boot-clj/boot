@@ -24,11 +24,11 @@
   <repositories>
     <repository>
       <id>sonatype</id>
-      <url>http://oss.sonatype.org/content/repositories/releases/</url>
+      <url>https://oss.sonatype.org/content/repositories/releases/</url>
     </repository>
     <repository>
       <id>sonatype-snaps</id>
-      <url>http://oss.sonatype.org/content/repositories/snapshots/</url>
+      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
     </repository>
     <repository>
       <id>clojars</id>
