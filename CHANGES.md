@@ -2,11 +2,62 @@
 
 ## master
 
+#### Breaking
+
+If you happen to receive "Tried to use insecure HTTP repository without TLS",
+it means your project was configured to download dependencies from a repository
+that does not use TLS encryption.
+This is NOT suppored anymore because it exposes you to trivially-executed
+man-in-the-middle attacks.
+In the rare event that you don't care about the security of the machines
+running your project, you can enable support for unprotected repositories by
+explicitely set a custom `wagon-factory`:
+
+    ;; never do this
+    (require 'cemerick.pomegranate.aether)
+    (cemerick.pomegranate.aether/register-wagon-factory!
+     "http "#(org.apache.maven.wagon.providers.http.HttpWagon.))
+
+It's also possible you have a dependency which includes a reference to an
+insecure repository for retrieving its own dependencies. If this happens it is
+strongly recommended to add an `:exclusion` and report a bug with the
+dependency which does this.
+
+Kudos to the folks working on
+[the related `pomegranate` PR](https://github.com/cemerick/pomegranate/pull/83)
+and `technomancy` for the above explanation.
+
+#### Improved
+
+- Boot is officially Maven Central compatible. Make sure the `sources` and `javadoc` artifacts are on the fileset and `:classifier` is correctly set.
+- Environment variables BOOT_AS_ROOT, BOOT_WATCHERS_DISABLE und BOOT_COLOR accept `true` as a truthy value beside `1` and `yes` [#631][631]
+- Bump [pomegranate](https://github.com/cemerick/pomegranate) and [dynapath](https://github.com/tobias/dynapath) to `1.0.0`. [#612][612]
+
+#### Fixed
+
+- When directories or files cannot be opened by boot, don't fail but log something in debug level [#598][598] & [#629][629]
+- `fileset-diff` correctly handles nested data structures [#566][566]
+- Boot does not sign jars with classifiers [#625][625]
+- Allow clojure source jar onto the classpath [#654][654]
+
+[598]: https://github.com/boot-clj/boot/pull/598
+[625]: https://github.com/boot-clj/boot/pull/625
+[629]: https://github.com/boot-clj/boot/pull/629
+[654]: https://github.com/boot-clj/boot/issues/654
+[566]: https://github.com/boot-clj/boot/pull/566
+[631]: https://github.com/boot-clj/boot/issues/631
+[612]: https://github.com/boot-clj/boot/pull/612
+
+## 2.7.2
+
 #### Improved
 
 - `set-env!` works even if the user has set `*print-level*` or `*print-length*` to non-nil in their `$BOOT_HOME/profile.boot`. [#587][587] [#586][586]
 - `tmpfile` "Commit: adding..." messages now only appear with `-vv` which eases debugging tasks with `-v` [#557][557]
 - Pod tests pass and can be run with `make` [#567][567]
+- Improved error message when a user tries to use a multi-arity format for tasks. [#574][574]
+- Sift now outputs meaningful things on debug [#581][581]
+- `file-filter` (called by all `by-*` functions) throws an error if no criteria are specified. [#555][555]
 
 #### Fixed
 
@@ -14,10 +65,15 @@
 escape `%` in message to prevent errors about bad string formatting, and
 ensure that message ends in a newline.
 - Artifact upload slow because of an expensive evaluation of a debugging arguments for all calls to `transfer-listener` [#565][565] [#558][558]
+- With-cp does not consider source/resource paths
+- Evaluation of boot script is now done via string concatenation and `load-string`, rather than `read-string` [#547][547]
+- Improve robustness of built-in `notify` task [#551](https://github.com/boot-clj/boot/pull/551)
 
-##### Tasks
+#### Tasks
 
 - Added the `socket-server` task for starting a [Clojure 1.8.0+ socket server](https://clojure.org/reference/repl_and_main#_launching_a_socket_server). [#549][549]
+- Added the `call` task to execute arbitrary code as part of the pipeline, either via an existing function symbol or by providing a form. Similar to [lein run](https://github.com/technomancy/leiningen#basic-usage), `call` can be used, for example, to start a [component system](https://github.com/stuartsierra/component).
+- Added the `bare-repl` task for starting a simple interactive REPL session (a la [clojure.main/repl](https://clojure.org/reference/repl_and_main#_launching_a_repl)) without launching a nREPL server. [#582][582]
 
 #### API Functions
 
@@ -31,6 +87,12 @@ ensure that message ends in a newline.
 [565]: https://github.com/boot-clj/boot/pull/565
 [558]: https://github.com/boot-clj/boot/pull/558
 [567]: https://github.com/boot-clj/boot/pull/567
+[581]: https://github.com/boot-clj/boot/pull/581
+[611]: https://github.com/boot-clj/boot/pull/611
+[547]: https://github.com/boot-clj/boot/pull/547
+[574]: https://github.com/boot-clj/boot/issues/574
+[555]: https://github.com/boot-clj/boot/issues/555
+[582]: https://github.com/boot-clj/boot/issues/582
 
 ## 2.7.1
 

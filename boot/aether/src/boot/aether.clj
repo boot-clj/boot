@@ -14,8 +14,8 @@
     [java.io File]
     [java.util.jar JarFile]
     [java.util.regex Pattern]
-    [org.sonatype.aether.resolution DependencyResolutionException]
-    [org.sonatype.aether.transfer MetadataNotFoundException ArtifactNotFoundException]))
+    [org.eclipse.aether.resolution DependencyResolutionException]
+    [org.eclipse.aether.transfer MetadataNotFoundException ArtifactNotFoundException]))
 
 (def offline?             (atom false))
 (def update?              (atom :daily))
@@ -298,7 +298,7 @@
 
 (defn- jarpath-on-artifact-map
   "Infer packaging type from `jarpath` or `packaging` in pom and add it
-   to `artefact-map` if a mapping for `jarpath` not already exists."
+   to `artifact-map` if a mapping for `jarpath` not already exists."
   [artifact-map {:keys [project version packaging classifier] :as pom} jarpath]
   (if (some #{jarpath} (vals artifact-map))
     artifact-map
@@ -325,33 +325,36 @@
   ([env jarpath pompath]
    (install env jarpath pompath nil))
   ([env jarpath pompath artifact-map]
+   (util/trace* "env %s\n" env)
+   (util/dbug* "Input jarpath %s\n" jarpath)
+   (util/dbug* "Input pompath %s\n" pompath)
+   (util/dbug* "Input artifact-map %s\n" artifact-map)
    (let [pom-str                           (pod/pom-xml jarpath pompath)
          {:keys [project version] :as pom} (pom-xml-parse-string pom-str)
-         pomfile                           (pom-xml-tmp pom-str)]
+         pomfile                           (pom-xml-tmp pom-str)
+         artifact-map                      (jarpath-on-artifact-map artifact-map pom jarpath)]
+     (util/dbug* "Generated artifact-map %s\n" artifact-map)
      (aether/install
        :coordinates  [project version]
        :pom-file     (io/file pomfile)
-       :artifact-map (jarpath-on-artifact-map artifact-map pom jarpath)
+       :artifact-map artifact-map
        :local-repo   (or (:local-repo env) @local-repo nil)))))
 
 (defn deploy
-  ([env repo jarpath]
-   (deploy env repo jarpath nil))
-  ([env repo jarpath pom-or-artifacts]
-   (if (map? pom-or-artifacts)
-     (deploy env repo jarpath nil pom-or-artifacts)
-     (deploy env repo jarpath pom-or-artifacts nil)))
-  ([env [repo-id repo-settings] jarpath pompath artifact-map]
-   (let [pom-str                           (pod/pom-xml jarpath pompath)
-         {:keys [project version] :as pom} (pom-xml-parse-string pom-str)
-         pomfile                           (pom-xml-tmp pom-str)]
-     (aether/deploy
-       :coordinates  [project version]
-       :pom-file     (io/file pomfile)
-       :artifact-map (jarpath-on-artifact-map artifact-map pom jarpath)
-       :transfer-listener transfer-listener
-       :repository   {repo-id repo-settings}
-       :local-repo   (or (:local-repo env) @local-repo nil)))))
+  "Deploy a jar file.
+
+  The pom always needs to be passed along and valid, if artifact map is "
+  [env [repo-id repo-settings] jarpath pompath artifact-map]
+  (let [pom-str                                      (pod/pom-xml jarpath pompath)
+        {:keys [project version classifier] :as pom} (pom-xml-parse-string pom-str)
+        pomfile                                      (pom-xml-tmp pom-str)]
+    (aether/deploy
+     :coordinates  [project version :classifier classifier]
+     :pom-file     (when-not classifier (io/file pomfile))
+     :artifact-map (jarpath-on-artifact-map artifact-map pom jarpath)
+     :transfer-listener transfer-listener
+     :repository   {repo-id repo-settings}
+     :local-repo   (or (:local-repo env) @local-repo nil))))
 
 (def ^:private wagon-files (atom #{}))
 

@@ -593,7 +593,8 @@
   (let [clj-dep (symbol (boot.App/config "BOOT_CLOJURE_NAME"))
         rm-clj  (if-not ignore-clj?
                   identity
-                  (partial remove #(= clj-dep (first (:dep %)))))]
+                  (partial remove #(and (= clj-dep (first (:dep %)))
+                                        (not-any? #{[:classifier "sources"]} (partition 2 (:dep %))))))]
     (->> env resolve-dependencies rm-clj (map (comp io/file :jar)))))
 
 (defn resolve-nontransitive-dependencies

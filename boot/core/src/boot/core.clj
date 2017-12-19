@@ -1218,6 +1218,7 @@
   "A file filtering function factory. FIXME: more documenting here."
   [mkpred]
   (fn [criteria files & [negate?]]
+    (assert (seq criteria) "boot.core/file-filter requires a list of criteria but nil was passed in, make sure your `by-*` calls are passing them.")
     (let [tmp?   (partial satisfies? tmpd/ITmpFile)
           ->file #(if (tmp? %) (io/file (tmp-path %)) (io/file %))
           pred (apply juxt (mapv mkpred criteria))]

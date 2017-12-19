@@ -13,7 +13,7 @@ provides a runtime environment that includes all of the tools needed to build
 Clojure projects from scripts written in Clojure that run in the context of
 the project.
 
-> If you have questions or need help, please [visit our Discourse site][discourse].
+> If you have questions or need help, please [visit the Discourse site][discourse].
 > You can find other developers and users in [the `#boot` channel on Clojurians Slack][slack].
 
 ### Another Build Tool?
@@ -65,10 +65,12 @@ Package managers:
 
 * [Homebrew][brew] &mdash; `brew install boot-clj`
 * [nix](http://nixos.org/nix) &mdash; `nix-env -i boot`
+* [docker](https://www.docker.com/) &mdash; Use [`clojure`](https://hub.docker.com/_/clojure/) image with `boot` tag.
+    - CircleCI also maintains image with [additional tooling](https://circleci.com/docs/2.0/circleci-images/): [`circleci/clojure`](https://hub.docker.com/r/circleci/clojure/)
 
 Otherwise:
 
-* Download [boot.sh][boot-sh].
+* Download [boot.sh][boot-sh] and save as `boot`
 * Make it executable.
 * Move it to somewhere in your `$PATH`.
 
@@ -80,7 +82,11 @@ $ sudo bash -c "cd /usr/local/bin && curl -fsSLo boot https://github.com/boot-cl
 
 #### Windows
 
-Download [boot.exe][boot-exe], then:
+Package managers:
+
+* [Chocolatey](https://chocolatey.org/) &mdash; `choco install boot-clj`
+
+Otherwise, download [boot.exe][boot-exe], then:
 
 ```bat
 :: Using %SystemRoot% here, but can be any folder on user's %PATH%
@@ -179,8 +185,7 @@ manifest with value `bar`,
 * And finally the `install` task with no options.
 
 Boot composes the pipeline and runs it, building your project. Your local
-Maven repository will now contain `my-project-0.1.0.jar`. The jar file will
-also be found in the default output directory: `target`.
+Maven repository will now contain `my-project-0.1.0.jar`.
 
 ### Build From the REPL
 
@@ -413,6 +418,8 @@ Make your build the default by editing your `$HOME/.boot/boot.properties` file:
 BOOT_VERSION=<version>
 ```
 
+For guidelines for contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Attribution
 
 Code from other projects was incorporated into boot wherever necessary to
@@ -428,8 +435,8 @@ pulled in code from the following projects (thanks, guys!)
 * [clojure/tools.cli][55]
 * [bbloom/backtick][56]
 * [AvisoNovate/pretty][57]
-* [google/hesokuri][58]
-* [barbarysoftware/watchservice][59]
+* google/hesokuri
+* [barbarysoftware/watchservice][58]
 
 The boot source is also annotated to provide attribution wherever possible.
 Look for the `:boot/from` key in metadata attached to vars or namespaces.
@@ -464,13 +471,12 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [55]: https://github.com/clojure/tools.cli
 [56]: https://github.com/brandonbloom/backtick
 [57]: https://github.com/AvisoNovate/pretty
-[58]: https://github.com/google/hesokuri
-[59]: https://code.google.com/p/barbarywatchservice/
+[58]: https://code.google.com/p/barbarywatchservice/
 
 [l4j]: http://sourceforge.net/projects/launch4j/files/launch4j-3/3.8/
 [waffle-badge]: https://badge.waffle.io/boot-clj/boot.svg?label=ready&title=Ready
 [waffle-board]: http://waffle.io/boot-clj/boot
-[discourse]: http://hoplon.discoursehosting.net/
+[discourse]: https://clojureverse.org/c/projects/boot
 [irc]: http://webchat.freenode.net/?channels=bootclj
 [slack]: http://clojurians.net/
 [changes]: https://github.com/boot-clj/boot/blob/master/CHANGES.md

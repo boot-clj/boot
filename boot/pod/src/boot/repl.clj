@@ -8,7 +8,7 @@
     [boot.from.io.aviso.exception :refer [*fonts*]]))
 
 (def ^:dynamic *default-dependencies*
-  (atom '[[org.clojure/tools.nrepl "0.2.12" :exclusions [[org.clojure/clojure]]]]))
+  (atom '[[org.clojure/tools.nrepl "0.2.13" :exclusions [[org.clojure/clojure]]]]))
 
 (defn ^:private disable-exception-colors
   [handler]
@@ -58,6 +58,21 @@
   [{:keys [bind port init-ns middleware handler] :as options}]
   (let [opts (->> options setup-nrepl-env!)]
     (@start-server opts)))
+
+(defn launch-bare-repl
+  [{to-eval :eval,
+    :keys [init init-ns]
+    :or {init-ns 'boot.user}}]
+  (require 'clojure.main 'clojure.repl)
+  ((resolve 'clojure.main/repl)
+   :init (fn []
+           (when init
+             (load-file init))
+           (when to-eval
+             (eval to-eval))
+           (in-ns init-ns)
+           (when (= 'boot.user init-ns)
+             (refer 'clojure.repl)))))
 
 (defn launch-socket-server
   "See #boot.task.built-in/socket-server for explanation of options."

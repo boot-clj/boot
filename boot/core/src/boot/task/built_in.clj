@@ -175,11 +175,11 @@
             (throw t)))))))
 
 (core/deftask ^{:boot/from :jeluard/boot-notify} notify
-  "Aural and visual notifications during build.
+  "Audible and visual notifications during build.
 
-  Default audio themes: system (the default), ordinance, pillsbury,
-  and woodblock. New themes can be included via jar dependency with
-  the sound files as resources:
+  Default audio themes: system (the default), ordinance, pillsbury and
+  woodblock. New themes can be included via jar dependency with the
+  sound files as resources:
 
       boot
       └── notify
@@ -190,8 +190,8 @@
   Sound files specified individually take precedence over theme sounds.
 
   For visual notifications, there is a default implementation that
-  tries to use the `terminal-notifier' program on OS X systems, and
-  the `notify-send' program on Linux systems.
+  tries to use the `terminal-notifier' or `osascript` programs on OS X
+  systems, and the `notify-send' program on Linux systems.
 
   You can also supply custom notification functions via the *-notify-fn
   options. Both are functions that take one argument which is a map of
@@ -201,7 +201,14 @@
   - :type, :file, and :theme.
 
   The visual notification function will receive a map with four keys
-  - :title, :uid, :icon, and :message."
+  - :title, :uid, :icon, and :message.
+
+  The `notify` task always attempts to catch any exceptions that are
+  thrown so as not to cause your build to fail. If no notifications
+  are happening even if you specify `audible` or `visual`, you can see
+  any exceptions that are being caught by changing
+  `boot.util/*verbosity*` (at the command-line use: `boot -v` or `boot
+  -vv`)."
 
   [a audible                    bool      "Play an audible notification"
    v visual                     bool      "Display a visual notification"
@@ -216,7 +223,8 @@
 
   (let [themefiles (notify/get-themefiles theme (core/tmp-dir!))
         sounds (merge themefiles soundfiles)
-        base-visual-opts {:title (or title "Boot")
+        title (or title "Boot")
+        base-visual-opts {:title title
                           :uid   (or uid title)
                           :icon  (or icon (notify/boot-logo))}
         messages (merge {:success "Success!" :warning "%s warning/s" :failure "%s"}
@@ -349,8 +357,11 @@
           (if-let [conflicts (and safe (not-empty (dep-conflicts env)))]
             (throw (ex-info "Unresolved dependency conflicts." {:conflicts conflicts}))
             (let [resolved        (pod/resolve-dependency-jars env)
-                  relative-paths  (map (partial relativize local-repo) resolved)]
-              (spit file-out (apply str (interpose ":" relative-paths))))))))))
+                  relative-paths  (map (partial relativize local-repo) resolved)
+                  source-paths    (:source-paths env)]
+              (spit file-out (apply str (->> (concat source-paths relative-paths)
+                                             (interpose ":")
+                                             (into [])))))))))))
 
 (core/deftask wait
   "Wait before calling the next handler.
@@ -480,6 +491,21 @@
           (core/with-post-wrap [_]
             (when (or client (not server)) @repl-cli)))))
 
+(core/deftask bare-repl
+  "Start a bare REPL session for the current project.
+
+   Compared to the repl task, the bare-repl task starts up more quickly but
+   lacks features such as nREPL connectivity and colored stacktraces.
+
+   Use the rlwrap Unix tool to add readline functionality:
+
+   # rlwrap boot bare-repl"
+  [e eval EXPR      edn   "The form the client will evaluate in the boot.user ns."
+   i init PATH      str   "The file to evaluate in the boot.user ns."
+   n init-ns NS     sym   "The initial REPL namespace."]
+  (core/with-pass-thru [_]
+    (repl/launch-bare-repl *opts*)))
+
 (core/deftask socket-server
   "Start a socket server.
 
@@ -494,7 +520,7 @@
 
   The REPL can be accessed with the command
 
-     $ nc localhost $(cat .server-port)"
+     $ nc localhost $(cat .socket-port)"
 
   [b bind ADDR      str    "The address server listens on."
    p port PORT      int    "The port to listen to."
@@ -506,7 +532,12 @@
 (core/deftask pom
   "Create project pom.xml file.
 
-  The project and version must be specified to make a pom.xml."
+  The project and version must be specified to make a pom.xml.
+
+  Note that if you want to install some other artifact along with the main one,
+  for instance the classic sources or javadoc artifact, you have to add the
+  classifier to your pom.xml, which translates to adding :classifier to this
+  task."
 
   [p project SYM           sym         "The project id (eg. foo/bar)."
    v version VER           str         "The project version."
@@ -600,6 +631,7 @@
         process (reduce-kv #(comp (action %2 %3) %1) identity *opts*)]
     (core/with-pre-wrap [fs]
       (util/info "Sifting output files...\n")
+      (util/dbug* "%s\n" (util/pp-str (assoc *opts* :invert v?)))
       (-> fs process core/commit!))))
 
 (core/deftask add-repo
@@ -756,6 +788,8 @@
   [a all          bool   "Compile all namespaces."
    n namespace NS #{sym} "The set of namespaces to compile."]
 
+  (when (empty? *opts*)
+    (util/warn "No flags specified for aot task, skipping...\n"))
   (let [tgt         (core/tmp-dir!)
         pod-env     (update-in (core/get-env) [:directories] conj (.getPath tgt))
         compile-pod (future (pod/make-pod pod-env))]
@@ -927,7 +961,12 @@
 
     The jar could be installed with the following boot command:
 
-        $ boot install -f warp-0.1.0.jar -p tailrecursion/warp"
+        $ boot install -f warp-0.1.0.jar -p tailrecursion/warp
+
+  Note that if you want to install some other artifact along with the main one,
+  for instance the classic sources or javadoc artifact, you have to add the
+  classifier to your pom.xml, which translates to adding :classifier to the pom
+  task."
 
   [f file PATH str "The jar file to install."
    p pom PATH  str "The pom.xml file to use."]
@@ -953,7 +992,15 @@
   The repo option is required. The repo option is used to get repository
   map from Boot envinronment. Additional repo-map option can be used to
   add options, like credentials, or to provide complete repo-map if Boot
-  envinronment doesn't hold the named repository."
+  envinronment doesn't hold the named repository.
+
+  If you receive a \"Could not sign ... gpg: no default secret key: secret key
+  not available\" error, make sure boot is using the right gpg executable.  You
+  can use the BOOT_GPG_COMMAND environment variable for that.
+
+  In order to use gpg2, for instance, run:
+
+    BOOT_GPG_COMMAND=gpg2 boot push --gpg-sign ..."
 
   [f file PATH            str      "The jar file to deploy."
    P pom PATH             str      "The pom.xml file to use (see install task)."
@@ -988,16 +1035,26 @@
           (throw (Exception. "missing jar file or repo not found")))
         (doseq [f jarfiles]
           (let [{{t :tag} :scm
-                 v :version} (pod/pom-xml-map f pom)
-                b            (util/guard (git/branch-current))
-                commit       (util/guard (git/last-commit))
-                tags         (util/guard (git/ls-tags))
-                clean?       (util/guard (git/clean?))
-                snapshot?    (.endsWith v "-SNAPSHOT")
-                artifact-map (when gpg-sign
-                               (util/info "Signing %s...\n" (.getName f))
-                               (gpg/sign-jar tgt f pom {:gpg-key gpg-user-id
-                                                        :gpg-passphrase gpg-passphrase}))]
+                 v :version
+                 c :classifier} (pod/pom-xml-map f pom)
+                b               (util/guard (git/branch-current))
+                commit          (util/guard (git/last-commit))
+                tags            (util/guard (git/ls-tags))
+                clean?          (util/guard (git/clean?))
+                snapshot?       (.endsWith v "-SNAPSHOT")
+                main-artifact?  (nil? c)
+                artifact-map    (when gpg-sign
+                                  (let [gpg-options  {:gpg-key gpg-user-id
+                                                      :gpg-passphrase gpg-passphrase}
+                                        jar-artifact (do (util/info "Signing %s...\n" (.getName f))
+                                                         (gpg/sign-jar tgt f gpg-options))
+                                        ;; If it has :classifier, it is probably not the
+                                        ;; main artifact so we skip signing its pom
+                                        pom-artifact (when main-artifact?
+                                                       (util/info "Signing POM %s...\n" pom)
+                                                       (gpg/sign-pom tgt f pom gpg-options))]
+                                    (into {} [jar-artifact pom-artifact])))]
+            (util/dbug* "Signed artifact-map %s\n" artifact-map)
             (assert (or (not ensure-branch) (= b ensure-branch))
                     (format "current git branch is %s but must be %s" b ensure-branch))
             (assert (or (not ensure-clean) clean?)
@@ -1021,3 +1078,42 @@
                 (util/info "Tag %s already created for %s\n" tag commit)
                 (do (util/info "Creating tag %s...\n" v)
                     (git/tag v "release"))))))))))
+
+(core/deftask call
+  "Call a function or evaluate a piece of code
+
+Multiple functions or forms can be specified. For namespaced functions, the
+namespace is automatically required. Execution occurs before tasks appearing
+later in the pipeline (or after the tasks, if --post is specified)."
+  [f function SYMBOL [sym] "Functions to execute"
+   e eval     FORM   [edn] "Forms to execute"
+   p print           bool  "Print results to *out*"
+   P post            bool  "Execute after rather than before subsequent tasks"
+   o once            bool  "Run only once if used with watch"]
+  (let [called? (atom false)
+        run (fn []
+              (when (or (not once) (not @called?))
+                (doseq [ns (->> function
+                                (map #(some-> % namespace symbol))
+                                (remove nil?)
+                                set)]
+                  (require ns))
+                (doseq [sym function]
+                  (if-let [f (resolve sym)]
+                    (do
+                      (util/dbug "Invoking %s...\n" sym)
+                      (cond-> (f)
+                        print println))
+                    (throw (RuntimeException. (str "Could not resolve symbol " sym)))))
+                (doseq [form eval]
+                  (util/dbug "Evaluating %s...\n" (pr-str form))
+                  (cond-> (clojure.core/eval form)
+                    print println))
+                (reset! called? true)))]
+    (if post
+      (core/with-post-wrap [fileset]
+        (run)
+        fileset)
+      (core/with-pre-wrap [fileset]
+        (run)
+        fileset))))
