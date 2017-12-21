@@ -7,7 +7,7 @@ generally happy to answer any questions you might have that aren't served by
 this document. The best places to find us are:
 
 * [The `#boot` channel on Clojurians Slack][slack]
-* [Discourse site][discourse].
+* [The Boot section on the ClojureVerse forums][discourse]
 
 Thank you in advance for your contribution, and for getting in touch with us if
 you have any questions or problems!
@@ -19,6 +19,7 @@ you have any questions or problems!
 * [Reporting a Bug](#reporting-a-bug)
 * [Contributing a Bug Fix](#contributing-a-bug-fix)
 * [Contributing a Feature](#contributing-a-feature)
+* [Release Process](#release-process)
 
 ## General Contribution Guidelines
 
@@ -131,7 +132,7 @@ For example, Boot has no built-in `new` task. Instead, there is a `boot/new`
 library that provides one. The `new` task can be invoked like:
 
     boot -d boot/new new -t app -n my-app
-    
+
 This works because `boot/new` exports
 the
 [`new`](https://github.com/boot-clj/boot-new/blob/19c0cf2f585cfe0a3d379af854f5e77f4834bf04/src/boot/new.clj#L4) task
@@ -142,13 +143,60 @@ If you had idea for a better `new` task, you could create it, and push it to
 Clojars yourself. It would then be accessible to Boot users like this:
 
     boot -d YourName/new new -t app -n my-app
-    
+
 This task is also available to users programmatically. They could use your task via:
 
 ```clojure
 (set-env! :dependencies '[[YourName/new "1.0.0"]])
 (require '[YourName.new :refer [new]]')
 ```
+
+## Release Process
+
+Currently the release process requires that you run everything with Java 7.
+
+#### Stable Releases
+
+1. Run the tests via `make test`
+1. Ensure the `version.properties` file contains the correct version number
+1. Running `make deploy` will upload all jars to Clojars
+1. Boot currently uses GitHub releases to serve an initial jarfile:
+    1. Create a release on Github with the version string from `version.properties`
+    1. Attach the file `boot/base/target/base-$NEW_VERSION-jar-with-dependencies.jar` as `boot.jar` to the Github release.
+1. Once that done it's usually a good idea to check that everything uploaded correctly:
+
+       $ rm -rf ~/.m2/repository/boot; BOOT_VERSION=$NEW_VERSION boot -h
+
+1. If that works fine it's time to tag the release:
+
+       $ git tag $NEW_VERSION
+
+1. Now edit the `version.properties` file to introduce a new release cycle. Usually you should bump the least significant version digit. An example in which you just released Boot `10.0.0`:
+
+       $ cat version.properties
+       version=10.0.0
+       $ echo "version=10.0.1-SNAPSHOT" > version.properties
+
+1. The changelog should then be updated to have all unreleased changes be part of the new release.
+1. Now commit the changes you made to version properties and push everything. Don't forget to push the tag!
+
+       $ git push
+       $ git push --tags
+
+#### SNAPSHOT Releases
+
+1. Run the tests via `make test`
+1. Ensure that the `version.properties` contains the expected SNAPSHOT version numbers as per the release process for stable versions
+1. Running `make deploy` will upload all jars to Clojars
+1. Boot currently uses GitHub releases to serve an initial jarfile:
+    1. Create a release on Github with the version string from `version.properties`
+    1. Attach the file `boot/base/target/base-$NEW_VERSION-jar-with-dependencies.jar` as `boot.jar` to the Github release.
+1. Once that is done it's usually a good idea to check that everything uploaded correctly:
+
+       $ rm -rf ~/.m2/repository/boot ~/.boot/cache/bin/; BOOT_VERSION=$NEW_VERSION boot -h
+
+1. Since SNAPSHOT releases may change over time there is no need to tag them
+1. After you've done all this it's usually a good idea to tell others in `#boot-dev` on [Slack][slack] so that everyone can help testing
 
 [api-docs]: https://github.com/boot-clj/boot/tree/master/doc
 [changes]: https://github.com/boot-clj/boot/blob/master/CHANGES.md
