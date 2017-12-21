@@ -1,6 +1,6 @@
 (ns boot.from.io.aviso.exception
   "Format and present exceptions in a pretty (structured, formatted) way."
-  {:boot/from :AvisoNovate/pretty:0.1.33}
+  {:boot/from :AvisoNovate/pretty:0.1.34}
   (:use boot.from.io.aviso.ansi)
   (:require [clojure
              [pprint :as pp]
@@ -10,11 +10,11 @@
              [columns :as c]
              [writer :as w]])
   (:import [java.lang StringBuilder StackTraceElement]
-           [clojure.lang Compiler ExceptionInfo]
+           [clojure.lang Compiler ExceptionInfo Named]
            [java.util.regex Pattern]))
 
-(def ^:dynamic *fonts*
-  "ANSI fonts for different elements in the formatted exception report."
+(def default-fonts
+  "A default set of fonts for different elements in the formatted exception report."
   {:exception     bold-red-font
    :reset         reset-font
    :message       italic-font
@@ -24,6 +24,11 @@
    :clojure-frame yellow-font
    :java-frame    white-font
    :omitted-frame white-font})
+
+(def ^:dynamic *fonts*
+  "Current set of fonts used in exception formatting"
+  (when-not (System/getenv "DISABLE_DEFAULT_PRETTY_FONTS")
+    default-fonts))
 
 (def ^{:dynamic true
        :added   "0.1.15"}
@@ -488,11 +493,13 @@
   (pp/write value :stream nil :length (or *print-length* 10) :dispatch exception-dispatch))
 
 (defn- qualified-name [x]
-  (let [x-ns   (namespace x)
-        x-name (name x)]
-    (if x-ns
-      (str x-ns "/" x-name)
-      x-name)))
+  (if (instance? Named x)
+    (let [x-ns (namespace x)
+         x-name (name x)]
+     (if x-ns
+       (str x-ns "/" x-name)
+       x-name))
+    x))
 
 (defn write-exception*
   "Contains the main logic for [[write-exception]], which simply expands
@@ -606,7 +613,9 @@
   to configure pretty-printing; however, if `*print-length*` is left as its default (nil), the print length will be set to 10.
   This is to ensure that infinite lists do not cause endless output or other exceptions.
 
-  The `*fonts*` var contains ANSI definitions for how fonts are displayed; bind it to nil to remove ANSI formatting entirely."
+  The `*fonts*` var contains ANSI definitions for how fonts are displayed; bind it to nil to remove ANSI formatting entirely.
+  It can be also initialized to nil instead of the default set of fonts by setting environment variable DISABLE_DEFAULT_PRETTY_FONTS
+  to any value."
   ([exception]
    (write-exception *out* exception))
   ([writer exception]
@@ -747,4 +756,3 @@
                    exceptions stack-trace stack-trace-batch)
             (recur :start lines
                    exceptions stack-trace stack-trace-batch)))))))
-

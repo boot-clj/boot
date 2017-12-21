@@ -1,10 +1,10 @@
 (ns boot.from.io.aviso.ansi
   "Help with generating textual output that includes ANSI escape codes for formatting."
-  {:boot/from :AvisoNovate/pretty:0.1.33}
+  {:boot/from :AvisoNovate/pretty:0.1.34}
  (:import
     [java.util.regex Pattern])
-  (:require
-    [clojure.string :as str]))
+ (:require
+   [clojure.string :as str]))
 
 (def ^:const csi
   "The control sequence initiator: `ESC [`"

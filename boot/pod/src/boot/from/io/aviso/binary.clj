@@ -1,6 +1,6 @@
 (ns boot.from.io.aviso.binary
   "Utilities for formatting binary data (byte arrays) or binary deltas."
-  {:boot/from :AvisoNovate/pretty:0.1.33}
+  {:boot/from :AvisoNovate/pretty:0.1.34}
   (:require [boot.from.io.aviso
              [ansi :as ansi]
              [columns :as c]
