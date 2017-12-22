@@ -328,7 +328,7 @@
           d'   (dir dest-tmpfile)]
       (assert ((set (map file dirs)) d')
               (format "dest-dir not in dir set (%s)" d'))
-      (add-blob! blob src-file hash *hard-link*)
+      (add-blob! blob (.toPath src-file) hash *hard-link*)
       (assoc this :tree (merge tree {p' (assoc dest-tmpfile :id hash)})))))
 
 ;; additional api functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
