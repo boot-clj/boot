@@ -132,7 +132,7 @@
                 excl (when v? [regex])
                 jar  (jar-path sym)]
             (core/add-cached-resource
-              fs (digest/md5 jar) (partial pod/unpack-jar jar)
+              fs (digest/md5 (io/file jar)) (partial pod/unpack-jar jar)
               :include incl :exclude excl :mergers pod/standard-jar-mergers)))
         (reduce fileset args))))
 
