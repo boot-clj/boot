@@ -42,6 +42,10 @@ and `technomancy` for the above explanation.
 - Allow clojure source jar onto the classpath [#654][654]
 - Fix `boot.tmpdir/cp` [#502][502]
 
+#### Misc
+
+- The Cheshire dependency in `boot/worker` has been updated to fix compatibility with `s3-wagon-private` [#679][679]
+
 [502]: https://github.com/boot-clj/boot/pull/502
 [598]: https://github.com/boot-clj/boot/pull/598
 [625]: https://github.com/boot-clj/boot/pull/625
@@ -51,6 +55,7 @@ and `technomancy` for the above explanation.
 [631]: https://github.com/boot-clj/boot/issues/631
 [612]: https://github.com/boot-clj/boot/pull/612
 [678]: https://github.com/boot-clj/boot/pull/678
+[679]: https://github.com/boot-clj/boot/pull/679
 
 ## 2.7.2
 
