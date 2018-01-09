@@ -32,6 +32,7 @@ and `technomancy` for the above explanation.
 - Boot is officially Maven Central compatible. Make sure the `sources` and `javadoc` artifacts are on the fileset and `:classifier` is correctly set.
 - Environment variables BOOT_AS_ROOT, BOOT_WATCHERS_DISABLE und BOOT_COLOR accept `true` as a truthy value beside `1` and `yes` [#631][631]
 - Bump [pomegranate](https://github.com/cemerick/pomegranate) and [dynapath](https://github.com/tobias/dynapath) to `1.0.0`. [#612][612]
+- Digest `java.io.File` instead `String` path of jar at sift-action `:add-jar` method [#678][678]
 
 #### Fixed
 
@@ -47,6 +48,7 @@ and `technomancy` for the above explanation.
 [566]: https://github.com/boot-clj/boot/pull/566
 [631]: https://github.com/boot-clj/boot/issues/631
 [612]: https://github.com/boot-clj/boot/pull/612
+[678]: https://github.com/boot-clj/boot/pull/678
 
 ## 2.7.2
 
