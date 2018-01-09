@@ -1,6 +1,6 @@
 (ns boot.from.io.aviso.writer
   "The StringWriter protocol is used as the target of any written output."
-  {:boot/from :AvisoNovate/pretty:0.1.33}
+  {:boot/from :AvisoNovate/pretty:0.1.34}
   (:import
     [java.io Writer]))
 
@@ -60,4 +60,3 @@
   (let [sb (StringBuilder. 2000)]
     (apply f sb params)
     (.toString sb)))
-

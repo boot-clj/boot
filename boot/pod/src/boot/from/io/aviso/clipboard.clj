@@ -3,7 +3,7 @@
 
   This is segregated from other code to prevent the AWT stack from initializaing
   unnecessarily. On OS X, this is seen as a Java application icon appearing in the Dock"
-  {:boot/from :AvisoNovate/pretty:0.1.33}
+  {:boot/from :AvisoNovate/pretty:0.1.34}
   (:import
     [java.awt.datatransfer Clipboard DataFlavor StringSelection]
     [java.awt Toolkit]))
@@ -24,4 +24,3 @@
   "Pastes a string in as the new content of the Clipboard."
   [^String s]
   (.setContents (clipboard) (StringSelection. s) nil))
-

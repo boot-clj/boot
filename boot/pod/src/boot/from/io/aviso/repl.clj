@@ -1,6 +1,6 @@
 (ns boot.from.io.aviso.repl
   "Utilities to assist with REPL-oriented development"
-  {:boot/from :AvisoNovate/pretty:0.1.33}
+  {:boot/from :AvisoNovate/pretty:0.1.34}
   (:require
     [boot.from.io.aviso.exception :as e]
     [clojure.pprint :refer [pprint write]]
