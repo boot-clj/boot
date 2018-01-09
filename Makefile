@@ -14,7 +14,7 @@ aetheruber   = aether.uber.jar
 workerjar    = boot/worker/target/worker-$(version).jar
 corejar      = boot/core/target/core-$(version).jar
 basejar      = boot/base/target/base-$(version).jar
-baseuber     = boot/base/target/base-$(version)-jar-with-dependencies.jar
+baseuber     = boot/base/target/base-$(version)-uber.jar
 alljars      = $(podjar) $(aetherjar) $(workerjar) $(corejar) $(baseuber) $(bootjar)
 java_version = $(shell java -version 2>&1 | awk -F '"' '/version/ {print $$2}' |awk -F. '{print $$1 "." $$2}')
 
@@ -69,6 +69,7 @@ $(corejar): $(verfile) boot/core/project.clj $(shell find boot/core/src)
 
 $(baseuber): boot/base/pom.xml $(shell find boot/base/src/main)
 	(cd boot/base && mvn -q assembly:assembly -DdescriptorId=jar-with-dependencies)
+	(cd boot/base && mv target/base-$(version)-jar-with-dependencies.jar target/base-$(version)-uber.jar)
 
 .installed: mkdirs $(basejar) $(alljars)
 	cp $(baseuber) $(distjar)
@@ -84,7 +85,7 @@ install: .installed
 	@echo -e "\033[0;33m<< Java version: $(java_version) >>\033[0m"
 	@[ "$(java_version)" == "1.7" ] \
 		|| (echo -e "\033[0;31mYou must build with Java version 1.7 only.\033[0m" && false)
-	(cd boot/base   && lein deploy clojars boot/base $(version) target/base-$(version).jar pom.xml)
+	(cd boot/base   && lein deploy clojars boot/base $(version) target/base-$(version)-uber.jar pom.xml)
 	(cd boot/pod    && lein deploy clojars)
 	(cd boot/aether && lein deploy clojars)
 	(cd boot/worker && lein deploy clojars)
