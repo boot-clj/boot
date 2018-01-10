@@ -34,6 +34,7 @@ and `technomancy` for the above explanation.
 - Bump [pomegranate](https://github.com/cemerick/pomegranate) and [dynapath](https://github.com/tobias/dynapath) to `1.0.0`. [#612][612]
 - Digest `java.io.File` instead `String` path of jar at sift-action `:add-jar` method [#678][678]
 - Add warning about improper use of repl :eval option [#666][666]
+- Handle pom <parent> tag [#579][579]
 
 #### Fixed
 
@@ -58,6 +59,7 @@ and `technomancy` for the above explanation.
 [678]: https://github.com/boot-clj/boot/pull/678
 [679]: https://github.com/boot-clj/boot/pull/679
 [666]: https://github.com/boot-clj/boot/pull/666
+[579]: https://github.com/boot-clj/boot/pull/579
 
 ## 2.7.2
 
