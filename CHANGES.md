@@ -35,6 +35,7 @@ and `technomancy` for the above explanation.
 - Digest `java.io.File` instead `String` path of jar at sift-action `:add-jar` method [#678][678]
 - Add warning about improper use of repl :eval option [#666][666]
 - Parse complex optargs with sequential types, see [wiki section][sequential-optargs] [#682][682]
+- Handle pom <parent> tag [#579][579]
 
 #### Fixed
 
@@ -63,6 +64,7 @@ and `technomancy` for the above explanation.
 [578]: https://github.com/boot-clj/boot/issues/578
 [682]: https://github.com/boot-clj/boot/pull/682
 [sequential-optargs]: https://github.com/boot-clj/boot/wiki/Task-Options-DSL#sequential-optargs
+[579]: https://github.com/boot-clj/boot/pull/579
 
 ## 2.7.2
 
