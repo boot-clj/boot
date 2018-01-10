@@ -43,7 +43,17 @@
     code  (constantly true)
     file  #(instance? java.io.File %)))
 
-(defn- parse-fn [optarg]
+(defn- parse-fn
+  "Return a function accepting arguments that are split according to optarg.
+
+  The function works also for optargs splitting:
+
+    ((parse-fn SYM:VER=PATH) SYM:VER=PATH) => [SYM VER PATH]
+
+  But the typical usage is:
+
+    ((parse-fn SYM:VER=PATH) \"prj:1.3=parent\") => [prj 1.3 parent]"
+  [optarg]
   (fn [arg]
     (let [chars (->> optarg str (remove A-Z?))]
       (if-not (seq chars)
@@ -73,10 +83,12 @@
           int-flag?  (and flag? (= 'int type))
           bool-flag? (and flag? (= 'bool type))]
       (cond
-        bool-flag?     (assoc m k v)
-        int-flag?      (update-in m [k] (fnil inc 0))
-        (symbol? type) (assoc m k (parse-type type v))
-        (coll? type)   (update-in m [k] (fnil conj (empty type)) (parse-type (first type) v))))))
+        bool-flag?              (assoc m k v)
+        int-flag?               (update-in m [k] (fnil inc 0))
+        (or (symbol? type)
+            (sequential? type)) (assoc m k (parse-type type v))
+        (or (set? type)
+            (map? type))        (update-in m [k] (fnil conj (empty type)) (parse-type (first type) v))))))
 
 (defn- deprecated [short]
   (:deprecated (meta short)))
@@ -89,12 +101,13 @@
         flag? (not optarg)
         incr? (and flag? (= 'int type))
         docstring (cond
-                    incr? (format "Increase %s" (decap doc))
-                    flag? doc
-                    atom? (format "%s sets %s." optarg (depunc (decap doc)))
-                    :else (let [f "Conj %s onto %s"
-                                v ((parse-fn optarg) (str optarg))]
-                            (format f (if (string? v) v (pr-str (mapv symbol v))) (decap doc))))]
+                    incr?       (format "Increase %s" (decap doc))
+                    flag?       doc
+                    atom?       (format "%s sets %s." optarg (depunc (decap doc)))
+                    sequential? (format "%s sets %s" (str optarg) (decap doc))
+                    :else       (let [f "Conj %s onto %s"
+                                      v ((parse-fn optarg) (str optarg))]
+                                  (format f (if (string? v) v (pr-str (mapv symbol v))) (decap doc))))]
     (cond-> docstring
       (deprecated short) deprecated-doc)))
 
