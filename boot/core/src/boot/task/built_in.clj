@@ -862,7 +862,7 @@
 (core/deftask jar
   "Build a jar file for the project."
 
-  [f file PATH        str       "The target jar file name."
+  [f file PATH        str       "The target jar file name template. Patterns '{project}' and '{version}' are replaced by relevant values."
    M manifest KEY=VAL {str str} "The jar manifest map."
    m main MAIN        sym       "The namespace containing the -main function."
    p project SYM      sym       "The project symbol -- used to find the correct pom.xml file."]
@@ -879,7 +879,8 @@
                 (boot.pom/pom-xml-parse-string ~(slurp pom))))
             pomname (when (and project version)
                       (str (name project) "-" version ".jar"))
-            fname   (or file pomname "project.jar")
+            file-parsed-string (string/replace file #"\{(\w+)\}" (fn [[_ group]] ((keyword group) {:project (name project) :version version})))
+            fname   (or file-parsed-string pomname "project.jar")
             out*    (io/file tgt fname)]
         (when (and project (seq p))
           (util/warn "Multiple pom.xml files for project: %s\n" project))
