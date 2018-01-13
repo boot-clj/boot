@@ -8,7 +8,7 @@
   :aot            [#"^(?!boot\.repl-server).*$"]
   :jar-exclusions [#"^clojure/core/"]
   :description    "Boot pod module–this is included with all pods."
-  :url            "http://github.com/boot-clj/boot"
+  :url            "https://github.com/boot-clj/boot"
   :scm            {:url "https://github.com/boot-clj/boot.git" :dir "../../"}
   :repositories   [["clojars"        {:url "https://clojars.org/repo" :creds :gpg :sign-releases false}]
                    ["sonatype"       {:url "https://oss.sonatype.org/content/repositories/releases"}]

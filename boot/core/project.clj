@@ -8,7 +8,7 @@
   :aot            :all
   :jar-exclusions [#"^clojure/core/"]
   :description    "Core boot module–boot scripts run in this pod."
-  :url            "http://github.com/boot-clj/boot"
+  :url            "https://github.com/boot-clj/boot"
   :scm            {:url "https://github.com/boot-clj/boot.git" :dir "../../"}
   :repositories   [["clojars"  {:url "https://clojars.org/repo" :creds :gpg :sign-releases false}]]
   :license        {:name "Eclipse Public License"

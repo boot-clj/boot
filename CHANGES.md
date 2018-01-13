@@ -34,7 +34,9 @@ and `technomancy` for the above explanation.
 - Bump [pomegranate](https://github.com/cemerick/pomegranate) and [dynapath](https://github.com/tobias/dynapath) to `1.0.0`. [#612][612]
 - Digest `java.io.File` instead `String` path of jar at sift-action `:add-jar` method [#678][678]
 - Add warning about improper use of repl :eval option [#666][666]
+- Parse complex optargs with sequential types, see [wiki section][sequential-optargs] [#682][682]
 - Handle pom <parent> tag [#579][579]
+
 
 #### Fixed
 
@@ -43,6 +45,7 @@ and `technomancy` for the above explanation.
 - Boot does not sign jars with classifiers [#625][625]
 - Allow clojure source jar onto the classpath [#654][654]
 - Fix `boot.tmpdir/cp` [#502][502]
+- Split an argument in three [#578][578]
 
 #### Misc
 
@@ -60,6 +63,9 @@ and `technomancy` for the above explanation.
 [679]: https://github.com/boot-clj/boot/pull/679
 [666]: https://github.com/boot-clj/boot/pull/666
 [579]: https://github.com/boot-clj/boot/pull/579
+[578]: https://github.com/boot-clj/boot/issues/578
+[682]: https://github.com/boot-clj/boot/pull/682
+[sequential-optargs]: https://github.com/boot-clj/boot/wiki/Task-Options-DSL#sequential-optargs
 
 ## 2.7.2
 
