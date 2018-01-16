@@ -62,6 +62,14 @@
 
     ))
 
+(deftest lazy-pod-return-value-test-683
+  (testing "println inside lazy seqs does not end up in return value"
+    (let [data       (range 400)
+          expected   (map #(do (println %) %) data)
+          pod-result (boot.pod/with-eval-in (boot.pod/make-pod {})
+                       (map #(do (println %) %) ~data))]
+      (= data pod-result))))
+
 (deftest canonical
   (testing "boot.pod/canonical-id"
     (is (= 'foo (pod/canonical-id 'foo)) "In case there is no group, return artifact")
