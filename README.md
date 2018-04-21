@@ -85,6 +85,7 @@ $ sudo bash -c "cd /usr/local/bin && curl -fsSLo boot https://github.com/boot-cl
 Package managers:
 
 * [Chocolatey](https://chocolatey.org/) &mdash; `choco install boot-clj`
+* [Scoop](http://scoop.sh/) &mdash; `scoop bucket add extras && scoop install boot-clj`
 
 Otherwise, download [boot.exe][boot-exe], then:
 
