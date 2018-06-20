@@ -741,7 +741,8 @@
         (let [q       (LinkedBlockingQueue.)
               watcher (apply file/watcher! :time dirs)
               paths   (into-array String dirs)
-              k       (pod/with-invoke-worker (boot.watcher/make-watcher q paths))]
+              k       (pod/with-invoke-worker
+                        (boot.watcher/make-watcher q paths :ignore @bootignore))]
           (daemon
             (loop [ret (util/guard [(.take q)])]
               (when ret
