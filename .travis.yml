@@ -1,6 +1,14 @@
 language: java
 jdk:
   - oraclejdk8
+  - oraclejdk9
+  - oraclejdk10
 
 install: make deps
 script: make test
+
+cache:
+  directories:
+  - $HOME/.m2
+  - $HOME/.boot/cache
+  - $HOME/bin
