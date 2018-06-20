@@ -2,6 +2,8 @@
 
 ## master
 
+## 2.8.0
+
 #### Breaking
 
 If you happen to receive "Tried to use insecure HTTP repository without TLS",
@@ -45,11 +47,15 @@ and `technomancy` for the above explanation.
 - Allow clojure source jar onto the classpath [#654][654]
 - Fix `boot.tmpdir/cp` [#502][502]
 - Split an argument in three [#578][578]
+- Use bootignore patterns in watcher workers [#663][663]
+- Make `(sift :move)` create resources. [#680][680]
 
 #### Misc
 
 - The Cheshire dependency in `boot/worker` has been updated to fix compatibility with `s3-wagon-private` [#679][679]
 
+[680]: https://github.com/boot-clj/boot/pull/680
+[663]: https://github.com/boot-clj/boot/pull/663
 [502]: https://github.com/boot-clj/boot/pull/502
 [598]: https://github.com/boot-clj/boot/pull/598
 [625]: https://github.com/boot-clj/boot/pull/625
