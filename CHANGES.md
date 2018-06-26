@@ -8,6 +8,16 @@
 
 [702]: https://github.com/boot-clj/boot/pull/702
 
+#### Breaking
+
+Updated nREPL to 0.4.4. The new nREPL has a new artefact coordinates
+(`nrepl/nrepl`) and a new namespace prefix (`clojure.tools.nrepl.` ->
+`nrepl.`). While the nREPL protocol is 100% compatible with that of
+the 0.2.x series you'll have to make sure that any middleware you're
+using has been updated to target 0.4.x. You can find more details
+[here](https://github.com/nrepl/nREPL/issues/1) and
+[here](https://github.com/nrepl/nREPL/blob/master/HISTORY.md).
+
 ## 2.8.1
 
 #### Improved
@@ -163,7 +173,7 @@ ensure that message ends in a newline.
 - Throw helpful exception when `deftask` argument vector isn't a vector [#487][487].
 - Now uses io.aviso/pretty 0.1.33: this affects the order of reported stack frames [#355][355].
   The old behavior [can be restored with user configuration][pretty-config].
-- Exceptions are now always reported using pretty, regardless of the setting of 
+- Exceptions are now always reported using pretty, regardless of the setting of
   BOOT_COLOR (or the -C flag), but when colorization is disabled, pretty
   exception reporting will not use an ANSI color codes in its output.
   This is often preferable when output from Boot is being logged to a
@@ -248,7 +258,7 @@ d- Create bootscript tmpfile with mode `0600` instead of `0664`.
   task in the fileset [#451][451].
 - Added `-C, --no-color` option to the `repl` task &mdash; disables ANSI color
   codes in REPL client output.
-  
+
 ##### Pods
 
 - Upgraded dynapath to 0.2.5 in order to support Java 9. [#528][528], [#539][539]

@@ -3,9 +3,9 @@
    [boot.repl                              :as repl]
    [boot.util                              :as util]
    [clojure.java.io                        :as io]
-   [clojure.tools.nrepl.server             :as server]
-   [clojure.tools.nrepl.middleware         :as middleware]
-   [clojure.tools.nrepl.middleware.session :as session]))
+   [nrepl.server                           :as server]
+   [nrepl.middleware                       :as middleware]
+   [nrepl.middleware.session               :as session]))
 
 (def ^:private default-opts
   {:bind       nil
