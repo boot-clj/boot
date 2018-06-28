@@ -18,6 +18,8 @@
   :dependencies [[org.clojure/clojure         "1.6.0"  :scope "provided"]
                  [boot/base                   ~version :scope "provided"]
                  [boot/aether                 ~version]
+                 ;; Suppress warnings from SLF4J via pomegranate via aether
+                 [org.slf4j/slf4j-nop         "1.7.22"]
                  ;; see https://github.com/boot-clj/boot/issues/82
                  [net.cgrand/parsley          "0.9.3" :exclusions [org.clojure/clojure]]
                  [mvxcvi/puget                "1.0.1"]
