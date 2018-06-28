@@ -2,6 +2,19 @@
 
 ## master
 
+## 2.8.1
+
+#### Improved
+
+- SLF4J warnings from the worker pod have been suppressed [#676][676]
+
+#### Misc
+
+- The change to `sift` made with [#680][680] has been reverted because it had unexpected drawbacks. We will discuss how to proceed on [#704][704].
+
+[676]: https://github.com/boot-clj/boot/issues/676
+[704]: https://github.com/boot-clj/boot/issues/704
+
 ## 2.8.0
 
 #### Breaking
