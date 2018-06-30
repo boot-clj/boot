@@ -3,6 +3,7 @@ jdk:
   - oraclejdk8
   - oraclejdk9
   - oraclejdk10
+  - oraclejdk11
 
 install: make deps
 script: make test

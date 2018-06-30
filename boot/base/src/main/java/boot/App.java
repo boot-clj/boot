@@ -7,6 +7,7 @@ import java.nio.channels.FileLock;
 import java.nio.channels.FileChannel;
 import java.lang.ref.WeakReference;
 import java.net.URL;
+import java.util.Formatter;
 import java.util.Map;
 import java.util.Date;
 import java.util.UUID;
@@ -121,7 +122,15 @@ public class App {
     public static String
     md5hash(String data) throws Exception {
         java.security.MessageDigest algo = java.security.MessageDigest.getInstance("MD5");
-        return javax.xml.bind.DatatypeConverter.printHexBinary(algo.digest(data.getBytes())); }
+	return renderAsHex(algo.digest(data.getBytes())); }
+
+    private static String
+    renderAsHex(byte[] content) {
+        Formatter formatter = new Formatter();
+        for (byte b : content) {
+            formatter.format("%02X", b);
+        }
+        return formatter.toString(); }
 
     public static File
     projectDir() throws Exception {
