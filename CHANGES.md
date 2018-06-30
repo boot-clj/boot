@@ -2,6 +2,12 @@
 
 ## master
 
+#### Fixed
+
+- Fix `printHexBinary` for Java 11 support [#702][702]
+
+[702]: https://github.com/boot-clj/boot/pull/702
+
 ## 2.8.0
 
 #### Breaking
