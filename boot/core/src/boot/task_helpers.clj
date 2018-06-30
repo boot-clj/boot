@@ -117,14 +117,12 @@
 (defmethod sift-action :move
   [_ _ args]
   (let [proc    #(reduce-kv string/replace % args)
-        mkreducer (fn [dir]
-                    (fn [xs k v]
-                      (let [k (proc k)]
-                        (assoc xs k (assoc v :path k :dir dir)))))]
+        reducer (fn [xs k v]
+                  (let [k (proc k)]
+                    (assoc xs k (assoc v :path k))))]
     (fn [fileset]
-      (let [dir (#'core/get-add-dir fileset #{:resource})]
-        (->> (partial reduce-kv (mkreducer dir) {})
-             (update-in fileset [:tree]))))))
+      (->> (partial reduce-kv reducer {})
+           (update-in fileset [:tree])))))
 
 (defmethod sift-action :add-jar
   [v? _ args]
