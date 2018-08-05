@@ -348,6 +348,7 @@
   (let [pom-str                                      (pod/pom-xml jarpath pompath)
         {:keys [project version classifier] :as pom} (pom-xml-parse-string pom-str)
         pomfile                                      (pom-xml-tmp pom-str)]
+    (System/setProperty "aether.checksums.forSignature" "true")
     (aether/deploy
      :coordinates  [project version :classifier classifier]
      :pom-file     (when-not classifier (io/file pomfile))
