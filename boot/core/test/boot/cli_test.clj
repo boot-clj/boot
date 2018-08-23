@@ -48,9 +48,15 @@
           args ["-f" "100" "-f" "200" "-f" "300"]
           [cli-args opts] (calculate-cli-args-&-opts args argspecs)
           parsed (tools-cli/parse-opts opts cli-args)]
-      (t/is (empty? (:errors parsed)) "multi-option optarg should not report errors")
-      (t/is (= {:foo #{100, 200, 300}} (:options parsed)) "multi-option optarg should work")))
+      (t/is (empty? (:errors parsed)) "multi-option set optarg should not report errors")
+      (t/is (= {:foo #{100 200 300}} (:options parsed)) "multi-option optarg should work"))
 
+    (let [argspecs '[f foo LEVELS [int] "The set of initial foo levels."]
+          args ["-f" "100" "-f" "200" "-f" "300"]
+          [cli-args opts] (calculate-cli-args-&-opts args argspecs)
+          parsed (tools-cli/parse-opts opts cli-args)]
+      (t/is (empty? (:errors parsed)) "multi-option vector optarg should not report errors")
+      (t/is (= {:foo [100 200 300]} (:options parsed)) "multi-option vector optarg should work")))
 
   (t/testing "parse-opts with complex optargs"
     (let [argspecs '[f foo FOO=BAR {kw sym} "The foo option."]
@@ -93,4 +99,24 @@
           [cli-args opts] (calculate-cli-args-&-opts args argspecs)
           parsed (tools-cli/parse-opts opts cli-args)]
       (t/is (empty? (:errors parsed)) "set of vectors optarg should not report errors with multiple arguments")
-      (t/is (= {:parent #{['baz "1.4" "quux"] ['foo "3.3" "bar"]}} (:options parsed)) "set of vectors optarg should work with multiple arguments"))))
+      (t/is (= {:parent #{['baz "1.4" "quux"] ['foo "3.3" "bar"]}} (:options parsed)) "set of vectors optarg should work with multiple arguments"))
+
+    (t/testing "[#707] Single vector optarg" ;; thanks Sean
+      (let [argspecs '[a args ARG [str] "the arguments for the application."]
+            args ["-a" "foo" "-a" "bar"]
+            [cli-args opts] (calculate-cli-args-&-opts args argspecs)
+            parsed (tools-cli/parse-opts opts cli-args)]
+        (t/is (empty? (:errors parsed)) "should not report errors with multiple arguments")
+        (t/is (= {:args ["foo" "bar"]} (:options parsed)) "should work keep order")))
+
+    (t/testing "[#707] Single vector optarg" ;; thanks Alexander
+      (let [argspecs '[f function SYMBOL [sym] "Functions to execute"
+                       e eval     FORM   [edn] "Forms to execute"
+                       p print           bool  "Print results to *out*"
+                       P post            bool  "Execute after rather than before subsequent tasks"
+                       o once            bool  "Run only once if used with watch"]
+            args ["-e" "(+ 2 2)"]
+            [cli-args opts] (calculate-cli-args-&-opts args argspecs)
+            parsed (tools-cli/parse-opts opts cli-args)]
+        (t/is (empty? (:errors parsed)) "a symbol optarg should not report errors")
+        (t/is (= {:eval ['(+ 2 2)]} (:options parsed)) "a symbol optarg should convert to code")))))

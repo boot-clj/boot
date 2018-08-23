@@ -83,12 +83,22 @@
           int-flag?  (and flag? (= 'int type))
           bool-flag? (and flag? (= 'bool type))]
       (cond
-        bool-flag?              (assoc m k v)
-        int-flag?               (update-in m [k] (fnil inc 0))
-        (or (symbol? type)
-            (sequential? type)) (assoc m k (parse-type type v))
-        (or (set? type)
-            (map? type))        (update-in m [k] (fnil conj (empty type)) (parse-type (first type) v))))))
+        bool-flag?            (assoc m k v)
+        int-flag?             (update-in m [k] (fnil inc 0))
+        (symbol? type)        (assoc m k (parse-type type v))
+
+        ;; [fix #707] Andrea Richiardi: not sure this is the right place for
+        ;; this, because in theory we should handle the case of single vector
+        ;; optargs up the chain. One of the checks is on the values though.
+        (and (sequential? type)
+             (sequential? v)
+             (= type (flatten type)))
+
+        (assoc m k (->> (interleave type v)
+                        (partition 2)
+                        (mapv #(parse-type (first %) (second %)))))
+
+        (coll? type) (update-in m [k] (fnil conj (empty type)) (parse-type (first type) v))))))
 
 (defn- deprecated [short]
   (:deprecated (meta short)))
