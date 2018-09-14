@@ -57,7 +57,7 @@ specification&mdash;which builds the project.
 
 Binaries in executable format are available. Follow the instructions for your
 operating system (note: boot requires the Java Development Kit (JDK) version
-1.7 or greater).
+1.8 or greater).
 
 #### Unix, Linux, OSX
 
@@ -390,7 +390,7 @@ command line, as before:
 
 To build boot from source you will need:
 
-* JDK 1.7
+* JDK 1.8
 * GNU make
 * maven 3
 * bash shell, wget
