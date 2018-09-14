@@ -2,7 +2,7 @@
  :source-paths #{"src" "test"}
  :dependencies '[[net.cgrand/parsley          "0.9.3" :exclusions [org.clojure/clojure]]
                  [mvxcvi/puget                "1.0.1"]
-                 [reply                       "0.3.7"]
+                 [reply                       "0.4.0"]
                  [cheshire                    "5.3.1"]
                  [clj-jgit                    "0.8.0"]
                  [clj-yaml                    "0.4.0"]
