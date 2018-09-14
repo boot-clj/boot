@@ -9,7 +9,7 @@
 
 #### Breaking
 
-- Updated reply to 0.4.1 [#711][711]
+- Updated reply to 0.4.1 [#711][711],[#703][703]
 - Updated nREPL to 0.4.5. The new nREPL has a new artefact coordinates
 (`nrepl/nrepl`) and a new namespace prefix (`clojure.tools.nrepl.` ->
 `nrepl.`). While the nREPL protocol is 100% compatible with that of
@@ -20,6 +20,7 @@ using has been updated to target 0.4.x. You can find more details
 
 [702]: https://github.com/boot-clj/boot/pull/702
 [703]: https://github.com/boot-clj/boot/pull/703
+[706]: https://github.com/boot-clj/boot/pull/706
 [711]: https://github.com/boot-clj/boot/pull/711
 [713]: https://github.com/boot-clj/boot/pull/713
 
