@@ -24,7 +24,7 @@ using has been updated to target 0.4.x. You can find more details
 [711]: https://github.com/boot-clj/boot/pull/711
 [713]: https://github.com/boot-clj/boot/pull/713
 
-## 6.8.1
+## 2.8.1
 
 #### Improved
 
