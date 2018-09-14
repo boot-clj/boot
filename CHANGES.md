@@ -1,24 +1,29 @@
 # Changes
 
-## master
+## 2.8.2
 
 #### Fixed
 
 - Fix `printHexBinary` for Java 11 support [#702][702]
-
-[702]: https://github.com/boot-clj/boot/pull/702
+- Fixes the regression introduced while handling sequential optargs [#713][713]
 
 #### Breaking
 
-Updated nREPL to 0.4.4. The new nREPL has a new artefact coordinates
+- Updated reply to 0.4.1 [#711][711]
+- Updated nREPL to 0.4.5. The new nREPL has a new artefact coordinates
 (`nrepl/nrepl`) and a new namespace prefix (`clojure.tools.nrepl.` ->
 `nrepl.`). While the nREPL protocol is 100% compatible with that of
 the 0.2.x series you'll have to make sure that any middleware you're
 using has been updated to target 0.4.x. You can find more details
 [here](https://github.com/nrepl/nREPL/issues/1) and
-[here](https://github.com/nrepl/nREPL/blob/master/HISTORY.md).
+[here](https://github.com/nrepl/nREPL/blob/master/HISTORY.md). [#703][703]
 
-## 2.8.1
+[702]: https://github.com/boot-clj/boot/pull/702
+[703]: https://github.com/boot-clj/boot/pull/703
+[711]: https://github.com/boot-clj/boot/pull/711
+[713]: https://github.com/boot-clj/boot/pull/713
+
+## 6.8.1
 
 #### Improved
 
