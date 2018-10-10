@@ -77,6 +77,6 @@
 (defn update-jar!
   [jarfile old-fs new-fs attr main]
   (with-open [^java.nio.file.FileSystem fs (fs/mkjarfs jarfile :create true)]
-    (fs/patch! (fs/->path fs) old-fs new-fs)
     (let [^java.util.jar.Manifest manifest (create-manifest main attr)]
-      (fs/write! (fs/->path fs) #(.write manifest %) ["META-INF" "MANIFEST.MF"]))))
+      (fs/write! (fs/->path fs) #(.write manifest %) ["META-INF" "MANIFEST.MF"]))
+    (fs/patch! (fs/->path fs) old-fs new-fs)))
