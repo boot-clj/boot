@@ -436,7 +436,7 @@
   (get-files fileset #{:input}))
 
 (defn input-fileset
-  "FIXME: document"
+  "Get a fileset tree that contains only files with input role."
   [fileset]
   (tmpd/restrict-dirs fileset (input-dirs fileset)))
 
@@ -446,7 +446,7 @@
   (get-files fileset #{:output}))
 
 (defn output-fileset
-  "FIXME: document"
+  "Get a fileset tree that contains only files with output role."
   [fileset]
   (tmpd/restrict-dirs fileset (output-dirs fileset)))
 
