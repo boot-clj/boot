@@ -8,7 +8,7 @@
     [boot.from.io.aviso.exception :refer [*fonts*]]))
 
 (def ^:dynamic *default-dependencies*
-  (atom '[[nrepl/nrepl "0.5.3" :exclusions [[org.clojure/clojure]]]]))
+  (atom '[[nrepl/nrepl "0.5.3"]]))
 
 (defn ^:private disable-exception-colors
   [handler]
