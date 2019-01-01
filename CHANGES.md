@@ -1,5 +1,11 @@
 # Changes
 
+## 2.8.3
+
+#### Improved
+
+- Updated REPL-y to 0.4.3.
+
 ## 2.8.2
 
 #### Fixed
