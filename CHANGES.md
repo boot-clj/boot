@@ -5,6 +5,7 @@
 #### Improved
 
 - Updated REPL-y to 0.4.3.
+- Updated nREPL to 0.5.3.
 
 ## 2.8.2
 
