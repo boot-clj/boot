@@ -2,8 +2,10 @@ language: java
 jdk:
   - oraclejdk8
   - oraclejdk9
-  - oraclejdk10
-  - oraclejdk11
+  - openjdk10
+  - openjdk11
+  - openjdk12
+  - openjdk13
 
 install: make deps
 script: make test
