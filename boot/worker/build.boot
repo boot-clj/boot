@@ -4,7 +4,7 @@
                  [mvxcvi/puget                "1.0.1"]
                  [reply                       "0.4.1"]
                  [cheshire                    "5.3.1"]
-                 [clj-jgit                    "0.8.0"]
+                 [clj-jgit                    "0.8.10"]
                  [clj-yaml                    "0.4.0"]
                  [javazoom/jlayer             "1.0.1"]
                  [net.java.dev.jna/jna        "4.1.0"]
