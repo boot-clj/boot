@@ -1,16 +1,20 @@
 (ns boot.util-test
   (:require
    [clojure.test :refer :all]
-   [boot.util :as util :refer :all]))
+   [clojure.spec.alpha :as spec]
+   [clojure.spec.test.alpha :as stest]
+   [boot.util :as util :refer :all]
+   [boot.util.spec]))
 
 (deftest dep-mgt-functions
-  
+
+  (stest/check 'util/dep-as-map)
   (let [project 'com.example/project
         version "1.2.3"
         scope "test"
         exclusions [['com.example/excl1 :extension "jar"]
                     'com.example/excl2]]
-    
+
     (testing "simple dep-as-map conversions"
       (are [input expected] (= expected (dep-as-map input))
 
@@ -23,22 +27,22 @@
            {:project nil
             :version nil
             :scope "compile"}
-           
+
            [project]
            {:project project
             :version nil
             :scope "compile"}
-           
+
            [project version]
            {:project project
             :version version
             :scope "compile"}
-           
+
            [project version :scope scope]
            {:project project
             :version version
             :scope scope}
-           
+
            [project version :scope scope :exclusions exclusions]
            {:project project
             :version version
@@ -58,28 +62,28 @@
            {:project project
             :version nil
             :scope scope}))
-    
-    (testing "simple map-as-dep conversions"      
+
+    (testing "simple map-as-dep conversions"
       (are [input expected] (= expected (map-as-dep input))
 
            {}
            []
-           
+
            {:project project
             :version nil
             :scope "compile"}
            [project]
-           
+
            {:project project
             :version version
             :scope "compile"}
            [project version]
-           
+
            {:project project
             :version version
             :scope scope}
            [project version :scope scope]
-           
+
            {:project project
             :version version
             :exclusions exclusions}
@@ -98,21 +102,21 @@
            [project :scope scope]))
 
     (testing "roundtripping deps"
-      
+
       (are [input] (= input (dep-as-map (map-as-dep input)))
-           
+
            {:project project
             :version nil
             :scope "compile"}
-           
+
            {:project project
             :version version
             :scope "compile"}
-           
+
            {:project project
             :version version
             :scope scope}
-           
+
            {:project project
             :version version
             :scope scope
