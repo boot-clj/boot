@@ -1,3 +1,4 @@
 (set-env!
- :source-paths #{"src" "test"}
- :dependencies '[[org.clojure/clojure         "1.9.0"]])
+ :source-paths   #{"test"}
+ :resource-paths #{"src"}
+ :dependencies   '[[org.clojure/clojure "1.9.0"]])

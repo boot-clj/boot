@@ -7,7 +7,6 @@
 
 (require '[boot.test :refer [runtests test-report test-exit]]
          '[metosin.boot-alt-test :refer [alt-test]]
-         'boot.task.built-in-test
          'boot.test-test)
 
 (import boot.App)
