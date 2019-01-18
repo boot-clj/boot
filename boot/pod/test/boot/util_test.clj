@@ -132,10 +132,10 @@
            ;; checks that optional version with option works
            {:project project
             :version nil
-            :scope scope}))
+            :scope scope}))))
 
-    (testing "check unusual arguments"
-      (is (thrown? Exception (dep-as-map {})))
-      (is (= [] (map-as-dep nil)))
-      (is (= [] (map-as-dep [])))
-      (is (thrown? Exception (map-as-dep 3))))))
+    ;(testing "check unusual arguments"
+      ;(is (thrown? Exception (dep-as-map {})))
+      ;(is (= [] (map-as-dep nil)))
+      ;(is (= [] (map-as-dep []))))))
+      ;(is (thrown? Exception (map-as-dep 3))))))
