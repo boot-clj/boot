@@ -89,7 +89,7 @@
       (with-out-str (pp/write form :dispatch pp/code-dispatch)))))
 
 (defn emit [boot? argv userscript localscript bootscript import-ns inits]
-  (let [boot-use '[boot.core boot.util boot.task.built-in]]
+  (let [boot-use '[boot.core boot.util boot.help]]
     (str
      (string/join
       "\n\n"
@@ -104,7 +104,7 @@
          `(let [boot?# ~boot?]
             (if-not boot?#
               (when-let [main# (resolve 'boot.user/-main)] (main# ~@argv))
-              (core/boot ~@(or (seq argv) ["boot.task.built-in/help"])))))]))
+              (core/boot ~@(or (seq argv) ["boot.help/help"])))))]))
      "\n")))
 
 (defn shebang? [arg]
