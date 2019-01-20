@@ -7,11 +7,13 @@ jdk:
   - openjdk12
   - openjdk13
 
-install: make deps
-script: make test
+services:
+  - docker
 
-cache:
-  directories:
-  - $HOME/.m2
-  - $HOME/.boot/cache
-  - $HOME/bin
+before_install:
+  - docker build -t boot-clj/openjdk:8-alpine -f ./docker/openjdk.dockerfile .
+  - docker build -t boot-clj/clojure:1.10.0 -f ./docker/clojure.dockerfile .
+  - docker build -t boot-clj/tools:latest -f ./docker/tools.dockerfile .
+
+install: docker build -t boot-clj/boot:latest -f ./docker/boot2.dockerfile .
+script: docker run -t boot-clj/boot:latest java -jar ~/.boot/cache/bin/3.0.0-SNAPSHOT/boot.jar
