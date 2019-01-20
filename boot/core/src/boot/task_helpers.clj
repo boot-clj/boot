@@ -18,8 +18,8 @@
 (defn- tasks-table [tasks]
   (let [get-task #(-> % :name str)
         get-desc #(-> % :doc first-line)
-        built-in {nil nil}] ;(get tasks 'boot.task.built-in)}]
-    (->> tasks ;(dissoc tasks 'boot.task.built-in)
+        built-in {nil (get tasks 'boot.task.built-in)}]
+    (->> (dissoc tasks 'boot.task.built-in)
       (concat built-in) (interpose nil)
       (mapcat (fn [[_ xs]] (or xs [{:name "" :doc ""}])))
       (mapv (fn [x] ["" (get-task x) (get-desc x)])))))

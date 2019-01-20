@@ -39,7 +39,7 @@ bin/lein: mkdirs
 	chmod 755 bin/lein
 
 bin/boot: mkdirs
-	wget -O bin/boot https://github.com/boot-clj/boot-bin/releases/download/latest/boot.sh
+	curl -fsSLo bin/boot https://github.com/boot-clj/boot-bin/releases/download/latest/boot.sh
 	chmod 755 bin/boot
 
 deps: bin/lein bin/boot
