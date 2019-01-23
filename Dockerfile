@@ -1,5 +1,5 @@
 # base boot image
-FROM boot-clj/tools:latest as boot
+FROM bootclj/tooling as tools
 
 ARG VERSION=3.0.0-SNAPSHOT
 
