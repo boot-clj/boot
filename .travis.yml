@@ -8,7 +8,7 @@ jdk:
   - openjdk13
 
 install: make --file=.travis/Makefile deps
-script: make --file=.travis/Makefile test
+script: make --file=.travis/Makefile install
 
 cache:
   directories:
