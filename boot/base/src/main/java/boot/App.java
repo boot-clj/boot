@@ -441,10 +441,6 @@ public class App {
 
     public static void
     main(String[] args) throws Exception {
-        String asroot = config("BOOT_AS_ROOT", "no");
-        if (System.getProperty("user.name").equals("root")
-            && ! (asroot.equals("yes") || asroot.equals("1") || asroot.equals("true")))
-            throw new Exception("refusing to run as root (set BOOT_AS_ROOT=yes to force)");
 
         // BOOT_VERSION is decided by the loader; it will respect the
         // boot.properties files, env vars, system properties, etc.
