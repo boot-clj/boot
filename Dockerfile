@@ -10,7 +10,7 @@ COPY . /usr/boot-clj
 # base
 WORKDIR /usr/boot-clj/boot/base
 
-RUN mvn -q install
+RUN lein install
 
 # pod
 WORKDIR /usr/boot-clj/boot/pod
@@ -44,7 +44,7 @@ RUN lein install
 # base uber
 WORKDIR /usr/boot-clj/boot/base
 
-RUN mvn -q assembly:assembly -DdescriptorId=jar-with-dependencies
+RUN lein uberjar
 
 # boot jar
 WORKDIR /usr/boot-clj/boot/boot
@@ -56,4 +56,4 @@ WORKDIR /usr/boot-clj/
 
 RUN mkdir -p ~/.boot/cache/bin/3.0.0-SNAPSHOT
 
-RUN cp boot/base/target/base-3.0.0-SNAPSHOT-jar-with-dependencies.jar ~/.boot/cache/bin/3.0.0-SNAPSHOT/boot.jar
+RUN cp boot/base/target/base-3.0.0-SNAPSHOT-standalone.jar ~/.boot/cache/bin/3.0.0-SNAPSHOT/boot.jar
