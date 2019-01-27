@@ -14,7 +14,7 @@ aetheruber   = aether.uber.jar
 workerjar    = boot/worker/target/worker-$(version).jar
 corejar      = boot/core/target/core-$(version).jar
 basejar      = boot/base/target/base-$(version).jar
-baseuber     = boot/base/target/base-$(version)-jar-with-dependencies.jar
+baseuber     = boot/base/target/base-$(version)-standalone.jar
 alljars      = $(podjar) $(aetherjar) $(workerjar) $(corejar) $(baseuber) $(bootjar)
 java_version = $(shell java -version 2>&1 | awk -F '"' '/version/ {print $$2}' |awk -F. '{print $$1 "." $$2}')
 
