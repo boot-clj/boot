@@ -44,11 +44,8 @@ bin/boot: mkdirs
 
 deps: bin/lein bin/boot
 
-boot/base/pom.xml: $(verfile) boot/base/pom.in.xml
-	(cd boot/base && cat pom.in.xml |sed 's/__VERSION__/$(version)/' > pom.xml)
-
-$(basejar): boot/base/pom.xml $(shell find boot/base/src/main/java)
-	(cd boot/base && mvn -q install)
+$(basejar): boot/base/project.clj $(shell find boot/base/src/main/java)
+	(cd boot/base && lein install)
 
 $(podjar): $(verfile) boot/pod/project.clj $(shell find boot/pod/src)
 	(cd boot/pod && lein install)
@@ -64,8 +61,8 @@ $(workerjar): $(verfile) boot/worker/project.clj $(shell find boot/worker/src)
 $(corejar): $(verfile) boot/core/project.clj $(shell find boot/core/src)
 	(cd boot/core && lein install)
 
-$(baseuber): boot/base/pom.xml $(shell find boot/base/src/main)
-	(cd boot/base && mvn -q assembly:assembly -DdescriptorId=jar-with-dependencies)
+$(baseuber): boot/base/project.clj $(shell find boot/base/src/main)
+	(cd boot/base && lein uberjar)
 
 $(bootjar): $(verfile) boot/boot/project.clj
 	(cd boot/boot && lein install)
