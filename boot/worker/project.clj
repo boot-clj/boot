@@ -15,7 +15,7 @@
                  :url "http://www.eclipse.org/legal/epl-v10.html"}
   :java-source-paths ["third_party/barbarywatchservice/src"]
   :javac-options ["-target" "1.7" "-source" "1.7"]
-  :dependencies [[org.clojure/clojure         "1.6.0"  :scope "provided"]
+  :dependencies [[org.clojure/clojure         "1.9.0"  :scope "provided"]
                  [boot/base                   ~version :scope "provided"]
                  [boot/aether                 ~version]
                  ;; Suppress warnings from SLF4J via pomegranate via aether
@@ -25,7 +25,7 @@
                  [mvxcvi/puget                "1.0.1"]
                  [reply                       "0.4.1"]
                  [cheshire                    "5.6.0"]
-                 [clj-jgit                    "0.8.0"]
+                 [clj-jgit                    "0.8.10"]
                  [clj-yaml                    "0.4.0"]
                  [javazoom/jlayer             "1.0.1"]
                  [net.java.dev.jna/jna        "4.1.0"]

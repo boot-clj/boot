@@ -1,8 +1,4 @@
-<a href="http://boot-clj.com/">
-  <img src="http://boot-clj.com/assets/images/logos/boot-logo-3.png" alt="Boot Logo" title="Boot" align="right" width="225px" />
-</a>
-
-# Boot 
+<p align="center"><img src="/.github/boot-clj.png" alt="boot-clj" width="100%"></p> 
 
 [![Build Status](https://travis-ci.org/boot-clj/boot.svg?branch=master)](https://travis-ci.org/boot-clj/boot) [![Stories in Ready][waffle-badge]][waffle-board] [![Backers on Open Collective](https://opencollective.com/boot-clj/backers/badge.svg)](#backers)
  [![Sponsors on Open Collective](https://opencollective.com/boot-clj/sponsors/badge.svg)](#sponsors) 
@@ -174,7 +170,7 @@ boot -r src -d me.raynes/conch:0.8.0 -- pom -p my-project -v 0.1.0 -- jar -M Foo
 ```
 
 What we did here was we built a pipeline on the command line and ran it to
-build our project. 
+build our project.
 
 * We specified the resource directory (files that will end up in the jar) via boot's `-r` option.
 * We added the `conch` dependency via boot's `-d` option.
@@ -205,7 +201,7 @@ First we'll set some global boot options–we'll set the source directory and ad
 the `conch` dependency to the build environment:
 
 ```clojure
-boot.user=> (set-env! 
+boot.user=> (set-env!
        #_=>   :resource-paths #{"src"}
        #_=>   :dependencies '[[me.raynes/conch "0.8.0"]])
 ```
