@@ -474,12 +474,6 @@ public class App {
             updateBoot(bootprops, null, "(0,)");
             System.exit(0); }
 
-        if (args.length > 0
-            && ((args[0]).equals("-V")
-                || (args[0]).equals("--version"))) {
-            printVersion();
-            System.exit(0); }
-
         String repo  = (localrepo == null)
             ? "default"
             : md5hash((new File(localrepo)).getCanonicalFile().getPath());
