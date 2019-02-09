@@ -54,19 +54,9 @@ public class App {
     public  static       String             getClojureName()    { return cljname; }
 
     private static final WeakHashMap<ClojureRuntimeShim, Object> pods  = new WeakHashMap<>();
-    private static final ConcurrentHashMap<String, Object>       stash = new ConcurrentHashMap<>();
 
     public static WeakHashMap<ClojureRuntimeShim, Object>
     getPods() { return pods; }
-
-    public static Object
-    getStash(String key) throws Exception { return stash.remove(key); }
-
-    public static String
-    setStash(Object value) throws Exception {
-        String key = UUID.randomUUID().toString();
-        stash.put(key, value);
-        return key; }
 
     public static class
     Exit extends Exception {
@@ -76,10 +66,6 @@ public class App {
     private static long
     nextId() {
         return counter.addAndGet(1); }
-
-    public static File
-    getBootDir() throws Exception {
-        return bootdir(); }
 
     public static boolean
     isWindows() throws Exception {
@@ -101,16 +87,6 @@ public class App {
     tccl() throws Exception {
         return Thread.currentThread().getContextClassLoader(); }
 
-    public static InputStream
-    resource(String path) throws Exception {
-        return tccl().getResourceAsStream(path); }
-
-    public static Properties
-    propertiesResource(String path) throws Exception {
-        Properties p = new Properties();
-        try (InputStream is = resource(path)) { p.load(is); }
-        return p; }
-
     public static File
     bootdir() throws Exception {
         File   h = new File(System.getProperty("user.home"));
@@ -118,194 +94,6 @@ public class App {
         String b = System.getenv("BOOT_HOME");
         String c = new File(h, ".boot").getCanonicalPath();
         return new File((a != null) ? a : ((b != null) ? b : c)); }
-
-    public static String
-    md5hash(String data) throws Exception {
-        java.security.MessageDigest algo = java.security.MessageDigest.getInstance("MD5");
-	return renderAsHex(algo.digest(data.getBytes())); }
-
-    private static String
-    renderAsHex(byte[] content) {
-        Formatter formatter = new Formatter();
-        for (byte b : content) {
-            formatter.format("%02X", b);
-        }
-        return formatter.toString(); }
-
-    public static File
-    projectDir() throws Exception {
-        for (File f = workdir; f != null; f = f.getParentFile()) {
-            File tmp = new File(f, ".git");
-            if (tmp.exists() && tmp.isDirectory()) return f; }
-        return null; }
-
-    public static HashMap<String, String>
-    properties2map(Properties p) throws Exception {
-        HashMap<String, String> m = new HashMap<>();
-        for (Map.Entry<Object, Object> e : p.entrySet())
-            m.put((String) e.getKey(), (String) e.getValue());
-        return m; }
-
-    public static Properties
-    map2properties(HashMap<String, String> m) throws Exception {
-        Properties p = new Properties();
-        for (Map.Entry<String, String> e : m.entrySet())
-            p.setProperty(e.getKey(), e.getValue());
-        return p; }
-
-    public static HashMap<String, File>
-    propertiesFiles() throws Exception {
-        HashMap<String, File> ret = new HashMap<>();
-        String[] names  = new String[]{"boot", "project", "cwd"};
-        File[]   dirs   = new File[]{bootdir(), projectDir(), workdir};
-        for (int i = 0; i < dirs.length; i++)
-            ret.put(names[i], new File(dirs[i], "boot.properties"));
-        return ret; }
-
-    public static Properties
-    mergeProperties() throws Exception {
-        Properties p = new Properties();
-        HashMap<String, File> fs = propertiesFiles();
-        for (String k : new String[]{"boot", "project", "cwd"})
-            try (FileInputStream is = new FileInputStream(fs.get(k))) {
-                p.load(is); }
-            catch (FileNotFoundException e) {}
-        return p; }
-
-    public static void
-    setDefaultProperty(Properties p, String k, String dfl) throws Exception {
-        if (p.getProperty(k) == null) p.setProperty(k, dfl); }
-
-    public static HashMap<String, String>
-    config() throws Exception {
-        HashMap<String, String> ret = new HashMap<>();
-
-        ret.putAll(properties2map(mergeProperties()));
-        ret.remove("BOOT_HOME");
-        ret.putAll(System.getenv());
-        ret.putAll(properties2map(System.getProperties()));
-
-        Iterator<String> i = ret.keySet().iterator();
-        while (i.hasNext()) {
-            String k = i.next();
-            if (! k.startsWith("BOOT_")) i.remove(); }
-
-        return ret; }
-
-    public static String
-    config(String k) throws Exception {
-        return config().get(k); }
-
-    public static String
-    config(String k, String dfl) throws Exception {
-        String v = config(k);
-        if (v != null) return v;
-        else { System.setProperty(k, dfl); return dfl; }}
-
-    private static String
-    jarVersion(File f) throws Exception {
-        String ret = null;
-        JarEntry e = null;
-        String pat = "META-INF/maven/boot/boot/pom.properties";
-        try (JarFile jar = new JarFile(f)) {
-            if ((e = jar.getJarEntry(pat)) != null) {
-                try (InputStream is = jar.getInputStream(e)) {
-                    Properties p = new Properties();
-                    p.load(is);
-                    ret = p.getProperty("version"); }}}
-        return ret; }
-
-    private static Properties
-    writeProps(File f) throws Exception {
-        mkParents(f);
-        ClojureRuntimeShim a = aetherShim();
-        Properties         p = new Properties();
-        String             c = cljversion;
-        String             n = cljname;
-        String             t = null;
-
-        try (FileInputStream is = new FileInputStream(f)) {
-            p.load(is); }
-        catch (FileNotFoundException e) {}
-
-        if (bootversion == null)
-            for (File x : resolveDepJars(a, "boot", channel, n, c))
-                if (null != (t = jarVersion(x))) bootversion = t;
-
-        p.setProperty("BOOT_VERSION", bootversion);
-        setDefaultProperty(p, "BOOT_CLOJURE_NAME",    n);
-        setDefaultProperty(p, "BOOT_CLOJURE_VERSION", c);
-
-        try (FileOutputStream os = new FileOutputStream(f)) {
-                p.store(os, booturl); }
-
-        return p; }
-
-    private static Properties
-    readProps(File f, boolean create) throws Exception {
-        mkParents(f);
-        FileLock lock = null;
-        Properties p  = new Properties();
-
-        if (!isWindows() && f.exists())
-            lock = (new RandomAccessFile(f, "rw")).getChannel().lock();
-
-        try (FileInputStream is = new FileInputStream(f)) {
-            p.load(is);
-            if (p.getProperty("BOOT_CLOJURE_VERSION") == null
-                || p.getProperty("BOOT_VERSION") == null)
-                throw new Exception("missing info");
-            return p; }
-        catch (Throwable e) {
-            if (! create) return null;
-            else return writeProps(f); }
-        finally { if (lock != null) lock.release(); }}
-
-    private static HashMap<String, File[]>
-    seedCache() throws Exception {
-        if (depsCache != null) return depsCache;
-        else {
-            ClojureRuntimeShim a = aetherShim();
-
-            HashMap<String, File[]> cache = new HashMap<>();
-
-            cache.put("boot/pod",    resolveDepJars(a, "boot/pod"));
-            cache.put("boot/core",   resolveDepJars(a, "boot/core"));
-            cache.put("boot/worker", resolveDepJars(a, "boot/worker"));
-
-            return depsCache = cache; }}
-
-    private static Object
-    validateCache(File f, Object cache) throws Exception {
-        for (File[] fs : ((HashMap<String, File[]>) cache).values())
-            for (File d : fs)
-                if (! d.exists() || f.lastModified() < d.lastModified())
-                    throw new Exception("dep jar doesn't exist");
-        return cache; }
-
-    private static Object
-    writeCache(File f, Object m) throws Exception {
-        mkParents(f);
-        try (FileOutputStream os = new FileOutputStream(f);
-                ObjectOutputStream oos = new ObjectOutputStream(os)) {
-            oos.writeObject(m); }
-        return m; }
-
-    private static Object
-    readCache(File f) throws Exception {
-        mkParents(f);
-        FileLock lock = null;
-        if (!isWindows())
-            lock = (new RandomAccessFile(f, "rw")).getChannel().lock();
-        try {
-            long max = 18 * 60 * 60 * 1000;
-            long age = System.currentTimeMillis() - f.lastModified();
-            if (age > max) throw new Exception("cache age exceeds TTL");
-            try (FileInputStream is = new FileInputStream(f);
-                    ObjectInputStream ois = new ObjectInputStream(is)) {
-                return validateCache(f, ois.readObject()); }}
-        catch (Throwable e) { return writeCache(f, seedCache()); }
-        finally { if (lock != null) lock.release(); }}
 
     public static ClojureRuntimeShim
     newShim(String name, Object data, File[] jarFiles) throws Exception {
@@ -334,19 +122,6 @@ public class App {
         pods.put(rt, new Object());
         return rt; }
 
-    public static ClojureRuntimeShim
-    newPod(String name, Object data) throws Exception {
-        return newShim(name, data, podjars); }
-
-    public static ClojureRuntimeShim
-    newPod(String name, Object data, File[] jarFiles) throws Exception {
-        File[] files = new File[jarFiles.length + podjars.length];
-
-        for (int i=0; i<podjars.length; i++) files[i] = podjars[i];
-        for (int i=0; i<jarFiles.length; i++) files[i + podjars.length] = jarFiles[i];
-
-        return newShim(name, data, files); }
-
     private static ClojureRuntimeShim
     aetherShim() throws Exception {
         if (aethershim == null) {
@@ -359,7 +134,7 @@ public class App {
         mkParents(outfile);
         int    n   = 0;
         byte[] buf = new byte[4096];
-        try (InputStream in = resource(resource);
+        try (InputStream in = tccl().getResourceAsStream(resource);
                 OutputStream out = new FileOutputStream(outfile)) {
             while ((n = in.read(buf)) > 0) out.write(buf, 0, n); }}
 
@@ -416,74 +191,8 @@ public class App {
             try { core.get().close(); }
             catch (InterruptedException ie) {}}}
 
-    public static String
-    readVersion() throws Exception {
-        Properties p = new Properties();
-        try (InputStream in = resource("boot/base/version.properties")) {
-            p.load(in); }
-        return p.getProperty("version"); }
-
-    public static void
-    printVersion() throws Exception {
-        Properties p = new Properties();
-        p.setProperty("BOOT_VERSION",         config("BOOT_VERSION"));
-        p.setProperty("BOOT_CLOJURE_NAME",    config("BOOT_CLOJURE_NAME"));
-        p.setProperty("BOOT_CLOJURE_VERSION", config("BOOT_CLOJURE_VERSION"));
-        p.store(System.out, booturl); }
-
-    public static void
-    updateBoot(File bootprops, String version, String chan) throws Exception {
-        update_always = true;
-        bootversion   = version;
-        channel       = chan;
-        Properties p  = writeProps(bootprops);
-        p.store(System.out, booturl); }
-
     public static void
     main(String[] args) throws Exception {
-
-        // BOOT_VERSION is decided by the loader; it will respect the
-        // boot.properties files, env vars, system properties, etc.
-        // or it will use the latest installed version.
-        //
-        // Since 2.4.0 we can assume that bootversion and appversion
-        // are the same (or boot.main will throw an exception).
-        bootversion = appversion = readVersion();
-
-        File cachehome   = mkFile(bootdir(), "cache");
-        File bootprops   = mkFile(bootdir(), "boot.properties");
-        File jardir      = mkFile(cachehome, "lib", appversion);
-        File bootcache   = mkFile(cachehome, "cache", "boot");
-
-        localrepo        = config("BOOT_LOCAL_REPO");
-        cljversion       = config("BOOT_CLOJURE_VERSION", "1.8.0");
-        cljname          = config("BOOT_CLOJURE_NAME", "org.clojure/clojure");
-        aetherfile       = mkFile(cachehome, "lib", appversion, aetherjar);
-
-        readProps(bootprops, true);
-
-        if (args.length > 0
-            && ((args[0]).equals("-u")
-                || (args[0]).equals("--update"))) {
-            updateBoot(bootprops, (args.length > 1) ? args[1] : null, "RELEASE");
-            System.exit(0); }
-
-        if (args.length > 0
-            && ((args[0]).equals("-U")
-                || (args[0]).equals("--update-snapshot"))) {
-            updateBoot(bootprops, null, "(0,)");
-            System.exit(0); }
-
-        String repo  = (localrepo == null)
-            ? "default"
-            : md5hash((new File(localrepo)).getCanonicalFile().getPath());
-
-        File cachefile = mkFile(bootcache, repo, cljversion, bootversion, "deps.cache");
-        HashMap<String, File[]> cache = (HashMap<String, File[]>) readCache(cachefile);
-
-        podjars    = cache.get("boot/pod");
-        corejars   = cache.get("boot/core");
-        workerjars = cache.get("boot/worker");
 
         Thread shutdown = new Thread() { public void run() { ex.shutdown(); }};
         Runtime.getRuntime().addShutdownHook(shutdown);
