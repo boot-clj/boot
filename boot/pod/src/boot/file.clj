@@ -1,17 +1,17 @@
 (ns boot.file
   (:require
-   [clojure.java.io  :as io]
-   [clojure.set      :as set]
-   [clojure.data     :as data]
-   [boot.from.digest :as digest]
-   [boot.host        :as host]
-   [clojure.string   :as str])
+    [clojure.java.io  :as io]
+    [clojure.set      :as set]
+    [clojure.data     :as data]
+    [boot.from.digest :as digest]
+    [boot.host        :as host]
+    [clojure.string   :as str])
   (:import
-   [java.net URI]
-   [java.io File]
-   [java.lang.management ManagementFactory]
-   [java.nio.file Files StandardCopyOption FileVisitOption]
-   [java.nio.file.attribute FileAttribute PosixFilePermissions])
+    [java.net URI]
+    [java.io File]
+    [java.lang.management ManagementFactory]
+    [java.nio.file Files StandardCopyOption FileVisitOption]
+    [java.nio.file.attribute FileAttribute PosixFilePermissions])
   (:refer-clojure :exclude [sync name file-seq]))
 
 (set! *warn-on-reflection* true)

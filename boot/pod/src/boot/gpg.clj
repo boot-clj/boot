@@ -3,8 +3,8 @@
    [clojure.java.io   :as io]
    [clojure.java.shell :as shell]
    [boot.pod          :as pod]
-   [boot.util         :as util])
-   [bootstrap.config  :as conf]
+   [boot.util         :as util]
+   [bootstrap.config  :as conf])
   (:import [java.io StringReader File]))
 
 (defn ^{:boot/from :technomancy/leiningen} gpg-program
@@ -76,7 +76,7 @@
           pomfile (doto (File/createTempFile "pom" ".xml")
                     (.deleteOnExit)
                     (spit (pod/pom-xml jarfile pompath)))
-          pomout  (io/file outdir (.replaceAll jarname "\\.jar$" ".pom.asc")) ]
+          pomout  (io/file outdir (.replaceAll jarname "\\.jar$" ".pom.asc"))]
       (spit pomout (sign-it pomfile gpg-options))
       [[:extension "pom.asc"] (.getPath pomout)])))
 
