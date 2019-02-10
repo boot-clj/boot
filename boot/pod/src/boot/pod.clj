@@ -910,7 +910,7 @@
   are needed to bootstrap the pod, have no transitive dependencies, and are
   added automatically."
   [classpath & {:keys [name data]}]
-  (doto (->> (assoc env :dependencies [['boot/pod (boot.App/getBootVersion)]])
+  (doto (->> (assoc env :dependencies [['boot/pod (:boot-version (conf/config))]])
              (resolve-dependency-jars)
              (into (map io/file classpath))
              (into-array java.io.File)

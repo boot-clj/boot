@@ -9,7 +9,8 @@
     [boot.core                   :as core]
     [boot.file                   :as file]
     [boot.util                   :as util]
-    [boot.from.clojure.tools.cli :as cli]))
+    [boot.from.clojure.tools.cli :as cli]
+    [bootstrap.config            :as conf]))
 
 (def cli-opts
   [["-a" "--asset-paths PATH"    "Add PATH to set of asset directories."
@@ -110,7 +111,7 @@
 (defn shebang? [arg]
   (when (and (<= 0 (.indexOf arg (int \/))) (.exists (io/file arg)))
     (let [bang-line (str (first (string/split (slurp arg) #"\n")))
-          full-path (System/getProperty "boot.app.path")
+          full-path (:boot-app-path (conf/config))
           base-path (.getName (io/file full-path))
           full-pat  (re-pattern (format "^#!\\s*\\Q%s\\E(?:\\s+.*)?$" full-path))
           base-pat  (re-pattern (format "^#!\\s*/usr/bin/env\\s+\\Q%s\\E(?:\\s+.*)?$" base-path))]
@@ -171,8 +172,8 @@
               *err*               (util/auto-flush *err*)
               core/*boot-opts*    opts
               core/*boot-script*  arg0
-              core/*boot-version* (boot.App/getBootVersion)
-              core/*app-version*  (boot.App/getVersion)]
+              core/*boot-version* (:boot-version (conf/config))
+              core/*app-version*  (:boot-version (conf/config))]
 
       (util/exit-ok
         (let [userscript  (util/with-let [x (-> (System/getProperty "user.home")
