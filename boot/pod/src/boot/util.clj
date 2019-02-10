@@ -42,10 +42,8 @@
   either '1' or 'yes' or 'true' to enable it; any other value disables
   colorization."
   []
-  (let [value (:boot-color (conf/config))]
-    (if-not (string/blank? value)
-      (#{"1" "yes" "true"} (string/lower-case value))
-      (not (host/windows?)))))
+  (if (#{"1" "yes" "true" true} (:boot-color (conf/config))) true
+      (not (host/windows?))))
 
 (def ^:dynamic *verbosity*
   "Atom containing the verbosity level, 1 is lowest, 3 highest. Level 2
