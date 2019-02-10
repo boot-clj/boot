@@ -7,9 +7,9 @@
     [boot.file                    :as file]
     [boot.from.io.aviso.ansi      :as ansi]
     [boot.from.io.aviso.exception :as pretty]
-    [boot.from.me.raynes.conch    :as conch])
+    [boot.from.me.raynes.conch    :as conch]
     [bootstrap.config             :as conf]
-    [boot.host                    :as host]
+    [boot.host                    :as host])
   (:import
     [java.io       File]
     [java.nio      ByteBuffer]
@@ -254,7 +254,7 @@
   is missing."
   [binding & body]
   (let [[ks m] [(butlast binding) (last binding)]
-        req-ks (set (map keyword ks)) ]
+        req-ks (set (map keyword ks))]
     `(if-let [dif-ks# (not-empty (set/difference ~req-ks (set (keys ~m))))]
        (throw (new AssertionError (apply format "missing key(s): %s" dif-ks#)))
        (let [{:keys ~ks} ~m] ~@body))))
