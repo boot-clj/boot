@@ -67,10 +67,6 @@ public class App {
     nextId() {
         return counter.addAndGet(1); }
 
-    public static boolean
-    isWindows() throws Exception {
-        return (System.getProperty("os.name").toLowerCase().indexOf("win") >= 0); }
-
     public static File
     mkFile(File parent, String... kids) throws Exception {
         File ret = parent;

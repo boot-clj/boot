@@ -20,7 +20,8 @@
    [boot.task-helpers    :as helpers]
    [boot.task-helpers.notify :as notify]
    [boot.pedantic        :as pedantic]
-   [bootstrap.config     :as conf])
+   [bootstrap.config     :as conf]
+   [boot.host            :as host])
   (:import
    [java.io File]
    [java.nio.file.attribute PosixFilePermissions]
@@ -332,7 +333,7 @@
 (defn- mk-posix-file-permissions [posix-string]
   (try
     (when posix-string
-      (if (boot.App/isWindows)
+      (if (host/windows?)
         (util/warn "Filemode not supported on Windows\n")
         (PosixFilePermissions/fromString posix-string)))
     (catch IllegalArgumentException _

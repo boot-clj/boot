@@ -4,6 +4,7 @@
    [clojure.set      :as set]
    [clojure.data     :as data]
    [boot.from.digest :as digest]
+   [boot.host        :as host]
    [clojure.string   :as str])
   (:import
    [java.net URI]
@@ -21,11 +22,9 @@
 (def ^:dynamic *sync-delete* true)
 (def ^:dynamic *hard-link*   true)
 
-(def windows? (boot.App/isWindows))
-
 (def tmpfile-permissions
   (into-array FileAttribute
-              (if windows?
+              (if host/windows?
                 []
                 [(PosixFilePermissions/asFileAttribute
                   (PosixFilePermissions/fromString "rw-------"))])))
@@ -251,7 +250,7 @@
 
 (defn match-filter?
   [filters f]
-  (let [normalize #(if-not windows? % (str/replace % #"\\" "/"))]
+  (let [normalize #(if-not host/windows? % (str/replace % #"\\" "/"))]
     ((apply some-fn (map (partial partial re-find) filters)) (normalize (.getPath ^File f)))))
 
 (defn keep-filters?

@@ -2,5 +2,7 @@
   (:require [clojure.string :as str]
             [bootstrap.config :as conf]))
 
-(defn isWindows []
-  (str/starts-with? (:os-name (conf/config)) "Windows"))
+(defn windows? []
+  (-> (:os-name (conf/config))
+    (str/lower-case)
+    (str/starts-with? "win")))

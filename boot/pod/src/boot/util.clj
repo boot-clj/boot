@@ -9,6 +9,7 @@
     [boot.from.io.aviso.exception :as pretty]
     [boot.from.me.raynes.conch    :as conch])
     [bootstrap.config             :as conf]
+    [boot.host                    :as host]
   (:import
     [java.io       File]
     [java.nio      ByteBuffer]
@@ -44,7 +45,7 @@
   (let [value (:boot-color (conf/config))]
     (if-not (string/blank? value)
       (#{"1" "yes" "true"} (string/lower-case value))
-      (not (boot.App/isWindows)))))
+      (not (host/windows?)))))
 
 (def ^:dynamic *verbosity*
   "Atom containing the verbosity level, 1 is lowest, 3 highest. Level 2
