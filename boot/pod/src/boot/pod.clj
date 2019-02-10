@@ -9,8 +9,8 @@
     [boot.from.io.aviso.exception :as ex]
     [clojure.java.io              :as io]
     [dynapath.util                :as dp]
-    [dynapath.dynamic-classpath   :as cp])
-    [bootstrap.config             :as conf]
+    [dynapath.dynamic-classpath   :as cp]
+    [bootstrap.config             :as conf])
   (:import
     [java.util.jar        JarFile]
     [java.lang.ref        WeakReference]
