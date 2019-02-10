@@ -8,6 +8,7 @@
     [boot.from.io.aviso.ansi      :as ansi]
     [boot.from.io.aviso.exception :as pretty]
     [boot.from.me.raynes.conch    :as conch])
+    [bootstrap.config             :as conf]
   (:import
     [java.io       File]
     [java.nio      ByteBuffer]
@@ -25,7 +26,7 @@
   configuration option BOOT_WATCHERS_DISABLE to either '1' or 'yes' or
   'true' to disable inotify; any other value keeps normal behavior."
   []
-  (let [value (boot.App/config "BOOT_WATCHERS_DISABLE")]
+  (let [value (:boot-watchers-disable (conf/config))]
     (if (string/blank? value)
       true
       (not (#{"1" "yes" "true"}
@@ -40,7 +41,7 @@
   either '1' or 'yes' or 'true' to enable it; any other value disables
   colorization."
   []
-  (let [value (boot.App/config "BOOT_COLOR")]
+  (let [value (:boot-color (conf/config))]
     (if-not (string/blank? value)
       (#{"1" "yes" "true"} (string/lower-case value))
       (not (boot.App/isWindows)))))
@@ -48,7 +49,7 @@
 (def ^:dynamic *verbosity*
   "Atom containing the verbosity level, 1 is lowest, 3 highest. Level 2
   corresponds to the -v boot option, level 3 to -vv, etc.
-  
+
   Levels:
 
     1.  Print INFO level messages or higher, colorize and prune stack traces
@@ -167,13 +168,13 @@
   Note that boot.util/*verbosity* in a pod needs to be altered AFTER pod
   creation or log level won't be affected."
   [& args]
-  (when-not (= "no" (boot.App/config "BOOT_WARN_DEPRECATED"))
+  (when-not (= "no" (:boot-warn-deprecated (conf/config)))
     (apply warn args)))
 
 (defmacro extends-protocol
   "Like extend-protocol but allows specifying multiple classes for each of the
   implementations:
-  
+
       (extends-protocol IFoo
         clojure.lang.MapEntry         ; <-- this is the difference, multiple
         clojure.lang.PersistentVector ; <-- classes per implementation
@@ -232,7 +233,7 @@
 
 (defmacro dotoseq
   "A cross between doto and doseq. For example:
-  
+
       (-> (System/-err)
           (dotoseq [i (range 0 100)]
             (.printf \"i = %d\\n\" i))
@@ -339,9 +340,9 @@
 
   A tree consists of a graph of nodes of the format [<name> <nodes>], where
   <name> is a string and <nodes> is a set of nodes (the children of this node).
-  
+
   Example:
-  
+
       (util/print-tree [[\"foo\" #{[\"bar\" #{[\"baz\"]}]}]] [\"--\" \"XX\"])
 
   prints:

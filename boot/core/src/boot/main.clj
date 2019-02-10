@@ -121,10 +121,6 @@
     (->> (string/split (slurp f) #"\n") (remove string/blank?) (map re-pattern) set)))
 
 (defn -main [pod-id worker-pod shutdown-hooks [arg0 & args :as args*]]
-  (when (not= (boot.App/getVersion) (boot.App/getBootVersion))
-    (let [url "https://github.com/boot-clj/boot#install"]
-      (util/exit-error
-        (println (format "Please download latest Boot binary: %s" url)))))
 
   (pod/set-pod-id! pod-id)
   (pod/set-worker-pod! worker-pod)

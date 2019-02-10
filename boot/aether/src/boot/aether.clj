@@ -8,7 +8,8 @@
     [boot.pod                    :as pod]
     [boot.gpg                    :as gpg]
     [boot.from.io.aviso.ansi     :as ansi]
-    [boot.kahnsort               :as ksort])
+    [boot.kahnsort               :as ksort]
+    [bootstrap.config            :as conf])
   (:import
     [boot App]
     [java.io File]
@@ -20,12 +21,10 @@
 (def offline?             (atom false))
 (def update?              (atom :daily))
 (def local-repo           (atom nil))
-(def default-repositories (delay (let [c (boot.App/config "BOOT_CLOJARS_REPO")
-                                       m (boot.App/config "BOOT_MAVEN_CENTRAL_REPO")]
+(def default-repositories (delay (let [{c :boot-clojars-repo m :boot-maven-central-repo} (conf/config)]
                                    [["clojars"       {:url (or c "https://repo.clojars.org/")}]
                                     ["maven-central" {:url (or m "https://repo1.maven.org/maven2/")}]])))
-(def default-mirrors      (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
-                                       m (boot.App/config "BOOT_MAVEN_CENTRAL_MIRROR")
+(def default-mirrors      (delay (let [{c :boot-clojars-mirror m :boot-maven-central-mirror} (conf/config)
                                        f #(when %1 {%2 {:name (str %2 " mirror") :url %1}})]
                                    (merge {} (f c "clojars") (f m "maven-central")))))
 
@@ -391,7 +390,7 @@
           context (make-context (into (default-certs) certs))]
       (override-wagon-registry! (https-registry context)))))
 
-(when-let [certs (boot.App/config "BOOT_CERTIFICATES")]
+(when-let [certs (:boot-certificates (conf/config))]
   (let [certs (string/split certs #":")]
     (util/dbug "Using SSL certificates: %s\n" certs)
     (load-certificates! certs)))

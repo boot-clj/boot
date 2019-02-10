@@ -10,6 +10,7 @@
     [clojure.java.io              :as io]
     [dynapath.util                :as dp]
     [dynapath.dynamic-classpath   :as cp])
+    [bootstrap.config             :as conf]
   (:import
     [java.util.jar        JarFile]
     [java.lang.ref        WeakReference]
@@ -70,7 +71,7 @@
              dynapath.dynamic-classpath/DynamicClasspath
              boot.pod/sealed-classloader-fns))
     (catch Exception _))
-  
+
   (try
     ;; this import will fail if the user is using Java 9
     (import sun.misc.Launcher$AppClassLoader)
@@ -336,7 +337,7 @@
   that boot may be running inside another instance of boot, so shutdown hooks
   must be handled carefully as the JVM will not necessarily exit when this boot
   instance is finished.
-  
+
   Functions added via add-shutdown-hook! will be processed at the correct time
   (i.e. when boot is finished in the case of nested instances of boot, or when
   the JVM exits otherwise)."
@@ -400,7 +401,7 @@
 
   The expr is expected to be of the form (f & args). It is evaluated in the
   pod by resolving f and applying it to args.
-  
+
   Note: Since forms must be serialized to pass from one pod to another it is
   not always appropriate to include metadata, as metadata may contain eg. File
   objects which are not printable/readable by Clojure."
@@ -590,7 +591,7 @@
   will be excluded from the result (the clojure dependency is identified by the
   BOOT_CLOJURE_NAME environment setting, which defaults to org.clojure.clojure)."
   [env & [ignore-clj?]]
-  (let [clj-dep (symbol (boot.App/config "BOOT_CLOJURE_NAME"))
+  (let [clj-dep (symbol (:boot-clojure-name (conf/config)))
         rm-clj  (if-not ignore-clj?
                   identity
                   (partial remove #(and (= clj-dep (first (:dep %)))
@@ -762,7 +763,7 @@
 (defn jars-in-dep-order
   "Returns a seq of all jar file dependencies specified in the boot environment
   map env, including transitive dependencies, and in dependency order.
- 
+
   Dependency order means, eg. if jar B depends on jar A then jar A will appear
   before jar B in the returned list."
   [env]
@@ -887,8 +888,8 @@
   ([] (init-pod! env (boot.App/newPod nil data)))
   ([{:keys [directories dependencies] :as env} & {:keys [name data]}]
      (let [dirs (map io/file directories)
-           cljname (or (boot.App/getClojureName) "org.clojure/clojure")
-           dfl  [['boot/pod (boot.App/getBootVersion)]
+          {cljname :boot-clojure-name ver :boot-version} (conf/config)
+           dfl  [['boot/pod ver]
                  [(symbol cljname) (clojure-version)]]
            env  (default-dependencies dfl env)
            jars (resolve-dependency-jars env)
@@ -938,7 +939,7 @@
 
   Calling the function with no arguments produces a reference to the current
   pod. Expressions can be evaluated in this pod via with-eval-in, etc.
-  
+
   Calling the function with the :refresh argument swaps out the current pod,
   destroys it, and promotes a pod from the reserve pool. A new pod is created
   asynchronously to replenish the reserve pool.

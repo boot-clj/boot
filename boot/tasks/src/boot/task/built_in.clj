@@ -19,7 +19,8 @@
    [boot.from.digest     :as digest]
    [boot.task-helpers    :as helpers]
    [boot.task-helpers.notify :as notify]
-   [boot.pedantic        :as pedantic])
+   [boot.pedantic        :as pedantic]
+   [bootstrap.config     :as conf])
   (:import
    [java.io File]
    [java.nio.file.attribute PosixFilePermissions]
@@ -241,7 +242,7 @@
                                 (pod/with-eval-in p boot.pod/env))]
                   (when pods (util/info "\nPod: %s\n\n" pod-name))
                   (cond (or deps verify-deps) (print (pod/with-call-worker (boot.aether/dep-tree ~pod-env ~verify-deps)))
-                        env                   (println (pretty-str (assoc pod-env :config (boot.App/config))))
+                        env                   (println (pretty-str (assoc pod-env :config (conf/config))))
                         updates               (mapv prn (pod/outdated pod-env :snapshots update-snapshots))
                         pedantic              (pedantic/prn-conflicts pod-env)
                         :else                 @usage))))))))

@@ -4,12 +4,13 @@
    [clojure.java.shell :as shell]
    [boot.pod          :as pod]
    [boot.util         :as util])
+   [bootstrap.config  :as conf]
   (:import [java.io StringReader File]))
 
 (defn ^{:boot/from :technomancy/leiningen} gpg-program
   "Lookup the gpg program to use, defaulting to 'gpg'"
   []
-  (or (boot.App/config "BOOT_GPG_COMMAND") "gpg"))
+  (or (:boot-gpg-command (conf/config)) "gpg"))
 
 (defn- ^{:boot/from :technomancy/leiningen} get-english-env []
   "Returns environment variables as a map with clojure keywords and LANGUAGE set to 'en'"

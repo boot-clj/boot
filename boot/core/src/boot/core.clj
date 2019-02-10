@@ -17,7 +17,8 @@
     [boot.util                    :as util]
     [boot.from.io.aviso.exception :as ex]
     [boot.from.clojure.tools.cli  :as cli]
-    [boot.from.backtick           :as bt])
+    [boot.from.backtick           :as bt]
+    [bootstrap.config             :as conf])
   (:import
     [boot App]
     [java.io File]
@@ -60,8 +61,7 @@
 (def ^:private checkout-dirs     (atom #{}))
 (def ^:private default-repos     [["clojars"       {:url "https://repo.clojars.org/"}]
                                   ["maven-central" {:url "https://repo1.maven.org/maven2"}]])
-(def ^:private default-mirrors   (delay (let [c (boot.App/config "BOOT_CLOJARS_MIRROR")
-                                              m (boot.App/config "BOOT_MAVEN_CENTRAL_MIRROR")
+(def ^:private default-mirrors   (delay (let [{c :boot-clojars-mirror m :boot-maven-central-mirror} (conf/config)
                                               f #(when %1 {%2 {:name (str %2 " mirror") :url %1}})]
                                           (merge {} (f c "clojars") (f m "maven-central")))))
 
@@ -230,7 +230,7 @@
   "compute a seq of [name new-coord old-coord] elements describing version conflicts
   when resolving the 'old' dependency vector and the 'new' dependency vector"
   [old new env]
-  (let [clj-name (symbol (boot.App/getClojureName))
+  (let [clj-name (symbol (:boot-clojure-name (conf/config)))
         old-deps (-> (map-of-deps env old)
                      (assoc clj-name (clojure-version)))]
     (->> (map-of-deps env new) (keep (fn [[name coord]]
@@ -241,7 +241,7 @@
   "Warn, when the version of a dependency changes. Call this with the
   result of find-version-conflicts as arguments"
   [coll]
-  (let [clj-name (symbol (boot.App/getClojureName))]
+  (let [clj-name (symbol (:boot-clojure-name (conf/config)))]
     (doseq [[name new-coord old-coord] coll]
       (let [op (if (= name clj-name) "NOT" "ALSO")]
         (-> "Classpath conflict: %s version %s already loaded, %s loading version %s\n"
