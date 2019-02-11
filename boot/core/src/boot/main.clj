@@ -201,8 +201,6 @@
 
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
 
-          (when (:version opts) (util/exit-ok (boot.App/printVersion)))
-
           (reset! core/bootignore (parse-bootignore (io/file ".bootignore")))
 
           (#'core/init!)
