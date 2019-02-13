@@ -83,14 +83,6 @@ public class App {
     tccl() throws Exception {
         return Thread.currentThread().getContextClassLoader(); }
 
-    public static File
-    bootdir() throws Exception {
-        File   h = new File(System.getProperty("user.home"));
-        String a = System.getProperty("BOOT_HOME");
-        String b = System.getenv("BOOT_HOME");
-        String c = new File(h, ".boot").getCanonicalPath();
-        return new File((a != null) ? a : ((b != null) ? b : c)); }
-
     public static ClojureRuntimeShim
     newShim(String name, Object data, File[] jarFiles) throws Exception {
         URL[] urls = new URL[jarFiles.length];

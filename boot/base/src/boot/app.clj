@@ -35,24 +35,28 @@
 
 (def ^:private pid (atom 0))
 
+(defn Exit [code msg]
+  (ex-info msg {:error-code code}))
+
 (defn- run-boot [corepod workerpod args]
-  (try
-    (let [repo   (:boot-local-repo (conf/config) "default")
-          core   (.get @corepod)
-          worker (set-pod-repo! @workerpod repo)
-          pid    (and (swap! pid inc) @pid)
-          hooks  (atom [])]
-      (doto core
-        (.require "boot.main")
-        (.invoke "boot.main/-main" pid worker hooks args))
-      -1)
-    (catch Throwable t
-      (println "Boot failed to start:"
-        (if (instance? t Throwable/Exit) (.parseInt (.getMessage t))
-          (and (.printStackTrace t) -2))))
-    (finally
-      (doseq [hook hooks] @hook)
-      (.close core))))
+  (let [hooks (atom [])
+        core  (.get @corepod)]
+    (try
+      (let [repo   (:boot-local-repo (conf/config) "default")
+            worker (set-pod-repo! @workerpod repo)
+            pid    (and (swap! pid inc) @pid)]
+        (.require core "boot.main")
+        (.invoke core "boot.main/-main" pid worker hooks args)
+        -1)
+      (catch Throwable t
+        (println "Boot failed to start:")
+        (if-let [exdata (ex-data t)]
+           (:error-code exdata)
+           (and (.printStackTrace t) -2)))
+      (finally
+        (doseq [hook hooks] @hook)
+        (try (.close core)
+          (catch InterruptedException ie -3))))))
 
 (defn -main [& args]
   (let [exec      (Executors/newCachedThreadPool)

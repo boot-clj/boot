@@ -7,7 +7,7 @@
 (defproject boot/base version
   :aot               [#"^(?!boot\.repl-server).*$"]
   :jar-exclusions    [#"^clojure/core/"]
-  :java-source-paths ["src/main/java"]
+  ;:java-source-paths ["src/main/java"]
   :description       "Boot base module–this is the classloader shim."
   :url               "https://github.com/boot-clj/boot"
   :scm               {:url "https://github.com/boot-clj/boot.git" :dir "../../"}
