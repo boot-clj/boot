@@ -1,12 +1,12 @@
 (set-env!
  :source-paths #{"src" "test"}
- :dependencies '[[org.clojure/tools.reader "1.0.0-alpha2"]
-                 [metosin/boot-alt-test "0.3.2" :scope "test"]])
+ :dependencies '[[org.clojure/tools.reader "1.3.2" :exclusions [org.clojure/clojure]]
+                 [metosin/bat-test "0.4.2" :scope "test"]])
 
 (ns-unmap 'boot.user 'test)
 
 (require '[boot.test :refer [runtests test-report test-exit]]
-         '[metosin.boot-alt-test :refer [alt-test]]
+         '[metosin.bat-test :refer [bat-test]]
          'boot.task.built-in-test
          'boot.test-test)
 
@@ -19,7 +19,7 @@
    (test-exit)))
 
 (deftask unit-test []
-  (alt-test :test-matcher #"boot\.cli-test"))
+  (bat-test :test-matcher #"boot\.cli-test"))
 
 (deftask test []
   (comp
