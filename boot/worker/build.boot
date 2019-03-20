@@ -1,7 +1,7 @@
 (set-env!
  :source-paths #{"src" "test"}
  :dependencies '[[net.cgrand/parsley          "0.9.3" :exclusions [org.clojure/clojure]]
-                 [mvxcvi/puget                "1.1.0"]
+                 [mvxcvi/puget                "1.1.1"]
                  [reply                       "0.4.3"]
                  [cheshire                    "5.8.1"]
                  [clj-jgit                    "0.8.10"]
