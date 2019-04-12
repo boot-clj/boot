@@ -81,9 +81,6 @@ $(baseuber): boot/base/pom.xml $(shell find boot/base/src/main)
 install: .installed
 
 .deployed: .installed
-	@echo -e "\033[0;33m<< Java version: $(java_version) >>\033[0m"
-	@[ "$(java_version)" == "1.8" ] \
-		|| (echo -e "\033[0;31mYou must build with Java version 1.8 only.\033[0m" && false)
 	(cd boot/base   && lein deploy clojars boot/base $(version) target/base-$(version).jar pom.xml)
 	(cd boot/pod    && lein deploy clojars)
 	(cd boot/aether && lein deploy clojars)
