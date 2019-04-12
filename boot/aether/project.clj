@@ -13,9 +13,10 @@
   :repositories [["clojars" {:url "https://clojars.org/repo" :creds :gpg :sign-releases false}]]
   :license      {:name "Eclipse Public License"
                  :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :plugins      [[lein-ancient "0.6.15"]]
   :dependencies [[org.clojure/clojure               "1.6.0"  :scope "compile"]
                  [boot/base                         ~version :scope "provided"]
                  [boot/pod                          ~version :scope "compile"]
-                 [com.cemerick/pomegranate          "1.0.0"  :scope "compile"]
-                 [org.apache.maven.wagon/wagon-http "2.12"   :scope "compile"
+                 [com.cemerick/pomegranate          "1.1.0"  :scope "compile"]
+                 [org.apache.maven.wagon/wagon-http "3.3.2"  :scope "compile"
                   :exclusions [org.apache.maven.wagon/wagon-provider-api]]])

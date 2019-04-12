@@ -15,7 +15,8 @@
                    ["sonatype-snaps" {:url "https://oss.sonatype.org/content/repositories/snapshots"}]]
   :license        {:name "Eclipse Public License"
                    :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies   [[boot/base                               ~version :scope "provided"]
-                   [org.clojure/clojure                     "1.6.0"  :scope "provided"]
-                   [org.tcrawley/dynapath                   "1.0.0"  :scope "compile"]
-                   [org.projectodd.shimdandy/shimdandy-impl "1.2.0"  :scope "compile"]])
+  :plugins      [[lein-ancient "0.6.15"]]
+  :dependencies [[boot/base                               ~version :scope "provided"]
+                 [org.clojure/clojure                     "1.6.0"  :scope "provided"]
+                 [org.tcrawley/dynapath                   "1.0.0"  :scope "compile"]
+                 [org.projectodd.shimdandy/shimdandy-impl "1.2.1"  :scope "compile"]])
