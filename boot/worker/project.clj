@@ -5,7 +5,6 @@
                (.getProperty "version")))
 
 (defproject boot/worker version
-  :aot :all
   :jar-exclusions [#"^clojure/core/"]
   :description  "Boot worker module–this is the worker pod for built-in tasks."
   :url          "https://github.com/boot-clj/boot"

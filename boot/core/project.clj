@@ -5,7 +5,6 @@
                (.getProperty "version")))
 
 (defproject boot/core version
-  :aot            :all
   :jar-exclusions [#"^clojure/core/"]
   :description    "Core boot module–boot scripts run in this pod."
   :url            "https://github.com/boot-clj/boot"
