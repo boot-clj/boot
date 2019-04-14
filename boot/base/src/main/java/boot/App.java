@@ -94,7 +94,7 @@ public class App {
 
         rt.setName(name != null ? name : "anonymous");
 
-        File[] hooks = {new File(bootdir(), "boot-shim.clj"), new File("boot-shim.clj")};
+        File[] hooks = {};
 
         for (File hook : hooks)
           if (hook.exists())
