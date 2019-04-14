@@ -8,6 +8,7 @@
   :aot               [#"^(?!boot\.repl-server).*$"]
   :jar-exclusions    [#"^clojure/core/"]
   :java-source-paths ["src/main/java"]
+  :resource-paths    ["src/main/resources"]
   :description       "Boot base module–this is the classloader shim."
   :url               "https://github.com/boot-clj/boot"
   :scm               {:url "https://github.com/boot-clj/boot.git" :dir "../../"}
