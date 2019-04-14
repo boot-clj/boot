@@ -120,6 +120,19 @@ public class App {
         pods.put(rt, new Object());
         return rt; }
 
+    public static ClojureRuntimeShim
+    newPod(String name, Object data) throws Exception {
+        return newShim(name, data, podjars); }
+
+    public static ClojureRuntimeShim
+    newPod(String name, Object data, File[] jarFiles) throws Exception {
+        File[] files = new File[jarFiles.length + podjars.length];
+
+        for (int i=0; i<podjars.length; i++) files[i] = podjars[i];
+        for (int i=0; i<jarFiles.length; i++) files[i + podjars.length] = jarFiles[i];
+
+        return newShim(name, data, files); }
+
     private static ClojureRuntimeShim
     aetherShim() throws Exception {
         if (aethershim == null) {
