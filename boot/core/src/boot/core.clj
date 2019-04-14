@@ -20,7 +20,7 @@
     [boot.from.backtick           :as bt]
     [bootstrap.config             :as conf])
   (:import
-    [boot App]
+    ;[boot App]
     [java.io File]
     [java.nio.file Path Paths]
     [java.net URLClassLoader URL]
@@ -46,7 +46,7 @@
                                       .getCanonicalFile
                                       file/split-path
                                       rest
-                                      (apply io/file (App/getBootDir) "cache" "tmp")
+                                      (apply io/file (conf/boot-dir) "cache" "tmp")
                                       tmp/registry
                                       tmp/init!
                                       delay))
@@ -368,7 +368,7 @@
        .getCanonicalFile
        file/split-path
        (when-not global)
-       (into [(App/getBootDir) "cache" "cache" (if global "global" "project")])
+       (into [(conf/boot-dir) "cache" "cache" (if global "global" "project")])
        (#(into % ((juxt namespace name) key)))
        (apply io/file)
        (#(doto % .mkdirs))))
