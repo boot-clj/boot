@@ -48,7 +48,7 @@
 (def ^:dynamic *verbosity*
   "Atom containing the verbosity level, 1 is lowest, 3 highest. Level 2
   corresponds to the -v boot option, level 3 to -vv, etc.
-  
+
   Levels:
 
     1.  Print INFO level messages or higher, colorize and prune stack traces
@@ -173,7 +173,7 @@
 (defmacro extends-protocol
   "Like extend-protocol but allows specifying multiple classes for each of the
   implementations:
-  
+
       (extends-protocol IFoo
         clojure.lang.MapEntry         ; <-- this is the difference, multiple
         clojure.lang.PersistentVector ; <-- classes per implementation
@@ -232,7 +232,7 @@
 
 (defmacro dotoseq
   "A cross between doto and doseq. For example:
-  
+
       (-> (System/-err)
           (dotoseq [i (range 0 100)]
             (.printf \"i = %d\\n\" i))
@@ -252,7 +252,7 @@
   is missing."
   [binding & body]
   (let [[ks m] [(butlast binding) (last binding)]
-        req-ks (set (map keyword ks)) ]
+        req-ks (set (map keyword ks))]
     `(if-let [dif-ks# (not-empty (set/difference ~req-ks (set (keys ~m))))]
        (throw (new AssertionError (apply format "missing key(s): %s" dif-ks#)))
        (let [{:keys ~ks} ~m] ~@body))))
@@ -339,9 +339,9 @@
 
   A tree consists of a graph of nodes of the format [<name> <nodes>], where
   <name> is a string and <nodes> is a set of nodes (the children of this node).
-  
+
   Example:
-  
+
       (util/print-tree [[\"foo\" #{[\"bar\" #{[\"baz\"]}]}]] [\"--\" \"XX\"])
 
   prints:
