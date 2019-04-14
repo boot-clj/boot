@@ -53,10 +53,20 @@ public class App {
     public  static       String             getBootVersion()    { return bootversion; }
     public  static       String             getClojureName()    { return cljname; }
 
+    private static final ConcurrentHashMap<String, Object>       stash = new ConcurrentHashMap<>();
     private static final WeakHashMap<ClojureRuntimeShim, Object> pods  = new WeakHashMap<>();
 
     public static WeakHashMap<ClojureRuntimeShim, Object>
     getPods() { return pods; }
+
+    public static Object
+    getStash(String key) throws Exception { return stash.remove(key); }
+
+    public static String
+    setStash(Object value) throws Exception {
+        String key = UUID.randomUUID().toString();
+        stash.put(key, value);
+        return key; }
 
     public static class
     Exit extends Exception {
