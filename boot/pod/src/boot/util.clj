@@ -277,12 +277,11 @@
   * This is the preferred method for returning an exit code != 0, this
   method returns 1.
   * This macro does not call System.exit(), because this instance of boot
-  may be nested in another boot instance. Instead a special method on boot.App
-  is called which handles the exit behavior (calling shutdown hooks etc.)."
+  may be nested in another boot instance."
   [& body]
   `(binding [*out* *err*]
      ~@body
-     (throw (boot.app/Exit "Boot Error." (str 1)))))
+     (throw (Exception. "Boot Error." (str 1)))))
 
 (defmacro exit-ok
   "Evaluates the body, and exits with non-zero status.
@@ -291,16 +290,11 @@
   * Boot's main explicitly wraps user tasks in exit-ok so that in general
   it is not necessary to call it for exiting with 0.
   * This macro does not call System.exit(), because this instance of boot
-  may be nested in another boot instance. Instead a special method on boot.App
-  is called which handles the exit behavior (calling shutdown hooks etc.)."
+  may be nested in another boot instance."
   [& body]
   `(try
      ~@body
-     (throw (boot.app/Exit "Boot OK." (str 0)))))
-     ;(catch Throwable e#
-       ;(if (instance? boot.App$Exit e#)
-    ;     (throw e#))))
-      ;   (exit-error (print-ex e#)))))
+     (throw (Exception. "Boot OK." (str 0)))))
 
 (defmacro with-err-str
   "Evaluates exprs in a context in which *err* is bound to a fresh StringWriter.

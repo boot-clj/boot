@@ -6,8 +6,9 @@
    [boot.util      :as util]
    [boot.from.io.aviso.exception :as ex])
   (:import
-   [java.util HashMap Collections]
-   [java.util.concurrent CountDownLatch TimeUnit]))
+    [boot App]
+    [java.util HashMap Collections]
+    [java.util.concurrent CountDownLatch TimeUnit]))
 
 ;; AR we might need also to modify the map when a task/batch/computation
 ;; finishes. However, I might overengineer a bit and therefore I am leaving
@@ -61,14 +62,14 @@ The first item of the vector is timeout, the second unit"}
   Clojure objects won't work)."
   [a args ARG        [str] "The boot cli arguments."
    d data OBJECT ^:! code  "The data to pass the (new) boot environment"]
-  (let [core   (boot.App/newCore data)
+  (let [core   (App/newCore data)
         worker (future pod/worker-pod)
         args   (-> (vec (remove empty? args))
                    (->> (into-array String)))]
     (util/dbug "Runboot will run %s \n" (str "\"boot " (string/join " " args) "\""))
     (core/with-pass-thru [fs]
       (future (try (.await (get pod/data "start-latch"))
-                   (boot.App/runBoot core worker (into-array String (into ["-x"] args)))
+                   (App/runBoot core worker (into-array String (into ["-x"] args)))
                    (catch InterruptedException e
                      (util/print-ex e))
                    (catch Throwable e
