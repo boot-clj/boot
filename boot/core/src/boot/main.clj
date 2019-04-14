@@ -1,6 +1,6 @@
 (ns boot.main
-  (:import
-    [boot App])
+  ;(:import
+  ;  [boot App]
   (:require
     [clojure.java.io             :as io]
     [clojure.string              :as string]
@@ -130,7 +130,7 @@
   (let [[arg0 args args*] (if (seq args*)
                             [arg0 args args*]
                             ["--help" nil ["--help"]])
-        bootscript        (App/config "BOOT_FILE" "build.boot")
+        bootscript        (:boot-file (conf/config) "build.boot")
         exists?           #(when (.isFile (io/file %)) %)
         have-bootscript?  (exists? bootscript)
         [arg0 args]       (cond
@@ -183,7 +183,7 @@
                               (util/warn "** WARNING: ~/.profile.boot is deprecated.\n")
                               (util/warn "** Please use $BOOT_HOME/profile.boot instead.\n")
                               (util/warn "** See: https://github.com/boot-clj/boot/issues/157\n")))
-              userscript  (or userscript (exists? (io/file (App/getBootDir) "profile.boot")))
+              userscript  (or userscript (exists? (io/file (conf/boot-dir) "profile.boot")))
               localscript (exists? (io/file "profile.boot"))
               profile?    (not (:no-profile opts))
               bootstr     (some->> arg0 slurp)
