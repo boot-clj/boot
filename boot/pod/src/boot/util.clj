@@ -282,7 +282,7 @@
   [& body]
   `(binding [*out* *err*]
      ~@body
-     (throw (boot.App$Exit. (str 1)))))
+     (throw (boot.app/Exit "Boot Error." (str 1)))))
 
 (defmacro exit-ok
   "Evaluates the body, and exits with non-zero status.
@@ -296,11 +296,11 @@
   [& body]
   `(try
      ~@body
-     (throw (boot.App$Exit. (str 0)))
-     (catch Throwable e#
-       (if (instance? boot.App$Exit e#)
-         (throw e#)
-         (exit-error (print-ex e#))))))
+     (throw (boot.app/Exit "Boot OK." (str 0)))))
+     ;(catch Throwable e#
+       ;(if (instance? boot.App$Exit e#)
+    ;     (throw e#))))
+      ;   (exit-error (print-ex e#)))))
 
 (defmacro with-err-str
   "Evaluates exprs in a context in which *err* is bound to a fresh StringWriter.
