@@ -19,10 +19,9 @@
 
 (require '[metosin.boot-alt-test :refer [alt-test]])
 
-(import boot.App)
 
-(deftask test []
-  (comp
-   (with-pass-thru [fs]
-     (boot.util/info "Testing against version %s\n" (App/config "BOOT_VERSION")))
-   (alt-test)))
+;(deftask test []
+;  (comp
+;   (with-pass-thru [fs]
+;     (boot.util/info "Testing against version %s\n" (App/config "BOOT_VERSION"))
+;   (alt-test))

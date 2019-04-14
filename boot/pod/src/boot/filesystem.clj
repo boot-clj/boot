@@ -7,7 +7,8 @@
     [boot.filesystem.patch  :as fsp]
     [boot.file              :as file]
     [boot.from.digest       :as digest :refer [md5]]
-    [boot.util              :as util   :refer [with-let]])
+    [boot.util              :as util   :refer [with-let]]
+    [boot.host              :as host])
   (:import
     [java.net URI]
     [java.io File]
@@ -37,8 +38,6 @@
 
 (def read-only
   (PosixFilePermissions/fromString "r--r--r--"))
-
-(def windows? (boot.App/isWindows))
 
 (defprotocol IToPath
   (->path [x] "Returns a java.nio.file.Path for x."))
@@ -162,7 +161,7 @@
     (util/dbug* "Filesystem: copying %s...\n" (string/join "/" path))
     (try (Files/copy ^Path src ^Path dst copy-opts)
          (Files/setLastModifiedTime dst (FileTime/fromMillis time))
-         (when (and mode (not windows?)) (Files/setPosixFilePermissions dst mode))
+         (when (and mode (not host/windows?)) (Files/setPosixFilePermissions dst mode))
          (catch java.nio.file.NoSuchFileException ex
            (util/dbug* "Filesystem: %s\n", (str ex))))))
 
@@ -172,7 +171,7 @@
     (util/dbug* "Filesystem: linking %s...\n" (string/join "/" path))
     (try (Files/deleteIfExists dst)
          (Files/createLink (doto dst mkparents!) src)
-         (when (and mode (not windows?)) (Files/setPosixFilePermissions dst mode))
+         (when (and mode (not host/windows?)) (Files/setPosixFilePermissions dst mode))
          (catch java.nio.file.NoSuchFileException ex
            (util/dbug* "Filesystem: %s\n" (str ex))))))
 

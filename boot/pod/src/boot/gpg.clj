@@ -3,13 +3,14 @@
    [clojure.java.io   :as io]
    [clojure.java.shell :as shell]
    [boot.pod          :as pod]
-   [boot.util         :as util])
+   [boot.util         :as util]
+   [bootstrap.config  :as conf])
   (:import [java.io StringReader File]))
 
 (defn ^{:boot/from :technomancy/leiningen} gpg-program
   "Lookup the gpg program to use, defaulting to 'gpg'"
   []
-  (or (boot.App/config "BOOT_GPG_COMMAND") "gpg"))
+  (or (:boot-gpg-command (conf/config)) "gpg"))
 
 (defn- ^{:boot/from :technomancy/leiningen} get-english-env []
   "Returns environment variables as a map with clojure keywords and LANGUAGE set to 'en'"
@@ -75,7 +76,7 @@
           pomfile (doto (File/createTempFile "pom" ".xml")
                     (.deleteOnExit)
                     (spit (pod/pom-xml jarfile pompath)))
-          pomout  (io/file outdir (.replaceAll jarname "\\.jar$" ".pom.asc")) ]
+          pomout  (io/file outdir (.replaceAll jarname "\\.jar$" ".pom.asc"))]
       (spit pomout (sign-it pomfile gpg-options))
       [[:extension "pom.asc"] (.getPath pomout)])))
 

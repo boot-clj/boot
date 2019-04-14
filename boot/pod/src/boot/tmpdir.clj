@@ -9,7 +9,8 @@
     [boot.pod               :as pod]
     [boot.file              :as file]
     [boot.from.digest       :as digest]
-    [boot.util              :as util :refer [with-let]])
+    [boot.util              :as util :refer [with-let]]
+    [bootstrap.config       :as conf])
   (:import
     [java.io File]
     [java.util Properties]
@@ -113,7 +114,7 @@
 
 (defn- ^File cache-dir
   [cache-key]
-  (-> (boot.App/bootdir)
+  (-> (conf/boot-dir)
       (io/file "cache" "cache" "fileset")
       (io/file CACHE_VERSION cache-key)))
 

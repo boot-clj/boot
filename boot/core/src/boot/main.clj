@@ -1,6 +1,6 @@
 (ns boot.main
-  (:import
-    [boot App])
+  ;(:import
+  ;  [boot App]
   (:require
     [clojure.java.io             :as io]
     [clojure.string              :as string]
@@ -9,7 +9,8 @@
     [boot.core                   :as core]
     [boot.file                   :as file]
     [boot.util                   :as util]
-    [boot.from.clojure.tools.cli :as cli]))
+    [boot.from.clojure.tools.cli :as cli]
+    [bootstrap.config            :as conf]))
 
 (def cli-opts
   [["-a" "--asset-paths PATH"    "Add PATH to set of asset directories."
@@ -110,7 +111,7 @@
 (defn shebang? [arg]
   (when (and (<= 0 (.indexOf arg (int \/))) (.exists (io/file arg)))
     (let [bang-line (str (first (string/split (slurp arg) #"\n")))
-          full-path (System/getProperty "boot.app.path")
+          full-path (:boot-app-path (conf/config))
           base-path (.getName (io/file full-path))
           full-pat  (re-pattern (format "^#!\\s*\\Q%s\\E(?:\\s+.*)?$" full-path))
           base-pat  (re-pattern (format "^#!\\s*/usr/bin/env\\s+\\Q%s\\E(?:\\s+.*)?$" base-path))]
@@ -121,10 +122,6 @@
     (->> (string/split (slurp f) #"\n") (remove string/blank?) (map re-pattern) set)))
 
 (defn -main [pod-id worker-pod shutdown-hooks [arg0 & args :as args*]]
-  (when (not= (boot.App/getVersion) (boot.App/getBootVersion))
-    (let [url "https://github.com/boot-clj/boot#install"]
-      (util/exit-error
-        (println (format "Please download latest Boot binary: %s" url)))))
 
   (pod/set-pod-id! pod-id)
   (pod/set-worker-pod! worker-pod)
@@ -133,7 +130,7 @@
   (let [[arg0 args args*] (if (seq args*)
                             [arg0 args args*]
                             ["--help" nil ["--help"]])
-        bootscript        (App/config "BOOT_FILE" "build.boot")
+        bootscript        (:boot-file (conf/config) "build.boot")
         exists?           #(when (.isFile (io/file %)) %)
         have-bootscript?  (exists? bootscript)
         [arg0 args]       (cond
@@ -175,8 +172,8 @@
               *err*               (util/auto-flush *err*)
               core/*boot-opts*    opts
               core/*boot-script*  arg0
-              core/*boot-version* (boot.App/getBootVersion)
-              core/*app-version*  (boot.App/getVersion)]
+              core/*boot-version* (:boot-version (conf/config))
+              core/*app-version*  (:boot-version (conf/config))]
 
       (util/exit-ok
         (let [userscript  (util/with-let [x (-> (System/getProperty "user.home")
@@ -186,7 +183,7 @@
                               (util/warn "** WARNING: ~/.profile.boot is deprecated.\n")
                               (util/warn "** Please use $BOOT_HOME/profile.boot instead.\n")
                               (util/warn "** See: https://github.com/boot-clj/boot/issues/157\n")))
-              userscript  (or userscript (exists? (io/file (App/getBootDir) "profile.boot")))
+              userscript  (or userscript (exists? (io/file (conf/boot-dir) "profile.boot")))
               localscript (exists? (io/file "profile.boot"))
               profile?    (not (:no-profile opts))
               bootstr     (some->> arg0 slurp)
@@ -203,8 +200,6 @@
                             (emit boot? args userstr localstr bootstr import-ns (:init opts)))]
 
           (when (:boot-script opts) (util/exit-ok (print scriptstr)))
-
-          (when (:version opts) (util/exit-ok (boot.App/printVersion)))
 
           (reset! core/bootignore (parse-bootignore (io/file ".bootignore")))
 

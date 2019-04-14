@@ -416,13 +416,6 @@ public class App {
             try { core.get().close(); }
             catch (InterruptedException ie) {}}}
 
-    public static String
-    readVersion() throws Exception {
-        Properties p = new Properties();
-        try (InputStream in = resource("boot/base/version.properties")) {
-            p.load(in); }
-        return p.getProperty("version"); }
-
     public static void
     printVersion() throws Exception {
         Properties p = new Properties();
@@ -446,14 +439,6 @@ public class App {
             && ! (asroot.equals("yes") || asroot.equals("1") || asroot.equals("true")))
             throw new Exception("refusing to run as root (set BOOT_AS_ROOT=yes to force)");
 
-        // BOOT_VERSION is decided by the loader; it will respect the
-        // boot.properties files, env vars, system properties, etc.
-        // or it will use the latest installed version.
-        //
-        // Since 2.4.0 we can assume that bootversion and appversion
-        // are the same (or boot.main will throw an exception).
-        bootversion = appversion = readVersion();
-
         File cachehome   = mkFile(bootdir(), "cache");
         File bootprops   = mkFile(bootdir(), "boot.properties");
         File jardir      = mkFile(cachehome, "lib", appversion);
@@ -465,24 +450,6 @@ public class App {
         aetherfile       = mkFile(cachehome, "lib", appversion, aetherjar);
 
         readProps(bootprops, true);
-
-        if (args.length > 0
-            && ((args[0]).equals("-u")
-                || (args[0]).equals("--update"))) {
-            updateBoot(bootprops, (args.length > 1) ? args[1] : null, "RELEASE");
-            System.exit(0); }
-
-        if (args.length > 0
-            && ((args[0]).equals("-U")
-                || (args[0]).equals("--update-snapshot"))) {
-            updateBoot(bootprops, null, "(0,)");
-            System.exit(0); }
-
-        if (args.length > 0
-            && ((args[0]).equals("-V")
-                || (args[0]).equals("--version"))) {
-            printVersion();
-            System.exit(0); }
 
         String repo  = (localrepo == null)
             ? "default"
@@ -498,3 +465,10 @@ public class App {
         Thread shutdown = new Thread() { public void run() { ex.shutdown(); }};
         Runtime.getRuntime().addShutdownHook(shutdown);
         System.exit(runBoot(newCore(null), newWorker(), args)); }}
+
+//    public static void
+//    main(String[] args) throws Exception {
+
+//        Thread shutdown = new Thread() { public void run() { ex.shutdown(); }};
+//        Runtime.getRuntime().addShutdownHook(shutdown);
+//        System.exit(runBoot(newCore(null), newWorker(), args)); }}

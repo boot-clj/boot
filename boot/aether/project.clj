@@ -16,6 +16,7 @@
   :dependencies [[org.clojure/clojure               "1.9.0"  :scope "compile"]
                  [boot/base                         ~version :scope "provided"]
                  [boot/pod                          ~version :scope "compile"]
+                 [boot/bootstrap                    "3.0.0-SNAPSHOT" :scope "compile"]
                  [com.cemerick/pomegranate          "1.0.0"  :scope "compile"]
                  [org.apache.maven.wagon/wagon-http "2.12"   :scope "compile"
                   :exclusions [org.apache.maven.wagon/wagon-provider-api]]])

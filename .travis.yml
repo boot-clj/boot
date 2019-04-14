@@ -7,8 +7,11 @@ jdk:
   - openjdk12
   - openjdk13
 
-services:
-  - docker
+install: make --file=.travis/Makefile deps
+script: make --file=.travis/Makefile install
 
-install: curl https://raw.githubusercontent.com/boot-clj/docker-boot/master/boot/3/Dockerfile | docker build -t bootclj/boot:latest -f - .
-script: docker run -t bootclj/boot:latest cd ~/.boot/cache/bin/3.0.0-SNAPSHOT/ && ls -a
+cache:
+  directories:
+  - $HOME/.m2
+  - $HOME/.boot/cache
+  - $HOME/bin

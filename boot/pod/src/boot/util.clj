@@ -7,7 +7,9 @@
     [boot.file                    :as file]
     [boot.from.io.aviso.ansi      :as ansi]
     [boot.from.io.aviso.exception :as pretty]
-    [boot.from.me.raynes.conch    :as conch])
+    [boot.from.me.raynes.conch    :as conch]
+    [bootstrap.config             :as conf]
+    [boot.host                    :as host])
   (:import
     [java.io       File]
     [java.nio      ByteBuffer]
@@ -25,7 +27,7 @@
   configuration option BOOT_WATCHERS_DISABLE to either '1' or 'yes' or
   'true' to disable inotify; any other value keeps normal behavior."
   []
-  (let [value (boot.App/config "BOOT_WATCHERS_DISABLE")]
+  (let [value (:boot-watchers-disable (conf/config))]
     (if (string/blank? value)
       true
       (not (#{"1" "yes" "true"}
@@ -40,15 +42,13 @@
   either '1' or 'yes' or 'true' to enable it; any other value disables
   colorization."
   []
-  (let [value (boot.App/config "BOOT_COLOR")]
-    (if-not (string/blank? value)
-      (#{"1" "yes" "true"} (string/lower-case value))
-      (not (boot.App/isWindows)))))
+  (if (#{"1" "yes" "true" true} (:boot-color (conf/config))) true
+      (not (host/windows?))))
 
 (def ^:dynamic *verbosity*
   "Atom containing the verbosity level, 1 is lowest, 3 highest. Level 2
   corresponds to the -v boot option, level 3 to -vv, etc.
-  
+
   Levels:
 
     1.  Print INFO level messages or higher, colorize and prune stack traces
@@ -167,13 +167,13 @@
   Note that boot.util/*verbosity* in a pod needs to be altered AFTER pod
   creation or log level won't be affected."
   [& args]
-  (when-not (= "no" (boot.App/config "BOOT_WARN_DEPRECATED"))
+  (when-not (= "no" (:boot-warn-deprecated (conf/config)))
     (apply warn args)))
 
 (defmacro extends-protocol
   "Like extend-protocol but allows specifying multiple classes for each of the
   implementations:
-  
+
       (extends-protocol IFoo
         clojure.lang.MapEntry         ; <-- this is the difference, multiple
         clojure.lang.PersistentVector ; <-- classes per implementation
@@ -232,7 +232,7 @@
 
 (defmacro dotoseq
   "A cross between doto and doseq. For example:
-  
+
       (-> (System/-err)
           (dotoseq [i (range 0 100)]
             (.printf \"i = %d\\n\" i))
@@ -252,7 +252,7 @@
   is missing."
   [binding & body]
   (let [[ks m] [(butlast binding) (last binding)]
-        req-ks (set (map keyword ks)) ]
+        req-ks (set (map keyword ks))]
     `(if-let [dif-ks# (not-empty (set/difference ~req-ks (set (keys ~m))))]
        (throw (new AssertionError (apply format "missing key(s): %s" dif-ks#)))
        (let [{:keys ~ks} ~m] ~@body))))
@@ -277,12 +277,11 @@
   * This is the preferred method for returning an exit code != 0, this
   method returns 1.
   * This macro does not call System.exit(), because this instance of boot
-  may be nested in another boot instance. Instead a special method on boot.App
-  is called which handles the exit behavior (calling shutdown hooks etc.)."
+  may be nested in another boot instance."
   [& body]
   `(binding [*out* *err*]
      ~@body
-     (throw (boot.App$Exit. (str 1)))))
+     (throw (Exception. "Boot Error." (str 1)))))
 
 (defmacro exit-ok
   "Evaluates the body, and exits with non-zero status.
@@ -291,16 +290,11 @@
   * Boot's main explicitly wraps user tasks in exit-ok so that in general
   it is not necessary to call it for exiting with 0.
   * This macro does not call System.exit(), because this instance of boot
-  may be nested in another boot instance. Instead a special method on boot.App
-  is called which handles the exit behavior (calling shutdown hooks etc.)."
+  may be nested in another boot instance."
   [& body]
   `(try
      ~@body
-     (throw (boot.App$Exit. (str 0)))
-     (catch Throwable e#
-       (if (instance? boot.App$Exit e#)
-         (throw e#)
-         (exit-error (print-ex e#))))))
+     (throw (Exception. "Boot OK." (str 0)))))
 
 (defmacro with-err-str
   "Evaluates exprs in a context in which *err* is bound to a fresh StringWriter.
@@ -339,9 +333,9 @@
 
   A tree consists of a graph of nodes of the format [<name> <nodes>], where
   <name> is a string and <nodes> is a set of nodes (the children of this node).
-  
+
   Example:
-  
+
       (util/print-tree [[\"foo\" #{[\"bar\" #{[\"baz\"]}]}]] [\"--\" \"XX\"])
 
   prints:

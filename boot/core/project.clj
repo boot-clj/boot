@@ -15,4 +15,5 @@
                    :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies   [[org.clojure/clojure "1.9.0"  :scope "provided"]
                    [boot/base           ~version :scope "provided"]
-                   [boot/pod            ~version :scope "compile"]])
+                   [boot/pod            ~version :scope "compile"]
+                   [boot/bootstrap       "3.0.0-SNAPSHOT" :scope "provided"]])
