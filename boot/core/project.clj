@@ -16,4 +16,4 @@
   :dependencies   [[org.clojure/clojure "1.9.0"  :scope "provided"]
                    [boot/base           ~version :scope "provided"]
                    [boot/pod            ~version :scope "compile"]
-                   [boot/boostrap       "3.0.0-SNAPSHOT" :scope "provided"]])
+                   [boot/bootstrap       "3.0.0-SNAPSHOT" :scope "provided"]])
