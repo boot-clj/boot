@@ -2,6 +2,7 @@
   (:require
     [clojure.set                  :as set]
     [clojure.string               :as string]
+    [clojure.walk                 :as walk]
     [boot.util                    :as util]
     [boot.file                    :as file]
     [boot.xform                   :as xf]
@@ -465,7 +466,9 @@
   ([expr]
      (let [{:keys [meta? expr]} (read-string expr)]
        (binding [*print-meta* meta?]
-         (pr-str (eval expr)))))
+         (->> (eval expr)
+              (walk/postwalk identity) ; make sure all lazy seqs are realized #683
+              (pr-str)))))
   ([pod expr]
      (let [arg (pr-str {:meta? *print-meta* :expr expr})
            ret (with-invoke-in pod (boot.pod/eval-in* arg))]
