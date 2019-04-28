@@ -465,7 +465,7 @@
   ([expr]
      (let [{:keys [meta? expr]} (read-string expr)]
        (binding [*print-meta* meta?]
-         (pr-str (eval expr)))))
+         (pr-str (clojure.walk/prewalk identity (eval expr))))))
   ([pod expr]
      (let [arg (pr-str {:meta? *print-meta* :expr expr})
            ret (with-invoke-in pod (boot.pod/eval-in* arg))]
