@@ -83,11 +83,11 @@
       (util/dbug* "watch service closed\n"))))
 
 (defn- send-it!
-  [queue]
+  [queue changes]
   ;; It doesn't matter what we send because the information in the watch keys
   ;; is completely unreliable and useless, so we send the sentinel "changed!".
-  (util/dbug* "sending change event\n")
-  (.offer queue "changed!"))
+  (util/dbug* (str "sending change event " changes " \n"))
+  (.offer queue changes))
 
 (defn- service
   [queue paths ignore-patterns]
@@ -98,19 +98,33 @@
            (when-let [path (and watch-key (or (.watchable watch-key) ""))]
              (if-not (.isValid watch-key)
                (util/dbug* "invalid watch key %s\n" (.watchable watch-key))
-               (do (doseq [event (.pollEvents watch-key)]
-                     (let [dir     (.toFile path)
-                           changed (io/file dir (str (.context event)))
-                           etype   (enum->kw service (.kind event))
-                           dir?    (.isDirectory changed)]
-                       (util/dbug* "event: %s %s %s\n" etype dir? path)
-                       (when (and dir? (= :create etype))
-                         (try (doreg service changed)
-                              (catch Throwable t
-                                (util/dbug* "error registering %s: %s\n" path t))))))
-                   (when-not (.reset watch-key)
-                     (util/dbug* "failed to reset watch key %s\n" path))))
-             (send-it! queue)
+               (let [dir     (.toFile path)
+                     changes (reduce (fn [acc event]
+                                       (let [changed (io/file dir (str (.context event)))
+                                             etype   (enum->kw service (.kind event))
+                                             dir?    (.isDirectory changed)]
+                                         (util/dbug* "event: %s %s %s\n" etype dir? path)
+                                         (cond
+                                           (and dir? (= :create etype))
+                                           (do (try (doreg service changed)
+                                                    (catch Throwable t
+                                                      (util/dbug* "error registering %s: %s\n" path t)))
+                                               (update acc :changed into (map (fn [f] (.getPath f)) (file-seq changed))))
+
+                                           (contains? #{:create :modify} etype)
+                                           (update acc :changed conj (.getPath changed))
+
+                                           :else ;; nothing
+                                           acc)))
+                                     {:changed #{}}
+                                     (.pollEvents watch-key))]
+
+                 ;;REVIEW Serialize as strings?
+                 (send-it! queue (pr-str changes))
+
+                 (when-not (.reset watch-key)
+                   (util/dbug* "failed to reset watch key %s\n" path))))
+
              (recur)))
         Thread. .start)
     service))
@@ -126,5 +140,5 @@
   (let [k  (str (gensym))
         s  (service queue paths ignore)]
     (swap! watchers assoc k s)
-    (send-it! queue)
+    (send-it! queue {})
     k))

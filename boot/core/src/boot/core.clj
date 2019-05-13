@@ -726,6 +726,14 @@
 
 ;; Boot Environment ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(require '[clojure.edn])
+
+(defn- take-changes [debounce q]
+  (loop [init {}]
+    (if-let [more (.poll q debounce TimeUnit/MILLISECONDS)]
+      (recur (merge-with clojure.set/union init (clojure.edn/read-string more)))
+      init)))
+
 (defn watch-dirs
   "Watches dirs for changes and calls callback with set of changed files
   when file(s) in these directories are modified. Returns a thunk which
@@ -742,15 +750,24 @@
               watcher (apply file/watcher! :time dirs)
               paths   (into-array String dirs)
               k       (pod/with-invoke-worker
-                        (boot.watcher/make-watcher q paths :ignore @bootignore))]
+                        (boot.watcher/make-watcher q paths :ignore @bootignore))
+
+              ;; REVIEW Manually add files the first time. Is this necessary?
+              first-time-changed (watcher)]
+
           (daemon
+           (callback first-time-changed)
+
             (loop [ret (util/guard [(.take q)])]
               (when ret
-                (if-let [more (.poll q (or debounce 10) TimeUnit/MILLISECONDS)]
-                  (recur (conj ret more))
-                  (let [changed (watcher)]
-                    (when-not (empty? changed) (callback changed))
-                    (recur (util/guard [(.take q)])))))))
+                (let [changes (:changed (take-changes (or debounce 10) q))]
+                  (when-not (empty? changes)
+                    (callback (doall (map (fn [f]
+                                            [:cp f (clojure.java.io/file f)])
+                                          changes))))
+
+                  (recur (util/guard [(.take q)]))))))
+
           #(pod/with-invoke-worker (boot.watcher/stop-watcher k))))))
 
 (defn rebuild!
