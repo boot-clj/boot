@@ -531,6 +531,18 @@
     (core/with-pass-thru [fs]
       @repl-soc)))
 
+(core/deftask prepl-server
+  "Start a prepl server.
+
+   This task is a thin wrapper around the `socket-server` task. See the
+   docstring for `socket-server` for details."
+  [b bind ADDR str "The address server listens on."
+   p port PORT int "The port to listen to."]
+  (socket-server
+    :bind   bind
+    :accept 'clojure.core.server/io-prepl
+    :port   port))
+
 (core/deftask pom
   "Create project pom.xml file.
 

@@ -329,6 +329,8 @@ it `build`. We'll modify `build.boot` such that it contains the following:
   []
   (comp (pom) (jar) (install)))
 ```
+`NOTE: When using comp, all arguments must be functions - nil is not supported.
+In this example we call each task middleware which returns the task function, these functions are composed into a new build task.`
 
 Now we should be able to see the `build` task listed among the available tasks
 in the output of `boot -h`, and we can run the task from the command line as we
