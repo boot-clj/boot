@@ -17,5 +17,4 @@
                  [boot/base                         ~version :scope "provided"]
                  [boot/pod                          ~version :scope "compile"]
                  [com.cemerick/pomegranate          "1.1.0"  :scope "compile"]
-                 [org.apache.maven.wagon/wagon-http "3.3.2"  :scope "compile"
-                  :exclusions [org.apache.maven.wagon/wagon-provider-api]]])
+                 [org.apache.maven.wagon/wagon-http "3.3.2"  :scope "compile"]])
