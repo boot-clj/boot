@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased
+
+#### Fixed
+
+- Fix `watch` task hanging when run with no directories to watch
+
 ## 2.8.2
 
 #### Fixed
