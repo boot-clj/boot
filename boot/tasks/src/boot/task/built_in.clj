@@ -367,6 +367,7 @@
             srcdirs      (->> (map (comp :dir val) (core/get-checkouts))
                               (into (core/user-dirs fileset))
                               (map (memfn getPath)))
+            _            (when-not (seq srcdirs) (throw (Exception. "No directories to watch.")))
             watcher      (apply file/watcher! :time srcdirs)
             incl-excl    (if-not (or (seq include) (seq exclude))
                            identity
