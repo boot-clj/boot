@@ -1,5 +1,10 @@
 # Changes
 
+## Unreleased
+
+- Fix jar creation to always write the MANIFEST.MF file as the first
+  entry (for ecosystem compatibility) [#716][716]
+
 ## 2.8.3
 
 #### Improved
@@ -30,6 +35,7 @@ using has been updated to target 0.4.x. You can find more details
 [706]: https://github.com/boot-clj/boot/pull/706
 [711]: https://github.com/boot-clj/boot/pull/711
 [713]: https://github.com/boot-clj/boot/pull/713
+[716]: https://github.com/boot-clj/boot/pull/716
 
 ## 2.8.1
 
