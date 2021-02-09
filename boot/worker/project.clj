@@ -28,7 +28,7 @@
                  [clj-jgit                    "0.8.10"]
                  [clj-yaml                    "0.4.0"]
                  [javazoom/jlayer             "1.0.1"]
-                 [net.java.dev.jna/jna        "5.2.0"]
+                 [net.java.dev.jna/jna        "5.7.0"]
                  [alandipert/desiderata       "1.0.2"]
                  [org.clojure/data.xml        "0.0.8"]
                  [org.clojure/data.zip        "0.1.3"]
