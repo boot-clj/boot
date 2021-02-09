@@ -63,9 +63,10 @@ public abstract class WatchService implements Closeable {
     public abstract WatchKey take() throws InterruptedException;
 
     public static WatchService newWatchService() {
-        final String osVersion = System.getProperty("os.version");
-        final int minorVersion = Integer.parseInt(osVersion.split("\\.")[1]);
-        if (minorVersion < 5) {
+        final String[] osVersion = System.getProperty("os.version").split("\\.");
+        final int majorVersion = Integer.parseInt(osVersion[0]);
+        final int minorVersion = Integer.parseInt(osVersion[1]);
+        if ((majorVersion < 11) & (minorVersion < 5)) {
             throw new UnsupportedOperationException("barbarywatchservice not "
                     + "supported on Mac OS X prior to Leopard (10.5)");
             
