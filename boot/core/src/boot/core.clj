@@ -436,7 +436,7 @@
   (get-files fileset #{:input}))
 
 (defn input-fileset
-  "FIXME: document"
+  "Get a fileset tree that contains only files with input role."
   [fileset]
   (tmpd/restrict-dirs fileset (input-dirs fileset)))
 
@@ -446,7 +446,7 @@
   (get-files fileset #{:output}))
 
 (defn output-fileset
-  "FIXME: document"
+  "Get a fileset tree that contains only files with output role."
   [fileset]
   (tmpd/restrict-dirs fileset (output-dirs fileset)))
 
@@ -1216,7 +1216,12 @@
    #(some identity (seq-pred %)) files))
 
 (defn file-filter
-  "A file filtering function factory. FIXME: more documenting here."
+  "A file filtering function factory. This function takes a factory
+  function which when called with a \"criteria\" returns a predicate
+  function for testing a java.io.File against that criteria.  The
+  return value is a file filtering function which takes a list of
+  criteria for matching, files to be filtered and an optional negation
+  flag to specify whether the predicate should be inverted."
   [mkpred]
   (fn [criteria files & [negate?]]
     (assert (seq criteria) "boot.core/file-filter requires a list of criteria but nil was passed in, make sure your `by-*` calls are passing them.")
