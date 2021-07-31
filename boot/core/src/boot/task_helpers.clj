@@ -43,17 +43,36 @@
   [prompt]
   (String/valueOf (.readPassword (System/console) prompt nil)))
 
-(defn print-fileset
-  [fileset]
-  (letfn [(tree [xs]
-            (when-let [xs (seq (remove nil? xs))]
-              (->> (group-by first xs)
-                   (reduce-kv #(let [t (->> %3 (map (comp seq rest)) tree)]
-                                 (assoc %1 (if (map? t) (ansi/bold-blue %2) %2) t))
-                              (sorted-map-by #(->> %& (map ansi/strip-ansi) (apply compare)))))))]
-    (let [tmpfiles    (core/ls fileset)
-          split-paths (map (comp file/split-path core/tmp-path) tmpfiles)]
-      (util/print-tree [["" (into #{} (tree split-paths))]]))))
+(defn- format-roles [i o]
+  ((cond
+     (and i o) ansi/cyan
+     i ansi/blue
+     o ansi/green
+     :else identity) (str "[" (and i "i") (and o "o") "]")))
+
+(defn- path-role-map [fileset]
+  "create a lookup on file-path => role-string, for display purposes"
+  (let [tmpdir-roles (reduce
+                       #(assoc %1 (.getPath (:dir %2)) (format-roles (:input %2) (:output %2))) {}
+                       (set/project (:dirs fileset) [:dir :input :output]))]
+    (->> (vals (:tree fileset))
+         (reduce #(assoc %1 (:path %2) (.getPath (:dir %2))) {})
+         (reduce-kv #(assoc %1 %2 (tmpdir-roles %3)) {}))))
+
+(defn print-fileset [fileset]
+  (let [lookup (path-role-map fileset)
+        tree (fn tree [path xs]
+               (when-let [xs (seq (remove nil? xs))]
+                 (->> (group-by first xs)
+                      (reduce-kv
+                        #(let [full-path (str path (if (not (string/blank? path)) "/" "") %2)
+                               t (->> %3 (map (comp seq rest)) (tree full-path))]
+                           (assoc %1 (if (map? t) (ansi/bold-blue %2) (str (lookup full-path) " " %2)) t))
+                        (sorted-map-by #(->> %& (map ansi/strip-ansi) (apply compare)))))))
+        tmpfiles (core/ls fileset)
+        paths (map core/tmp-path tmpfiles)
+        split-paths (map file/split-path paths)]
+    (util/print-tree [["" (into #{} (tree "" split-paths))]])))
 
 ;; sift helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
